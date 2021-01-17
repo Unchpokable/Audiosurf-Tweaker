@@ -1,13 +1,16 @@
 ﻿namespace Audiosurf_SkinChanger.Engine
 {
-    using System.IO.Compression;
+    using System.IO;
+    using System.Runtime.Serialization;
+    using System.Runtime.Serialization.Formatters.Binary;
     class SkinPackager
     {
         private const string skinExtension = @".askin";
         public bool Compile(AudiosurfSkin skin)
         {
-            ZipFile.CreateFromDirectory(skin.Source, skin.Name + skinExtension);
-            return false;
+            IFormatter formatter = new BinaryFormatter();
+            Stream filestream = new FileStream()
+
         }
     }
 }
