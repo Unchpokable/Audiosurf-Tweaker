@@ -30,7 +30,7 @@
             catch (Exception e)
             {
                 MessageBox.Show($"Ooops! Something goes wrong! We cant save your skin {skin.Name}!\n Exception message: {e.Message}.\n Stack trace written in log file");
-                logger.Log("ERROR", e.StackTrace);
+                logger.Log("ERROR",e.Message + "\n" + e.StackTrace);
                 return false;
             }
         }
@@ -46,7 +46,7 @@
             catch(Exception e)
             {
                 MessageBox.Show($"Ooops! Something goes wrong! We cant load your skin {path}!\n Exception message: {e.Message}.\n Stack trace written in log file");
-                logger.Log("ERROR", e.StackTrace);
+                logger.Log("ERROR", e.Message + "\n" + e.StackTrace);
                 return null;
             }
         }

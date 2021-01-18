@@ -26,6 +26,12 @@ namespace Audiosurf_SkinChanger
             if (openSkinDialog.ShowDialog() == DialogResult.OK)
             {
                 AudiosurfSkin openedSkin = skinPackager.Decompile(openSkinDialog.FileName);
+                if (openedSkin == null)
+                {
+                    MessageBox.Show("Cant open empty .askin file", "Empty Skin!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
                 EnvironmentalVeriables.Skins.Add(openedSkin);
                 SkinsListBox.Items.Add(openedSkin);
                 SkinsListBox.SelectedItem = openedSkin;

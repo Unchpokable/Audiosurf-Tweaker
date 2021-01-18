@@ -10,7 +10,7 @@
 
         public Logger()
         {
-            LogFilePath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\Roaming\Audiosurf SkinChanger Logs\log.txt";
+            LogFilePath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + @"\Roaming\Audiosurf SkinChanger Logs\log.txt";
         }
 
         public Logger(string path)
