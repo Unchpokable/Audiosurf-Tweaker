@@ -7,5 +7,6 @@
     {
         public static string OutputPath;
         internal static IList<AudiosurfSkin> Skins;
+        internal static string gamePath;
     }
 }
