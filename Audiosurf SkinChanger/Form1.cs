@@ -20,7 +20,6 @@ namespace Audiosurf_SkinChanger
             InitializeComponent();
             openSkinDialog.Filter = "Audiosurf Skins (.askin)|*.askin";
             openSkinDialog.DefaultExt = ".askin";
-            skinPackager = new SkinPackager();
 
             SkySpherePreview = skySpherePic;
             TilesTexturesImageGroup = new[]
@@ -39,6 +38,7 @@ namespace Audiosurf_SkinChanger
             };
 
             pathToGameTextbox.Text = ConfigurationManager.AppSettings.Get("gamePath");
+            skinPackager = new SkinPackager();
         }
 
         private void SavePath(object sender, EventArgs e)
