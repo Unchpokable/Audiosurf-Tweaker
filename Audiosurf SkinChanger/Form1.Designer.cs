@@ -58,10 +58,10 @@
             this.label2 = new System.Windows.Forms.Label();
             this.skySpherePic = new System.Windows.Forms.PictureBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
-            this.listBox1 = new System.Windows.Forms.ListBox();
+            this.openSkinBtn = new System.Windows.Forms.Button();
             this.button2 = new System.Windows.Forms.Button();
-            this.button3 = new System.Windows.Forms.Button();
+            this.SkinsListBox = new System.Windows.Forms.ListBox();
+            this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
             this.previewGroupBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox12)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox11)).BeginInit();
@@ -97,7 +97,7 @@
             // 
             // viewPathToGameBtn
             // 
-            this.viewPathToGameBtn.Location = new System.Drawing.Point(158, 381);
+            this.viewPathToGameBtn.Location = new System.Drawing.Point(158, 383);
             this.viewPathToGameBtn.Name = "viewPathToGameBtn";
             this.viewPathToGameBtn.Size = new System.Drawing.Size(75, 23);
             this.viewPathToGameBtn.TabIndex = 2;
@@ -346,9 +346,9 @@
             // 
             // groupBox1
             // 
-            this.groupBox1.Controls.Add(this.button3);
+            this.groupBox1.Controls.Add(this.openSkinBtn);
             this.groupBox1.Controls.Add(this.button2);
-            this.groupBox1.Controls.Add(this.listBox1);
+            this.groupBox1.Controls.Add(this.SkinsListBox);
             this.groupBox1.Location = new System.Drawing.Point(12, 13);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Size = new System.Drawing.Size(221, 293);
@@ -356,13 +356,15 @@
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Ваши скины:";
             // 
-            // listBox1
+            // openSkinBtn
             // 
-            this.listBox1.FormattingEnabled = true;
-            this.listBox1.Location = new System.Drawing.Point(6, 19);
-            this.listBox1.Name = "listBox1";
-            this.listBox1.Size = new System.Drawing.Size(209, 160);
-            this.listBox1.TabIndex = 0;
+            this.openSkinBtn.Location = new System.Drawing.Point(8, 185);
+            this.openSkinBtn.Name = "openSkinBtn";
+            this.openSkinBtn.Size = new System.Drawing.Size(208, 23);
+            this.openSkinBtn.TabIndex = 2;
+            this.openSkinBtn.Text = "Добавить новый скин";
+            this.openSkinBtn.UseVisualStyleBackColor = true;
+            this.openSkinBtn.Click += new System.EventHandler(this.openSkinBtn_Click);
             // 
             // button2
             // 
@@ -373,15 +375,13 @@
             this.button2.Text = "Установить выбранный";
             this.button2.UseVisualStyleBackColor = true;
             // 
-            // button3
+            // SkinsListBox
             // 
-            this.button3.Location = new System.Drawing.Point(8, 185);
-            this.button3.Name = "button3";
-            this.button3.Size = new System.Drawing.Size(208, 23);
-            this.button3.TabIndex = 2;
-            this.button3.Text = "Добавить новый скин";
-            this.button3.UseVisualStyleBackColor = true;
-            this.button3.Click += new System.EventHandler(this.button3_Click);
+            this.SkinsListBox.FormattingEnabled = true;
+            this.SkinsListBox.Location = new System.Drawing.Point(6, 19);
+            this.SkinsListBox.Name = "SkinsListBox";
+            this.SkinsListBox.Size = new System.Drawing.Size(209, 160);
+            this.SkinsListBox.TabIndex = 0;
             // 
             // Form1
             // 
@@ -450,8 +450,8 @@
         private System.Windows.Forms.PictureBox pictureBox2;
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.FolderBrowserDialog folderBrowserDialog1;
-        private System.Windows.Forms.ListBox listBox1;
-        private System.Windows.Forms.Button button3;
+        private System.Windows.Forms.ListBox SkinsListBox;
+        private System.Windows.Forms.Button openSkinBtn;
         private System.Windows.Forms.Button button2;
     }
 }

@@ -10,7 +10,7 @@
 
         public Logger()
         {
-            LogFilePath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\Roaming\Audiosurf SkinChanger Logs";
+            LogFilePath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData) + @"\Roaming\Audiosurf SkinChanger Logs\log.txt";
         }
 
         public Logger(string path)
@@ -18,22 +18,30 @@
             LogFilePath = path;
         }
 
-        public void Log(string message)
+        public void Log(string logTitle, string message)
         {
             Stream logStream;
 
-            if (File.Exists(LogFilePath))
-                logStream = new FileStream(LogFilePath, FileMode.Append);
-            else
-                logStream = new FileStream(LogFilePath, FileMode.Create);
+            if (!File.Exists(LogFilePath))
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(LogFilePath));
+                File.Create(LogFilePath);
+            }
+
+            logStream = new FileStream(LogFilePath, FileMode.Append);
 
             using (var writer = new StreamWriter(logStream, Encoding.UTF8))
             {
-                writer.WriteLine(message);
+                writer.WriteLine(FormatMessage(logTitle, message));
             }
 
             logStream.Close();
             logStream.Dispose();
+        }
+
+        private string FormatMessage(string logTitle, string message)
+        {
+            return $"[{DateTime.Now}]::[{logTitle}]\n{message}\n";
         }
     }
 }
