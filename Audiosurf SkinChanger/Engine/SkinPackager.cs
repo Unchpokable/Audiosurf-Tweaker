@@ -83,9 +83,21 @@
 
             foreach(var mask in Masks)
             {
-                
+                if (mask == EnvironmentalVeriables.CliffImagesMask)
+                    result.Cliffs = GetAllImagesByNameMask("cliffs", mask, path);
+                if (mask == EnvironmentalVeriables.HitImageMask)
+                    result.Hits = GetAllImagesByNameMask("hits", mask, path);
+                if (mask == EnvironmentalVeriables.ParticlesImageMask)
+                    result.Particles = GetAllImagesByNameMask("particles", mask, path);
+                if (mask == EnvironmentalVeriables.RingsImageMask)
+                    result.Rings = GetAllImagesByNameMask("rings", mask, path);
+                if (mask == EnvironmentalVeriables.SkysphereImagesMask)
+                    result.SkySphere = GetAllImagesByNameMask("Skysphere", mask, path);
             }
 
+            result.Tiles = GetImageByMask("tiles.png", path);
+            result.TilesFlyup = GetImageByMask("tilesflyup.png", path);
+            return result;
         }
 
         private ImageGroup GetAllImagesByNameMask(string groupName, string nameMask, string path)
@@ -105,6 +117,13 @@
             }
 
             return group;
+        }
+
+        private Bitmap GetImageByMask(string mask, string path)
+        {
+            if (!File.Exists(path))
+                return null;
+            return new Bitmap(Image.FromFile(path));
         }
     }
 }
