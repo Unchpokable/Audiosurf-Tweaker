@@ -117,13 +117,13 @@ namespace Audiosurf_SkinChanger
         {
             var group = new ImageGroup("tiles");
 
-            for (int i = 0; i < 256; i+=64)
-            for(int k = 0; k < 256; k+= 64)
+            for (int i = 0; i < 256; i+= 128)
+            for (int k = 0; k < 256; k+= 128)
             {
                 var bitmap = new Bitmap(64, 64);
                 using (var g = Graphics.FromImage(bitmap))
                 {
-                    g.DrawImage(spritesheet, i,k, 64,64);
+                    g.DrawImage(spritesheet, i,k, 128, 128);
                 }
                 group.AddImage((Bitmap)bitmap.Clone());
              }
