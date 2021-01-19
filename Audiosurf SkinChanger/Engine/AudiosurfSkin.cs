@@ -9,7 +9,7 @@
     {
         public string Source { get; set; }
         public string Name { get; set; }
-        public ImageGroup SkySphere { get; set; }
+        public ImageGroup SkySpheres { get; set; }
         public ImageGroup SkySphereSource { get; set; }
         public ImageGroup Cliffs { get; set; }
         public ImageGroup Hits { get; set; }

@@ -92,11 +92,11 @@
                 if (mask == EnvironmentalVeriables.RingsImageMask)
                     result.Rings = GetAllImagesByNameMask("rings", mask, path);
                 if (mask == EnvironmentalVeriables.SkysphereImagesMask)
-                    result.SkySphere = GetAllImagesByNameMask("Skysphere", mask, path);
+                    result.SkySpheres = GetAllImagesByNameMask("Skysphere", mask, path);
             }
 
-            result.Tiles = GetImageByMask("tiles.png", path);
-            result.TilesFlyup = GetImageByMask("tilesflyup.png", path);
+            result.Tiles = (Bitmap)GetAllImagesByNameMask("tiles", "tiles.png", path);
+            result.TilesFlyup = (Bitmap)GetAllImagesByNameMask("tiles flyup", "tilesflyup.png", path);
             return result;
         }
 
@@ -117,13 +117,6 @@
             }
 
             return group;
-        }
-
-        private Bitmap GetImageByMask(string mask, string path)
-        {
-            if (!File.Exists(path))
-                return null;
-            return new Bitmap(Image.FromFile(path));
         }
     }
 }
