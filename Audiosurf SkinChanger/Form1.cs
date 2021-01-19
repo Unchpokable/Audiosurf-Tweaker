@@ -120,7 +120,7 @@ namespace Audiosurf_SkinChanger
             for (int i = 0; i < 256; i+= 128)
             for (int k = 0; k < 256; k+= 128)
             {
-                var bitmap = new Bitmap(64, 64);
+                var bitmap = new Bitmap(128, 128);
                 using (var g = Graphics.FromImage(bitmap))
                 {
                     g.DrawImage(spritesheet, i,k, 128, 128);
