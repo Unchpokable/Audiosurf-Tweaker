@@ -112,10 +112,11 @@
 
             foreach(var file in AllFiles)
             {
-                var fname = Path.GetFileName(file).ToLower();
+                var origName = Path.GetFileName(file);
+                var fname = origName.ToLower();
                 if (fname.Contains(nameMask))
                 {
-                    var image = new NamedBitmap(fname, Image.FromFile(file));
+                    var image = new NamedBitmap(origName, Image.FromFile(file));
                     group.AddImage(image);
                 }
             }
