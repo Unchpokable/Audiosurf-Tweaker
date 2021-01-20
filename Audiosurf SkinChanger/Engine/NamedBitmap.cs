@@ -3,12 +3,14 @@
     using System.Drawing;
     using System;
     using System.IO;
+    using System.Drawing.Imaging;
 
     [Serializable]
     public class NamedBitmap
     {
         private Bitmap Source;
         public string Name;
+        private string format;
 
         public NamedBitmap(Image original)
         {
@@ -19,12 +21,44 @@
         {
             Name = name;
             Source = new Bitmap(source);
+            format = ProcessImageFormat(name).ToString();
         }
 
         public NamedBitmap(string name, Bitmap source)
         {
             Name = name;
             Source = source;
+            format = ProcessImageFormat(name).ToString();
+        }
+
+        private ImageFormat ProcessImageFormat(string srcFileName)
+        {
+            switch (srcFileName.Split('.')[1])
+            {
+                case "bmp":
+                    return ImageFormat.Bmp;
+                case "png":
+                    return ImageFormat.Png;
+                case "jpg":
+                    return ImageFormat.Jpeg;
+                default:
+                    return ImageFormat.Jpeg;
+            }
+        }
+        
+        private ImageFormat GetImageFormatByExtension(string extension)
+        {
+            switch (extension)
+            {
+                case "bmp":
+                    return ImageFormat.Bmp;
+                case "png":
+                    return ImageFormat.Png;
+                case "jpg":
+                    return ImageFormat.Jpeg;
+                default:
+                    return ImageFormat.Jpeg;
+            }
         }
 
         public static explicit operator Bitmap(NamedBitmap obj)
@@ -39,7 +73,7 @@
 
         public void Save(string filepath)
         {
-            Source.Save(filepath + @"\\" + Name);
+            Source.Save(filepath + @"\\" + Name, GetImageFormatByExtension(format.ToLower()));
         }
     }
 }

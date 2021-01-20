@@ -48,6 +48,7 @@ namespace Audiosurf_SkinChanger
             pictureBoxes = new[] { SkySpherePreview, TilesTexturesImageGroup, ParticlesTexturesImageGroup, RingsTexturesImageGroup };
 
             pathToGameTextbox.Text = ConfigurationManager.AppSettings.Get("gamePath");
+            EnvironmentalVeriables.gamePath = ConfigurationManager.AppSettings.Get("gamePath");
             skinPackager = new SkinPackager();
         }
 
@@ -176,6 +177,12 @@ namespace Audiosurf_SkinChanger
         {
             AudiosurfSkin skin = (AudiosurfSkin)SkinsListBox.SelectedItem;
             skin.SkySpheres.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
+            skin.Hits.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
+            skin.Tiles.Save(EnvironmentalVeriables.gamePath);
+            skin.TilesFlyup.Save(EnvironmentalVeriables.gamePath);
+            skin.Particles.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
+            skin.Rings.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
+            skin.Cliffs.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
         }
     }
 }
