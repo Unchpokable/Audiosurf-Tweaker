@@ -30,6 +30,14 @@
             Group.Add(image);
         }
 
+        public void Apply(Func<Bitmap, Bitmap> transform)
+        {
+            for (int i = 0; i < Group.Count; i++)
+            {
+                Group[i] = transform(Group[i]);
+            }
+        }
+
         public static explicit operator Bitmap(ImageGroup obj)
         {
             if (obj.Group.Count == 1)

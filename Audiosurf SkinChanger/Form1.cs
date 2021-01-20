@@ -2,7 +2,7 @@
 using System;
 using System.Windows.Forms;
 using System.Configuration;
-using System.Collections.Specialized;
+using System.Linq;
 using System.IO;
 using System.Drawing;
 using Audiosurf_SkinChanger.Utilities;
@@ -16,6 +16,7 @@ namespace Audiosurf_SkinChanger
         private PictureBox[] TilesTexturesImageGroup;
         private PictureBox[] ParticlesTexturesImageGroup;
         private PictureBox[] RingsTexturesImageGroup;
+        private PictureBox[][] pictureBoxes;
 
         public Form1()
         {
@@ -42,6 +43,8 @@ namespace Audiosurf_SkinChanger
             {
                 ringPic1, ringPic2, ringPic3, ringPic4
             };
+
+            pictureBoxes = new[] { SkySpherePreview, TilesTexturesImageGroup, ParticlesTexturesImageGroup, RingsTexturesImageGroup };
 
             pathToGameTextbox.Text = ConfigurationManager.AppSettings.Get("gamePath");
             skinPackager = new SkinPackager();
@@ -99,7 +102,8 @@ namespace Audiosurf_SkinChanger
 
         private void DrawPreviewOfSkin(AudiosurfSkin skin)
         {
-            tileFlyup.Image = skin.TilesFlyup;
+            pictureBoxes.ForEach(x => x.ClearAll());
+            tileFlyup.Image = skin.TilesFlyup.Rescale(64,64);
             FillPictureBoxGruopFromImageGroup(SkySpherePreview, skin.SkySpheres);
             FillPictureBoxGruopFromImageGroup(TilesTexturesImageGroup, SplitTilesSpritesheet(skin.Tiles));
             FillPictureBoxGruopFromImageGroup(ParticlesTexturesImageGroup, skin.Particles);
@@ -114,7 +118,7 @@ namespace Audiosurf_SkinChanger
                 {
                     if (!imagesIterator.MoveNext())
                         return;
-                    picBox.Image = imagesIterator.Current;
+                    picBox.Image = imagesIterator.Current.Rescale(64,64);
                 }
             }
             return;
@@ -134,6 +138,7 @@ namespace Audiosurf_SkinChanger
                 }
                 group.AddImage((Bitmap)bitmap.Clone());
              }
+            group.Apply(x => x.Rescale(64, 64));
             return group;
         }
 
