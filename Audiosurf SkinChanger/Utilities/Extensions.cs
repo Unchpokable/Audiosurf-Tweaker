@@ -9,7 +9,7 @@
     {
         public static Bitmap Rescale(this Bitmap source, int newWidth, int newHeight)
         {
-            return new Bitmap(source, new Size(newWidth, newHeight));
+            return new Bitmap((Bitmap)source, new Size(newWidth, newHeight));
         }
 
         public static void ClearAll(this PictureBox[] source)

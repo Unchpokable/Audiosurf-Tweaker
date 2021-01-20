@@ -17,7 +17,7 @@
         private string[] texturesNames;
         private IList<ImageGroup> textureGroups;
         private string[] Masks;
-        private readonly string defaultOutput = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        private readonly string defaultOutput = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
         public SkinPackager()
         {
@@ -45,9 +45,10 @@
             try
             {
                 IFormatter formatter = new BinaryFormatter();
-                Stream filestream = new FileStream((EnvironmentalVeriables.OutputPath ?? defaultOutput) + skin.Name + skinExtension, FileMode.Create, FileAccess.Write, FileShare.None);
-                formatter.Serialize(filestream, skin);
-                filestream.Close();
+                using (Stream filestream = new FileStream((EnvironmentalVeriables.OutputPath ?? defaultOutput) + @"\\" + skin.Name + skinExtension, FileMode.OpenOrCreate))
+                {
+                    formatter.Serialize(filestream, skin);
+                }
                 return true;
             }
             catch (Exception e)
@@ -98,8 +99,8 @@
                     result.SkySpheres = GetAllImagesByNameMask("skysphere", mask, path);
             }
 
-            result.Tiles = (Bitmap)GetAllImagesByNameMask("tiles", "tiles.png", path);
-            result.TilesFlyup = (Bitmap)GetAllImagesByNameMask("tiles flyup", "tileflyup.png", path);
+            result.Tiles = new NamedBitmap("tiles.png", (Bitmap)GetAllImagesByNameMask("tiles", "tiles.png", path));
+            result.TilesFlyup = new NamedBitmap("tileflyup.png", (Bitmap)GetAllImagesByNameMask("tiles flyup", "tileflyup.png", path));
             return result;
         }
 
@@ -114,7 +115,7 @@
                 var fname = Path.GetFileName(file).ToLower();
                 if (fname.Contains(nameMask))
                 {
-                    Bitmap image = new Bitmap(Image.FromFile(file));
+                    var image = new NamedBitmap(fname, Image.FromFile(file));
                     group.AddImage(image);
                 }
             }

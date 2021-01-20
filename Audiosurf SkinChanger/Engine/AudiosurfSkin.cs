@@ -3,6 +3,7 @@
     using System;
     using System.Drawing;
     using Audiosurf_SkinChanger.Utilities;
+    using Audiosurf_SkinChanger.Engine;
 
     [Serializable]
     class AudiosurfSkin
@@ -13,8 +14,8 @@
         public ImageGroup SkySphereSource { get; set; }
         public ImageGroup Cliffs { get; set; }
         public ImageGroup Hits { get; set; }
-        public Bitmap Tiles { get; set; }
-        public Bitmap TilesFlyup { get; set; }
+        public NamedBitmap Tiles { get; set; }
+        public NamedBitmap TilesFlyup { get; set; }
         public ImageGroup Particles { get; set; }
         public ImageGroup Rings { get; set; }
 

@@ -50,6 +50,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Engine\NamedBitmap.cs" />
     <Compile Include="EnvironmentalVeriables.cs" />
     <Compile Include="Engine\AudiosurfSkin.cs" />
     <Compile Include="Engine\SkinPackager.cs" />

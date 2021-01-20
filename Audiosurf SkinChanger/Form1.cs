@@ -71,8 +71,11 @@ namespace Audiosurf_SkinChanger
                     return;
                 }
 
-                EnvironmentalVeriables.Skins.Add(openedSkin);
-                SkinsListBox.Items.Add(openedSkin);
+                if (!SkinsListBox.Items.Contains(openedSkin))
+                {
+                    EnvironmentalVeriables.Skins.Add(openedSkin);
+                    SkinsListBox.Items.Add(openedSkin);
+                }
                 SkinsListBox.SelectedItem = openedSkin;
                 CurrentSkin = openedSkin;
                 DrawPreviewOfSkin(openedSkin);
@@ -95,7 +98,9 @@ namespace Audiosurf_SkinChanger
         {
             try
             {
-                DrawPreviewOfSkin((AudiosurfSkin)SkinsListBox.Items[SkinsListBox.SelectedIndex]);
+                var selectedSkin = (AudiosurfSkin)SkinsListBox.SelectedItem;
+                DrawPreviewOfSkin(selectedSkin);
+                CurrentSkin = selectedSkin;
             }
             catch (Exception exc)
             {
@@ -106,43 +111,40 @@ namespace Audiosurf_SkinChanger
         private void DrawPreviewOfSkin(AudiosurfSkin skin)
         {
             pictureBoxes.ForEach(x => x.ClearAll());
-            tileFlyup.Image = skin.TilesFlyup.Rescale(64,64);
+            tileFlyup.Image = ((Bitmap)skin.TilesFlyup).Rescale(64,64);
             FillPictureBoxGruopFromImageGroup(SkySpherePreview, skin.SkySpheres);
-            FillPictureBoxGruopFromImageGroup(TilesTexturesImageGroup, SplitTilesSpritesheet(skin.Tiles));
+            FillPictureBoxGruopFromImageGroup(TilesTexturesImageGroup, SplitTilesSpritesheet((Bitmap)skin.Tiles));
             FillPictureBoxGruopFromImageGroup(ParticlesTexturesImageGroup, skin.Particles);
             FillPictureBoxGruopFromImageGroup(RingsTexturesImageGroup, skin.Rings);
         }
 
-        private void FillPictureBoxGruopFromImageGroup(PictureBox[] pictureBoxes, ImageGroup images)
+        private void FillPictureBoxGruopFromImageGroup(PictureBox[] pictureBoxes, Bitmap[] images)
         {
-            using (var imagesIterator = images.Group.GetEnumerator())
+            var imagesIterator = images.GetEnumerator();
+            
+            foreach (var picBox in pictureBoxes)
             {
-                foreach (var picBox in pictureBoxes)
-                {
-                    if (!imagesIterator.MoveNext())
-                        return;
-                    picBox.Image = imagesIterator.Current.Rescale(64,64);
-                }
+                if (!imagesIterator.MoveNext())
+                    return;
+                picBox.Image = ((Bitmap)imagesIterator.Current).Rescale(64,64);
             }
             return;
         }
 
-        private ImageGroup SplitTilesSpritesheet(Bitmap spritesheet)
+        private Bitmap[] SplitTilesSpritesheet(Bitmap spritesheet)
         {
-            var group = new ImageGroup("tiles");
-
-            for (int i = 0; i < 256; i+= 128)
-            for (int k = 0; k < 256; k+= 128)
-            {
-                var bitmap = new Bitmap(128, 128);
-                using (var g = Graphics.FromImage(bitmap))
+            int widthThird = (int)((double)spritesheet.Width / 2.0 + 0.5);
+            int heightThird = (int)((double)spritesheet.Height / 2.0 + 0.5);
+            Bitmap[,] bmps = new Bitmap[2, 2];
+            for (int i = 0; i < 2; i++)
+                for (int j = 0; j < 2; j++)
                 {
-                    g.DrawImage(spritesheet, i,k, 128, 128);
+                    bmps[i, j] = new Bitmap(widthThird, heightThird);
+                    Graphics g = Graphics.FromImage(bmps[i, j]);
+                    g.DrawImage(spritesheet, new Rectangle(0, 0, widthThird, heightThird), new Rectangle(j * widthThird, i * heightThird, widthThird, heightThird), GraphicsUnit.Pixel);
+                    g.Dispose();
                 }
-                group.AddImage((Bitmap)bitmap.Clone());
-             }
-            group.Apply(x => x.Rescale(64, 64));
-            return group;
+            return bmps.Cast<Bitmap>().ToArray();
         }
 
         private void PackFolderIntoSkin(object sender, EventArgs e)
@@ -167,8 +169,13 @@ namespace Audiosurf_SkinChanger
 
         private void PackToSkinFile(object sender, EventArgs e)
         {
-            AudiosurfSkin skin = CurrentSkin;
-            skinPackager.Compile(skin);
+            skinPackager.Compile(CurrentSkin);
+        }
+
+        private void InstallSkin(object sender, EventArgs e)
+        {
+            AudiosurfSkin skin = (AudiosurfSkin)SkinsListBox.SelectedItem;
+            skin.SkySpheres.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
         }
     }
 }
