@@ -5,7 +5,7 @@
 
     public static class EnvironmentalVeriables
     {
-        internal static readonly string OutputPath = "";
+        internal static readonly string OutputPath;
         internal static readonly IList<AudiosurfSkin> Skins = new List<AudiosurfSkin>();
         internal static string gamePath = "";
         internal static readonly string CliffImagesMask = "cliff";

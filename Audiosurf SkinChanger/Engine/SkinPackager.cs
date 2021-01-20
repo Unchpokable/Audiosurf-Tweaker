@@ -17,6 +17,7 @@
         private string[] texturesNames;
         private IList<ImageGroup> textureGroups;
         private string[] Masks;
+        private readonly string defaultOutput = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
         public SkinPackager()
         {
@@ -44,7 +45,7 @@
             try
             {
                 IFormatter formatter = new BinaryFormatter();
-                Stream filestream = new FileStream(EnvironmentalVeriables.OutputPath + skin.Name + skinExtension, FileMode.Create, FileAccess.Write, FileShare.None);
+                Stream filestream = new FileStream((EnvironmentalVeriables.OutputPath ?? defaultOutput) + skin.Name + skinExtension, FileMode.Create, FileAccess.Write, FileShare.None);
                 formatter.Serialize(filestream, skin);
                 filestream.Close();
                 return true;

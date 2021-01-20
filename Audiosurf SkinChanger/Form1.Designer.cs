@@ -60,11 +60,12 @@
             this.label2 = new System.Windows.Forms.Label();
             this.skySpherePic = new System.Windows.Forms.PictureBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.button3 = new System.Windows.Forms.Button();
             this.openSkinBtn = new System.Windows.Forms.Button();
             this.button2 = new System.Windows.Forms.Button();
             this.SkinsListBox = new System.Windows.Forms.ListBox();
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
-            this.button3 = new System.Windows.Forms.Button();
+            this.button4 = new System.Windows.Forms.Button();
             this.previewGroupBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.SkyspherePic3)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.SkyspherePic2)).BeginInit();
@@ -103,7 +104,7 @@
             // 
             // viewPathToGameBtn
             // 
-            this.viewPathToGameBtn.Location = new System.Drawing.Point(158, 383);
+            this.viewPathToGameBtn.Location = new System.Drawing.Point(158, 381);
             this.viewPathToGameBtn.Name = "viewPathToGameBtn";
             this.viewPathToGameBtn.Size = new System.Drawing.Size(75, 23);
             this.viewPathToGameBtn.TabIndex = 2;
@@ -371,22 +372,33 @@
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.button4);
             this.groupBox1.Controls.Add(this.button3);
             this.groupBox1.Controls.Add(this.openSkinBtn);
             this.groupBox1.Controls.Add(this.button2);
             this.groupBox1.Controls.Add(this.SkinsListBox);
             this.groupBox1.Location = new System.Drawing.Point(12, 13);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(221, 293);
+            this.groupBox1.Size = new System.Drawing.Size(221, 304);
             this.groupBox1.TabIndex = 5;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Ваши скины:";
             // 
+            // button3
+            // 
+            this.button3.Location = new System.Drawing.Point(6, 243);
+            this.button3.Name = "button3";
+            this.button3.Size = new System.Drawing.Size(211, 23);
+            this.button3.TabIndex = 3;
+            this.button3.Text = "Упаковать папку в скин";
+            this.button3.UseVisualStyleBackColor = true;
+            this.button3.Click += new System.EventHandler(this.PackFolderIntoSkin);
+            // 
             // openSkinBtn
             // 
-            this.openSkinBtn.Location = new System.Drawing.Point(8, 185);
+            this.openSkinBtn.Location = new System.Drawing.Point(6, 185);
             this.openSkinBtn.Name = "openSkinBtn";
-            this.openSkinBtn.Size = new System.Drawing.Size(208, 23);
+            this.openSkinBtn.Size = new System.Drawing.Size(211, 23);
             this.openSkinBtn.TabIndex = 2;
             this.openSkinBtn.Text = "Добавить новый скин";
             this.openSkinBtn.UseVisualStyleBackColor = true;
@@ -394,9 +406,9 @@
             // 
             // button2
             // 
-            this.button2.Location = new System.Drawing.Point(6, 214);
+            this.button2.Location = new System.Drawing.Point(7, 214);
             this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(209, 23);
+            this.button2.Size = new System.Drawing.Size(210, 23);
             this.button2.TabIndex = 1;
             this.button2.Text = "Установить выбранный";
             this.button2.UseVisualStyleBackColor = true;
@@ -411,15 +423,15 @@
             this.SkinsListBox.TabIndex = 0;
             this.SkinsListBox.SelectedIndexChanged += new System.EventHandler(this.SkinsListBox_SelectedIndexChanged);
             // 
-            // button3
+            // button4
             // 
-            this.button3.Location = new System.Drawing.Point(6, 246);
-            this.button3.Name = "button3";
-            this.button3.Size = new System.Drawing.Size(209, 23);
-            this.button3.TabIndex = 3;
-            this.button3.Text = "Упаковать папку в скин";
-            this.button3.UseVisualStyleBackColor = true;
-            this.button3.Click += new System.EventHandler(this.PackFolderIntoSkin);
+            this.button4.Location = new System.Drawing.Point(7, 272);
+            this.button4.Name = "button4";
+            this.button4.Size = new System.Drawing.Size(210, 23);
+            this.button4.TabIndex = 4;
+            this.button4.Text = "Сохранить как .askin";
+            this.button4.UseVisualStyleBackColor = true;
+            this.button4.Click += new System.EventHandler(this.PackToSkinFile);
             // 
             // Form1
             // 
@@ -434,7 +446,7 @@
             this.Controls.Add(this.pathToGameTextbox);
             this.Controls.Add(this.label1);
             this.Name = "Form1";
-            this.Text = "Form1";
+            this.Text = "Audiosurf Skin Changer";
             this.previewGroupBox.ResumeLayout(false);
             this.previewGroupBox.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.SkyspherePic3)).EndInit();
@@ -497,6 +509,7 @@
         private System.Windows.Forms.PictureBox SkyspherePic3;
         private System.Windows.Forms.PictureBox SkyspherePic2;
         private System.Windows.Forms.Button button3;
+        private System.Windows.Forms.Button button4;
     }
 }
 

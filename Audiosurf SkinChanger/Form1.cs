@@ -12,6 +12,7 @@ namespace Audiosurf_SkinChanger
     public partial class Form1 : Form
     {
         private SkinPackager skinPackager;
+        private AudiosurfSkin CurrentSkin;
         private PictureBox[] SkySpherePreview;
         private PictureBox[] TilesTexturesImageGroup;
         private PictureBox[] ParticlesTexturesImageGroup;
@@ -73,6 +74,8 @@ namespace Audiosurf_SkinChanger
                 EnvironmentalVeriables.Skins.Add(openedSkin);
                 SkinsListBox.Items.Add(openedSkin);
                 SkinsListBox.SelectedItem = openedSkin;
+                CurrentSkin = openedSkin;
+                DrawPreviewOfSkin(openedSkin);
             }
         }
 
@@ -153,12 +156,19 @@ namespace Audiosurf_SkinChanger
                     EnvironmentalVeriables.Skins.Add(skin);
                     SkinsListBox.Items.Add(skin);
                     DrawPreviewOfSkin(skin);
+                    CurrentSkin = skin;
                 }
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Ooops! May be you select empty skin or something else goes wrong! We cant load selected skin!\n Error message{ex.Message}");
             }
+        }
+
+        private void PackToSkinFile(object sender, EventArgs e)
+        {
+            AudiosurfSkin skin = CurrentSkin;
+            skinPackager.Compile(skin);
         }
     }
 }
