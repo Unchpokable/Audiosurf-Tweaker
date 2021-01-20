@@ -34,6 +34,8 @@
             this.openSkinDialog = new System.Windows.Forms.OpenFileDialog();
             this.saveButton = new System.Windows.Forms.Button();
             this.previewGroupBox = new System.Windows.Forms.GroupBox();
+            this.SkyspherePic3 = new System.Windows.Forms.PictureBox();
+            this.SkyspherePic2 = new System.Windows.Forms.PictureBox();
             this.label6 = new System.Windows.Forms.Label();
             this.button1 = new System.Windows.Forms.Button();
             this.label5 = new System.Windows.Forms.Label();
@@ -62,9 +64,9 @@
             this.button2 = new System.Windows.Forms.Button();
             this.SkinsListBox = new System.Windows.Forms.ListBox();
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
-            this.SkyspherePic2 = new System.Windows.Forms.PictureBox();
-            this.SkyspherePic3 = new System.Windows.Forms.PictureBox();
             this.previewGroupBox.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.SkyspherePic3)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.SkyspherePic2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.ringPic4)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.ringPic3)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.ringPic2)).BeginInit();
@@ -79,8 +81,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.tilePic1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.skySpherePic)).BeginInit();
             this.groupBox1.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.SkyspherePic2)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.SkyspherePic3)).BeginInit();
             this.SuspendLayout();
             // 
             // label1
@@ -157,6 +157,22 @@
             this.previewGroupBox.TabIndex = 4;
             this.previewGroupBox.TabStop = false;
             this.previewGroupBox.Text = "Предпросмотр";
+            // 
+            // SkyspherePic3
+            // 
+            this.SkyspherePic3.Location = new System.Drawing.Point(445, 19);
+            this.SkyspherePic3.Name = "SkyspherePic3";
+            this.SkyspherePic3.Size = new System.Drawing.Size(160, 80);
+            this.SkyspherePic3.TabIndex = 24;
+            this.SkyspherePic3.TabStop = false;
+            // 
+            // SkyspherePic2
+            // 
+            this.SkyspherePic2.Location = new System.Drawing.Point(285, 19);
+            this.SkyspherePic2.Name = "SkyspherePic2";
+            this.SkyspherePic2.Size = new System.Drawing.Size(160, 80);
+            this.SkyspherePic2.TabIndex = 23;
+            this.SkyspherePic2.TabStop = false;
             // 
             // label6
             // 
@@ -391,22 +407,6 @@
             this.SkinsListBox.TabIndex = 0;
             this.SkinsListBox.SelectedIndexChanged += new System.EventHandler(this.SkinsListBox_SelectedIndexChanged);
             // 
-            // SkyspherePic2
-            // 
-            this.SkyspherePic2.Location = new System.Drawing.Point(285, 19);
-            this.SkyspherePic2.Name = "SkyspherePic2";
-            this.SkyspherePic2.Size = new System.Drawing.Size(160, 80);
-            this.SkyspherePic2.TabIndex = 23;
-            this.SkyspherePic2.TabStop = false;
-            // 
-            // SkyspherePic3
-            // 
-            this.SkyspherePic3.Location = new System.Drawing.Point(445, 19);
-            this.SkyspherePic3.Name = "SkyspherePic3";
-            this.SkyspherePic3.Size = new System.Drawing.Size(160, 80);
-            this.SkyspherePic3.TabIndex = 24;
-            this.SkyspherePic3.TabStop = false;
-            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -422,6 +422,8 @@
             this.Text = "Form1";
             this.previewGroupBox.ResumeLayout(false);
             this.previewGroupBox.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.SkyspherePic3)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.SkyspherePic2)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.ringPic4)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.ringPic3)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.ringPic2)).EndInit();
@@ -436,8 +438,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.tilePic1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.skySpherePic)).EndInit();
             this.groupBox1.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.SkyspherePic2)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.SkyspherePic3)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 

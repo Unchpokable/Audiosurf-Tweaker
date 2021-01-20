@@ -51,8 +51,9 @@
             }
             catch (Exception e)
             {
-                MessageBox.Show($"Ooops! Something goes wrong! We cant save your skin {skin.Name}!\n Exception message: {e.Message}.\n Stack trace written in log file");
-                logger.Log("ERROR",e.Message + "\n" + e.StackTrace);
+                MessageBox.Show($"Ooops! Something goes wrong! We cant save your skin {skin.Name}!\n Exception message: {e.Message}.\n Stack trace written in log file",
+                                "Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                logger.Log("ERROR", e.ToString());
                 return false;
             }
         }
@@ -67,8 +68,9 @@
             }
             catch(Exception e)
             {
-                MessageBox.Show($"Ooops! Something goes wrong! We cant load your skin {path}!\n Exception message: {e.Message}.\n Stack trace written in log file");
-                logger.Log("ERROR", e.Message + "\n" + e.StackTrace);
+                MessageBox.Show($"Ooops! Something goes wrong! We cant load your skin {path}!\n Exception message: {e.Message}.\n Stack trace written in log file",
+                                "Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                logger.Log("ERROR", e.ToString());
                 return null;
             }
         }

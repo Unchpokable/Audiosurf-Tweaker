@@ -87,7 +87,14 @@ namespace Audiosurf_SkinChanger
 
         private void SkinsListBox_SelectedIndexChanged(object sender, EventArgs e)
         {
-
+            try
+            {
+                DrawPreviewOfSkin((AudiosurfSkin)SkinsListBox.Items[SkinsListBox.SelectedIndex]);
+            }
+            catch (Exception exc)
+            {
+                MessageBox.Show($"Ooops! May be you select empty skin or something else goes wrong! We cant load selected skin!\n Error message{exc.Message}");
+            }
         }
 
         private void DrawPreviewOfSkin(AudiosurfSkin skin)
