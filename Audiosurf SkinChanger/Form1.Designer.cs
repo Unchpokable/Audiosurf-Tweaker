@@ -64,6 +64,7 @@
             this.button2 = new System.Windows.Forms.Button();
             this.SkinsListBox = new System.Windows.Forms.ListBox();
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
+            this.button3 = new System.Windows.Forms.Button();
             this.previewGroupBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.SkyspherePic3)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.SkyspherePic2)).BeginInit();
@@ -94,6 +95,7 @@
             // 
             // pathToGameTextbox
             // 
+            this.pathToGameTextbox.BackColor = System.Drawing.SystemColors.ControlDark;
             this.pathToGameTextbox.Location = new System.Drawing.Point(12, 383);
             this.pathToGameTextbox.Name = "pathToGameTextbox";
             this.pathToGameTextbox.Size = new System.Drawing.Size(140, 20);
@@ -125,7 +127,7 @@
             // 
             // previewGroupBox
             // 
-            this.previewGroupBox.BackColor = System.Drawing.SystemColors.Control;
+            this.previewGroupBox.BackColor = System.Drawing.SystemColors.ControlDarkDark;
             this.previewGroupBox.Controls.Add(this.SkyspherePic3);
             this.previewGroupBox.Controls.Add(this.SkyspherePic2);
             this.previewGroupBox.Controls.Add(this.label6);
@@ -369,6 +371,7 @@
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.button3);
             this.groupBox1.Controls.Add(this.openSkinBtn);
             this.groupBox1.Controls.Add(this.button2);
             this.groupBox1.Controls.Add(this.SkinsListBox);
@@ -400,6 +403,7 @@
             // 
             // SkinsListBox
             // 
+            this.SkinsListBox.BackColor = System.Drawing.SystemColors.ControlDark;
             this.SkinsListBox.FormattingEnabled = true;
             this.SkinsListBox.Location = new System.Drawing.Point(6, 19);
             this.SkinsListBox.Name = "SkinsListBox";
@@ -407,10 +411,21 @@
             this.SkinsListBox.TabIndex = 0;
             this.SkinsListBox.SelectedIndexChanged += new System.EventHandler(this.SkinsListBox_SelectedIndexChanged);
             // 
+            // button3
+            // 
+            this.button3.Location = new System.Drawing.Point(6, 246);
+            this.button3.Name = "button3";
+            this.button3.Size = new System.Drawing.Size(209, 23);
+            this.button3.TabIndex = 3;
+            this.button3.Text = "Упаковать папку в скин";
+            this.button3.UseVisualStyleBackColor = true;
+            this.button3.Click += new System.EventHandler(this.PackFolderIntoSkin);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.BackColor = System.Drawing.SystemColors.ControlDarkDark;
             this.ClientSize = new System.Drawing.Size(862, 447);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.previewGroupBox);
@@ -481,6 +496,7 @@
         private System.Windows.Forms.Button button2;
         private System.Windows.Forms.PictureBox SkyspherePic3;
         private System.Windows.Forms.PictureBox SkyspherePic2;
+        private System.Windows.Forms.Button button3;
     }
 }
 

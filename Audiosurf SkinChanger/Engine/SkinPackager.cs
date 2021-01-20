@@ -80,7 +80,7 @@
             var result = new AudiosurfSkin();
             
             string[] AllPictures = Directory.GetFiles(path);
-            if (!AllPictures.Any(fileName => texturesNames.Contains(fileName)))
+            if (!AllPictures.Any(fileName => texturesNames.Contains(Path.GetFileName(fileName))))
                 return null;
 
             foreach(var mask in Masks)
@@ -94,11 +94,11 @@
                 if (mask == EnvironmentalVeriables.RingsImageMask)
                     result.Rings = GetAllImagesByNameMask("rings", mask, path);
                 if (mask == EnvironmentalVeriables.SkysphereImagesMask)
-                    result.SkySpheres = GetAllImagesByNameMask("Skysphere", mask, path);
+                    result.SkySpheres = GetAllImagesByNameMask("skysphere", mask, path);
             }
 
             result.Tiles = (Bitmap)GetAllImagesByNameMask("tiles", "tiles.png", path);
-            result.TilesFlyup = (Bitmap)GetAllImagesByNameMask("tiles flyup", "tilesflyup.png", path);
+            result.TilesFlyup = (Bitmap)GetAllImagesByNameMask("tiles flyup", "tileflyup.png", path);
             return result;
         }
 

@@ -17,5 +17,10 @@
         public Bitmap TilesFlyup { get; set; }
         public ImageGroup Particles { get; set; }
         public ImageGroup Rings { get; set; }
+
+        public override string ToString()
+        {
+            return Name;
+        }
     }
 }

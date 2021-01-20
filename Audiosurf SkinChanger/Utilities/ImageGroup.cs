@@ -20,6 +20,7 @@
         public ImageGroup(string name)
         {
             Name = name;
+            Group = new List<Bitmap>();
         }
 
         public void AddImage(Bitmap image)

@@ -136,5 +136,24 @@ namespace Audiosurf_SkinChanger
              }
             return group;
         }
+
+        private void PackFolderIntoSkin(object sender, EventArgs e)
+        {
+            try
+            {
+                if (folderBrowserDialog1.ShowDialog() == DialogResult.OK)
+                {
+                    AudiosurfSkin skin = skinPackager.CreateSkinFromFolder(folderBrowserDialog1.SelectedPath);
+                    skin.Name = "new skin";
+                    EnvironmentalVeriables.Skins.Add(skin);
+                    SkinsListBox.Items.Add(skin);
+                    DrawPreviewOfSkin(skin);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ooops! May be you select empty skin or something else goes wrong! We cant load selected skin!\n Error message{ex.Message}");
+            }
+        }
     }
 }
