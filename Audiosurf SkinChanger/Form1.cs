@@ -217,7 +217,16 @@ namespace Audiosurf_SkinChanger
                     }
                     else
                     {
-                        skin.Name = new DirectoryInfo(folderBrowserDialog1.SelectedPath).Name;
+                        string name = new DirectoryInfo(folderBrowserDialog1.SelectedPath).Name;
+                        foreach (var skinName in EnvironmentalVeriables.Skins.Select(x => x.Name))
+                        {
+                            if (name == skinName)
+                            {
+                                MessageBox.Show("Skin with same name already exist! Enter new name for this skin", "Naming Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                new OpenNewSkinForm(this).ShowDialog(this);
+                                skin.Name = TempSkinName;
+                            }
+                        }
                     }
                     EnvironmentalVeriables.Skins.Add(skin);
                     SkinsListBox.Items.Add(skin);
