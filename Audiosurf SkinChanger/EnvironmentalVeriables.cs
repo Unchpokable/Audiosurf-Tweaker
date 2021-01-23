@@ -7,7 +7,7 @@
     {
         internal static readonly IList<AudiosurfSkin> Skins = new List<AudiosurfSkin>();
         internal static string gamePath = "";
-        internal static string skinsFolderPath = "";
+        internal static string skinsFolderPath = "C:\\";
         internal static readonly string CliffImagesMask = "cliff";
         internal static readonly string HitImageMask = "hit";
         internal static readonly string ParticlesImageMask = "particles";

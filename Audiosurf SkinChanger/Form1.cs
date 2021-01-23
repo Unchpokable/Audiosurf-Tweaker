@@ -68,6 +68,11 @@ namespace Audiosurf_SkinChanger
         private void LoadSkins()
         {
             var folder = EnvironmentalVeriables.skinsFolderPath;
+            if (!Directory.Exists(folder))
+            {
+                MessageBox.Show("Can't load skins. Check skins folder", "Skins loading error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
             foreach (var path in Directory.GetFiles(folder))
             {
                 AudiosurfSkin skin = skinPackager.Decompile(path);
