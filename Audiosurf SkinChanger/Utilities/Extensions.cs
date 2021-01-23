@@ -7,9 +7,9 @@
 
     public static class Extensions
     {
-        public static Bitmap Rescale(this Bitmap source, int newWidth, int newHeight)
+        public static Bitmap Rescale(this Bitmap source, Size newSize)
         {
-            return new Bitmap(source, new Size(newWidth, newHeight));
+            return new Bitmap(source, newSize);
         }
 
         public static void ClearAll(this PictureBox[] source)

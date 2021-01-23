@@ -17,7 +17,12 @@ namespace Audiosurf_SkinChanger
         private PictureBox[] TilesTexturesImageGroup;
         private PictureBox[] ParticlesTexturesImageGroup;
         private PictureBox[] RingsTexturesImageGroup;
+        private PictureBox[] HitsImageGroup;
         private PictureBox[][] pictureBoxes;
+        public string TempSkinName { get; set; }
+
+        private Size stdSkysphereSize = new Size(180, 60);
+        private Size stdTextureSize = new Size(64, 64);
 
         public Form1()
         {
@@ -45,20 +50,43 @@ namespace Audiosurf_SkinChanger
                 ringPic1, ringPic2, ringPic3, ringPic4
             };
 
-            pictureBoxes = new[] { SkySpherePreview, TilesTexturesImageGroup, ParticlesTexturesImageGroup, RingsTexturesImageGroup };
+            HitsImageGroup = new[]
+            {
+                hitPic1, hitPic2
+            };
+
+            pictureBoxes = new[] { SkySpherePreview, TilesTexturesImageGroup, ParticlesTexturesImageGroup, RingsTexturesImageGroup, HitsImageGroup };
 
             pathToGameTextbox.Text = ConfigurationManager.AppSettings.Get("gamePath");
             EnvironmentalVeriables.gamePath = ConfigurationManager.AppSettings.Get("gamePath");
+            skinsFolderPathTextbox.Text = ConfigurationManager.AppSettings.Get("skinsPath");
+            EnvironmentalVeriables.skinsFolderPath = ConfigurationManager.AppSettings.Get("skinsPath");
             skinPackager = new SkinPackager();
+            LoadSkins();
+        }
+
+        private void LoadSkins()
+        {
+            var folder = EnvironmentalVeriables.skinsFolderPath;
+            foreach (var path in Directory.GetFiles(folder))
+            {
+                AudiosurfSkin skin = skinPackager.Decompile(path);
+                EnvironmentalVeriables.Skins.Add(skin);
+                SkinsListBox.Items.Add(skin);
+            }
+
+            SkinsListBox.SelectedIndex = 0;
         }
 
         private void SavePath(object sender, EventArgs e)
         {
             Configuration configuration = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
             configuration.AppSettings.Settings["gamePath"].Value = pathToGameTextbox.Text;
+            configuration.AppSettings.Settings["skinsPath"].Value = skinsFolderPathTextbox.Text;
             configuration.Save();
 
             ConfigurationManager.RefreshSection("appSettings");
+            MessageBox.Show("Done!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void OpenSkinBtnClick(object sender, EventArgs e)
@@ -83,16 +111,34 @@ namespace Audiosurf_SkinChanger
             }
         }
 
-        private void viewPathToGameBtn_Click(object sender, EventArgs e)
+        private void ViewPathDialogShow(object sender, EventArgs e)
         {
             if (folderBrowserDialog1.ShowDialog() == DialogResult.OK)
             {
+                var knownSender = sender as Button;
+
                 if (Directory.Exists(folderBrowserDialog1.SelectedPath))
                 {
-                    EnvironmentalVeriables.gamePath = folderBrowserDialog1.SelectedPath;
-                    pathToGameTextbox.Text = folderBrowserDialog1.SelectedPath;
+                    if (knownSender.Name == "viewPathToGameBtn")
+                        SetPathToGame(folderBrowserDialog1.SelectedPath);
+
+                    else if (knownSender.Name == "viewPathToSkinsBtn")
+                        SetPathToSkinsFolder(folderBrowserDialog1.SelectedPath);
                 }
+                SavePath(null, null);
             }
+        }
+
+        private void SetPathToGame(string path)
+        {
+            EnvironmentalVeriables.gamePath = path;
+            pathToGameTextbox.Text = path;
+        }
+
+        private void SetPathToSkinsFolder(string path)
+        {
+            EnvironmentalVeriables.skinsFolderPath = path;
+            skinsFolderPathTextbox.Text = path;
         }
 
         private void SkinsListBox_SelectedIndexChanged(object sender, EventArgs e)
@@ -100,26 +146,30 @@ namespace Audiosurf_SkinChanger
             try
             {
                 var selectedSkin = (AudiosurfSkin)SkinsListBox.SelectedItem;
+                if (selectedSkin == null)
+                    return;
+
                 DrawPreviewOfSkin(selectedSkin);
                 CurrentSkin = selectedSkin;
             }
             catch (Exception exc)
             {
-                MessageBox.Show($"Ooops! May be you select empty skin or something else goes wrong! We cant load selected skin!\n Error message{exc.Message}");
+                MessageBox.Show($"Ooops! May be you select empty skin or something else goes wrong! We cant load selected skin!\n Error message{exc.Message}", "Package Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void DrawPreviewOfSkin(AudiosurfSkin skin)
         {
             pictureBoxes.ForEach(x => x.ClearAll());
-            tileFlyup.Image = ((Bitmap)skin.TilesFlyup).Rescale(64,64);
-            FillPictureBoxGruopFromImageGroup(SkySpherePreview, skin.SkySpheres);
-            FillPictureBoxGruopFromImageGroup(TilesTexturesImageGroup, SplitTilesSpritesheet((Bitmap)skin.Tiles));
-            FillPictureBoxGruopFromImageGroup(ParticlesTexturesImageGroup, skin.Particles);
-            FillPictureBoxGruopFromImageGroup(RingsTexturesImageGroup, skin.Rings);
+            tileFlyup.Image = ((Bitmap)skin.TilesFlyup).Rescale(stdTextureSize);
+            FillPictureBoxGruopFromImageGroup(SkySpherePreview, skin.SkySpheres, stdSkysphereSize);
+            FillPictureBoxGruopFromImageGroup(TilesTexturesImageGroup, SplitTilesSpritesheet((Bitmap)skin.Tiles), stdTextureSize);
+            FillPictureBoxGruopFromImageGroup(ParticlesTexturesImageGroup, skin.Particles, stdTextureSize);
+            FillPictureBoxGruopFromImageGroup(RingsTexturesImageGroup, skin.Rings, stdTextureSize);
+            FillPictureBoxGruopFromImageGroup(HitsImageGroup, skin.Hits, stdTextureSize);
         }
 
-        private void FillPictureBoxGruopFromImageGroup(PictureBox[] pictureBoxes, Bitmap[] images)
+        private void FillPictureBoxGruopFromImageGroup(PictureBox[] pictureBoxes, Bitmap[] images, Size newSize)
         {
             var imagesIterator = images.GetEnumerator();
             
@@ -127,7 +177,7 @@ namespace Audiosurf_SkinChanger
             {
                 if (!imagesIterator.MoveNext())
                     return;
-                picBox.Image = ((Bitmap)imagesIterator.Current).Rescale(64,64);
+                picBox.Image = ((Bitmap)imagesIterator.Current).Rescale(newSize);
             }
             return;
         }
@@ -155,7 +205,20 @@ namespace Audiosurf_SkinChanger
                 if (folderBrowserDialog1.ShowDialog() == DialogResult.OK)
                 {
                     AudiosurfSkin skin = skinPackager.CreateSkinFromFolder(folderBrowserDialog1.SelectedPath);
-                    skin.Name = "new skin";
+                    if (skin == null)
+                    {
+                        MessageBox.Show("No one Audiosurf texture founded in selected folder. Please, check what you selecting", "Package Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                    if (MessageBox.Show("Do you want to name new skin?", "new skin", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                    {
+                        new OpenNewSkinForm(this).ShowDialog(this);
+                        skin.Name = TempSkinName;
+                    }
+                    else
+                    {
+                        skin.Name = new DirectoryInfo(folderBrowserDialog1.SelectedPath).Name;
+                    }
                     EnvironmentalVeriables.Skins.Add(skin);
                     SkinsListBox.Items.Add(skin);
                     DrawPreviewOfSkin(skin);
@@ -164,18 +227,30 @@ namespace Audiosurf_SkinChanger
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ooops! May be you select empty skin or something else goes wrong! We cant load selected skin!\n Error message{ex.Message}");
+                MessageBox.Show($"Ooops! May be you select empty skin or something else goes wrong! We cant load selected skin!\n Error message{ex.Message}", "Package Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
         private void PackToSkinFile(object sender, EventArgs e)
         {
+            if (CurrentSkin == null)
+            {
+                MessageBox.Show("Skin not selected!", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
             skinPackager.Compile(CurrentSkin);
+            MessageBox.Show("Done!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void InstallSkin(object sender, EventArgs e)
-        {
+        { 
             AudiosurfSkin skin = (AudiosurfSkin)SkinsListBox.SelectedItem;
+            if (skin == null)
+            {
+                MessageBox.Show("Can not install nothing. Please, select skin in list on left form side or add new skin and try again", "Installation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
             skin.SkySpheres.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
             skin.Hits.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
             skin.Tiles.Save(EnvironmentalVeriables.gamePath);
@@ -183,6 +258,12 @@ namespace Audiosurf_SkinChanger
             skin.Particles.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
             skin.Rings.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
             skin.Cliffs.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
+            MessageBox.Show("Done!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void OpenSkinFromZip(object sender, EventArgs e)
+        {
+            MessageBox.Show("Not implemented now", "not avaiable", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }
 }

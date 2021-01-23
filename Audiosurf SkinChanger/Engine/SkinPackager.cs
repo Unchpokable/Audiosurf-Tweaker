@@ -45,7 +45,7 @@
             try
             {
                 IFormatter formatter = new BinaryFormatter();
-                using (Stream filestream = new FileStream((EnvironmentalVeriables.OutputPath ?? defaultOutput) + @"\\" + skin.Name + skinExtension, FileMode.OpenOrCreate))
+                using (Stream filestream = new FileStream((EnvironmentalVeriables.skinsFolderPath ?? defaultOutput) + @"\\" + skin.Name + skinExtension, FileMode.OpenOrCreate))
                 {
                     formatter.Serialize(filestream, skin);
                 }
