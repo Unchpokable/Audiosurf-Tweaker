@@ -62,12 +62,14 @@ namespace Audiosurf_SkinChanger
             skinsFolderPathTextbox.Text = ConfigurationManager.AppSettings.Get("skinsPath");
             EnvironmentalVeriables.skinsFolderPath = ConfigurationManager.AppSettings.Get("skinsPath");
             skinPackager = new SkinPackager();
-            LoadSkins();
+            LoadSkins("Skins");
+            LoadSkins(EnvironmentalVeriables.skinsFolderPath);
+
+            toolTip1.SetToolTip(cleanInstallCheck, "When installing in Clean Installation mode, the program will automatically delete all old Audiosurf textures, install the default skin and over it the one you choose.");
         }
 
-        private void LoadSkins()
+        private void LoadSkins(string folder)
         {
-            var folder = EnvironmentalVeriables.skinsFolderPath;
             if (!Directory.Exists(folder))
             {
                 MessageBox.Show("Can't load skins. Check skins folder", "Skins loading error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -75,10 +77,15 @@ namespace Audiosurf_SkinChanger
             }
             foreach (var path in Directory.GetFiles(folder))
             {
+                if (new FileInfo(path).Extension != ".askin")
+                    continue;
                 AudiosurfSkin skin = skinPackager.Decompile(path);
                 EnvironmentalVeriables.Skins.Add(skin);
                 SkinsListBox.Items.Add(skin);
             }
+
+            if (SkinsListBox.Items.Count == 0)
+                return;
 
             SkinsListBox.SelectedIndex = 0;
         }
@@ -144,6 +151,7 @@ namespace Audiosurf_SkinChanger
         {
             EnvironmentalVeriables.skinsFolderPath = path;
             skinsFolderPathTextbox.Text = path;
+            LoadSkins(path);
         }
 
         private void SkinsListBox_SelectedIndexChanged(object sender, EventArgs e)
@@ -265,6 +273,31 @@ namespace Audiosurf_SkinChanger
                 return;
             }
 
+            if (cleanInstallCheck.Checked)
+            {
+                Clean(EnvironmentalVeriables.gamePath);
+                InstallSkin(skinPackager.Decompile(@"Skins\\default.askin"));
+            }
+            InstallSkin(skin);
+            MessageBox.Show("Done!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void Clean(string path)
+        {
+            DirectoryInfo di = new DirectoryInfo(path);
+
+            foreach (FileInfo file in di.EnumerateFiles())
+            {
+                file.Delete();
+            }
+            foreach (DirectoryInfo dir in di.EnumerateDirectories())
+            {
+                dir.Delete(true);
+            }
+        }
+
+        private void InstallSkin(AudiosurfSkin skin)
+        {
             skin.SkySpheres.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
             skin.Hits.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
             skin.Tiles.Save(EnvironmentalVeriables.gamePath);
@@ -272,7 +305,6 @@ namespace Audiosurf_SkinChanger
             skin.Particles.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
             skin.Rings.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
             skin.Cliffs.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
-            MessageBox.Show("Done!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void OpenSkinFromZip(object sender, EventArgs e)

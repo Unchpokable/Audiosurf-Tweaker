@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.label1 = new System.Windows.Forms.Label();
             this.pathToGameTextbox = new System.Windows.Forms.TextBox();
             this.viewPathToGameBtn = new System.Windows.Forms.Button();
@@ -58,6 +59,7 @@
             this.label2 = new System.Windows.Forms.Label();
             this.skySpherePic = new System.Windows.Forms.PictureBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.cleanInstallCheck = new System.Windows.Forms.CheckBox();
             this.label6 = new System.Windows.Forms.Label();
             this.viewPathToSkinsBtn = new System.Windows.Forms.Button();
             this.skinsFolderPathTextbox = new System.Windows.Forms.TextBox();
@@ -68,6 +70,7 @@
             this.button2 = new System.Windows.Forms.Button();
             this.SkinsListBox = new System.Windows.Forms.ListBox();
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
+            this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
             this.previewGroupBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.hitPic2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.hitPic1)).BeginInit();
@@ -94,9 +97,9 @@
             this.label1.AutoSize = true;
             this.label1.Location = new System.Drawing.Point(12, 367);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(91, 13);
+            this.label1.Size = new System.Drawing.Size(131, 13);
             this.label1.TabIndex = 0;
-            this.label1.Text = "Path to Audiosurf:";
+            this.label1.Text = "Path to Audiosurf textures:";
             // 
             // pathToGameTextbox
             // 
@@ -354,6 +357,7 @@
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.cleanInstallCheck);
             this.groupBox1.Controls.Add(this.label6);
             this.groupBox1.Controls.Add(this.viewPathToSkinsBtn);
             this.groupBox1.Controls.Add(this.skinsFolderPathTextbox);
@@ -369,6 +373,16 @@
             this.groupBox1.TabIndex = 5;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Your skins";
+            // 
+            // cleanInstallCheck
+            // 
+            this.cleanInstallCheck.AutoSize = true;
+            this.cleanInstallCheck.Location = new System.Drawing.Point(6, 18);
+            this.cleanInstallCheck.Name = "cleanInstallCheck";
+            this.cleanInstallCheck.Size = new System.Drawing.Size(105, 17);
+            this.cleanInstallCheck.TabIndex = 8;
+            this.cleanInstallCheck.Text = "Clean installation";
+            this.cleanInstallCheck.UseVisualStyleBackColor = true;
             // 
             // label6
             // 
@@ -538,6 +552,8 @@
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.Button viewPathToSkinsBtn;
         private System.Windows.Forms.TextBox skinsFolderPathTextbox;
+        private System.Windows.Forms.CheckBox cleanInstallCheck;
+        private System.Windows.Forms.ToolTip toolTip1;
     }
 }
 

@@ -23,6 +23,14 @@ namespace Audiosurf_SkinChanger
                 return;
             }
 
+            if (textBox1.Text == "default")
+            {
+                MessageBox.Show("Reserved name. Please enter another name", "Naming error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                textBox1.Text = "";
+                textBox1.Invalidate();
+                return;
+            }
+
             foreach(var skinName in EnvironmentalVeriables.Skins.Select(x => x.Name))
             {
                 if (skinName == textBox1.Text)
