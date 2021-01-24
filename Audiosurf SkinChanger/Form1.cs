@@ -112,6 +112,12 @@ namespace Audiosurf_SkinChanger
                     return;
                 }
 
+                if (EnvironmentalVeriables.Skins.Select(x => x.Name).Contains(openedSkin.Name))
+                {
+                    MessageBox.Show("Skin already opened!", "Skin Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+
                 if (!SkinsListBox.Items.Contains(openedSkin))
                 {
                     EnvironmentalVeriables.Skins.Add(openedSkin);
