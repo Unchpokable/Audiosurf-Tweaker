@@ -63,7 +63,8 @@ namespace Audiosurf_SkinChanger
             EnvironmentalVeriables.skinsFolderPath = ConfigurationManager.AppSettings.Get("skinsPath");
             skinPackager = new SkinPackager();
             LoadSkins("Skins");
-            LoadSkins(EnvironmentalVeriables.skinsFolderPath);
+            if(EnvironmentalVeriables.skinsFolderPath != "None")
+                LoadSkins(EnvironmentalVeriables.skinsFolderPath);
 
             toolTip1.SetToolTip(cleanInstallCheck, "When installing in Clean Installation mode, the program will automatically delete all old Audiosurf textures, install the default skin and over it the one you choose.");
         }
