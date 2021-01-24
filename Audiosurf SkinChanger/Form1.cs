@@ -56,7 +56,7 @@ namespace Audiosurf_SkinChanger
             };
 
             pictureBoxes = new[] { SkySpherePreview, TilesTexturesImageGroup, ParticlesTexturesImageGroup, RingsTexturesImageGroup, HitsImageGroup };
-
+            
             pathToGameTextbox.Text = ConfigurationManager.AppSettings.Get("gamePath");
             EnvironmentalVeriables.gamePath = ConfigurationManager.AppSettings.Get("gamePath");
             skinsFolderPathTextbox.Text = ConfigurationManager.AppSettings.Get("skinsPath");
@@ -237,9 +237,11 @@ namespace Audiosurf_SkinChanger
                             {
                                 MessageBox.Show("Skin with same name already exist! Enter new name for this skin", "Naming Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                                 new OpenNewSkinForm(this).ShowDialog(this);
-                                skin.Name = TempSkinName;
+                                name = TempSkinName;
+                                break;
                             }
                         }
+                        skin.Name = name;
                     }
                     EnvironmentalVeriables.Skins.Add(skin);
                     SkinsListBox.Items.Add(skin);
@@ -249,7 +251,7 @@ namespace Audiosurf_SkinChanger
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ooops! May be you select empty skin or something else goes wrong! We cant load selected skin!\n Error message{ex.Message}", "Package Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Ooops! May be you select empty skin or something else goes wrong! We cant load selected skin!\n Error message: {ex}", "Package Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
