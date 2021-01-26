@@ -6,6 +6,7 @@ using System.Linq;
 using System.IO;
 using System.Drawing;
 using Audiosurf_SkinChanger.Utilities;
+using Microsoft.Win32;
 
 namespace Audiosurf_SkinChanger
 {
@@ -56,7 +57,9 @@ namespace Audiosurf_SkinChanger
             };
 
             pictureBoxes = new[] { SkySpherePreview, TilesTexturesImageGroup, ParticlesTexturesImageGroup, RingsTexturesImageGroup, HitsImageGroup };
-            
+
+            InternalWorker.SetUpDefaultSettings();
+
             pathToGameTextbox.Text = ConfigurationManager.AppSettings.Get("gamePath");
             EnvironmentalVeriables.gamePath = ConfigurationManager.AppSettings.Get("gamePath");
             skinsFolderPathTextbox.Text = ConfigurationManager.AppSettings.Get("skinsPath");
@@ -69,6 +72,7 @@ namespace Audiosurf_SkinChanger
 
             toolTip1.SetToolTip(cleanInstallCheck, "When installing in Clean Installation mode, the program will automatically delete all old Audiosurf textures, install the default skin and over it the one you choose.");
         }
+
 
         private void LoadSkins(string folder)
         {
@@ -92,7 +96,7 @@ namespace Audiosurf_SkinChanger
             SkinsListBox.SelectedIndex = 0;
         }
 
-        private void SavePath(object sender, EventArgs e)
+        private void SavePathes(object sender, EventArgs e)
         {
             Configuration configuration = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
             configuration.AppSettings.Settings["gamePath"].Value = pathToGameTextbox.Text;
@@ -145,7 +149,7 @@ namespace Audiosurf_SkinChanger
                     else if (knownSender.Name == "viewPathToSkinsBtn")
                         SetPathToSkinsFolder(folderBrowserDialog1.SelectedPath);
                 }
-                SavePath(null, null);
+                SavePathes(null, null);
             }
         }
 

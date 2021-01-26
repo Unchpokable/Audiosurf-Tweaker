@@ -29,6 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             this.label1 = new System.Windows.Forms.Label();
             this.pathToGameTextbox = new System.Windows.Forms.TextBox();
             this.viewPathToGameBtn = new System.Windows.Forms.Button();
@@ -131,7 +132,7 @@
             this.saveButton.TabIndex = 3;
             this.saveButton.Text = "Сохранить";
             this.saveButton.UseVisualStyleBackColor = true;
-            this.saveButton.Click += new System.EventHandler(this.SavePath);
+            this.saveButton.Click += new System.EventHandler(this.SavePathes);
             // 
             // previewGroupBox
             // 
@@ -482,6 +483,7 @@
             this.Controls.Add(this.viewPathToGameBtn);
             this.Controls.Add(this.pathToGameTextbox);
             this.Controls.Add(this.label1);
+            this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "Form1";
             this.Text = "Audiosurf Skin Changer";
             this.previewGroupBox.ResumeLayout(false);
