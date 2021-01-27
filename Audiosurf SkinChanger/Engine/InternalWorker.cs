@@ -28,5 +28,11 @@ namespace Audiosurf_SkinChanger.Engine
             cfg.Save();
             ConfigurationManager.RefreshSection("appSettings");
         }
+
+        public static void InitializeEnvironment()
+        {
+            EnvironmentalVeriables.gamePath = ConfigurationManager.AppSettings.Get("gamePath");
+            EnvironmentalVeriables.skinsFolderPath = ConfigurationManager.AppSettings.Get("skinsPath");
+        }
     }
 }

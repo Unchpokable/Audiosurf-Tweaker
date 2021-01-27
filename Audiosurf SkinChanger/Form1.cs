@@ -59,11 +59,10 @@ namespace Audiosurf_SkinChanger
             pictureBoxes = new[] { SkySpherePreview, TilesTexturesImageGroup, ParticlesTexturesImageGroup, RingsTexturesImageGroup, HitsImageGroup };
 
             InternalWorker.SetUpDefaultSettings();
-
-            pathToGameTextbox.Text = ConfigurationManager.AppSettings.Get("gamePath");
-            EnvironmentalVeriables.gamePath = ConfigurationManager.AppSettings.Get("gamePath");
-            skinsFolderPathTextbox.Text = ConfigurationManager.AppSettings.Get("skinsPath");
-            EnvironmentalVeriables.skinsFolderPath = ConfigurationManager.AppSettings.Get("skinsPath");
+            InternalWorker.InitializeEnvironment();
+            pathToGameTextbox.Text = EnvironmentalVeriables.gamePath;
+            skinsFolderPathTextbox.Text = EnvironmentalVeriables.skinsFolderPath;
+           
             skinPackager = new SkinPackager();
             LoadSkins("Skins");
 

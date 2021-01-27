@@ -33,17 +33,7 @@
 
         private ImageFormat ProcessImageFormat(string srcFileName)
         {
-            switch (srcFileName.Split('.')[1])
-            {
-                case "bmp":
-                    return ImageFormat.Bmp;
-                case "png":
-                    return ImageFormat.Png;
-                case "jpg":
-                    return ImageFormat.Jpeg;
-                default:
-                    return ImageFormat.Jpeg;
-            }
+            return GetImageFormatByExtension(srcFileName.Split('.')[0]);
         }
         
         private ImageFormat GetImageFormatByExtension(string extension)
