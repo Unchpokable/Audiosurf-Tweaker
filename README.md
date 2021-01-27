@@ -14,3 +14,4 @@
 - You can pack your current Audiosurf textures into .askin file and send in to your friend. Press "Add new skin from folder" button and select "...\Audiosurf\engine\textures" folder. Programm will offer you to name new skin, if you deny this offer, skin will be automatically named as folder that you select.
 - Theres no need to select exactly audiosurf textures folder. You can place textures that you think important to any folder and pack it too. 
 - The program only replaces textures that contain .askin, so it's okay if your .askin doesn't contain anything but, for example, tiles.png (one of audiosurf texutures pictures)
+- To install texturepack, select it in ListBox and press "install selected" button
