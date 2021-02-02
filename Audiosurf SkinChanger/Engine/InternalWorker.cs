@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Configuration;
 using Microsoft.Win32;
+using System.Windows.Forms;
 
 
 namespace Audiosurf_SkinChanger.Engine
@@ -22,6 +23,9 @@ namespace Audiosurf_SkinChanger.Engine
             {
                 pathToAudiosurfTextures = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Valve\Steam", "InstallPath", null) + @"\steamapps\common\Audiosurf\engine\textures";
             }
+
+            if (string.IsNullOrEmpty(pathToAudiosurfTextures) || string.IsNullOrWhiteSpace(pathToAudiosurfTextures))
+                MessageBox.Show("Ooops! Audiosurf Skin Changer can't find your steam! So Please, select path to audiosurf textues manually", "Path Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
             cfg.AppSettings.Settings["FirstRun"].Value = "no";
             cfg.AppSettings.Settings["gamePath"].Value = pathToAudiosurfTextures;

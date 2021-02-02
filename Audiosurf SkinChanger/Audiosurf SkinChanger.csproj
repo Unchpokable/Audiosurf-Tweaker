@@ -98,6 +98,12 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SkinCreatorForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SkinCreatorForm.Designer.cs">
+      <DependentUpon>SkinCreatorForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Utilities\Extensions.cs" />
     <Compile Include="Utilities\ImageGroup.cs" />
     <Compile Include="Utilities\Logger.cs" />

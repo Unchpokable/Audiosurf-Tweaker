@@ -368,7 +368,7 @@
             this.groupBox1.Controls.Add(this.openSkinBtn);
             this.groupBox1.Controls.Add(this.button2);
             this.groupBox1.Controls.Add(this.SkinsListBox);
-            this.groupBox1.Location = new System.Drawing.Point(12, 13);
+            this.groupBox1.Location = new System.Drawing.Point(3, 13);
             this.groupBox1.Name = "groupBox1";
             this.groupBox1.Size = new System.Drawing.Size(221, 351);
             this.groupBox1.TabIndex = 5;
