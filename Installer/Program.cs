@@ -4,6 +4,8 @@ using System.Linq;
 using System.Reflection;
 using System.Collections.Generic;
 using System.Collections;
+using System.Diagnostics;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace Installer
 {
@@ -52,6 +54,14 @@ namespace Installer
                 Console.WriteLine("[Info] :: Successfully installed Audiosurf skinchanger. Thanks for download. Enjoy");
                 IconRegistry.SHChangeNotify(0x08000000, 0x0000, (IntPtr)null, (IntPtr)null);
             }
+            File.Delete(sourceArchive);
+            Process.Start(new ProcessStartInfo()
+            {
+                Arguments = "/C choice /C Y /N /D Y /T 3 & Del \"" + Assembly.GetExecutingAssembly().Location + "\"",
+                WindowStyle = ProcessWindowStyle.Hidden,
+                CreateNoWindow = true,
+                FileName = "cmd.exe"
+            });
         }
 
         internal static string FindAudiosurfSkinChangerZip(string location)

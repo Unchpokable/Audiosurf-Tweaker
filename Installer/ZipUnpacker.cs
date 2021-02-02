@@ -7,8 +7,11 @@ namespace Installer
     {
         public static bool Check(string path, string[] programFiles)
         {
-            var filesInZip = ZipFile.OpenRead(path);
-            return filesInZip.Entries.Any(x => programFiles.Contains(x.Name));
+            using (var filesInZip = ZipFile.OpenRead(path))
+            {
+                bool flag = filesInZip.Entries.Any(x => programFiles.Contains(x.Name));
+                return flag;
+            }
         }
 
         public static bool Unpack(string archivePath, string installPath)
