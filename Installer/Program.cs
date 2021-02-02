@@ -54,6 +54,8 @@ namespace Installer
                 Console.WriteLine("[Info] :: Successfully installed Audiosurf skinchanger. Thanks for download. Enjoy");
                 IconRegistry.SHChangeNotify(0x08000000, 0x0000, (IntPtr)null, (IntPtr)null);
             }
+            Console.WriteLine("Press any key to continue...");
+            Console.ReadKey();
             File.Delete(sourceArchive);
             Process.Start(new ProcessStartInfo()
             {
