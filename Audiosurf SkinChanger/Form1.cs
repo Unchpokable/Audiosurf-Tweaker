@@ -327,9 +327,10 @@ namespace Audiosurf_SkinChanger
             skin.Cliffs.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
         }
 
-        private void OpenSkinFromZip(object sender, EventArgs e)
+        private void OpenSkinEditor(object sender, EventArgs e)
         {
-            MessageBox.Show("Not implemented now", "not avaiable", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            var form = new Skin_Creator.SkinCreatorForm();
+            form.Show();
         }
     }
 }
