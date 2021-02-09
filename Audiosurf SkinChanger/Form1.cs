@@ -231,7 +231,7 @@ namespace Audiosurf_SkinChanger
                     AudiosurfSkin skin = skinPackager.CreateSkinFromFolder(folderBrowserDialog1.SelectedPath);
                     if (skin == null)
                     {
-                        MessageBox.Show("No one Audiosurf texture founded in selected folder. Please, check what you selecting", "Package Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        MessageBox.Show($"Error during packaging {folderBrowserDialog1.SelectedPath} into audiosurf skin. Please, Check selected folder", "Package Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return;
                     }
                     if (MessageBox.Show("Do you want to name new skin?", "new skin", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
@@ -273,7 +273,14 @@ namespace Audiosurf_SkinChanger
                 MessageBox.Show("Skin not selected!", "Export Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
-            skinPackager.Compile(CurrentSkin);
+
+            if (skinsFolderPathTextbox.Text == "None")
+            {
+                skinPackager.CompileTo(CurrentSkin, "Skins");
+            }
+            else
+                skinPackager.Compile(CurrentSkin);
+
             MessageBox.Show("Done!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 

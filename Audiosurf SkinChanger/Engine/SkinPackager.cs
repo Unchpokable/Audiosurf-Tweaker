@@ -60,6 +60,26 @@
             }
         }
 
+        public bool CompileTo(AudiosurfSkin skin, string path)
+        {
+            try
+            {
+                IFormatter formatter = new BinaryFormatter();
+                using (Stream filestream = new FileStream(path + @"\\" + skin.Name + skinExtension, FileMode.OpenOrCreate))
+                {
+                    formatter.Serialize(filestream, skin);
+                }
+                return true;
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show($"Ooops! Something goes wrong! We cant save your skin {skin.Name}!\n Exception message: {e.Message}.\n Stack trace written in log file",
+                                "Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                logger.Log("ERROR", e.ToString());
+                return false;
+            }
+        }
+
         public AudiosurfSkin Decompile(string path)
         {
             try
@@ -99,8 +119,17 @@
                     result.SkySpheres = GetAllImagesByNameMask("skysphere", mask, path);
             }
 
-            result.Tiles = new NamedBitmap("tiles.png", (Bitmap)GetAllImagesByNameMask("tiles", "tiles.png", path));
-            result.TilesFlyup = new NamedBitmap("tileflyup.png", (Bitmap)GetAllImagesByNameMask("tiles flyup", "tileflyup.png", path));
+            ImageGroup tiles = GetAllImagesByNameMask("tiles", "tiles.png", path);
+            ImageGroup tileflyup = GetAllImagesByNameMask("tiles flyup", "tileflyup.png", path);
+
+            if (tiles.Group.Count > 1 || tileflyup.Group.Count > 1)
+            {
+                MessageBox.Show("Ooops! May be folder with your skin contain more that 1 texture with name 'tiles.png' or 'tileflyup.png' (or ***tiles.png / ***tileflyup.png).\nPlease, check folder with skin and correct names of textures", "Package Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return null;
+            }
+
+            result.Tiles = new NamedBitmap("tiles.png", (Bitmap)tiles);
+            result.TilesFlyup = new NamedBitmap("tileflyup.png", (Bitmap)tileflyup);
             return result;
         }
 

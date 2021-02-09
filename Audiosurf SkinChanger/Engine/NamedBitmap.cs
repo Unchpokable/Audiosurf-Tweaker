@@ -2,7 +2,7 @@
 {
     using System.Drawing;
     using System;
-    using System.IO;
+    using System.Linq;
     using System.Drawing.Imaging;
 
     [Serializable]
@@ -33,7 +33,7 @@
 
         private ImageFormat ProcessImageFormat(string srcFileName)
         {
-            return GetImageFormatByExtension(srcFileName.Split('.')[0]);
+            return GetImageFormatByExtension(srcFileName.Split('.').Last());
         }
         
         private ImageFormat GetImageFormatByExtension(string extension)
