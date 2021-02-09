@@ -4,9 +4,9 @@ using Microsoft.Win32;
 using System.Windows.Forms;
 
 
-namespace Audiosurf_SkinChanger.Engine
+namespace Audiosurf_SkinChanger.Utilities
 {
-    public static class InternalWorker
+    internal static class InternalWorker
     {
         public static void SetUpDefaultSettings()
         {
