@@ -203,6 +203,26 @@ namespace Audiosurf_SkinChanger.Skin_Creator {
         /// <summary>
         ///   Поиск локализованного ресурса типа System.Drawing.Bitmap.
         /// </summary>
+        internal static System.Drawing.Bitmap Add_Ring2A {
+            get {
+                object obj = ResourceManager.GetObject("Add_Ring2A", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Поиск локализованного ресурса типа System.Drawing.Bitmap.
+        /// </summary>
+        internal static System.Drawing.Bitmap Add_Ring2A_Active {
+            get {
+                object obj = ResourceManager.GetObject("Add_Ring2A_Active", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Поиск локализованного ресурса типа System.Drawing.Bitmap.
+        /// </summary>
         internal static System.Drawing.Bitmap Add_Ring2B {
             get {
                 object obj = ResourceManager.GetObject("Add_Ring2B", resourceCulture);

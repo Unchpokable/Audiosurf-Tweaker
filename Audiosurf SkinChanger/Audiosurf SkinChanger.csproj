@@ -150,18 +150,6 @@
   </ItemGroup>
   <ItemGroup />
   <ItemGroup>
-    <None Include="Resources\Add_SkySphere_Active.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\Add_Tile_Flyup_Active.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\Add_TileFlyup.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\Add_Tiles.png" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Resources\Add_Tiles_Active.png" />
   </ItemGroup>
   <ItemGroup>
@@ -207,6 +195,12 @@
     <None Include="Resources\Add_Ring1B_Active.png" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Resources\Add_Ring2A.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Ring2A_Active.png" />
+  </ItemGroup>
+  <ItemGroup>
     <None Include="Resources\Add_Ring2B.png" />
   </ItemGroup>
   <ItemGroup>
@@ -214,6 +208,18 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\Add_Skysphere.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_SkySphere_Active.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Tile_Flyup_Active.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_TileFlyup.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Tiles.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
