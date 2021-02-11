@@ -24,6 +24,11 @@
             Group = new List<NamedBitmap>();
         }
 
+        public ImageGroup(params Bitmap[] source)
+        {
+            Group = source.Select(x => (NamedBitmap)x).ToList();
+        }
+
         public void AddImage(NamedBitmap image)
         {
             if (image == null)
@@ -63,6 +68,11 @@
         public static implicit operator Bitmap[](ImageGroup obj)
         {
             return obj.Group.Select(x => (Bitmap)x).ToArray();
+        }
+
+        public static explicit operator ImageGroup(Bitmap obj)
+        {
+            return new ImageGroup(obj);
         }
     }
 }

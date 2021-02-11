@@ -79,7 +79,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Skin Creator\Associations.cs" />
+    <Compile Include="Skin Creator\ImageInfo.cs" />
     <Compile Include="Skin Creator\Images.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>

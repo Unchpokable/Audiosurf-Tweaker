@@ -49,6 +49,7 @@
             this.Sphere3 = new System.Windows.Forms.PictureBox();
             this.Sphere2 = new System.Windows.Forms.PictureBox();
             this.Sphere1 = new System.Windows.Forms.PictureBox();
+            this.openFileDialog = new System.Windows.Forms.OpenFileDialog();
             this.groupBox2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.hit2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.hit1)).BeginInit();
@@ -282,6 +283,10 @@
             this.Sphere1.MouseEnter += new System.EventHandler(this.SetActiveSphere);
             this.Sphere1.MouseLeave += new System.EventHandler(this.Sphere1_MouseLeave);
             // 
+            // openFileDialog
+            // 
+            this.openFileDialog.FileName = "openFileDialog";
+            // 
             // SkinCreatorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -339,5 +344,6 @@
         private System.Windows.Forms.PictureBox Sphere3;
         private System.Windows.Forms.PictureBox Sphere2;
         private System.Windows.Forms.PictureBox Sphere1;
+        private System.Windows.Forms.OpenFileDialog openFileDialog;
     }
 }

@@ -20,6 +20,11 @@ namespace Audiosurf_SkinChanger.Skin_Creator
 
         private Dictionary<string, PictureBox> AssotiateTable;
         private Dictionary<string, Dictionary<States, Bitmap>> StatesTable;
+        private Dictionary<string, ImageInfo> ImageAssociationTable;
+        private Dictionary<PictureBox, Utilities.ImageGroup> SkinImageGroupAssociationTable;
+        private Dictionary<PictureBox, Engine.NamedBitmap> SkinBitmapsAssociationTable;
+        private Engine.NamedBitmap TilesTemp;
+        private Engine.AudiosurfSkin Skin;
 
         public SkinCreatorForm()
         {
@@ -27,6 +32,9 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             LoadIdleImages();
             CreateAssotiativeTable();
             CreateStateAssotiatieTable();
+            CreateImageAssociationTable();
+            Skin = new Engine.AudiosurfSkin();
+            CreateSkinFieldsAssotiationTables();
         }
 
         private void CreateAssotiativeTable()
@@ -77,6 +85,59 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             };
         }
 
+        private void CreateImageAssociationTable()
+        {
+            ImageAssociationTable = new Dictionary<string, ImageInfo>()
+            {
+                { "Sphere1", new ImageInfo("png", "Skysphere_White.png") },
+                { "Sphere2", new ImageInfo("png", "Skysphere_Black.png") },
+                { "Sphere3", new ImageInfo("png", "Skysphere_Grey.png") },
+                { "tile1", new ImageInfo("png", "tiles.png") },
+                {"tile2", new ImageInfo("png", "tiles.png") },
+                {"tile3", new ImageInfo("png", "tiles.png") },
+                {"tile4", new ImageInfo("png", "tiles.png") },
+                {"tileflyup", new ImageInfo("png", "tileflyup.png") },
+                {"part1", new ImageInfo("png", "particles1.png")},
+                {"part2", new ImageInfo("jpg", "particles2.jpg") },
+                {"part3", new ImageInfo("jpg", "particles3.jpg") },
+                {"ring1", new ImageInfo("png", "ring1A.png") },
+                {"ring2", new ImageInfo("jpg", "ring2A.jpg") },
+                {"ring3", new ImageInfo("png", "ring1B.png") },
+                {"ring4", new ImageInfo("jpg", "ring2B.jpg") },
+                {"hit1", new ImageInfo("png", "hit1.png") },
+                {"hit2", new ImageInfo("jpg", "hit2.jpg") }
+            };
+        }
+
+        private void CreateSkinFieldsAssotiationTables()
+        {
+            SkinBitmapsAssociationTable = new Dictionary<PictureBox, Engine.NamedBitmap>()
+            {
+                {tileflyup, Skin.TilesFlyup }
+            };
+
+
+            SkinImageGroupAssociationTable = new Dictionary<PictureBox, Utilities.ImageGroup>()
+            {
+                {Sphere1, Skin.SkySpheres },
+                {Sphere2, Skin.SkySpheres },
+                {Sphere3, Skin.SkySpheres },
+
+                {part1, Skin.Particles },
+                {part2, Skin.Particles },
+                {part3, Skin.Particles },
+
+                {ring1, Skin.Particles },
+                {ring2, Skin.Particles },
+                {ring3, Skin.Particles },
+                {ring4, Skin.Particles },
+
+                {hit1, Skin.Particles },
+                {hit2, Skin.Particles },
+            };
+        }
+
+
         private void LoadIdleImages()
         {
             Sphere1.Image = Images.Add_Skysphere;
@@ -103,11 +164,6 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             hit2.Image = Images.Add_Hit2;
         }
 
-        private void splitContainer1_Panel2_Paint(object sender, PaintEventArgs e)
-        {
-
-        }
-
         private void SetActiveSphere(object sender, EventArgs e)
         {
             var knownSender = sender as PictureBox;
@@ -118,6 +174,14 @@ namespace Audiosurf_SkinChanger.Skin_Creator
         {
             var knownSender = sender as PictureBox;
             AssotiateTable[knownSender.Name].Image = StatesTable[knownSender.Name][States.Idle];
+        }
+
+        private void FillImageSlot()
+        {
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+
+            }
         }
     }
 }

@@ -4,6 +4,7 @@
     using System;
     using System.Linq;
     using System.Drawing.Imaging;
+    using Audiosurf_SkinChanger.Skin_Creator;
 
     [Serializable]
     public class NamedBitmap
@@ -31,6 +32,13 @@
             format = ProcessImageFormat(name).ToString();
         }
 
+        public NamedBitmap(string path, ImageInfo imageInfo)
+        {
+            Source = (Bitmap)Image.FromFile(path);
+            Name = imageInfo.FileName;
+            format = imageInfo.Format;
+        }
+
         private ImageFormat ProcessImageFormat(string srcFileName)
         {
             return GetImageFormatByExtension(srcFileName.Split('.').Last());
@@ -47,13 +55,18 @@
                 case "jpg":
                     return ImageFormat.Jpeg;
                 default:
-                    return ImageFormat.Jpeg;
+                    return ImageFormat.Png;
             }
         }
 
         public static explicit operator Bitmap(NamedBitmap obj)
         {
             return obj.Source;
+        }
+
+        public static explicit operator NamedBitmap(Bitmap obj)
+        {
+            return new NamedBitmap(obj);
         }
 
         public static implicit operator Image(NamedBitmap obj)
