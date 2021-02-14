@@ -4,6 +4,7 @@
     using System.Windows.Forms;
     using System;
     using System.Collections.Generic;
+    using System.Linq;
 
     public static class Extensions
     {
@@ -33,6 +34,22 @@
             {
                 action(source[i]);
             }
+        }
+
+        public static Bitmap[] Squarify(this Bitmap spritesheet)
+        {
+            int widthThird = (int)((double)spritesheet.Width / 2.0 + 0.5);
+            int heightThird = (int)((double)spritesheet.Height / 2.0 + 0.5);
+            Bitmap[,] bmps = new Bitmap[2, 2];
+            for (int i = 0; i < 2; i++)
+                for (int j = 0; j < 2; j++)
+                {
+                    bmps[i, j] = new Bitmap(widthThird, heightThird);
+                    Graphics g = Graphics.FromImage(bmps[i, j]);
+                    g.DrawImage(spritesheet, new Rectangle(0, 0, widthThird, heightThird), new Rectangle(j * widthThird, i * heightThird, widthThird, heightThird), GraphicsUnit.Pixel);
+                    g.Dispose();
+                }
+            return bmps.Cast<Bitmap>().ToArray();
         }
     }
 }

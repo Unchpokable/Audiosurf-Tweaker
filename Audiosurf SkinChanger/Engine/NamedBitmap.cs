@@ -39,6 +39,13 @@
             format = imageInfo.Format;
         }
 
+        public NamedBitmap(Image original, ImageInfo imageInfo)
+        {
+            Source = (Bitmap)original;
+            Name = imageInfo.FileName;
+            format = imageInfo.Format;
+        }
+
         private ImageFormat ProcessImageFormat(string srcFileName)
         {
             return GetImageFormatByExtension(srcFileName.Split('.').Last());

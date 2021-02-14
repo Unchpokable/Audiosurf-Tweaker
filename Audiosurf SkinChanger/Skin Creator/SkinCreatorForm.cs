@@ -1,17 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.IO;
+using Audiosurf_SkinChanger.Engine;
 
 namespace Audiosurf_SkinChanger.Skin_Creator
 {
     public partial class SkinCreatorForm : Form
     {
+        public event Action OnSkinExprotrted;
+
         private enum States
         {
             Idle,
@@ -22,9 +21,10 @@ namespace Audiosurf_SkinChanger.Skin_Creator
         private Dictionary<string, Dictionary<States, Bitmap>> StatesTable;
         private Dictionary<string, ImageInfo> ImageAssociationTable;
         private Dictionary<PictureBox, Utilities.ImageGroup> SkinImageGroupAssociationTable;
-        private Dictionary<PictureBox, Engine.NamedBitmap> SkinBitmapsAssociationTable;
-        private Engine.NamedBitmap TilesTemp;
-        private Engine.AudiosurfSkin Skin;
+        private Dictionary<PictureBox, NamedBitmap> SkinBitmapsAssociationTable;
+        private NamedBitmap TilesTemp;
+        private PictureBox[] TilesGroup;
+        private AudiosurfSkin Skin;
 
         public SkinCreatorForm()
         {
@@ -33,8 +33,9 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             CreateAssotiativeTable();
             CreateStateAssotiatieTable();
             CreateImageAssociationTable();
-            Skin = new Engine.AudiosurfSkin();
+            Skin = new AudiosurfSkin();
             CreateSkinFieldsAssotiationTables();
+            
         }
 
         private void CreateAssotiativeTable()
@@ -111,8 +112,13 @@ namespace Audiosurf_SkinChanger.Skin_Creator
 
         private void CreateSkinFieldsAssotiationTables()
         {
-            SkinBitmapsAssociationTable = new Dictionary<PictureBox, Engine.NamedBitmap>()
+            SkinBitmapsAssociationTable = new Dictionary<PictureBox, NamedBitmap>()
             {
+                {tile1, Skin.Tiles },
+                {tile2, Skin.Tiles },
+                {tile3, Skin.Tiles },
+                {tile4, Skin.Tiles },
+
                 {tileflyup, Skin.TilesFlyup }
             };
 
@@ -176,11 +182,41 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             AssotiateTable[knownSender.Name].Image = StatesTable[knownSender.Name][States.Idle];
         }
 
-        private void FillImageSlot()
+        private void FillImageSlot(object sender, EventArgs e)
         {
+            var knownSender = sender as PictureBox;
+            if (knownSender == null)
+                MessageBox.Show("Oops! Something goes wrong... \nException message doesnt matter, its just strange internal error", "Internal error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
+                var info = ImageAssociationTable[knownSender.Name];
+                var bmp = ReadImage(openFileDialog.FileName, info);
+                SkinImageGroupAssociationTable[knownSender].AddImage(bmp);
+            }
+        }
 
+        private NamedBitmap ReadImage(string path, ImageInfo info)
+        {
+            var ext = Path.GetExtension(openFileDialog.FileName).Replace(".", "");
+            if (ext != info.Format)
+            {
+                MessageBox.Show($"Ooops! Selected texture requiers image format {info.Format}, but you selected .{ext} image!\n", "Image format Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            return new NamedBitmap(Image.FromFile(openFileDialog.FileName), info);
+        }
+
+        private void FillImageSlotNB(object sender, EventArgs e)
+        {
+            var knownSender = sender as PictureBox;
+            if (knownSender == null)
+                MessageBox.Show("Oops! Something goes wrong... \nException message doesnt matter, its just strange internal error", "Internal error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                var info = ImageAssociationTable[knownSender.Name];
+                var bmp = ReadImage(openFileDialog.FileName, info);
+                SkinBitmapsAssociationTable[knownSender] = bmp;
             }
         }
     }

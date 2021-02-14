@@ -187,7 +187,7 @@ namespace Audiosurf_SkinChanger
             pictureBoxes.ForEach(x => x.ClearAll());
             tileFlyup.Image = ((Bitmap)skin.TilesFlyup).Rescale(stdTextureSize);
             FillPictureBoxGruopFromImageGroup(SkySpherePreview, skin.SkySpheres, stdSkysphereSize);
-            FillPictureBoxGruopFromImageGroup(TilesTexturesImageGroup, SplitTilesSpritesheet((Bitmap)skin.Tiles), stdTextureSize);
+            FillPictureBoxGruopFromImageGroup(TilesTexturesImageGroup, ((Bitmap)skin.Tiles).Squarify(), stdTextureSize);
             FillPictureBoxGruopFromImageGroup(ParticlesTexturesImageGroup, skin.Particles, stdTextureSize);
             FillPictureBoxGruopFromImageGroup(RingsTexturesImageGroup, skin.Rings, stdTextureSize);
             FillPictureBoxGruopFromImageGroup(HitsImageGroup, skin.Hits, stdTextureSize);
@@ -204,22 +204,6 @@ namespace Audiosurf_SkinChanger
                 picBox.Image = ((Bitmap)imagesIterator.Current).Rescale(newSize);
             }
             return;
-        }
-
-        private Bitmap[] SplitTilesSpritesheet(Bitmap spritesheet)
-        {
-            int widthThird = (int)((double)spritesheet.Width / 2.0 + 0.5);
-            int heightThird = (int)((double)spritesheet.Height / 2.0 + 0.5);
-            Bitmap[,] bmps = new Bitmap[2, 2];
-            for (int i = 0; i < 2; i++)
-                for (int j = 0; j < 2; j++)
-                {
-                    bmps[i, j] = new Bitmap(widthThird, heightThird);
-                    Graphics g = Graphics.FromImage(bmps[i, j]);
-                    g.DrawImage(spritesheet, new Rectangle(0, 0, widthThird, heightThird), new Rectangle(j * widthThird, i * heightThird, widthThird, heightThird), GraphicsUnit.Pixel);
-                    g.Dispose();
-                }
-            return bmps.Cast<Bitmap>().ToArray();
         }
 
         private void PackFolderIntoSkin(object sender, EventArgs e)

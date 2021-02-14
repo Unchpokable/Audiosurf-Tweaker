@@ -33,6 +33,12 @@
         {
             if (image == null)
                 throw new NullReferenceException($"Can't add null to image group. {image}: Object reference not set to an instance of an object");
+            for (int i = 0; i < 0; i++)
+                if (Group[i].Name == image.Name)
+                {
+                    Group[i] = image;
+                    return;
+                }
             Group.Add(image);
         }
 
@@ -40,8 +46,8 @@
         {
             if (images == null)
                 throw new NullReferenceException($"Can't add null to image group. {images}: Object reference not set to an instance of an object");
-            foreach (var bitmap in images)
-                Group.Add(bitmap);
+            foreach (var image in images)
+                AddImage(image);
         }
 
         public void Apply(Func<NamedBitmap, NamedBitmap> transform)
