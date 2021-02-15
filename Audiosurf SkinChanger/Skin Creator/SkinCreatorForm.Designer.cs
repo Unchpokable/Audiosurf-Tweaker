@@ -31,6 +31,17 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SkinCreatorForm));
             this.label1 = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.checkBox1 = new System.Windows.Forms.CheckBox();
+            this.comboBox4 = new System.Windows.Forms.ComboBox();
+            this.label5 = new System.Windows.Forms.Label();
+            this.comboBox3 = new System.Windows.Forms.ComboBox();
+            this.comboBox2 = new System.Windows.Forms.ComboBox();
+            this.comboBox1 = new System.Windows.Forms.ComboBox();
+            this.label4 = new System.Windows.Forms.Label();
+            this.label3 = new System.Windows.Forms.Label();
+            this.label2 = new System.Windows.Forms.Label();
+            this.button2 = new System.Windows.Forms.Button();
+            this.button1 = new System.Windows.Forms.Button();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.hit2 = new System.Windows.Forms.PictureBox();
             this.hit1 = new System.Windows.Forms.PictureBox();
@@ -50,17 +61,6 @@
             this.Sphere2 = new System.Windows.Forms.PictureBox();
             this.Sphere1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog = new System.Windows.Forms.OpenFileDialog();
-            this.button1 = new System.Windows.Forms.Button();
-            this.button2 = new System.Windows.Forms.Button();
-            this.label2 = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
-            this.label4 = new System.Windows.Forms.Label();
-            this.comboBox1 = new System.Windows.Forms.ComboBox();
-            this.comboBox2 = new System.Windows.Forms.ComboBox();
-            this.comboBox3 = new System.Windows.Forms.ComboBox();
-            this.label5 = new System.Windows.Forms.Label();
-            this.comboBox4 = new System.Windows.Forms.ComboBox();
-            this.checkBox1 = new System.Windows.Forms.CheckBox();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.hit2)).BeginInit();
@@ -110,6 +110,102 @@
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Export";
             // 
+            // checkBox1
+            // 
+            this.checkBox1.AutoSize = true;
+            this.checkBox1.Location = new System.Drawing.Point(13, 96);
+            this.checkBox1.Name = "checkBox1";
+            this.checkBox1.Size = new System.Drawing.Size(189, 17);
+            this.checkBox1.TabIndex = 10;
+            this.checkBox1.Text = "Use source sizes of texture images";
+            this.checkBox1.UseVisualStyleBackColor = true;
+            // 
+            // comboBox4
+            // 
+            this.comboBox4.FormattingEnabled = true;
+            this.comboBox4.Location = new System.Drawing.Point(459, 17);
+            this.comboBox4.Name = "comboBox4";
+            this.comboBox4.Size = new System.Drawing.Size(153, 21);
+            this.comboBox4.TabIndex = 9;
+            // 
+            // label5
+            // 
+            this.label5.AutoSize = true;
+            this.label5.Location = new System.Drawing.Point(331, 20);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(106, 13);
+            this.label5.TabIndex = 8;
+            this.label5.Text = "Output Particles size:";
+            // 
+            // comboBox3
+            // 
+            this.comboBox3.FormattingEnabled = true;
+            this.comboBox3.Location = new System.Drawing.Point(459, 47);
+            this.comboBox3.Name = "comboBox3";
+            this.comboBox3.Size = new System.Drawing.Size(153, 21);
+            this.comboBox3.TabIndex = 7;
+            // 
+            // comboBox2
+            // 
+            this.comboBox2.FormattingEnabled = true;
+            this.comboBox2.Location = new System.Drawing.Point(138, 47);
+            this.comboBox2.Name = "comboBox2";
+            this.comboBox2.Size = new System.Drawing.Size(153, 21);
+            this.comboBox2.TabIndex = 6;
+            // 
+            // comboBox1
+            // 
+            this.comboBox1.FormattingEnabled = true;
+            this.comboBox1.Location = new System.Drawing.Point(138, 17);
+            this.comboBox1.Name = "comboBox1";
+            this.comboBox1.Size = new System.Drawing.Size(153, 21);
+            this.comboBox1.TabIndex = 5;
+            // 
+            // label4
+            // 
+            this.label4.AutoSize = true;
+            this.label4.Location = new System.Drawing.Point(331, 50);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(82, 13);
+            this.label4.TabIndex = 4;
+            this.label4.Text = "Output hits size:";
+            // 
+            // label3
+            // 
+            this.label3.AutoSize = true;
+            this.label3.Location = new System.Drawing.Point(10, 50);
+            this.label3.Name = "label3";
+            this.label3.Size = new System.Drawing.Size(93, 13);
+            this.label3.TabIndex = 3;
+            this.label3.Text = "Output Rings size:";
+            // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(10, 20);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(97, 13);
+            this.label2.TabIndex = 2;
+            this.label2.Text = "Output Tileset size:";
+            // 
+            // button2
+            // 
+            this.button2.Location = new System.Drawing.Point(706, 67);
+            this.button2.Name = "button2";
+            this.button2.Size = new System.Drawing.Size(211, 44);
+            this.button2.TabIndex = 1;
+            this.button2.Text = "Export To...";
+            this.button2.UseVisualStyleBackColor = true;
+            // 
+            // button1
+            // 
+            this.button1.Location = new System.Drawing.Point(706, 17);
+            this.button1.Name = "button1";
+            this.button1.Size = new System.Drawing.Size(211, 44);
+            this.button1.TabIndex = 0;
+            this.button1.Text = "Export";
+            this.button1.UseVisualStyleBackColor = true;
+            // 
             // groupBox2
             // 
             this.groupBox2.Controls.Add(this.hit2);
@@ -143,6 +239,7 @@
             this.hit2.Size = new System.Drawing.Size(90, 90);
             this.hit2.TabIndex = 16;
             this.hit2.TabStop = false;
+            this.hit2.Click += new System.EventHandler(this.FillImageSlot);
             this.hit2.MouseEnter += new System.EventHandler(this.SetActiveSphere);
             this.hit2.MouseLeave += new System.EventHandler(this.Sphere1_MouseLeave);
             // 
@@ -153,6 +250,7 @@
             this.hit1.Size = new System.Drawing.Size(90, 90);
             this.hit1.TabIndex = 15;
             this.hit1.TabStop = false;
+            this.hit1.Click += new System.EventHandler(this.FillImageSlot);
             this.hit1.MouseEnter += new System.EventHandler(this.SetActiveSphere);
             this.hit1.MouseLeave += new System.EventHandler(this.Sphere1_MouseLeave);
             // 
@@ -163,6 +261,7 @@
             this.ring4.Size = new System.Drawing.Size(90, 90);
             this.ring4.TabIndex = 14;
             this.ring4.TabStop = false;
+            this.ring4.Click += new System.EventHandler(this.FillImageSlot);
             this.ring4.MouseEnter += new System.EventHandler(this.SetActiveSphere);
             this.ring4.MouseLeave += new System.EventHandler(this.Sphere1_MouseLeave);
             // 
@@ -173,6 +272,7 @@
             this.ring3.Size = new System.Drawing.Size(90, 90);
             this.ring3.TabIndex = 13;
             this.ring3.TabStop = false;
+            this.ring3.Click += new System.EventHandler(this.FillImageSlot);
             this.ring3.MouseEnter += new System.EventHandler(this.SetActiveSphere);
             this.ring3.MouseLeave += new System.EventHandler(this.Sphere1_MouseLeave);
             // 
@@ -183,6 +283,7 @@
             this.ring2.Size = new System.Drawing.Size(90, 90);
             this.ring2.TabIndex = 12;
             this.ring2.TabStop = false;
+            this.ring2.Click += new System.EventHandler(this.FillImageSlot);
             this.ring2.MouseEnter += new System.EventHandler(this.SetActiveSphere);
             this.ring2.MouseLeave += new System.EventHandler(this.Sphere1_MouseLeave);
             // 
@@ -193,6 +294,7 @@
             this.ring1.Size = new System.Drawing.Size(90, 90);
             this.ring1.TabIndex = 11;
             this.ring1.TabStop = false;
+            this.ring1.Click += new System.EventHandler(this.FillImageSlot);
             this.ring1.MouseEnter += new System.EventHandler(this.SetActiveSphere);
             this.ring1.MouseLeave += new System.EventHandler(this.Sphere1_MouseLeave);
             // 
@@ -203,6 +305,7 @@
             this.part3.Size = new System.Drawing.Size(90, 90);
             this.part3.TabIndex = 10;
             this.part3.TabStop = false;
+            this.part3.Click += new System.EventHandler(this.FillImageSlot);
             this.part3.MouseEnter += new System.EventHandler(this.SetActiveSphere);
             this.part3.MouseLeave += new System.EventHandler(this.Sphere1_MouseLeave);
             // 
@@ -213,6 +316,7 @@
             this.part2.Size = new System.Drawing.Size(90, 90);
             this.part2.TabIndex = 9;
             this.part2.TabStop = false;
+            this.part2.Click += new System.EventHandler(this.FillImageSlot);
             this.part2.MouseEnter += new System.EventHandler(this.SetActiveSphere);
             this.part2.MouseLeave += new System.EventHandler(this.Sphere1_MouseLeave);
             // 
@@ -223,6 +327,7 @@
             this.part1.Size = new System.Drawing.Size(90, 90);
             this.part1.TabIndex = 8;
             this.part1.TabStop = false;
+            this.part1.Click += new System.EventHandler(this.FillImageSlot);
             this.part1.MouseEnter += new System.EventHandler(this.SetActiveSphere);
             this.part1.MouseLeave += new System.EventHandler(this.Sphere1_MouseLeave);
             // 
@@ -233,6 +338,7 @@
             this.tileflyup.Size = new System.Drawing.Size(90, 90);
             this.tileflyup.TabIndex = 7;
             this.tileflyup.TabStop = false;
+            this.tileflyup.Click += new System.EventHandler(this.FillImageSlotNB);
             this.tileflyup.MouseEnter += new System.EventHandler(this.SetActiveSphere);
             this.tileflyup.MouseLeave += new System.EventHandler(this.Sphere1_MouseLeave);
             // 
@@ -283,6 +389,7 @@
             this.Sphere3.Size = new System.Drawing.Size(180, 90);
             this.Sphere3.TabIndex = 2;
             this.Sphere3.TabStop = false;
+            this.Sphere3.Click += new System.EventHandler(this.FillImageSlot);
             this.Sphere3.MouseEnter += new System.EventHandler(this.SetActiveSphere);
             this.Sphere3.MouseLeave += new System.EventHandler(this.Sphere1_MouseLeave);
             // 
@@ -293,6 +400,7 @@
             this.Sphere2.Size = new System.Drawing.Size(180, 90);
             this.Sphere2.TabIndex = 1;
             this.Sphere2.TabStop = false;
+            this.Sphere2.Click += new System.EventHandler(this.FillImageSlot);
             this.Sphere2.MouseEnter += new System.EventHandler(this.SetActiveSphere);
             this.Sphere2.MouseLeave += new System.EventHandler(this.Sphere1_MouseLeave);
             // 
@@ -303,108 +411,13 @@
             this.Sphere1.Size = new System.Drawing.Size(180, 90);
             this.Sphere1.TabIndex = 0;
             this.Sphere1.TabStop = false;
+            this.Sphere1.Click += new System.EventHandler(this.FillImageSlot);
             this.Sphere1.MouseEnter += new System.EventHandler(this.SetActiveSphere);
             this.Sphere1.MouseLeave += new System.EventHandler(this.Sphere1_MouseLeave);
             // 
             // openFileDialog
             // 
             this.openFileDialog.FileName = "openFileDialog";
-            // 
-            // button1
-            // 
-            this.button1.Location = new System.Drawing.Point(706, 17);
-            this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(211, 44);
-            this.button1.TabIndex = 0;
-            this.button1.Text = "Export";
-            this.button1.UseVisualStyleBackColor = true;
-            // 
-            // button2
-            // 
-            this.button2.Location = new System.Drawing.Point(706, 67);
-            this.button2.Name = "button2";
-            this.button2.Size = new System.Drawing.Size(211, 44);
-            this.button2.TabIndex = 1;
-            this.button2.Text = "Export To...";
-            this.button2.UseVisualStyleBackColor = true;
-            // 
-            // label2
-            // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(10, 20);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(97, 13);
-            this.label2.TabIndex = 2;
-            this.label2.Text = "Output Tileset size:";
-            // 
-            // label3
-            // 
-            this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(10, 50);
-            this.label3.Name = "label3";
-            this.label3.Size = new System.Drawing.Size(93, 13);
-            this.label3.TabIndex = 3;
-            this.label3.Text = "Output Rings size:";
-            // 
-            // label4
-            // 
-            this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(331, 50);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(82, 13);
-            this.label4.TabIndex = 4;
-            this.label4.Text = "Output hits size:";
-            // 
-            // comboBox1
-            // 
-            this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.Location = new System.Drawing.Point(138, 17);
-            this.comboBox1.Name = "comboBox1";
-            this.comboBox1.Size = new System.Drawing.Size(153, 21);
-            this.comboBox1.TabIndex = 5;
-            // 
-            // comboBox2
-            // 
-            this.comboBox2.FormattingEnabled = true;
-            this.comboBox2.Location = new System.Drawing.Point(138, 47);
-            this.comboBox2.Name = "comboBox2";
-            this.comboBox2.Size = new System.Drawing.Size(153, 21);
-            this.comboBox2.TabIndex = 6;
-            // 
-            // comboBox3
-            // 
-            this.comboBox3.FormattingEnabled = true;
-            this.comboBox3.Location = new System.Drawing.Point(459, 47);
-            this.comboBox3.Name = "comboBox3";
-            this.comboBox3.Size = new System.Drawing.Size(153, 21);
-            this.comboBox3.TabIndex = 7;
-            // 
-            // label5
-            // 
-            this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(331, 20);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(106, 13);
-            this.label5.TabIndex = 8;
-            this.label5.Text = "Output Particles size:";
-            // 
-            // comboBox4
-            // 
-            this.comboBox4.FormattingEnabled = true;
-            this.comboBox4.Location = new System.Drawing.Point(459, 17);
-            this.comboBox4.Name = "comboBox4";
-            this.comboBox4.Size = new System.Drawing.Size(153, 21);
-            this.comboBox4.TabIndex = 9;
-            // 
-            // checkBox1
-            // 
-            this.checkBox1.AutoSize = true;
-            this.checkBox1.Location = new System.Drawing.Point(13, 96);
-            this.checkBox1.Name = "checkBox1";
-            this.checkBox1.Size = new System.Drawing.Size(189, 17);
-            this.checkBox1.TabIndex = 10;
-            this.checkBox1.Text = "Use source sizes of texture images";
-            this.checkBox1.UseVisualStyleBackColor = true;
             // 
             // SkinCreatorForm
             // 

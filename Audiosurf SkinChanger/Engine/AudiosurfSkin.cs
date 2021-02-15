@@ -19,6 +19,16 @@
         public ImageGroup Particles { get; set; }
         public ImageGroup Rings { get; set; }
 
+        public AudiosurfSkin()
+        {
+            SkySpheres = new ImageGroup();
+            Cliffs = new ImageGroup();
+            Hits = new ImageGroup();
+            Particles = new ImageGroup();
+            Rings = new ImageGroup();
+        }
+
+
         public override string ToString()
         {
             return Name;

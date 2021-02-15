@@ -9,6 +9,11 @@
     [Serializable]
     public class NamedBitmap
     {
+        public int Width => Source.Width;
+        public int Height => Source.Height;
+        public Size Size => new Size(Width, Height);
+        
+
         private Bitmap Source;
         public string Name;
         private string format;

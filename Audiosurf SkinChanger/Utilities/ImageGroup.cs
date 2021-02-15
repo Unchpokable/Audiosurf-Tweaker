@@ -12,6 +12,12 @@
         public string Name { get; set; }
         public IList<NamedBitmap> Group { get; private set; }
 
+        public ImageGroup()
+        {
+            Name = "default";
+            Group = new List<NamedBitmap>();
+        }
+
         public ImageGroup(string name, IEnumerable<NamedBitmap> images)
         {
             Name = name;

@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.IO;
 using Audiosurf_SkinChanger.Engine;
+using Audiosurf_SkinChanger.Utilities;
 
 namespace Audiosurf_SkinChanger.Skin_Creator
 {
@@ -123,7 +124,7 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             };
 
 
-            SkinImageGroupAssociationTable = new Dictionary<PictureBox, Utilities.ImageGroup>()
+            SkinImageGroupAssociationTable = new Dictionary<PictureBox, ImageGroup>()
             {
                 {Sphere1, Skin.SkySpheres },
                 {Sphere2, Skin.SkySpheres },
@@ -133,13 +134,13 @@ namespace Audiosurf_SkinChanger.Skin_Creator
                 {part2, Skin.Particles },
                 {part3, Skin.Particles },
 
-                {ring1, Skin.Particles },
-                {ring2, Skin.Particles },
-                {ring3, Skin.Particles },
-                {ring4, Skin.Particles },
+                {ring1, Skin.Rings },
+                {ring2, Skin.Rings },
+                {ring3, Skin.Rings },
+                {ring4, Skin.Rings },
 
-                {hit1, Skin.Particles },
-                {hit2, Skin.Particles },
+                {hit1, Skin.Hits },
+                {hit2, Skin.Hits },
             };
         }
 
@@ -193,6 +194,8 @@ namespace Audiosurf_SkinChanger.Skin_Creator
                 var info = ImageAssociationTable[knownSender.Name];
                 var bmp = ReadImage(openFileDialog.FileName, info);
                 SkinImageGroupAssociationTable[knownSender].AddImage(bmp);
+                RemoveMouseActions(knownSender);
+                knownSender.Image = ((Bitmap)bmp).Rescale(knownSender.Size);
             }
         }
 
@@ -217,7 +220,21 @@ namespace Audiosurf_SkinChanger.Skin_Creator
                 var info = ImageAssociationTable[knownSender.Name];
                 var bmp = ReadImage(openFileDialog.FileName, info);
                 SkinBitmapsAssociationTable[knownSender] = bmp;
+                RemoveMouseActions(knownSender);
+                knownSender.Image = ((Bitmap)bmp).Rescale(knownSender.Size);
             }
+        }
+
+        private void RemoveMouseActions(PictureBox knownSender)
+        {
+            knownSender.MouseEnter -= SetActiveSphere;
+            knownSender.MouseLeave -= Sphere1_MouseLeave;
+        }
+
+        private void SetMouseActions(PictureBox knownSender)
+        {
+            knownSender.MouseEnter += SetActiveSphere;
+            knownSender.MouseLeave += Sphere1_MouseLeave;
         }
     }
 }
