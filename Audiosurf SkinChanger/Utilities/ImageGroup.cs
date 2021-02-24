@@ -60,7 +60,7 @@
         {
             for (int i = 0; i < Group.Count; i++)
             {
-                Group[i] = transform(Group[i]);
+                Group[i] = (NamedBitmap)transform(Group[i]);
             }
         }
 

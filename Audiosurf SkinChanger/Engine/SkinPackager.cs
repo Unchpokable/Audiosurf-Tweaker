@@ -15,7 +15,6 @@
         private const string skinExtension = @".askin";
         private Logger logger;
         private string[] texturesNames;
-        private IList<ImageGroup> textureGroups;
         private string[] Masks;
         private readonly string defaultOutput = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
@@ -88,7 +87,13 @@
                 Stream skinFileStream = new FileStream(path, FileMode.Open);
                 return (AudiosurfSkin)formatter.Deserialize(skinFileStream);
             }
-            catch(Exception e)
+
+            catch (IOException)
+            {
+                return null;
+            }
+
+            catch (Exception e)
             {
                 MessageBox.Show($"Ooops! Something goes wrong! We cant load your skin {path}!\n Exception message: {e.Message}.\n Stack trace written in log file",
                                 "Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);

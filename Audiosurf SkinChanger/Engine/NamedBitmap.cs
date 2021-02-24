@@ -18,6 +18,13 @@
         public string Name;
         private string format;
 
+        [NonSerialized]
+        public ImageFormat DefaultFormat = ImageFormat.Png;
+
+        public NamedBitmap()
+        {
+        }
+
         public NamedBitmap(Image original)
         {
             Source = new Bitmap(original);
@@ -51,9 +58,19 @@
             format = imageInfo.Format;
         }
 
+        public void Apply(Func<Bitmap, Bitmap> transform)
+        {
+            Source = transform(Source);
+        }
+
         private ImageFormat ProcessImageFormat(string srcFileName)
         {
             return GetImageFormatByExtension(srcFileName.Split('.').Last());
+        }
+
+        public void SetImage(Bitmap source)
+        {
+            Source = source;
         }
         
         private ImageFormat GetImageFormatByExtension(string extension)
@@ -76,14 +93,14 @@
             return obj.Source;
         }
 
-        public static explicit operator NamedBitmap(Bitmap obj)
-        {
-            return new NamedBitmap(obj);
-        }
-
         public static implicit operator Image(NamedBitmap obj)
         {
             return obj.Source;
+        }
+
+        public static implicit operator NamedBitmap(Bitmap obj)
+        {
+            return new NamedBitmap(obj);
         }
 
         public void Save(string filepath)

@@ -6,7 +6,6 @@ using System.Linq;
 using System.IO;
 using System.Drawing;
 using Audiosurf_SkinChanger.Utilities;
-using Microsoft.Win32;
 
 namespace Audiosurf_SkinChanger
 {
@@ -80,11 +79,18 @@ namespace Audiosurf_SkinChanger
                 MessageBox.Show("Can't load skins. Check skins folder", "Skins loading error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
+
+            EnvironmentalVeriables.Skins.Clear();
+            SkinsListBox.Items.Clear();
             foreach (var path in Directory.GetFiles(folder))
             {
                 if (new FileInfo(path).Extension != ".askin")
                     continue;
+                
                 AudiosurfSkin skin = skinPackager.Decompile(path);
+                if (skin == null)
+                    return;
+
                 EnvironmentalVeriables.Skins.Add(skin);
                 SkinsListBox.Items.Add(skin);
             }
@@ -185,9 +191,9 @@ namespace Audiosurf_SkinChanger
         private void DrawPreviewOfSkin(AudiosurfSkin skin)
         {
             pictureBoxes.ForEach(x => x.ClearAll());
-            tileFlyup.Image = ((Bitmap)skin.TilesFlyup).Rescale(stdTextureSize);
+            tileFlyup.Image = ((Bitmap)skin.TilesFlyup)?.Rescale(stdTextureSize);
             FillPictureBoxGruopFromImageGroup(SkySpherePreview, skin.SkySpheres, stdSkysphereSize);
-            FillPictureBoxGruopFromImageGroup(TilesTexturesImageGroup, ((Bitmap)skin.Tiles).Squarify(), stdTextureSize);
+            FillPictureBoxGruopFromImageGroup(TilesTexturesImageGroup, ((Bitmap)skin.Tiles)?.Squarify(), stdTextureSize);
             FillPictureBoxGruopFromImageGroup(ParticlesTexturesImageGroup, skin.Particles, stdTextureSize);
             FillPictureBoxGruopFromImageGroup(RingsTexturesImageGroup, skin.Rings, stdTextureSize);
             FillPictureBoxGruopFromImageGroup(HitsImageGroup, skin.Hits, stdTextureSize);
@@ -195,12 +201,22 @@ namespace Audiosurf_SkinChanger
 
         private void FillPictureBoxGruopFromImageGroup(PictureBox[] pictureBoxes, Bitmap[] images, Size newSize)
         {
+            if (pictureBoxes == null)
+                return;
+            if (images == null)
+                return;
+            if (newSize == null)
+                throw new InvalidOperationException("HOW DO YOU SET STRUCT INTO NULL, RETARD?");
+
             var imagesIterator = images.GetEnumerator();
-            
+
             foreach (var picBox in pictureBoxes)
             {
                 if (!imagesIterator.MoveNext())
                     return;
+                if (imagesIterator.Current == null)
+                    continue;
+
                 picBox.Image = ((Bitmap)imagesIterator.Current).Rescale(newSize);
             }
             return;
@@ -302,18 +318,19 @@ namespace Audiosurf_SkinChanger
 
         private void InstallSkin(AudiosurfSkin skin)
         {
-            skin.SkySpheres.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
-            skin.Hits.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
-            skin.Tiles.Save(EnvironmentalVeriables.gamePath);
-            skin.TilesFlyup.Save(EnvironmentalVeriables.gamePath);
-            skin.Particles.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
-            skin.Rings.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
-            skin.Cliffs.Apply(x => x.Save(EnvironmentalVeriables.gamePath));
+            skin.SkySpheres?.Apply(x => x?.Save(EnvironmentalVeriables.gamePath));
+            skin.Hits?.Apply(x => x?.Save(EnvironmentalVeriables.gamePath));
+            skin.Tiles?.Save(EnvironmentalVeriables.gamePath);
+            skin.TilesFlyup?.Save(EnvironmentalVeriables.gamePath);
+            skin.Particles?.Apply(x => x?.Save(EnvironmentalVeriables.gamePath));
+            skin.Rings?.Apply(x => x?.Save(EnvironmentalVeriables.gamePath));
+            skin.Cliffs?.Apply(x => x?.Save(EnvironmentalVeriables.gamePath));
         }
 
         private void OpenSkinEditor(object sender, EventArgs e)
         {
             var form = new Skin_Creator.SkinCreatorForm();
+            form.OnSkinExprotrted += () => this.LoadSkins("Skins");
             form.Show();
         }
     }

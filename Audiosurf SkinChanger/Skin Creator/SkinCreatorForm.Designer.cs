@@ -31,12 +31,12 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SkinCreatorForm));
             this.label1 = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
-            this.checkBox1 = new System.Windows.Forms.CheckBox();
-            this.comboBox4 = new System.Windows.Forms.ComboBox();
+            this.isRescaleCheckButton = new System.Windows.Forms.CheckBox();
+            this.particlesSizes = new System.Windows.Forms.ComboBox();
             this.label5 = new System.Windows.Forms.Label();
-            this.comboBox3 = new System.Windows.Forms.ComboBox();
-            this.comboBox2 = new System.Windows.Forms.ComboBox();
-            this.comboBox1 = new System.Windows.Forms.ComboBox();
+            this.hitsSizes = new System.Windows.Forms.ComboBox();
+            this.ringsSizes = new System.Windows.Forms.ComboBox();
+            this.tilesetSizes = new System.Windows.Forms.ComboBox();
             this.label4 = new System.Windows.Forms.Label();
             this.label3 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
@@ -61,6 +61,9 @@
             this.Sphere2 = new System.Windows.Forms.PictureBox();
             this.Sphere1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog = new System.Windows.Forms.OpenFileDialog();
+            this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
+            this.skinNameEntry = new System.Windows.Forms.TextBox();
+            this.label6 = new System.Windows.Forms.Label();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.hit2)).BeginInit();
@@ -92,12 +95,14 @@
             // 
             // groupBox1
             // 
-            this.groupBox1.Controls.Add(this.checkBox1);
-            this.groupBox1.Controls.Add(this.comboBox4);
+            this.groupBox1.Controls.Add(this.label6);
+            this.groupBox1.Controls.Add(this.skinNameEntry);
+            this.groupBox1.Controls.Add(this.isRescaleCheckButton);
+            this.groupBox1.Controls.Add(this.particlesSizes);
             this.groupBox1.Controls.Add(this.label5);
-            this.groupBox1.Controls.Add(this.comboBox3);
-            this.groupBox1.Controls.Add(this.comboBox2);
-            this.groupBox1.Controls.Add(this.comboBox1);
+            this.groupBox1.Controls.Add(this.hitsSizes);
+            this.groupBox1.Controls.Add(this.ringsSizes);
+            this.groupBox1.Controls.Add(this.tilesetSizes);
             this.groupBox1.Controls.Add(this.label4);
             this.groupBox1.Controls.Add(this.label3);
             this.groupBox1.Controls.Add(this.label2);
@@ -110,23 +115,23 @@
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Export";
             // 
-            // checkBox1
+            // isRescaleCheckButton
             // 
-            this.checkBox1.AutoSize = true;
-            this.checkBox1.Location = new System.Drawing.Point(13, 96);
-            this.checkBox1.Name = "checkBox1";
-            this.checkBox1.Size = new System.Drawing.Size(189, 17);
-            this.checkBox1.TabIndex = 10;
-            this.checkBox1.Text = "Use source sizes of texture images";
-            this.checkBox1.UseVisualStyleBackColor = true;
+            this.isRescaleCheckButton.AutoSize = true;
+            this.isRescaleCheckButton.Location = new System.Drawing.Point(13, 96);
+            this.isRescaleCheckButton.Name = "isRescaleCheckButton";
+            this.isRescaleCheckButton.Size = new System.Drawing.Size(189, 17);
+            this.isRescaleCheckButton.TabIndex = 10;
+            this.isRescaleCheckButton.Text = "Use source sizes of texture images";
+            this.isRescaleCheckButton.UseVisualStyleBackColor = true;
             // 
-            // comboBox4
+            // particlesSizes
             // 
-            this.comboBox4.FormattingEnabled = true;
-            this.comboBox4.Location = new System.Drawing.Point(459, 17);
-            this.comboBox4.Name = "comboBox4";
-            this.comboBox4.Size = new System.Drawing.Size(153, 21);
-            this.comboBox4.TabIndex = 9;
+            this.particlesSizes.FormattingEnabled = true;
+            this.particlesSizes.Location = new System.Drawing.Point(459, 17);
+            this.particlesSizes.Name = "particlesSizes";
+            this.particlesSizes.Size = new System.Drawing.Size(153, 21);
+            this.particlesSizes.TabIndex = 9;
             // 
             // label5
             // 
@@ -137,29 +142,29 @@
             this.label5.TabIndex = 8;
             this.label5.Text = "Output Particles size:";
             // 
-            // comboBox3
+            // hitsSizes
             // 
-            this.comboBox3.FormattingEnabled = true;
-            this.comboBox3.Location = new System.Drawing.Point(459, 47);
-            this.comboBox3.Name = "comboBox3";
-            this.comboBox3.Size = new System.Drawing.Size(153, 21);
-            this.comboBox3.TabIndex = 7;
+            this.hitsSizes.FormattingEnabled = true;
+            this.hitsSizes.Location = new System.Drawing.Point(459, 47);
+            this.hitsSizes.Name = "hitsSizes";
+            this.hitsSizes.Size = new System.Drawing.Size(153, 21);
+            this.hitsSizes.TabIndex = 7;
             // 
-            // comboBox2
+            // ringsSizes
             // 
-            this.comboBox2.FormattingEnabled = true;
-            this.comboBox2.Location = new System.Drawing.Point(138, 47);
-            this.comboBox2.Name = "comboBox2";
-            this.comboBox2.Size = new System.Drawing.Size(153, 21);
-            this.comboBox2.TabIndex = 6;
+            this.ringsSizes.FormattingEnabled = true;
+            this.ringsSizes.Location = new System.Drawing.Point(138, 47);
+            this.ringsSizes.Name = "ringsSizes";
+            this.ringsSizes.Size = new System.Drawing.Size(153, 21);
+            this.ringsSizes.TabIndex = 6;
             // 
-            // comboBox1
+            // tilesetSizes
             // 
-            this.comboBox1.FormattingEnabled = true;
-            this.comboBox1.Location = new System.Drawing.Point(138, 17);
-            this.comboBox1.Name = "comboBox1";
-            this.comboBox1.Size = new System.Drawing.Size(153, 21);
-            this.comboBox1.TabIndex = 5;
+            this.tilesetSizes.FormattingEnabled = true;
+            this.tilesetSizes.Location = new System.Drawing.Point(138, 17);
+            this.tilesetSizes.Name = "tilesetSizes";
+            this.tilesetSizes.Size = new System.Drawing.Size(153, 21);
+            this.tilesetSizes.TabIndex = 5;
             // 
             // label4
             // 
@@ -205,6 +210,7 @@
             this.button1.TabIndex = 0;
             this.button1.Text = "Export";
             this.button1.UseVisualStyleBackColor = true;
+            this.button1.Click += new System.EventHandler(this.ExportSkin);
             // 
             // groupBox2
             // 
@@ -369,6 +375,7 @@
             this.tile2.Size = new System.Drawing.Size(90, 90);
             this.tile2.TabIndex = 4;
             this.tile2.TabStop = false;
+            this.tile2.Click += new System.EventHandler(this.AddTileSpritesheet);
             this.tile2.MouseEnter += new System.EventHandler(this.SetActiveSphere);
             this.tile2.MouseLeave += new System.EventHandler(this.Sphere1_MouseLeave);
             // 
@@ -379,6 +386,7 @@
             this.tile1.Size = new System.Drawing.Size(90, 90);
             this.tile1.TabIndex = 3;
             this.tile1.TabStop = false;
+            this.tile1.Click += new System.EventHandler(this.AddTileSpritesheet);
             this.tile1.MouseEnter += new System.EventHandler(this.SetActiveSphere);
             this.tile1.MouseLeave += new System.EventHandler(this.Sphere1_MouseLeave);
             // 
@@ -418,6 +426,22 @@
             // openFileDialog
             // 
             this.openFileDialog.FileName = "openFileDialog";
+            // 
+            // skinNameEntry
+            // 
+            this.skinNameEntry.Location = new System.Drawing.Point(459, 90);
+            this.skinNameEntry.Name = "skinNameEntry";
+            this.skinNameEntry.Size = new System.Drawing.Size(153, 20);
+            this.skinNameEntry.TabIndex = 11;
+            // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.Location = new System.Drawing.Point(332, 96);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(62, 13);
+            this.label6.TabIndex = 12;
+            this.label6.Text = "Skin Name:";
             // 
             // SkinCreatorForm
             // 
@@ -479,16 +503,19 @@
         private System.Windows.Forms.PictureBox Sphere2;
         private System.Windows.Forms.PictureBox Sphere1;
         private System.Windows.Forms.OpenFileDialog openFileDialog;
-        private System.Windows.Forms.CheckBox checkBox1;
-        private System.Windows.Forms.ComboBox comboBox4;
+        private System.Windows.Forms.CheckBox isRescaleCheckButton;
+        private System.Windows.Forms.ComboBox particlesSizes;
         private System.Windows.Forms.Label label5;
-        private System.Windows.Forms.ComboBox comboBox3;
-        private System.Windows.Forms.ComboBox comboBox2;
-        private System.Windows.Forms.ComboBox comboBox1;
+        private System.Windows.Forms.ComboBox hitsSizes;
+        private System.Windows.Forms.ComboBox ringsSizes;
+        private System.Windows.Forms.ComboBox tilesetSizes;
         private System.Windows.Forms.Label label4;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Button button2;
         private System.Windows.Forms.Button button1;
+        private System.Windows.Forms.FolderBrowserDialog folderBrowserDialog1;
+        private System.Windows.Forms.Label label6;
+        private System.Windows.Forms.TextBox skinNameEntry;
     }
 }

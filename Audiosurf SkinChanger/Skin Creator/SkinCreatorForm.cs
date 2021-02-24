@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Windows.Forms;
+using System.Linq;
 using System.IO;
 using Audiosurf_SkinChanger.Engine;
 using Audiosurf_SkinChanger.Utilities;
@@ -21,11 +22,14 @@ namespace Audiosurf_SkinChanger.Skin_Creator
         private Dictionary<string, PictureBox> AssotiateTable;
         private Dictionary<string, Dictionary<States, Bitmap>> StatesTable;
         private Dictionary<string, ImageInfo> ImageAssociationTable;
-        private Dictionary<PictureBox, Utilities.ImageGroup> SkinImageGroupAssociationTable;
+        private Dictionary<PictureBox, ImageGroup> SkinImageGroupAssociationTable;
         private Dictionary<PictureBox, NamedBitmap> SkinBitmapsAssociationTable;
-        private NamedBitmap TilesTemp;
+        private Dictionary<string, Size> SizesAssociationTalbe;
         private PictureBox[] TilesGroup;
         private AudiosurfSkin Skin;
+        private SkinPackager skinPackager;
+
+        private string[] SizesStrings = new[] { "64x64", "128x128", "256x256", "512x512" };
 
         public SkinCreatorForm()
         {
@@ -34,9 +38,33 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             CreateAssotiativeTable();
             CreateStateAssotiatieTable();
             CreateImageAssociationTable();
+            CreateSizesAssociationTable();
             Skin = new AudiosurfSkin();
             CreateSkinFieldsAssotiationTables();
-            
+            TilesGroup = new[] { tile1, tile2, tile3, tile4 };
+
+            tilesetSizes.Items.AddRange(SizesStrings);
+            hitsSizes.Items.AddRange(SizesStrings);
+            particlesSizes.Items.AddRange(SizesStrings);
+            ringsSizes.Items.AddRange(SizesStrings);
+
+            tilesetSizes.SelectedIndex = 0;
+            hitsSizes.SelectedIndex = 0;
+            particlesSizes.SelectedIndex = 0;
+            ringsSizes.SelectedIndex = 0;
+
+            skinPackager = new SkinPackager();
+        }
+
+        private void CreateSizesAssociationTable()
+        {
+            SizesAssociationTalbe = new Dictionary<string, Size>()
+            {
+                {SizesStrings[0], new Size(64,64) },
+                {SizesStrings[1], new Size(128,128) },
+                {SizesStrings[2], new Size(256,256) },
+                {SizesStrings[3], new Size(512, 512) }
+            };
         }
 
         private void CreateAssotiativeTable()
@@ -219,7 +247,7 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             {
                 var info = ImageAssociationTable[knownSender.Name];
                 var bmp = ReadImage(openFileDialog.FileName, info);
-                SkinBitmapsAssociationTable[knownSender] = bmp;
+                SkinBitmapsAssociationTable[knownSender].SetImage((Bitmap)bmp);
                 RemoveMouseActions(knownSender);
                 knownSender.Image = ((Bitmap)bmp).Rescale(knownSender.Size);
             }
@@ -235,6 +263,70 @@ namespace Audiosurf_SkinChanger.Skin_Creator
         {
             knownSender.MouseEnter += SetActiveSphere;
             knownSender.MouseLeave += Sphere1_MouseLeave;
+        }
+
+        private void AddTileSpritesheet(object sender, EventArgs e)
+        {
+            var knownSender = sender as PictureBox;
+            if (knownSender == null)
+                MessageBox.Show("Oops! Something goes wrong... \nException message doesnt matter, its just strange internal error", "Internal error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                var info = ImageAssociationTable[knownSender.Name];
+                var bmp = ReadImage(openFileDialog.FileName, info);
+                SkinBitmapsAssociationTable[knownSender].SetImage((Bitmap)bmp);
+                TilesGroup.ForEach(x => RemoveMouseActions(x));
+                Bitmap[] splittedSpritesheet = ((Bitmap)bmp).Squarify().Select(x => x.Rescale(knownSender.Size)).ToArray();
+                FillTilesGroup(splittedSpritesheet);
+            }
+        }
+
+        private void FillTilesGroup(Bitmap[] src)
+        {
+            var indexer = 0;
+            var srcEnumerator = src.GetEnumerator();
+
+            while (srcEnumerator.MoveNext())
+            {
+                TilesGroup[indexer++].Image = (Bitmap)srcEnumerator.Current;
+                if (indexer == TilesGroup.Length) return;
+            }
+        }
+
+        private void ExportSkin(object sender, EventArgs e)
+        {
+            if (!isRescaleCheckButton.Checked)
+            {
+                RescaleSkinTextures();
+            }
+            Skin.Name = skinNameEntry.Text;
+            skinPackager.CompileTo(Skin, "Skins");
+            OnSkinExprotrted?.Invoke();
+        }
+
+        private void ExportSkinTo(object sender, EventArgs e)
+        {
+            if (!isRescaleCheckButton.Checked)
+            {
+                RescaleSkinTextures();
+            }
+            if (folderBrowserDialog1.ShowDialog() == DialogResult.OK)
+            {
+                var path = folderBrowserDialog1.SelectedPath;
+                Skin.Name = skinNameEntry.Text;
+                skinPackager.CompileTo(Skin, path);
+                OnSkinExprotrted?.Invoke();
+            }
+        }
+
+        private void RescaleSkinTextures()
+        {
+            Skin.Tiles.Apply(x => x?.Rescale(SizesAssociationTalbe[tilesetSizes.Text]));
+            Skin.TilesFlyup.Apply(x => x?.Rescale(SizesAssociationTalbe[tilesetSizes.Text]));
+            Skin.Hits.Apply(x => x?.Apply(bmp => bmp?.Rescale(SizesAssociationTalbe[hitsSizes.Text])));
+            Skin.Rings.Apply(x => x?.Apply(bmp => bmp?.Rescale(SizesAssociationTalbe[ringsSizes.Text])));
+            Skin.Particles.Apply(x => x?.Apply(bmp => bmp?.Rescale(SizesAssociationTalbe[particlesSizes.Text])));
         }
     }
 }

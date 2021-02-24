@@ -1,9 +1,10 @@
 ﻿namespace Audiosurf_SkinChanger.Engine
 {
     using System;
-    using System.Drawing;
+    using System.IO;
     using Audiosurf_SkinChanger.Utilities;
-    using Audiosurf_SkinChanger.Engine;
+    using System.Runtime.Serialization;
+    using System.Runtime.Serialization.Formatters.Binary;
 
     [Serializable]
     class AudiosurfSkin
@@ -19,6 +20,7 @@
         public ImageGroup Particles { get; set; }
         public ImageGroup Rings { get; set; }
 
+        
         public AudiosurfSkin()
         {
             SkySpheres = new ImageGroup();
@@ -26,8 +28,36 @@
             Hits = new ImageGroup();
             Particles = new ImageGroup();
             Rings = new ImageGroup();
+            Tiles = new NamedBitmap();
+            TilesFlyup = new NamedBitmap();
         }
 
+        public AudiosurfSkin Clone()
+        {
+            return new AudiosurfSkin()
+            {
+                Source = this.Source,
+                Name = this.Name,
+                SkySpheres = this.SkySpheres,
+                Cliffs = this.Cliffs,
+                Hits = this.Hits,
+                Tiles = this.Tiles,
+                TilesFlyup = this.TilesFlyup,
+                Particles = this.Particles,
+                Rings = this.Rings
+            };
+        }
+
+        public AudiosurfSkin DeepClone()
+        {
+            using (var memory = new MemoryStream())
+            {
+                IFormatter formatter = new BinaryFormatter();
+                formatter.Serialize(memory, this);
+                memory.Position = 0;
+                return (AudiosurfSkin)formatter.Deserialize(memory);
+            }
+        }
 
         public override string ToString()
         {
