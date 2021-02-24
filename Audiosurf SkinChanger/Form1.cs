@@ -66,13 +66,13 @@ namespace Audiosurf_SkinChanger
             LoadSkins("Skins");
 
             if (EnvironmentalVeriables.skinsFolderPath != "None")
-                LoadSkins(EnvironmentalVeriables.skinsFolderPath);
+                LoadSkins(EnvironmentalVeriables.skinsFolderPath, false);
 
             toolTip1.SetToolTip(cleanInstallCheck, "When installing in Clean Installation mode, the program will automatically delete all old Audiosurf textures, install the default skin and over it the one you choose.");
         }
 
 
-        private void LoadSkins(string folder)
+        private void LoadSkins(string folder, bool reload = false)
         {
             if (!Directory.Exists(folder))
             {
@@ -80,8 +80,11 @@ namespace Audiosurf_SkinChanger
                 return;
             }
 
-            EnvironmentalVeriables.Skins.Clear();
-            SkinsListBox.Items.Clear();
+            if (reload)
+            {
+                EnvironmentalVeriables.Skins.Clear();
+                SkinsListBox.Items.Clear();
+            }
             foreach (var path in Directory.GetFiles(folder))
             {
                 if (new FileInfo(path).Extension != ".askin")
@@ -99,6 +102,7 @@ namespace Audiosurf_SkinChanger
                 return;
 
             SkinsListBox.SelectedIndex = 0;
+            SkinsListBox.Invalidate();
         }
 
         private void SavePathes(object sender, EventArgs e)

@@ -221,6 +221,8 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             {
                 var info = ImageAssociationTable[knownSender.Name];
                 var bmp = ReadImage(openFileDialog.FileName, info);
+                if (bmp == null)
+                    return;
                 SkinImageGroupAssociationTable[knownSender].AddImage(bmp);
                 RemoveMouseActions(knownSender);
                 knownSender.Image = ((Bitmap)bmp).Rescale(knownSender.Size);
@@ -233,6 +235,7 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             if (ext != info.Format)
             {
                 MessageBox.Show($"Ooops! Selected texture requiers image format {info.Format}, but you selected .{ext} image!\n", "Image format Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return null;
             }
             return new NamedBitmap(Image.FromFile(openFileDialog.FileName), info);
         }
@@ -247,6 +250,8 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             {
                 var info = ImageAssociationTable[knownSender.Name];
                 var bmp = ReadImage(openFileDialog.FileName, info);
+                if (bmp == null)
+                    return;
                 SkinBitmapsAssociationTable[knownSender].SetImage((Bitmap)bmp);
                 RemoveMouseActions(knownSender);
                 knownSender.Image = ((Bitmap)bmp).Rescale(knownSender.Size);
@@ -275,6 +280,8 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             {
                 var info = ImageAssociationTable[knownSender.Name];
                 var bmp = ReadImage(openFileDialog.FileName, info);
+                if (bmp == null)
+                    return;
                 SkinBitmapsAssociationTable[knownSender].SetImage((Bitmap)bmp);
                 TilesGroup.ForEach(x => RemoveMouseActions(x));
                 Bitmap[] splittedSpritesheet = ((Bitmap)bmp).Squarify().Select(x => x.Rescale(knownSender.Size)).ToArray();
@@ -316,6 +323,7 @@ namespace Audiosurf_SkinChanger.Skin_Creator
                 var path = folderBrowserDialog1.SelectedPath;
                 Skin.Name = skinNameEntry.Text;
                 skinPackager.CompileTo(Skin, path);
+                MessageBox.Show("Done!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 OnSkinExprotrted?.Invoke();
             }
         }

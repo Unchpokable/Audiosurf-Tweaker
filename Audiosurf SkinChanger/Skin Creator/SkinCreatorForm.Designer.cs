@@ -31,6 +31,8 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(SkinCreatorForm));
             this.label1 = new System.Windows.Forms.Label();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.label6 = new System.Windows.Forms.Label();
+            this.skinNameEntry = new System.Windows.Forms.TextBox();
             this.isRescaleCheckButton = new System.Windows.Forms.CheckBox();
             this.particlesSizes = new System.Windows.Forms.ComboBox();
             this.label5 = new System.Windows.Forms.Label();
@@ -62,8 +64,6 @@
             this.Sphere1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog = new System.Windows.Forms.OpenFileDialog();
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
-            this.skinNameEntry = new System.Windows.Forms.TextBox();
-            this.label6 = new System.Windows.Forms.Label();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.hit2)).BeginInit();
@@ -114,6 +114,22 @@
             this.groupBox1.TabIndex = 1;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Export";
+            // 
+            // label6
+            // 
+            this.label6.AutoSize = true;
+            this.label6.Location = new System.Drawing.Point(332, 96);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(62, 13);
+            this.label6.TabIndex = 12;
+            this.label6.Text = "Skin Name:";
+            // 
+            // skinNameEntry
+            // 
+            this.skinNameEntry.Location = new System.Drawing.Point(459, 90);
+            this.skinNameEntry.Name = "skinNameEntry";
+            this.skinNameEntry.Size = new System.Drawing.Size(153, 20);
+            this.skinNameEntry.TabIndex = 11;
             // 
             // isRescaleCheckButton
             // 
@@ -201,6 +217,7 @@
             this.button2.TabIndex = 1;
             this.button2.Text = "Export To...";
             this.button2.UseVisualStyleBackColor = true;
+            this.button2.Click += new System.EventHandler(this.ExportSkinTo);
             // 
             // button1
             // 
@@ -426,22 +443,6 @@
             // openFileDialog
             // 
             this.openFileDialog.FileName = "openFileDialog";
-            // 
-            // skinNameEntry
-            // 
-            this.skinNameEntry.Location = new System.Drawing.Point(459, 90);
-            this.skinNameEntry.Name = "skinNameEntry";
-            this.skinNameEntry.Size = new System.Drawing.Size(153, 20);
-            this.skinNameEntry.TabIndex = 11;
-            // 
-            // label6
-            // 
-            this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(332, 96);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(62, 13);
-            this.label6.TabIndex = 12;
-            this.label6.Text = "Skin Name:";
             // 
             // SkinCreatorForm
             // 
