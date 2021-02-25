@@ -2,7 +2,6 @@
 {
     using Audiosurf_SkinChanger.Utilities;
     using System;
-    using System.Collections.Generic;
     using System.Drawing;
     using System.IO;
     using System.Linq;
@@ -15,7 +14,7 @@
         private const string skinExtension = @".askin";
         private Logger logger;
         private string[] texturesNames;
-        private string[] Masks;
+        private string[] masks;
         private readonly string defaultOutput = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
         public SkinPackager()
@@ -29,7 +28,7 @@
                 "tileflyup.png", "tiles.png"
             };
 
-            Masks = new[]
+            masks = new[]
             {
                 EnvironmentalVeriables.CliffImagesMask,
                 EnvironmentalVeriables.HitImageMask,
@@ -110,7 +109,7 @@
             if (!AllPictures.Any(fileName => texturesNames.Contains(Path.GetFileName(fileName))))
                 return null;
 
-            foreach(var mask in Masks)
+            foreach(var mask in masks)
             {
                 if (mask == EnvironmentalVeriables.CliffImagesMask)
                     result.Cliffs = GetAllImagesByNameMask("cliffs", mask, path);

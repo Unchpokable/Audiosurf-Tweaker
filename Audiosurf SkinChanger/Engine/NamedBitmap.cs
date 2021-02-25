@@ -9,13 +9,12 @@
     [Serializable]
     public class NamedBitmap
     {
-        public int Width => Source.Width;
-        public int Height => Source.Height;
+        public int Width => source.Width;
+        public int Height => source.Height;
         public Size Size => new Size(Width, Height);
-        
-
-        private Bitmap Source;
         public string Name;
+
+        private Bitmap source;
         private string format;
 
         [NonSerialized]
@@ -27,40 +26,40 @@
 
         public NamedBitmap(Image original)
         {
-            Source = new Bitmap(original);
+            source = new Bitmap(original);
         }
 
         public NamedBitmap(string name, Image source)
         {
             Name = name;
-            Source = new Bitmap(source);
+            this.source = new Bitmap(source);
             format = ProcessImageFormat(name).ToString();
         }
 
         public NamedBitmap(string name, Bitmap source)
         {
             Name = name;
-            Source = source;
+            this.source = source;
             format = ProcessImageFormat(name).ToString();
         }
 
         public NamedBitmap(string path, ImageInfo imageInfo)
         {
-            Source = (Bitmap)Image.FromFile(path);
+            source = (Bitmap)Image.FromFile(path);
             Name = imageInfo.FileName;
             format = imageInfo.Format;
         }
 
         public NamedBitmap(Image original, ImageInfo imageInfo)
         {
-            Source = (Bitmap)original;
+            source = (Bitmap)original;
             Name = imageInfo.FileName;
             format = imageInfo.Format;
         }
 
         public void Apply(Func<Bitmap, Bitmap> transform)
         {
-            Source = transform(Source);
+            source = transform(source);
         }
 
         private ImageFormat ProcessImageFormat(string srcFileName)
@@ -70,7 +69,7 @@
 
         public void SetImage(Bitmap source)
         {
-            Source = source;
+            this.source = source;
         }
         
         private ImageFormat GetImageFormatByExtension(string extension)
@@ -90,12 +89,12 @@
 
         public static explicit operator Bitmap(NamedBitmap obj)
         {
-            return obj.Source;
+            return obj.source;
         }
 
         public static implicit operator Image(NamedBitmap obj)
         {
-            return obj.Source;
+            return obj.source;
         }
 
         public static implicit operator NamedBitmap(Bitmap obj)
@@ -105,7 +104,7 @@
 
         public void Save(string filepath)
         {
-            Source.Save(filepath + @"\\" + Name, GetImageFormatByExtension(format.ToLower()));
+            source.Save(filepath + @"\\" + Name, GetImageFormatByExtension(format.ToLower()));
         }
     }
 }

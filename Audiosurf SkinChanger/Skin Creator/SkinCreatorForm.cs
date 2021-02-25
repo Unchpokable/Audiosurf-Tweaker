@@ -19,14 +19,14 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             Active
         }
 
-        private Dictionary<string, PictureBox> AssotiateTable;
-        private Dictionary<string, Dictionary<States, Bitmap>> StatesTable;
-        private Dictionary<string, ImageInfo> ImageAssociationTable;
-        private Dictionary<PictureBox, ImageGroup> SkinImageGroupAssociationTable;
-        private Dictionary<PictureBox, NamedBitmap> SkinBitmapsAssociationTable;
-        private Dictionary<string, Size> SizesAssociationTalbe;
-        private PictureBox[] TilesGroup;
-        private AudiosurfSkin Skin;
+        private Dictionary<string, PictureBox> assotiateTable;
+        private Dictionary<string, Dictionary<States, Bitmap>> statesTable;
+        private Dictionary<string, ImageInfo> imageAssociationTable;
+        private Dictionary<PictureBox, ImageGroup> skinImageGroupAssociationTable;
+        private Dictionary<PictureBox, NamedBitmap> skinBitmapsAssociationTable;
+        private Dictionary<string, Size> sizesAssociationTalbe;
+        private PictureBox[] tilesGroup;
+        private AudiosurfSkin skin;
         private SkinPackager skinPackager;
 
         private string[] SizesStrings = new[] { "64x64", "128x128", "256x256", "512x512" };
@@ -39,9 +39,9 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             CreateStateAssotiatieTable();
             CreateImageAssociationTable();
             CreateSizesAssociationTable();
-            Skin = new AudiosurfSkin();
+            skin = new AudiosurfSkin();
             CreateSkinFieldsAssotiationTables();
-            TilesGroup = new[] { tile1, tile2, tile3, tile4 };
+            tilesGroup = new[] { tile1, tile2, tile3, tile4 };
 
             tilesetSizes.Items.AddRange(SizesStrings);
             hitsSizes.Items.AddRange(SizesStrings);
@@ -58,7 +58,7 @@ namespace Audiosurf_SkinChanger.Skin_Creator
 
         private void CreateSizesAssociationTable()
         {
-            SizesAssociationTalbe = new Dictionary<string, Size>()
+            sizesAssociationTalbe = new Dictionary<string, Size>()
             {
                 {SizesStrings[0], new Size(64,64) },
                 {SizesStrings[1], new Size(128,128) },
@@ -69,7 +69,7 @@ namespace Audiosurf_SkinChanger.Skin_Creator
 
         private void CreateAssotiativeTable()
         {
-            AssotiateTable = new Dictionary<string, PictureBox>()
+            assotiateTable = new Dictionary<string, PictureBox>()
             {
                 { "Sphere1", Sphere1 },
                 { "Sphere2", Sphere2 },
@@ -93,7 +93,7 @@ namespace Audiosurf_SkinChanger.Skin_Creator
 
         private void CreateStateAssotiatieTable()
         {
-            StatesTable = new Dictionary<string, Dictionary<States, Bitmap>>
+            statesTable = new Dictionary<string, Dictionary<States, Bitmap>>
             {
                 { "Sphere1", new Dictionary<States, Bitmap>() { {States.Active, Images.Add_SkySphere_Active }, { States.Idle, Images.Add_Skysphere} } },
                 { "Sphere2", new Dictionary<States, Bitmap>() { {States.Active, Images.Add_SkySphere_Active }, { States.Idle, Images.Add_Skysphere} } },
@@ -117,7 +117,7 @@ namespace Audiosurf_SkinChanger.Skin_Creator
 
         private void CreateImageAssociationTable()
         {
-            ImageAssociationTable = new Dictionary<string, ImageInfo>()
+            imageAssociationTable = new Dictionary<string, ImageInfo>()
             {
                 { "Sphere1", new ImageInfo("png", "Skysphere_White.png") },
                 { "Sphere2", new ImageInfo("png", "Skysphere_Black.png") },
@@ -141,34 +141,34 @@ namespace Audiosurf_SkinChanger.Skin_Creator
 
         private void CreateSkinFieldsAssotiationTables()
         {
-            SkinBitmapsAssociationTable = new Dictionary<PictureBox, NamedBitmap>()
+            skinBitmapsAssociationTable = new Dictionary<PictureBox, NamedBitmap>()
             {
-                {tile1, Skin.Tiles },
-                {tile2, Skin.Tiles },
-                {tile3, Skin.Tiles },
-                {tile4, Skin.Tiles },
+                {tile1, skin.Tiles },
+                {tile2, skin.Tiles },
+                {tile3, skin.Tiles },
+                {tile4, skin.Tiles },
 
-                {tileflyup, Skin.TilesFlyup }
+                {tileflyup, skin.TilesFlyup }
             };
 
 
-            SkinImageGroupAssociationTable = new Dictionary<PictureBox, ImageGroup>()
+            skinImageGroupAssociationTable = new Dictionary<PictureBox, ImageGroup>()
             {
-                {Sphere1, Skin.SkySpheres },
-                {Sphere2, Skin.SkySpheres },
-                {Sphere3, Skin.SkySpheres },
+                {Sphere1, skin.SkySpheres },
+                {Sphere2, skin.SkySpheres },
+                {Sphere3, skin.SkySpheres },
 
-                {part1, Skin.Particles },
-                {part2, Skin.Particles },
-                {part3, Skin.Particles },
+                {part1, skin.Particles },
+                {part2, skin.Particles },
+                {part3, skin.Particles },
 
-                {ring1, Skin.Rings },
-                {ring2, Skin.Rings },
-                {ring3, Skin.Rings },
-                {ring4, Skin.Rings },
+                {ring1, skin.Rings },
+                {ring2, skin.Rings },
+                {ring3, skin.Rings },
+                {ring4, skin.Rings },
 
-                {hit1, Skin.Hits },
-                {hit2, Skin.Hits },
+                {hit1, skin.Hits },
+                {hit2, skin.Hits },
             };
         }
 
@@ -202,13 +202,13 @@ namespace Audiosurf_SkinChanger.Skin_Creator
         private void SetActiveSphere(object sender, EventArgs e)
         {
             var knownSender = sender as PictureBox;
-            AssotiateTable[knownSender.Name].Image = StatesTable[knownSender.Name][States.Active];
+            assotiateTable[knownSender.Name].Image = statesTable[knownSender.Name][States.Active];
         }
 
         private void Sphere1_MouseLeave(object sender, EventArgs e)
         {
             var knownSender = sender as PictureBox;
-            AssotiateTable[knownSender.Name].Image = StatesTable[knownSender.Name][States.Idle];
+            assotiateTable[knownSender.Name].Image = statesTable[knownSender.Name][States.Idle];
         }
 
         private void FillImageSlot(object sender, EventArgs e)
@@ -219,11 +219,11 @@ namespace Audiosurf_SkinChanger.Skin_Creator
 
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
-                var info = ImageAssociationTable[knownSender.Name];
+                var info = imageAssociationTable[knownSender.Name];
                 var bmp = ReadImage(openFileDialog.FileName, info);
                 if (bmp == null)
                     return;
-                SkinImageGroupAssociationTable[knownSender].AddImage(bmp);
+                skinImageGroupAssociationTable[knownSender].AddImage(bmp);
                 RemoveMouseActions(knownSender);
                 knownSender.Image = ((Bitmap)bmp).Rescale(knownSender.Size);
             }
@@ -248,11 +248,11 @@ namespace Audiosurf_SkinChanger.Skin_Creator
 
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
-                var info = ImageAssociationTable[knownSender.Name];
+                var info = imageAssociationTable[knownSender.Name];
                 var bmp = ReadImage(openFileDialog.FileName, info);
                 if (bmp == null)
                     return;
-                SkinBitmapsAssociationTable[knownSender].SetImage((Bitmap)bmp);
+                skinBitmapsAssociationTable[knownSender].SetImage((Bitmap)bmp);
                 RemoveMouseActions(knownSender);
                 knownSender.Image = ((Bitmap)bmp).Rescale(knownSender.Size);
             }
@@ -278,12 +278,12 @@ namespace Audiosurf_SkinChanger.Skin_Creator
 
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
-                var info = ImageAssociationTable[knownSender.Name];
+                var info = imageAssociationTable[knownSender.Name];
                 var bmp = ReadImage(openFileDialog.FileName, info);
                 if (bmp == null)
                     return;
-                SkinBitmapsAssociationTable[knownSender].SetImage((Bitmap)bmp);
-                TilesGroup.ForEach(x => RemoveMouseActions(x));
+                skinBitmapsAssociationTable[knownSender].SetImage((Bitmap)bmp);
+                tilesGroup.ForEach(x => RemoveMouseActions(x));
                 Bitmap[] splittedSpritesheet = ((Bitmap)bmp).Squarify().Select(x => x.Rescale(knownSender.Size)).ToArray();
                 FillTilesGroup(splittedSpritesheet);
             }
@@ -296,8 +296,8 @@ namespace Audiosurf_SkinChanger.Skin_Creator
 
             while (srcEnumerator.MoveNext())
             {
-                TilesGroup[indexer++].Image = (Bitmap)srcEnumerator.Current;
-                if (indexer == TilesGroup.Length) return;
+                tilesGroup[indexer++].Image = (Bitmap)srcEnumerator.Current;
+                if (indexer == tilesGroup.Length) return;
             }
         }
 
@@ -307,8 +307,8 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             {
                 RescaleSkinTextures();
             }
-            Skin.Name = skinNameEntry.Text;
-            skinPackager.CompileTo(Skin, "Skins");
+            skin.Name = skinNameEntry.Text;
+            skinPackager.CompileTo(skin, "Skins");
             OnSkinExprotrted?.Invoke();
         }
 
@@ -321,8 +321,8 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             if (folderBrowserDialog1.ShowDialog() == DialogResult.OK)
             {
                 var path = folderBrowserDialog1.SelectedPath;
-                Skin.Name = skinNameEntry.Text;
-                skinPackager.CompileTo(Skin, path);
+                skin.Name = skinNameEntry.Text;
+                skinPackager.CompileTo(skin, path);
                 MessageBox.Show("Done!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 OnSkinExprotrted?.Invoke();
             }
@@ -330,11 +330,11 @@ namespace Audiosurf_SkinChanger.Skin_Creator
 
         private void RescaleSkinTextures()
         {
-            Skin.Tiles.Apply(x => x?.Rescale(SizesAssociationTalbe[tilesetSizes.Text]));
-            Skin.TilesFlyup.Apply(x => x?.Rescale(SizesAssociationTalbe[tilesetSizes.Text]));
-            Skin.Hits.Apply(x => x?.Apply(bmp => bmp?.Rescale(SizesAssociationTalbe[hitsSizes.Text])));
-            Skin.Rings.Apply(x => x?.Apply(bmp => bmp?.Rescale(SizesAssociationTalbe[ringsSizes.Text])));
-            Skin.Particles.Apply(x => x?.Apply(bmp => bmp?.Rescale(SizesAssociationTalbe[particlesSizes.Text])));
+            skin.Tiles.Apply(x => x?.Rescale(sizesAssociationTalbe[tilesetSizes.Text]));
+            skin.TilesFlyup.Apply(x => x?.Rescale(sizesAssociationTalbe[tilesetSizes.Text]));
+            skin.Hits.Apply(x => x?.Apply(bmp => bmp?.Rescale(sizesAssociationTalbe[hitsSizes.Text])));
+            skin.Rings.Apply(x => x?.Apply(bmp => bmp?.Rescale(sizesAssociationTalbe[ringsSizes.Text])));
+            skin.Particles.Apply(x => x?.Apply(bmp => bmp?.Rescale(sizesAssociationTalbe[particlesSizes.Text])));
         }
     }
 }
