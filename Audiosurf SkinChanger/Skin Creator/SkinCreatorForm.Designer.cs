@@ -372,6 +372,7 @@
             this.tile4.Size = new System.Drawing.Size(90, 90);
             this.tile4.TabIndex = 6;
             this.tile4.TabStop = false;
+            this.tile4.Click += new System.EventHandler(this.AddTileSpritesheet);
             this.tile4.MouseEnter += new System.EventHandler(this.SetActiveSphere);
             this.tile4.MouseLeave += new System.EventHandler(this.Sphere1_MouseLeave);
             // 
@@ -382,6 +383,7 @@
             this.tile3.Size = new System.Drawing.Size(90, 90);
             this.tile3.TabIndex = 5;
             this.tile3.TabStop = false;
+            this.tile3.Click += new System.EventHandler(this.AddTileSpritesheet);
             this.tile3.MouseEnter += new System.EventHandler(this.SetActiveSphere);
             this.tile3.MouseLeave += new System.EventHandler(this.Sphere1_MouseLeave);
             // 
