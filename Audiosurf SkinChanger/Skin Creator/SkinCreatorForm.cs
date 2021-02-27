@@ -252,7 +252,7 @@ namespace Audiosurf_SkinChanger.Skin_Creator
                 var bmp = ReadImage(openFileDialog.FileName, info);
                 if (bmp == null)
                     return;
-                skinBitmapsAssociationTable[knownSender].SetImage((Bitmap)bmp);
+                skinBitmapsAssociationTable[knownSender].SetImage(bmp);
                 RemoveMouseActions(knownSender);
                 knownSender.Image = ((Bitmap)bmp).Rescale(knownSender.Size);
             }
@@ -282,7 +282,7 @@ namespace Audiosurf_SkinChanger.Skin_Creator
                 var bmp = ReadImage(openFileDialog.FileName, info);
                 if (bmp == null)
                     return;
-                skinBitmapsAssociationTable[knownSender].SetImage((Bitmap)bmp);
+                skinBitmapsAssociationTable[knownSender].SetImage(bmp);
                 tilesGroup.ForEach(x => RemoveMouseActions(x));
                 Bitmap[] splittedSpritesheet = ((Bitmap)bmp).Squarify().Select(x => x.Rescale(knownSender.Size)).ToArray();
                 FillTilesGroup(splittedSpritesheet);

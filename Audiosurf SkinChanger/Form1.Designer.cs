@@ -130,7 +130,7 @@
             this.saveButton.Name = "saveButton";
             this.saveButton.Size = new System.Drawing.Size(221, 23);
             this.saveButton.TabIndex = 3;
-            this.saveButton.Text = "Сохранить";
+            this.saveButton.Text = "Overwrite paths ";
             this.saveButton.UseVisualStyleBackColor = true;
             this.saveButton.Click += new System.EventHandler(this.SavePathes);
             // 

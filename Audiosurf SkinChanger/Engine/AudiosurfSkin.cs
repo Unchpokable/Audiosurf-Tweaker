@@ -20,7 +20,7 @@
         public ImageGroup Particles { get; set; }
         public ImageGroup Rings { get; set; }
 
-        
+
         public AudiosurfSkin()
         {
             SkySpheres = new ImageGroup();

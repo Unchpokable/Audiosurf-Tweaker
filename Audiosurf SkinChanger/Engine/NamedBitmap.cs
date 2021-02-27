@@ -71,6 +71,13 @@
         {
             this.source = source;
         }
+
+        public void SetImage(NamedBitmap other)
+        {
+            this.source = other.source;
+            this.Name = other.Name;
+            this.format = other.format;
+        }
         
         private ImageFormat GetImageFormatByExtension(string extension)
         {
