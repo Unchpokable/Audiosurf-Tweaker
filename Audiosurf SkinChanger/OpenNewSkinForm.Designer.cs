@@ -48,6 +48,7 @@
             this.textBox1.Name = "textBox1";
             this.textBox1.Size = new System.Drawing.Size(230, 20);
             this.textBox1.TabIndex = 1;
+            this.textBox1.KeyDown += new System.Windows.Forms.KeyEventHandler(this.button1_KeyDown);
             // 
             // button1
             // 
@@ -58,6 +59,7 @@
             this.button1.Text = "Ok";
             this.button1.UseVisualStyleBackColor = true;
             this.button1.Click += new System.EventHandler(this.button1_Click);
+            this.button1.KeyDown += new System.Windows.Forms.KeyEventHandler(this.button1_KeyDown);
             // 
             // OpenNewSkinForm
             // 

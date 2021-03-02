@@ -83,12 +83,13 @@
             try
             {
                 IFormatter formatter = new BinaryFormatter();
-                Stream skinFileStream = new FileStream(path, FileMode.Open);
-                return (AudiosurfSkin)formatter.Deserialize(skinFileStream);
+                using (Stream skinFileStream = new FileStream(path, FileMode.Open))
+                    return (AudiosurfSkin)formatter.Deserialize(skinFileStream);
             }
 
-            catch (IOException)
+            catch (IOException e)
             {
+                logger.Log("ERROR", e.ToString());
                 return null;
             }
 
