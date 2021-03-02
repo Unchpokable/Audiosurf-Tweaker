@@ -130,7 +130,7 @@
             this.saveButton.Name = "saveButton";
             this.saveButton.Size = new System.Drawing.Size(221, 23);
             this.saveButton.TabIndex = 3;
-            this.saveButton.Text = "Сохранить";
+            this.saveButton.Text = "Overwrite paths ";
             this.saveButton.UseVisualStyleBackColor = true;
             this.saveButton.Click += new System.EventHandler(this.SavePathes);
             // 
@@ -417,9 +417,9 @@
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(210, 23);
             this.button1.TabIndex = 5;
-            this.button1.Text = "Add new skin from .zip";
+            this.button1.Text = "Open Skin Editor";
             this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.OpenSkinFromZip);
+            this.button1.Click += new System.EventHandler(this.OpenSkinEditor);
             // 
             // button4
             // 

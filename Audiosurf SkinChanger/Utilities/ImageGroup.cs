@@ -12,6 +12,12 @@
         public string Name { get; set; }
         public IList<NamedBitmap> Group { get; private set; }
 
+        public ImageGroup()
+        {
+            Name = "default";
+            Group = new List<NamedBitmap>();
+        }
+
         public ImageGroup(string name, IEnumerable<NamedBitmap> images)
         {
             Name = name;
@@ -24,10 +30,21 @@
             Group = new List<NamedBitmap>();
         }
 
+        public ImageGroup(params Bitmap[] source)
+        {
+            Group = source.Select(x => (NamedBitmap)x).ToList();
+        }
+
         public void AddImage(NamedBitmap image)
         {
             if (image == null)
                 throw new NullReferenceException($"Can't add null to image group. {image}: Object reference not set to an instance of an object");
+            for (int i = 0; i < 0; i++)
+                if (Group[i].Name == image.Name)
+                {
+                    Group[i] = image;
+                    return;
+                }
             Group.Add(image);
         }
 
@@ -35,15 +52,15 @@
         {
             if (images == null)
                 throw new NullReferenceException($"Can't add null to image group. {images}: Object reference not set to an instance of an object");
-            foreach (var bitmap in images)
-                Group.Add(bitmap);
+            foreach (var image in images)
+                AddImage(image);
         }
 
         public void Apply(Func<NamedBitmap, NamedBitmap> transform)
         {
             for (int i = 0; i < Group.Count; i++)
             {
-                Group[i] = transform(Group[i]);
+                Group[i] = (NamedBitmap)transform(Group[i]);
             }
         }
 
@@ -63,6 +80,11 @@
         public static implicit operator Bitmap[](ImageGroup obj)
         {
             return obj.Group.Select(x => (Bitmap)x).ToArray();
+        }
+
+        public static explicit operator ImageGroup(Bitmap obj)
+        {
+            return new ImageGroup(obj);
         }
     }
 }

@@ -79,7 +79,19 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Engine\InternalWorker.cs" />
+    <Compile Include="Skin Creator\ImageInfo.cs" />
+    <Compile Include="Skin Creator\Images.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Images.resx</DependentUpon>
+    </Compile>
+    <Compile Include="Skin Creator\SkinCreatorForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Skin Creator\SkinCreatorForm.Designer.cs">
+      <DependentUpon>SkinCreatorForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Utilities\InternalWorker.cs" />
     <Compile Include="Engine\NamedBitmap.cs" />
     <Compile Include="EnvironmentalVeriables.cs" />
     <Compile Include="Engine\AudiosurfSkin.cs" />
@@ -116,6 +128,13 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <EmbeddedResource Include="Skin Creator\Images.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Images.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Skin Creator\SkinCreatorForm.resx">
+      <DependentUpon>SkinCreatorForm.cs</DependentUpon>
+    </EmbeddedResource>
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -128,6 +147,79 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup />
+  <ItemGroup>
+    <None Include="Resources\Add_Tiles_Active.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Hit1.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Hit1_Active.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Hit2.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Hit2_Active.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Particles1.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Particles1_Active.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Particles2.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Particles2_Active.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Particles3.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Particles3_Active.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Ring1A.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Ring1A_Active.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Ring1B.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Ring1B_Active.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Ring2A.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Ring2A_Active.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Ring2B.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Ring2B_Active.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Skysphere.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_SkySphere_Active.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Tile_Flyup_Active.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_TileFlyup.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Add_Tiles.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
