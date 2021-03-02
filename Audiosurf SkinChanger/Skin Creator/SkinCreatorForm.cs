@@ -54,6 +54,8 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             ringsSizes.SelectedIndex = 0;
 
             skinPackager = new SkinPackager();
+            isRescaleCheckButton.Checked = true;
+            skinNameEntry.Text = "Unnamed skin";
         }
 
         private void CreateSizesAssociationTable()

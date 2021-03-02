@@ -305,7 +305,7 @@ namespace Audiosurf_SkinChanger
             if (cleanInstallCheck.Checked)
             {
                 Clean(EnvironmentalVeriables.gamePath);
-                InstallSkin(skinPackager.Decompile(@"Skins\\default.askin"));
+                InstallSkin(skinPackager.Decompile(@"Skins\default.askin"));
             }
             InstallSkin(skin);
             MessageBox.Show("Done!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);

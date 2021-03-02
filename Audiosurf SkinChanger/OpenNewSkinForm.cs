@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Windows.Forms;
-using System.IO;
 using System.Linq;
 
 namespace Audiosurf_SkinChanger
@@ -13,6 +12,7 @@ namespace Audiosurf_SkinChanger
         {
             InitializeComponent();
             parent = p as Form1;
+
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -44,6 +44,12 @@ namespace Audiosurf_SkinChanger
 
             parent.TempSkinName = textBox1.Text;
             this.Close();
+        }
+
+        private void button1_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+                button1_Click(null, null);
         }
     }
 }
