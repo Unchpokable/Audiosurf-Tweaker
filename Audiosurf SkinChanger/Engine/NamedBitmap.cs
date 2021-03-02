@@ -111,7 +111,7 @@
 
         public void Save(string filepath)
         {
-            source.Save(filepath + @"\\" + Name, GetImageFormatByExtension(format.ToLower()));
+            source?.Save(filepath + @"\\" + Name, GetImageFormatByExtension(format.ToLower()));
         }
     }
 }

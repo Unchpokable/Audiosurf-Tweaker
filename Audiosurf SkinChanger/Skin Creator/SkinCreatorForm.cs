@@ -218,7 +218,7 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             var knownSender = sender as PictureBox;
             if (knownSender == null)
                 MessageBox.Show("Oops! Something goes wrong... \nException message doesnt matter, its just strange internal error", "Internal error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-
+            
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
                 var info = imageAssociationTable[knownSender.Name];
