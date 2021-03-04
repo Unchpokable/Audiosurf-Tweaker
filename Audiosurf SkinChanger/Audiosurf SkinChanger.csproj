@@ -113,6 +113,7 @@
     <Compile Include="Utilities\Extensions.cs" />
     <Compile Include="Utilities\ImageGroup.cs" />
     <Compile Include="Utilities\Logger.cs" />
+    <Compile Include="Utilities\SkinLink.cs" />
     <EmbeddedResource Include="Form1.resx">
       <DependentUpon>Form1.cs</DependentUpon>
     </EmbeddedResource>

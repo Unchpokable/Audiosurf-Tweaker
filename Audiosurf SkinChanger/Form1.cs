@@ -99,8 +99,10 @@ namespace Audiosurf_SkinChanger
                 if (skin == null)
                     return;
 
-                EnvironmentalVeriables.Skins.Add(skin);
-                SkinsListBox.Items.Add(skin);
+                var tempLink = new SkinLink(path, skin.Name);
+
+                EnvironmentalVeriables.Skins.Add(tempLink);
+                SkinsListBox.Items.Add(tempLink);
             }
 
             if (SkinsListBox.Items.Count == 0)
@@ -137,15 +139,15 @@ namespace Audiosurf_SkinChanger
                     MessageBox.Show("Skin already opened!", "Skin Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
-
+                var tempLink = new SkinLink(openSkinDialog.FileName, openedSkin.Name);
                 if (!SkinsListBox.Items.Contains(openedSkin))
                 {
-                    EnvironmentalVeriables.Skins.Add(openedSkin);
-                    SkinsListBox.Items.Add(openedSkin);
+                    EnvironmentalVeriables.Skins.Add(tempLink);
+                    SkinsListBox.Items.Add(tempLink);
                 }
-                SkinsListBox.SelectedItem = openedSkin;
+                SkinsListBox.SelectedItem = tempLink;
                 currentSkin = openedSkin;
-                DrawPreviewOfSkin(openedSkin);
+                DrawPreviewOfSkin(tempLink);
             }
         }
 
@@ -184,12 +186,12 @@ namespace Audiosurf_SkinChanger
         {
             try
             {
-                var selectedSkin = (AudiosurfSkin)SkinsListBox.SelectedItem;
+                var selectedSkin = (SkinLink)SkinsListBox.SelectedItem;
                 if (selectedSkin == null)
                     return;
 
                 DrawPreviewOfSkin(selectedSkin);
-                currentSkin = selectedSkin;
+                currentSkin = selectedSkin.Load();
             }
             catch (Exception exc)
             {
@@ -197,8 +199,9 @@ namespace Audiosurf_SkinChanger
             }
         }
 
-        private void DrawPreviewOfSkin(AudiosurfSkin skin)
+        private void DrawPreviewOfSkin(SkinLink link)
         {
+            var skin = link.Load();
             pictureBoxes.ForEach(x => x.ClearAll());
             tileFlyup.Image = ((Bitmap)skin.TilesFlyup)?.Rescale(stdTextureSize);
             FillPictureBoxGruopFromImageGroup(skySpherePreview, skin.SkySpheres, stdSkysphereSize);
@@ -263,9 +266,10 @@ namespace Audiosurf_SkinChanger
                         }
                         skin.Name = name;
                     }
-                    EnvironmentalVeriables.Skins.Add(skin);
-                    SkinsListBox.Items.Add(skin);
-                    DrawPreviewOfSkin(skin);
+                    var link = new SkinLink(folderBrowserDialog1.SelectedPath + @"\\" + skin.Name + SkinPackager.skinExtension, skin.Name);
+                    EnvironmentalVeriables.Skins.Add(link);
+                    SkinsListBox.Items.Add(link);
+                    DrawPreviewOfSkin(link);
                     currentSkin = skin;
                 }
             }
@@ -285,17 +289,27 @@ namespace Audiosurf_SkinChanger
 
             if (skinsFolderPathTextbox.Text == "None")
             {
-                skinPackager.CompileTo(currentSkin, "Skins");
+                ExportSkin(currentSkin, "Skins");
             }
             else
-                skinPackager.Compile(currentSkin);
+                ExportSkin(currentSkin);
 
             MessageBox.Show("Done!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
+        private bool ExportSkin(AudiosurfSkin skin, string path = null)
+        {
+            if (skin == null)
+                return false;
+
+            return path != null ? skinPackager.CompileTo(skin, path) : skinPackager.Compile(skin);
+            
+        }
+
         private void InstallSkin(object sender, EventArgs e)
         { 
-            AudiosurfSkin skin = (AudiosurfSkin)SkinsListBox.SelectedItem;
+            var linkToSelected = (SkinLink)SkinsListBox.SelectedItem;
+            var skin = linkToSelected.Load();
             if (skin == null)
             {
                 MessageBox.Show("Can not install nothing. Please, select skin in list on left form side or add new skin and try again", "Installation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);

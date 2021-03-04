@@ -11,7 +11,7 @@
 
     class SkinPackager
     {
-        private const string skinExtension = @".askin";
+        public static readonly string skinExtension = @".askin";
         private Logger logger;
         private string[] texturesNames;
         private string[] masks;

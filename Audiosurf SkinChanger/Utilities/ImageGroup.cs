@@ -60,7 +60,7 @@
         {
             for (int i = 0; i < Group.Count; i++)
             {
-                Group[i] = (NamedBitmap)transform(Group[i]);
+                Group[i] = transform(Group[i]);
             }
         }
 
@@ -68,6 +68,19 @@
         {
             foreach (var image in Group)
                 action(image);
+        }
+
+        public void SetImageByName(string name, Bitmap newImage)
+        {
+            foreach (var item in Group)
+            {
+                if (item.Name == name)
+                {
+                    item.SetImage(newImage);
+                    return;
+                }
+            }
+            Group.Add(new NamedBitmap(name, newImage));
         }
 
         public static explicit operator Bitmap(ImageGroup obj)

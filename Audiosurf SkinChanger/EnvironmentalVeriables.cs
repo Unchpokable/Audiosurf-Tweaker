@@ -1,11 +1,11 @@
 ﻿namespace Audiosurf_SkinChanger
 {
-    using Audiosurf_SkinChanger.Engine;
     using System.Collections.Generic;
+    using Audiosurf_SkinChanger.Utilities;
 
     public static class EnvironmentalVeriables
     {
-        internal static readonly IList<AudiosurfSkin> Skins = new List<AudiosurfSkin>();
+        internal static readonly IList<SkinLink> Skins = new List<SkinLink>();
         internal static string gamePath = "";
         internal static string skinsFolderPath = "C:\\";
         internal static readonly string CliffImagesMask = "cliff";
