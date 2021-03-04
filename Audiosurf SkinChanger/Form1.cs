@@ -308,7 +308,8 @@ namespace Audiosurf_SkinChanger
 
         private void InstallSkin(object sender, EventArgs e)
         { 
-            AudiosurfSkin skin = (AudiosurfSkin)SkinsListBox.SelectedItem;
+            var linkToSelected = (SkinLink)SkinsListBox.SelectedItem;
+            var skin = linkToSelected.Load();
             if (skin == null)
             {
                 MessageBox.Show("Can not install nothing. Please, select skin in list on left form side or add new skin and try again", "Installation Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
