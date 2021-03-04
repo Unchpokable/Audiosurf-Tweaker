@@ -225,7 +225,7 @@ namespace Audiosurf_SkinChanger.Skin_Creator
                 var bmp = ReadImage(openFileDialog.FileName, info);
                 if (bmp == null)
                     return;
-                skinImageGroupAssociationTable[knownSender].AddImage(bmp);
+                skinImageGroupAssociationTable[knownSender].SetImageByName(info.FileName, (Bitmap)bmp);
                 RemoveMouseActions(knownSender);
                 knownSender.Image = ((Bitmap)bmp).Rescale(knownSender.Size);
             }
