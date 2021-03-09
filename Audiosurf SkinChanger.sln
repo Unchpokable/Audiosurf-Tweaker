@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Audiosurf SkinChanger", "Au
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Installer", "Installer\Installer.csproj", "{EA2DCF69-436E-4959-9085-A645491B2AFA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Updater", "Updater\Updater.csproj", "{082AF3B4-F360-4DDA-AF54-1697FE239C81}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -41,6 +43,18 @@ Global
 		{EA2DCF69-436E-4959-9085-A645491B2AFA}.x64|Any CPU.Build.0 = Release|Any CPU
 		{EA2DCF69-436E-4959-9085-A645491B2AFA}.x64|x64.ActiveCfg = Release|Any CPU
 		{EA2DCF69-436E-4959-9085-A645491B2AFA}.x64|x64.Build.0 = Release|Any CPU
+		{082AF3B4-F360-4DDA-AF54-1697FE239C81}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{082AF3B4-F360-4DDA-AF54-1697FE239C81}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{082AF3B4-F360-4DDA-AF54-1697FE239C81}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{082AF3B4-F360-4DDA-AF54-1697FE239C81}.Debug|x64.Build.0 = Debug|Any CPU
+		{082AF3B4-F360-4DDA-AF54-1697FE239C81}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{082AF3B4-F360-4DDA-AF54-1697FE239C81}.Release|Any CPU.Build.0 = Release|Any CPU
+		{082AF3B4-F360-4DDA-AF54-1697FE239C81}.Release|x64.ActiveCfg = Release|Any CPU
+		{082AF3B4-F360-4DDA-AF54-1697FE239C81}.Release|x64.Build.0 = Release|Any CPU
+		{082AF3B4-F360-4DDA-AF54-1697FE239C81}.x64|Any CPU.ActiveCfg = Release|Any CPU
+		{082AF3B4-F360-4DDA-AF54-1697FE239C81}.x64|Any CPU.Build.0 = Release|Any CPU
+		{082AF3B4-F360-4DDA-AF54-1697FE239C81}.x64|x64.ActiveCfg = Release|Any CPU
+		{082AF3B4-F360-4DDA-AF54-1697FE239C81}.x64|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
