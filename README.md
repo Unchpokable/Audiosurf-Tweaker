@@ -6,6 +6,11 @@
 - At the moment you can only get the .askin file from another Audiosurf Skin Changer user or use pre-installed skins.
 
 ---
+## Installation guide
+- Program uses special .askin files so it need to register this extension in Windows Registry so that you can see the custom icons for these files . For this purpose the installer.exe script is included in the archive with the program (Archives with "-Installer" in name). This script performs the registration of the extension, as well as unpacking the attached archive with the program itself.
+- After unpacking the archive you downloaded from release page, move the archive content (or subfolder content, if archive contains folder called like "x32" or "x64" or something like this) to where you want to place program. Read the installation manual carefully, run the installer.exe and wait for it to finish. This completes the installation of the program, as you will be informed by the installer script. 
+
+
 ## Userguide
 - The first thing you should do after starting the program for the first time is to check the path that is specified in the "Audiosurf Textures path" input field. Skin Changer can automatically detect Audiosurf textures folder, but, if u using illegal Audiosurf copy, this path can be invalid, cause its based on steam install path.
 - Program has folder for skins in his root directory (%SkinChanger.exe directory%\Skins), but you can add additional folder which Skin Changer will scan for .askin skinpacks ("Path to skins" entry filed)
