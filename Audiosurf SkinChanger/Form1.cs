@@ -379,10 +379,11 @@ namespace Audiosurf_SkinChanger
 
         private void SkinsListBox_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.Delete)
-            {
-                RemoveSelectedSkin((SkinLink)SkinsListBox.SelectedItem);
-            }
+            if (MessageBox.Show("Are you sure to delete this skin?", "Remove skin", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                if (e.KeyCode == Keys.Delete)
+                {
+                    RemoveSelectedSkin((SkinLink)SkinsListBox.SelectedItem);
+                }
         }
     }
 }
