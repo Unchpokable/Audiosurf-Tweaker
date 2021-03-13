@@ -14,7 +14,3 @@
 - If you want to create new texturepack, but textures that you want to use placed in different folders, you can use "Skin creator" and pack all textures that you want into .askin texturepack
 - The program only replaces textures that contain .askin, so it's okay if your .askin doesn't contain anything but, for example, tiles.png (one of audiosurf texutures pictures)
 - To install texturepack, select it in ListBox and press "install selected" button
-
-### About Skit creator
-- Skin Creator - new feature in version 2.0 and as a consequence of not the best application architecture, this tool works with some hard-to-fix bugs for me. Specifically, because of the architecture of the ImageGroup type, which was not originally designed for such a tool, at the moment the texture replacement function almost does not work. As of the 2.0 release, it is recommended that you use this tool very carefully and watch what image you choose for a particular game texture.
-
