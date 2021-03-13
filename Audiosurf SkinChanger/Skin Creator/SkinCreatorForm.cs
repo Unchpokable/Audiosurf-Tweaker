@@ -311,6 +311,7 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             }
             skin.Name = skinNameEntry.Text;
             skinPackager.CompileTo(skin, "Skins");
+            MessageBox.Show("Done!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             OnSkinExprotrted?.Invoke();
         }
 

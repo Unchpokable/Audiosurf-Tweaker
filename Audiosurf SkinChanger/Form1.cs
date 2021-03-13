@@ -23,10 +23,12 @@ namespace Audiosurf_SkinChanger
 
         private Size stdSkysphereSize = new Size(180, 60);
         private Size stdTextureSize = new Size(64, 64);
+        private Logger logger;
 
         public Form1()
         {
             InitializeComponent();
+            logger = new Logger();
             openSkinDialog.Filter = "Audiosurf Skins (.askin)|*.askin";
             openSkinDialog.DefaultExt = ".askin";
 
@@ -355,6 +357,32 @@ namespace Audiosurf_SkinChanger
             var form = new Skin_Creator.SkinCreatorForm();
             form.OnSkinExprotrted += this.LoadSkins;
             form.Show();
+        }
+
+        private bool RemoveSelectedSkin(SkinLink skin)
+        {
+            try
+            {
+                File.Delete(skin.Path);
+                SkinsListBox.Items.RemoveAt(SkinsListBox.SelectedIndex);
+                SkinsListBox.SelectedIndex = 0;
+                SkinsListBox.Invalidate();
+                return true;
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show("Can not remove selected skin!", "File error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                logger.Log("Error", e.ToString());
+                return false;
+            }
+        }
+
+        private void SkinsListBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Delete)
+            {
+                RemoveSelectedSkin((SkinLink)SkinsListBox.SelectedItem);
+            }
         }
     }
 }
