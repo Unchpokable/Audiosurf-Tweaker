@@ -470,6 +470,7 @@
             this.SkinsListBox.Size = new System.Drawing.Size(209, 121);
             this.SkinsListBox.TabIndex = 0;
             this.SkinsListBox.SelectedIndexChanged += new System.EventHandler(this.SkinsListBox_SelectedIndexChanged);
+            this.SkinsListBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.SkinsListBox_KeyDown);
             // 
             // Form1
             // 
