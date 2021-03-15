@@ -268,7 +268,8 @@ namespace Audiosurf_SkinChanger
                         }
                         skin.Name = name;
                     }
-                    var link = new SkinLink(folderBrowserDialog1.SelectedPath + @"\\" + skin.Name + SkinPackager.skinExtension, skin.Name);
+                    skinPackager.CompileTo(skin, "Skins");
+                    var link = new SkinLink(@"Skins\" + skin.Name + SkinPackager.skinExtension, skin.Name);
                     EnvironmentalVeriables.Skins.Add(link);
                     SkinsListBox.Items.Add(link);
                     DrawPreviewOfSkin(link);
