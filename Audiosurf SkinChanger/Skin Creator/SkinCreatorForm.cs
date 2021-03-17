@@ -6,6 +6,7 @@ using System.Linq;
 using System.IO;
 using Audiosurf_SkinChanger.Engine;
 using Audiosurf_SkinChanger.Utilities;
+using System.Reflection;
 
 namespace Audiosurf_SkinChanger.Skin_Creator
 {
@@ -28,17 +29,20 @@ namespace Audiosurf_SkinChanger.Skin_Creator
         private PictureBox[] tilesGroup;
         private AudiosurfSkin skin;
         private SkinPackager skinPackager;
-
+        private PictureBox[] AllPictureboxes;
         private string[] SizesStrings = new[] { "64x64", "128x128", "256x256", "512x512" };
+        private Dictionary<string, Size> picBoxSizes = new Dictionary<string, Size>()
+        {
+            {"SkySphere", new Size(180, 90) },
+            {"Texture", new Size(90,90) }
+        };
+
 
         public SkinCreatorForm()
         {
             InitializeComponent();
             LoadIdleImages();
-            CreateAssotiativeTable();
-            CreateStateAssotiatieTable();
-            CreateImageAssociationTable();
-            CreateSizesAssociationTable();
+            InitializeAssociationTables();
             skin = new AudiosurfSkin();
             CreateSkinFieldsAssotiationTables();
             tilesGroup = new[] { tile1, tile2, tile3, tile4 };
@@ -56,6 +60,19 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             skinPackager = new SkinPackager();
             isRescaleCheckButton.Checked = true;
             skinNameEntry.Text = "Unnamed skin";
+            Focus();
+            AllPictureboxes = new[]
+            {
+                Sphere1, Sphere2, Sphere3, tile1, tile2, tile3, tile4, tileflyup, ring1, ring2, ring3, ring4, part1, part2, part3, hit1, hit2
+            };
+        }
+
+        private void InitializeAssociationTables()
+        {
+            CreateAssotiativeTable();
+            CreateStateAssotiatieTable();
+            CreateImageAssociationTable();
+            CreateSizesAssociationTable();
         }
 
         private void CreateSizesAssociationTable()
@@ -338,6 +355,62 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             skin.Hits.Apply(x => x?.Apply(bmp => bmp?.Rescale(sizesAssociationTalbe[hitsSizes.Text])));
             skin.Rings.Apply(x => x?.Apply(bmp => bmp?.Rescale(sizesAssociationTalbe[ringsSizes.Text])));
             skin.Particles.Apply(x => x?.Apply(bmp => bmp?.Rescale(sizesAssociationTalbe[particlesSizes.Text])));
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            openFileDialog.Filter = "Audiosurf Skins (.askin)|*.askin";
+            openFileDialog.InitialDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\Skins";
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                skin = skinPackager.Decompile(openFileDialog.FileName);
+     
+                try
+                {
+                    Sphere1.Image = ((Bitmap)skin.SkySpheres.Group[0]).Rescale(picBoxSizes["SkySphere"]);
+                    Sphere2.Image = ((Bitmap)skin.SkySpheres.Group[1]).Rescale(picBoxSizes["SkySphere"]);
+                    Sphere3.Image = ((Bitmap)skin.SkySpheres.Group[2]).Rescale(picBoxSizes["SkySphere"]);
+                }
+                catch { }
+
+                try
+                {
+                    var tilesheet = ((Bitmap)skin.Tiles).Squarify();
+                    tile1.Image = tilesheet[0].Rescale(picBoxSizes["Texture"]);
+                    tile2.Image = tilesheet[1].Rescale(picBoxSizes["Texture"]);
+                    tile3.Image = tilesheet[2].Rescale(picBoxSizes["Texture"]);
+                    tile4.Image = tilesheet[3].Rescale(picBoxSizes["Texture"]);
+                }
+                catch { }
+                try
+                {
+                    tileflyup.Image = ((Bitmap)skin.TilesFlyup).Rescale(picBoxSizes["Texture"]);
+                }
+                catch { }
+
+                try
+                {
+                    ring1.Image = ((Bitmap)skin.Rings.Group[0]).Rescale(picBoxSizes["Texture"]);
+                    ring2.Image = ((Bitmap)skin.Rings.Group[1]).Rescale(picBoxSizes["Texture"]);
+                    ring3.Image = ((Bitmap)skin.Rings.Group[2]).Rescale(picBoxSizes["Texture"]);
+                    ring4.Image = ((Bitmap)skin.Rings.Group[3]).Rescale(picBoxSizes["Texture"]);
+                }
+                catch { }
+
+                try
+                {
+                    part1.Image = ((Bitmap)skin.Particles.Group[0]).Rescale(picBoxSizes["Texture"]);
+                    part2.Image = ((Bitmap)skin.Particles.Group[1]).Rescale(picBoxSizes["Texture"]);
+                    part3.Image = ((Bitmap)skin.Particles.Group[2]).Rescale(picBoxSizes["Texture"]);
+                    hit1.Image = ((Bitmap)skin.Hits.Group[0]).Rescale(picBoxSizes["Texture"]);
+                    hit2.Image = ((Bitmap)skin.Hits.Group[1]).Rescale(picBoxSizes["Texture"]);
+                }
+                catch { }
+            }
+            CreateSkinFieldsAssotiationTables();
+            AllPictureboxes.ForEach(x => RemoveMouseActions(x));
+            openFileDialog.Filter = "Supported Images(*.PNG; *.JPG)| *.PNG; *.JPG| All files(*.*) | *.*";
+            openFileDialog.FileName = "";
         }
     }
 }

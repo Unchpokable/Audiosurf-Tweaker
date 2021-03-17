@@ -13,7 +13,13 @@
         {
             return new Bitmap(source, newSize);
         }
-
+        /*
+        public static NamedBitmap Rescale(this NamedBitmap source, Size newSize)
+        {
+            var rescaled = (Bitmap)source.Rescale(newSize);
+            return new NamedBitmap(rescaled, source.Info);
+        }
+        */
         public static void ClearAll(this PictureBox[] source)
         {
             foreach(var pic in source)
