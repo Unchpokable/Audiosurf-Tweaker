@@ -64,6 +64,7 @@
             this.Sphere1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog = new System.Windows.Forms.OpenFileDialog();
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
+            this.openToEditSkinBtn = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.hit2)).BeginInit();
@@ -231,6 +232,7 @@
             // 
             // groupBox2
             // 
+            this.groupBox2.Controls.Add(this.openToEditSkinBtn);
             this.groupBox2.Controls.Add(this.hit2);
             this.groupBox2.Controls.Add(this.hit1);
             this.groupBox2.Controls.Add(this.ring4);
@@ -446,6 +448,16 @@
             // 
             this.openFileDialog.FileName = "openFileDialog";
             // 
+            // openToEditSkinBtn
+            // 
+            this.openToEditSkinBtn.Location = new System.Drawing.Point(7, 451);
+            this.openToEditSkinBtn.Name = "openToEditSkinBtn";
+            this.openToEditSkinBtn.Size = new System.Drawing.Size(151, 42);
+            this.openToEditSkinBtn.TabIndex = 17;
+            this.openToEditSkinBtn.Text = "open skin to edit";
+            this.openToEditSkinBtn.UseVisualStyleBackColor = true;
+            this.openToEditSkinBtn.Click += new System.EventHandler(this.button3_Click);
+            // 
             // SkinCreatorForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -520,5 +532,6 @@
         private System.Windows.Forms.FolderBrowserDialog folderBrowserDialog1;
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.TextBox skinNameEntry;
+        private System.Windows.Forms.Button openToEditSkinBtn;
     }
 }

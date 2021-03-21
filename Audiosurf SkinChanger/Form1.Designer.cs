@@ -486,7 +486,7 @@
             this.Controls.Add(this.label1);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "Form1";
-            this.Text = "Audiosurf Skin Changer";
+            this.Text = "Audiosurf Skin Changer v2.1.1";
             this.previewGroupBox.ResumeLayout(false);
             this.previewGroupBox.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.hitPic2)).EndInit();

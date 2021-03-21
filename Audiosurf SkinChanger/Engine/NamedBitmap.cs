@@ -14,6 +14,8 @@
         public Size Size => new Size(Width, Height);
         public string Name;
 
+        public ImageInfo Info => new ImageInfo(format, Name);
+
         private Bitmap source;
         private string format;
 

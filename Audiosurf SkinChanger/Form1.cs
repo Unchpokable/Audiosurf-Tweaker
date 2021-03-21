@@ -268,7 +268,8 @@ namespace Audiosurf_SkinChanger
                         }
                         skin.Name = name;
                     }
-                    var link = new SkinLink(folderBrowserDialog1.SelectedPath + @"\\" + skin.Name + SkinPackager.skinExtension, skin.Name);
+                    skinPackager.CompileTo(skin, "Skins");
+                    var link = new SkinLink(@"Skins\" + skin.Name + SkinPackager.skinExtension, skin.Name);
                     EnvironmentalVeriables.Skins.Add(link);
                     SkinsListBox.Items.Add(link);
                     DrawPreviewOfSkin(link);
@@ -379,10 +380,11 @@ namespace Audiosurf_SkinChanger
 
         private void SkinsListBox_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.Delete)
-            {
-                RemoveSelectedSkin((SkinLink)SkinsListBox.SelectedItem);
-            }
+            if (MessageBox.Show("Are you sure to delete this skin?", "Remove skin", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                if (e.KeyCode == Keys.Delete)
+                {
+                    RemoveSelectedSkin((SkinLink)SkinsListBox.SelectedItem);
+                }
         }
     }
 }

@@ -8,7 +8,7 @@
         public string Name;
 
         private SkinPackager packager; 
-
+         
         public SkinLink(string path, string skinName)
         {
             Path = path;
