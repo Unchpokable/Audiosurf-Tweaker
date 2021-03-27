@@ -1,11 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Audiosurf_SkinChanger.Skin_Creator
+﻿namespace Audiosurf_SkinChanger.Skin_Creator
 {
+    using System;
+
     [Serializable]
     public class ImageInfo
     {

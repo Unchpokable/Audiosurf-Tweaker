@@ -1,11 +1,11 @@
-﻿using System;
-using System.Configuration;
-using Microsoft.Win32;
-using System.Windows.Forms;
-using System.IO;
-
-namespace Audiosurf_SkinChanger.Utilities
+﻿namespace Audiosurf_SkinChanger.Utilities
 {
+    using System;
+    using System.Configuration;
+    using Microsoft.Win32;
+    using System.Windows.Forms;
+    using System.IO;
+
     internal static class InternalWorker
     {
         public static void SetUpDefaultSettings()

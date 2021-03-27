@@ -36,6 +36,11 @@
             this.openSkinDialog = new System.Windows.Forms.OpenFileDialog();
             this.saveButton = new System.Windows.Forms.Button();
             this.previewGroupBox = new System.Windows.Forms.GroupBox();
+            this.HitsCheck = new System.Windows.Forms.CheckBox();
+            this.RingsCheck = new System.Windows.Forms.CheckBox();
+            this.ParticlesCheck = new System.Windows.Forms.CheckBox();
+            this.TilesCheck = new System.Windows.Forms.CheckBox();
+            this.SkySpheresCheck = new System.Windows.Forms.CheckBox();
             this.hitPic2 = new System.Windows.Forms.PictureBox();
             this.hitPic1 = new System.Windows.Forms.PictureBox();
             this.label3 = new System.Windows.Forms.Label();
@@ -72,6 +77,9 @@
             this.SkinsListBox = new System.Windows.Forms.ListBox();
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
+            this.button5 = new System.Windows.Forms.Button();
+            this.label7 = new System.Windows.Forms.Label();
+            this.currentlyInstallLabel = new System.Windows.Forms.Label();
             this.previewGroupBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.hitPic2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.hitPic1)).BeginInit();
@@ -137,6 +145,11 @@
             // previewGroupBox
             // 
             this.previewGroupBox.BackColor = System.Drawing.SystemColors.ControlDarkDark;
+            this.previewGroupBox.Controls.Add(this.HitsCheck);
+            this.previewGroupBox.Controls.Add(this.RingsCheck);
+            this.previewGroupBox.Controls.Add(this.ParticlesCheck);
+            this.previewGroupBox.Controls.Add(this.TilesCheck);
+            this.previewGroupBox.Controls.Add(this.SkySpheresCheck);
             this.previewGroupBox.Controls.Add(this.hitPic2);
             this.previewGroupBox.Controls.Add(this.hitPic1);
             this.previewGroupBox.Controls.Add(this.label3);
@@ -162,10 +175,60 @@
             this.previewGroupBox.Controls.Add(this.skySpherePic);
             this.previewGroupBox.Location = new System.Drawing.Point(239, 13);
             this.previewGroupBox.Name = "previewGroupBox";
-            this.previewGroupBox.Size = new System.Drawing.Size(611, 425);
+            this.previewGroupBox.Size = new System.Drawing.Size(611, 391);
             this.previewGroupBox.TabIndex = 4;
             this.previewGroupBox.TabStop = false;
             this.previewGroupBox.Text = "Preview";
+            // 
+            // HitsCheck
+            // 
+            this.HitsCheck.AutoSize = true;
+            this.HitsCheck.Location = new System.Drawing.Point(9, 334);
+            this.HitsCheck.Name = "HitsCheck";
+            this.HitsCheck.Size = new System.Drawing.Size(53, 17);
+            this.HitsCheck.TabIndex = 32;
+            this.HitsCheck.Text = "Install";
+            this.HitsCheck.UseVisualStyleBackColor = true;
+            // 
+            // RingsCheck
+            // 
+            this.RingsCheck.AutoSize = true;
+            this.RingsCheck.Location = new System.Drawing.Point(9, 261);
+            this.RingsCheck.Name = "RingsCheck";
+            this.RingsCheck.Size = new System.Drawing.Size(53, 17);
+            this.RingsCheck.TabIndex = 31;
+            this.RingsCheck.Text = "Install";
+            this.RingsCheck.UseVisualStyleBackColor = true;
+            // 
+            // ParticlesCheck
+            // 
+            this.ParticlesCheck.AutoSize = true;
+            this.ParticlesCheck.Location = new System.Drawing.Point(9, 191);
+            this.ParticlesCheck.Name = "ParticlesCheck";
+            this.ParticlesCheck.Size = new System.Drawing.Size(53, 17);
+            this.ParticlesCheck.TabIndex = 30;
+            this.ParticlesCheck.Text = "Install";
+            this.ParticlesCheck.UseVisualStyleBackColor = true;
+            // 
+            // TilesCheck
+            // 
+            this.TilesCheck.AutoSize = true;
+            this.TilesCheck.Location = new System.Drawing.Point(9, 121);
+            this.TilesCheck.Name = "TilesCheck";
+            this.TilesCheck.Size = new System.Drawing.Size(53, 17);
+            this.TilesCheck.TabIndex = 29;
+            this.TilesCheck.Text = "Install";
+            this.TilesCheck.UseVisualStyleBackColor = true;
+            // 
+            // SkySpheresCheck
+            // 
+            this.SkySpheresCheck.AutoSize = true;
+            this.SkySpheresCheck.Location = new System.Drawing.Point(9, 36);
+            this.SkySpheresCheck.Name = "SkySpheresCheck";
+            this.SkySpheresCheck.Size = new System.Drawing.Size(53, 17);
+            this.SkySpheresCheck.TabIndex = 28;
+            this.SkySpheresCheck.Text = "Install";
+            this.SkySpheresCheck.UseVisualStyleBackColor = true;
             // 
             // hitPic2
             // 
@@ -413,13 +476,13 @@
             // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(7, 235);
+            this.button1.Location = new System.Drawing.Point(7, 293);
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(210, 23);
             this.button1.TabIndex = 5;
-            this.button1.Text = "Open Skin Editor";
+            this.button1.Text = "Export my textures as .askin";
             this.button1.UseVisualStyleBackColor = true;
-            this.button1.Click += new System.EventHandler(this.OpenSkinEditor);
+            this.button1.Click += new System.EventHandler(this.PackFolderIntoSkinRoute);
             // 
             // button4
             // 
@@ -439,7 +502,7 @@
             this.button3.TabIndex = 3;
             this.button3.Text = "Add new skin from folder";
             this.button3.UseVisualStyleBackColor = true;
-            this.button3.Click += new System.EventHandler(this.PackFolderIntoSkin);
+            this.button3.Click += new System.EventHandler(this.PackFolderIntoSkinRoute);
             // 
             // openSkinBtn
             // 
@@ -453,7 +516,7 @@
             // 
             // button2
             // 
-            this.button2.Location = new System.Drawing.Point(7, 293);
+            this.button2.Location = new System.Drawing.Point(7, 235);
             this.button2.Name = "button2";
             this.button2.Size = new System.Drawing.Size(210, 23);
             this.button2.TabIndex = 1;
@@ -472,12 +535,42 @@
             this.SkinsListBox.SelectedIndexChanged += new System.EventHandler(this.SkinsListBox_SelectedIndexChanged);
             this.SkinsListBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.SkinsListBox_KeyDown);
             // 
+            // button5
+            // 
+            this.button5.Location = new System.Drawing.Point(538, 415);
+            this.button5.Name = "button5";
+            this.button5.Size = new System.Drawing.Size(312, 23);
+            this.button5.TabIndex = 6;
+            this.button5.Text = "Open Skin Editor";
+            this.button5.UseVisualStyleBackColor = true;
+            this.button5.Click += new System.EventHandler(this.OpenSkinEditor);
+            // 
+            // label7
+            // 
+            this.label7.AutoSize = true;
+            this.label7.Location = new System.Drawing.Point(236, 420);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(93, 13);
+            this.label7.TabIndex = 7;
+            this.label7.Text = "Currently Installed:";
+            // 
+            // currentlyInstallLabel
+            // 
+            this.currentlyInstallLabel.AutoSize = true;
+            this.currentlyInstallLabel.Location = new System.Drawing.Point(335, 420);
+            this.currentlyInstallLabel.Name = "currentlyInstallLabel";
+            this.currentlyInstallLabel.Size = new System.Drawing.Size(0, 13);
+            this.currentlyInstallLabel.TabIndex = 8;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.ControlDarkDark;
             this.ClientSize = new System.Drawing.Size(862, 447);
+            this.Controls.Add(this.currentlyInstallLabel);
+            this.Controls.Add(this.label7);
+            this.Controls.Add(this.button5);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.previewGroupBox);
             this.Controls.Add(this.saveButton);
@@ -486,7 +579,7 @@
             this.Controls.Add(this.label1);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "Form1";
-            this.Text = "Audiosurf Skin Changer v2.1.1";
+            this.Text = "Audiosurf Skin Changer v2.2.0";
             this.previewGroupBox.ResumeLayout(false);
             this.previewGroupBox.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.hitPic2)).EndInit();
@@ -557,6 +650,14 @@
         private System.Windows.Forms.TextBox skinsFolderPathTextbox;
         private System.Windows.Forms.CheckBox cleanInstallCheck;
         private System.Windows.Forms.ToolTip toolTip1;
+        private System.Windows.Forms.CheckBox HitsCheck;
+        private System.Windows.Forms.CheckBox RingsCheck;
+        private System.Windows.Forms.CheckBox ParticlesCheck;
+        private System.Windows.Forms.CheckBox TilesCheck;
+        private System.Windows.Forms.CheckBox SkySpheresCheck;
+        private System.Windows.Forms.Button button5;
+        private System.Windows.Forms.Label label7;
+        private System.Windows.Forms.Label currentlyInstallLabel;
     }
 }
 

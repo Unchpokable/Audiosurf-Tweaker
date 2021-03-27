@@ -13,18 +13,13 @@
     [Serializable]
     public class FolderHashInfo : IEquatable<FolderHashInfo>
     {
+        public string StateName { get; set; }
         public string FolderName { get; set; }
         public string Location { get; set; }
 
         public IList<byte[]> ContainedFilesHashes;
 
         private static readonly string stdExt = ".hinf";
-
-        public FolderHashInfo(string folderName, string location)
-        {
-            FolderName = folderName;
-            Location = location;
-        }
 
         public FolderHashInfo(string location)
         {
@@ -33,8 +28,15 @@
 
         }
 
+        public FolderHashInfo(string location, string statneName) : this(location)
+        {
+            StateName = statneName;
+        }
+
         public bool Equals(FolderHashInfo obj)
         {
+            if (ContainedFilesHashes.Count != obj.ContainedFilesHashes.Count)
+                return false;
             foreach (var array in obj.ContainedFilesHashes)
             {
                 if (!ContainedFilesHashes.Any(x => x.SequenceEqual(array)))
@@ -135,17 +137,22 @@
 
         public static FolderHashInfo Create(string path)
         {
+            return Create(path, "defaul");
+        }
+
+        public static FolderHashInfo Create(string path, string stateName)
+        {
             var containedFiles = Directory.EnumerateFiles(path);
             var hashes = new List<byte[]>();
 
             using (var hashProvider = SHA256.Create())
-            foreach(var file in containedFiles)
-            {
-                if (Path.GetExtension(file) == stdExt) continue;
-                using (var stream = File.OpenRead(file))
-                    hashes.Add(hashProvider.ComputeHash(stream));
-            }
-            return new FolderHashInfo(path) { ContainedFilesHashes = hashes };
+                foreach (var file in containedFiles)
+                {
+                    if (Path.GetExtension(file) == stdExt) continue;
+                    using (var stream = File.OpenRead(file))
+                        hashes.Add(hashProvider.ComputeHash(stream));
+                }
+            return new FolderHashInfo(path, stateName) { ContainedFilesHashes = hashes };
         }
     }
 }

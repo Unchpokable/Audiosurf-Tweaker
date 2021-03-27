@@ -22,7 +22,12 @@
 
         public static void SaveState(string path)
         {
-            var state = FolderHashInfo.Create(path);
+            SaveState(path, "default");
+        }
+
+        public static void SaveState(string path, string stateName)
+        {
+            var state = FolderHashInfo.Create(path, stateName);
             state.Save(path);
         }
     }
