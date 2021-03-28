@@ -4,6 +4,7 @@
     using System;
     using System.Linq;
     using System.Drawing.Imaging;
+    using System.Collections.Generic;
     using Audiosurf_SkinChanger.Skin_Creator;
 
     [Serializable]

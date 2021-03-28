@@ -359,6 +359,7 @@ namespace Audiosurf_SkinChanger.Skin_Creator
 
         private void button3_Click(object sender, EventArgs e)
         {
+            //TODO: Catched exceptions show message box with info about exception
             openFileDialog.Filter = "Audiosurf Skins (.askin)|*.askin";
             openFileDialog.InitialDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + @"\Skins";
             if (openFileDialog.ShowDialog() == DialogResult.OK)

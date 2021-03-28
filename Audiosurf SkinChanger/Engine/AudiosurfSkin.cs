@@ -5,6 +5,8 @@
     using Audiosurf_SkinChanger.Utilities;
     using System.Runtime.Serialization;
     using System.Runtime.Serialization.Formatters.Binary;
+    using System.Collections.Generic;
+    using System.Linq;
 
     [Serializable]
     class AudiosurfSkin

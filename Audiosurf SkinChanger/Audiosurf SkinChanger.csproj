@@ -149,7 +149,6 @@
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
-  <ItemGroup />
   <ItemGroup>
     <None Include="Resources\Add_Tiles_Active.png" />
   </ItemGroup>
@@ -221,6 +220,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\Add_Tiles.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\textpackctrl\textpackctrl.csproj">
+      <Project>{27231428-42a6-43ec-8f0a-9f71726b2934}</Project>
+      <Name>textpackctrl</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
