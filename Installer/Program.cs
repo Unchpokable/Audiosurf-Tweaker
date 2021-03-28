@@ -16,7 +16,8 @@ namespace Installer
             "icon.ico",
             "askinicon.ico",
             "Audiosurf SkinChanger.exe",
-            "Audiosurf SkinChanger.exe.config"
+            "Audiosurf SkinChanger.exe.config",
+            "foldercontrol.dll"
         };
 
         public static void Main(string[] args)
@@ -51,8 +52,8 @@ namespace Installer
                 Console.WriteLine("[Warn] :: Icon registration Error");
             else
             {
-                Console.WriteLine("[Info] :: Successfully installed Audiosurf skinchanger. Thanks for download. Enjoy");
                 IconRegistry.SHChangeNotify(0x08000000, 0x0000, (IntPtr)null, (IntPtr)null);
+                Console.WriteLine("[Info] :: Icons successfully registered. Audisourf Skin Changer ready to use. Thanks for download. Enjoy");
             }
             Console.WriteLine("Press any key to continue...");
             Console.ReadKey();
@@ -68,7 +69,7 @@ namespace Installer
 
         internal static string FindAudiosurfSkinChangerZip(string location)
         {
-            string[] allFiles = Directory.GetFiles(location).Where(x => x.EndsWith(".zip")).ToArray();
+            string[] allFiles = Directory.GetFiles(location).Where(x => x.EndsWith(".package")).ToArray();
             string mask = "audiosurf";
             foreach(var path in allFiles)
             {

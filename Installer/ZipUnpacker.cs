@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using System;
 using System.IO.Compression;
 
 namespace Installer
@@ -21,9 +22,9 @@ namespace Installer
                 ZipFile.ExtractToDirectory(archivePath, installPath);
                 return true;
             }
-            catch (System.Exception e)
+            catch (Exception e)
             {
-                System.Console.WriteLine($"[Error] :: Installation Error: {e.Message}");
+                Console.WriteLine($"[Error] :: Installation Error: {e.Message}");
                 return false;
             }
         }

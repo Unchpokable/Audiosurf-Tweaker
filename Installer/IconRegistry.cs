@@ -29,9 +29,9 @@ namespace Installer
 
         private static bool RegisterNew(string extension, string pathToIcon)
         {
-            RegistryKey key = Registry.ClassesRoot.CreateSubKey("." + extension); //create ".ext" registry key
+            RegistryKey key = Registry.ClassesRoot.CreateSubKey("." + extension);
             key.SetValue("", extension);
-            RegistryKey iconKey = Registry.ClassesRoot.CreateSubKey(extension); //create "ext" reg key to register default icon
+            RegistryKey iconKey = Registry.ClassesRoot.CreateSubKey(extension);
             RegistryKey defIcon = iconKey.CreateSubKey("DefaultIcon");
             defIcon.SetValue("", pathToIcon);
             return true;
