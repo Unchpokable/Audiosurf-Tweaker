@@ -93,9 +93,9 @@ namespace Audiosurf_SkinChanger
                 }
                 if (MessageBox.Show(
             @"Hey! Audiosurf Skin Changer has detected changes in your Audiosurf textures folder. 
-It appears that you are using a texture set that is not a Skin Changer package, or this set is made up of several Skin Changer packages. 
-Installing a skin may cause you to lose textures that are not part of the askin package. 
-Do you want to keep your current texture set as an Audiosurf Skin Changer package?", "Warning",
+It appears that you are using a texture set that is not a Skin Changer package, or you manually modified one of Skin Changer packages. 
+Installing a skin may cause you to lose textures that are not part of the Audiosurf Skin Changer package. 
+Do you want to save your current texture set as an Audiosurf Skin Changer package?", "Warning",
                                MessageBoxButtons.YesNo, MessageBoxIcon.Warning) == DialogResult.Yes)
                 {
                     currentlyInstallLabel.Text = "Custom";
