@@ -79,6 +79,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="SettingsWindowForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="SettingsWindowForm.Designer.cs">
+      <DependentUpon>SettingsWindowForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Skin Creator\ImageInfo.cs" />
     <Compile Include="Skin Creator\Images.Designer.cs">
       <AutoGen>True</AutoGen>
@@ -91,6 +97,7 @@
     <Compile Include="Skin Creator\SkinCreatorForm.Designer.cs">
       <DependentUpon>SkinCreatorForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Utilities\DCSBehaviour.cs" />
     <Compile Include="Utilities\InternalWorker.cs" />
     <Compile Include="Engine\NamedBitmap.cs" />
     <Compile Include="EnvironmentalVeriables.cs" />
@@ -129,6 +136,9 @@
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <EmbeddedResource Include="SettingsWindowForm.resx">
+      <DependentUpon>SettingsWindowForm.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Skin Creator\Images.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Images.Designer.cs</LastGenOutput>
