@@ -44,6 +44,27 @@
         {
             EnvironmentalVeriables.gamePath = ConfigurationManager.AppSettings.Get("gamePath");
             EnvironmentalVeriables.skinsFolderPath = ConfigurationManager.AppSettings.Get("skinsPath");
+            EnvironmentalVeriables.ControlSystemBehaviour = ParseBehaviourFromConfig();
+            EnvironmentalVeriables.DCSWarningsAllowed = ParseIsWarningsAllowedFromConfig();
+        }
+
+        private static DCSBehaviour ParseBehaviourFromConfig()
+        {
+            var currentValue = ConfigurationManager.AppSettings.Get("DCSBehaviour");
+            switch (currentValue)
+            {
+                case "0":
+                    return DCSBehaviour.OnBoot;
+                case "1":
+                    return DCSBehaviour.AsyncAfterBoot;
+                default:
+                    throw new Exception("Wrong Configuration parameter");
+            }
+        }
+
+        private static bool ParseIsWarningsAllowedFromConfig()
+        {
+            return bool.Parse(ConfigurationManager.AppSettings.Get("AllowWarnings"));
         }
     }
 }

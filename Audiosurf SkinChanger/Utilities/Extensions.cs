@@ -5,9 +5,12 @@
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using System.Reflection;
+    using System.Linq.Expressions;
 
     public static class Extensions
     {
+        public delegate void SetPropertySafeDelegate<TResult>(Control @this, Expression<Func<TResult>> property, TResult value);
         public static Bitmap Rescale(this Bitmap source, Size newSize)
         {
             return new Bitmap(source, newSize);
@@ -50,6 +53,20 @@
                     g.Dispose();
                 }
             return bmps.Cast<Bitmap>().ToArray();
+        }
+
+        public static void SetProperty<TResult>(this Control @this, Expression<Func<TResult>> property, TResult value)
+        {
+            var propertyInfo = (property.Body as MemberExpression).Member as PropertyInfo;
+
+            if (@this.InvokeRequired)
+            {
+                @this.Invoke(new SetPropertySafeDelegate<TResult>(SetProperty), new object[] { @this, property, value });
+            }
+            else
+            {
+                @this.GetType().InvokeMember(propertyInfo.Name, BindingFlags.SetProperty, null, @this, new object[] { value });
+            }
         }
     }
 }

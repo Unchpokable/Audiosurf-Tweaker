@@ -30,11 +30,7 @@
         {
             this.components = new System.ComponentModel.Container();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
-            this.label1 = new System.Windows.Forms.Label();
-            this.pathToGameTextbox = new System.Windows.Forms.TextBox();
-            this.viewPathToGameBtn = new System.Windows.Forms.Button();
             this.openSkinDialog = new System.Windows.Forms.OpenFileDialog();
-            this.saveButton = new System.Windows.Forms.Button();
             this.previewGroupBox = new System.Windows.Forms.GroupBox();
             this.HitsCheck = new System.Windows.Forms.CheckBox();
             this.RingsCheck = new System.Windows.Forms.CheckBox();
@@ -66,9 +62,6 @@
             this.skySpherePic = new System.Windows.Forms.PictureBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.cleanInstallCheck = new System.Windows.Forms.CheckBox();
-            this.label6 = new System.Windows.Forms.Label();
-            this.viewPathToSkinsBtn = new System.Windows.Forms.Button();
-            this.skinsFolderPathTextbox = new System.Windows.Forms.TextBox();
             this.button1 = new System.Windows.Forms.Button();
             this.button4 = new System.Windows.Forms.Button();
             this.button3 = new System.Windows.Forms.Button();
@@ -80,6 +73,8 @@
             this.button5 = new System.Windows.Forms.Button();
             this.label7 = new System.Windows.Forms.Label();
             this.currentlyInstallLabel = new System.Windows.Forms.Label();
+            this.menuStrip1 = new System.Windows.Forms.MenuStrip();
+            this.settingMenuButton = new System.Windows.Forms.ToolStripMenuItem();
             this.previewGroupBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.hitPic2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.hitPic1)).BeginInit();
@@ -99,48 +94,12 @@
             ((System.ComponentModel.ISupportInitialize)(this.tilePic1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.skySpherePic)).BeginInit();
             this.groupBox1.SuspendLayout();
+            this.menuStrip1.SuspendLayout();
             this.SuspendLayout();
-            // 
-            // label1
-            // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(12, 367);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(131, 13);
-            this.label1.TabIndex = 0;
-            this.label1.Text = "Path to Audiosurf textures:";
-            // 
-            // pathToGameTextbox
-            // 
-            this.pathToGameTextbox.BackColor = System.Drawing.SystemColors.ControlDark;
-            this.pathToGameTextbox.Location = new System.Drawing.Point(12, 383);
-            this.pathToGameTextbox.Name = "pathToGameTextbox";
-            this.pathToGameTextbox.Size = new System.Drawing.Size(140, 20);
-            this.pathToGameTextbox.TabIndex = 1;
-            // 
-            // viewPathToGameBtn
-            // 
-            this.viewPathToGameBtn.Location = new System.Drawing.Point(158, 381);
-            this.viewPathToGameBtn.Name = "viewPathToGameBtn";
-            this.viewPathToGameBtn.Size = new System.Drawing.Size(75, 23);
-            this.viewPathToGameBtn.TabIndex = 2;
-            this.viewPathToGameBtn.Text = "View...";
-            this.viewPathToGameBtn.UseVisualStyleBackColor = true;
-            this.viewPathToGameBtn.Click += new System.EventHandler(this.ViewPathDialogShow);
             // 
             // openSkinDialog
             // 
             this.openSkinDialog.FileName = "openFileDialog1";
-            // 
-            // saveButton
-            // 
-            this.saveButton.Location = new System.Drawing.Point(12, 415);
-            this.saveButton.Name = "saveButton";
-            this.saveButton.Size = new System.Drawing.Size(221, 23);
-            this.saveButton.TabIndex = 3;
-            this.saveButton.Text = "Overwrite paths ";
-            this.saveButton.UseVisualStyleBackColor = true;
-            this.saveButton.Click += new System.EventHandler(this.SavePathes);
             // 
             // previewGroupBox
             // 
@@ -173,7 +132,7 @@
             this.previewGroupBox.Controls.Add(this.tilesLabel);
             this.previewGroupBox.Controls.Add(this.label2);
             this.previewGroupBox.Controls.Add(this.skySpherePic);
-            this.previewGroupBox.Location = new System.Drawing.Point(239, 13);
+            this.previewGroupBox.Location = new System.Drawing.Point(242, 28);
             this.previewGroupBox.Name = "previewGroupBox";
             this.previewGroupBox.Size = new System.Drawing.Size(611, 391);
             this.previewGroupBox.TabIndex = 4;
@@ -422,18 +381,16 @@
             // groupBox1
             // 
             this.groupBox1.Controls.Add(this.cleanInstallCheck);
-            this.groupBox1.Controls.Add(this.label6);
-            this.groupBox1.Controls.Add(this.viewPathToSkinsBtn);
-            this.groupBox1.Controls.Add(this.skinsFolderPathTextbox);
+            this.groupBox1.Controls.Add(this.button5);
             this.groupBox1.Controls.Add(this.button1);
             this.groupBox1.Controls.Add(this.button4);
             this.groupBox1.Controls.Add(this.button3);
             this.groupBox1.Controls.Add(this.openSkinBtn);
             this.groupBox1.Controls.Add(this.button2);
             this.groupBox1.Controls.Add(this.SkinsListBox);
-            this.groupBox1.Location = new System.Drawing.Point(3, 13);
+            this.groupBox1.Location = new System.Drawing.Point(12, 28);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(221, 351);
+            this.groupBox1.Size = new System.Drawing.Size(221, 421);
             this.groupBox1.TabIndex = 5;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Your skins";
@@ -448,35 +405,9 @@
             this.cleanInstallCheck.Text = "Clean installation";
             this.cleanInstallCheck.UseVisualStyleBackColor = true;
             // 
-            // label6
-            // 
-            this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(6, 37);
-            this.label6.Name = "label6";
-            this.label6.Size = new System.Drawing.Size(73, 13);
-            this.label6.TabIndex = 7;
-            this.label6.Text = "Path to Skins:";
-            // 
-            // viewPathToSkinsBtn
-            // 
-            this.viewPathToSkinsBtn.Location = new System.Drawing.Point(146, 51);
-            this.viewPathToSkinsBtn.Name = "viewPathToSkinsBtn";
-            this.viewPathToSkinsBtn.Size = new System.Drawing.Size(69, 23);
-            this.viewPathToSkinsBtn.TabIndex = 6;
-            this.viewPathToSkinsBtn.Text = "View...";
-            this.viewPathToSkinsBtn.UseVisualStyleBackColor = true;
-            this.viewPathToSkinsBtn.Click += new System.EventHandler(this.ViewPathDialogShow);
-            // 
-            // skinsFolderPathTextbox
-            // 
-            this.skinsFolderPathTextbox.Location = new System.Drawing.Point(7, 53);
-            this.skinsFolderPathTextbox.Name = "skinsFolderPathTextbox";
-            this.skinsFolderPathTextbox.Size = new System.Drawing.Size(133, 20);
-            this.skinsFolderPathTextbox.TabIndex = 6;
-            // 
             // button1
             // 
-            this.button1.Location = new System.Drawing.Point(7, 293);
+            this.button1.Location = new System.Drawing.Point(5, 328);
             this.button1.Name = "button1";
             this.button1.Size = new System.Drawing.Size(210, 23);
             this.button1.TabIndex = 5;
@@ -486,7 +417,7 @@
             // 
             // button4
             // 
-            this.button4.Location = new System.Drawing.Point(6, 322);
+            this.button4.Location = new System.Drawing.Point(5, 357);
             this.button4.Name = "button4";
             this.button4.Size = new System.Drawing.Size(210, 23);
             this.button4.TabIndex = 4;
@@ -496,7 +427,7 @@
             // 
             // button3
             // 
-            this.button3.Location = new System.Drawing.Point(7, 264);
+            this.button3.Location = new System.Drawing.Point(5, 299);
             this.button3.Name = "button3";
             this.button3.Size = new System.Drawing.Size(211, 23);
             this.button3.TabIndex = 3;
@@ -506,7 +437,7 @@
             // 
             // openSkinBtn
             // 
-            this.openSkinBtn.Location = new System.Drawing.Point(7, 206);
+            this.openSkinBtn.Location = new System.Drawing.Point(5, 241);
             this.openSkinBtn.Name = "openSkinBtn";
             this.openSkinBtn.Size = new System.Drawing.Size(211, 23);
             this.openSkinBtn.TabIndex = 2;
@@ -516,7 +447,7 @@
             // 
             // button2
             // 
-            this.button2.Location = new System.Drawing.Point(7, 235);
+            this.button2.Location = new System.Drawing.Point(5, 270);
             this.button2.Name = "button2";
             this.button2.Size = new System.Drawing.Size(210, 23);
             this.button2.TabIndex = 1;
@@ -528,18 +459,18 @@
             // 
             this.SkinsListBox.BackColor = System.Drawing.SystemColors.ControlDark;
             this.SkinsListBox.FormattingEnabled = true;
-            this.SkinsListBox.Location = new System.Drawing.Point(7, 79);
+            this.SkinsListBox.Location = new System.Drawing.Point(7, 40);
             this.SkinsListBox.Name = "SkinsListBox";
-            this.SkinsListBox.Size = new System.Drawing.Size(209, 121);
+            this.SkinsListBox.Size = new System.Drawing.Size(209, 186);
             this.SkinsListBox.TabIndex = 0;
             this.SkinsListBox.SelectedIndexChanged += new System.EventHandler(this.SkinsListBox_SelectedIndexChanged);
             this.SkinsListBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.SkinsListBox_KeyDown);
             // 
             // button5
             // 
-            this.button5.Location = new System.Drawing.Point(538, 415);
+            this.button5.Location = new System.Drawing.Point(5, 386);
             this.button5.Name = "button5";
-            this.button5.Size = new System.Drawing.Size(312, 23);
+            this.button5.Size = new System.Drawing.Size(210, 23);
             this.button5.TabIndex = 6;
             this.button5.Text = "Open Skin Editor";
             this.button5.UseVisualStyleBackColor = true;
@@ -548,7 +479,7 @@
             // label7
             // 
             this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(236, 420);
+            this.label7.Location = new System.Drawing.Point(239, 424);
             this.label7.Name = "label7";
             this.label7.Size = new System.Drawing.Size(93, 13);
             this.label7.TabIndex = 7;
@@ -557,29 +488,45 @@
             // currentlyInstallLabel
             // 
             this.currentlyInstallLabel.AutoSize = true;
-            this.currentlyInstallLabel.Location = new System.Drawing.Point(335, 420);
+            this.currentlyInstallLabel.Location = new System.Drawing.Point(338, 424);
             this.currentlyInstallLabel.Name = "currentlyInstallLabel";
-            this.currentlyInstallLabel.Size = new System.Drawing.Size(0, 13);
+            this.currentlyInstallLabel.Size = new System.Drawing.Size(69, 13);
             this.currentlyInstallLabel.TabIndex = 8;
+            this.currentlyInstallLabel.Text = "SKIN_NAME";
+            // 
+            // menuStrip1
+            // 
+            this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.settingMenuButton});
+            this.menuStrip1.Location = new System.Drawing.Point(0, 0);
+            this.menuStrip1.Name = "menuStrip1";
+            this.menuStrip1.Size = new System.Drawing.Size(862, 24);
+            this.menuStrip1.TabIndex = 9;
+            this.menuStrip1.Text = "menuStrip1";
+            // 
+            // settingMenuButton
+            // 
+            this.settingMenuButton.Name = "settingMenuButton";
+            this.settingMenuButton.Size = new System.Drawing.Size(61, 20);
+            this.settingMenuButton.Text = "Settings";
+            this.settingMenuButton.Click += new System.EventHandler(this.toolStripMenuItem1_Click);
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.ControlDarkDark;
-            this.ClientSize = new System.Drawing.Size(862, 447);
+            this.ClientSize = new System.Drawing.Size(862, 461);
             this.Controls.Add(this.currentlyInstallLabel);
             this.Controls.Add(this.label7);
-            this.Controls.Add(this.button5);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.previewGroupBox);
-            this.Controls.Add(this.saveButton);
-            this.Controls.Add(this.viewPathToGameBtn);
-            this.Controls.Add(this.pathToGameTextbox);
-            this.Controls.Add(this.label1);
+            this.Controls.Add(this.menuStrip1);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
+            this.MainMenuStrip = this.menuStrip1;
             this.Name = "Form1";
             this.Text = "Audiosurf Skin Changer v2.2.0";
+            this.Load += new System.EventHandler(this.Form1_Load);
             this.previewGroupBox.ResumeLayout(false);
             this.previewGroupBox.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.hitPic2)).EndInit();
@@ -601,18 +548,15 @@
             ((System.ComponentModel.ISupportInitialize)(this.skySpherePic)).EndInit();
             this.groupBox1.ResumeLayout(false);
             this.groupBox1.PerformLayout();
+            this.menuStrip1.ResumeLayout(false);
+            this.menuStrip1.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
         }
 
         #endregion
-
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.TextBox pathToGameTextbox;
-        private System.Windows.Forms.Button viewPathToGameBtn;
         private System.Windows.Forms.OpenFileDialog openSkinDialog;
-        private System.Windows.Forms.Button saveButton;
         private System.Windows.Forms.GroupBox previewGroupBox;
         private System.Windows.Forms.PictureBox tilePic1;
         private System.Windows.Forms.Label tilesLabel;
@@ -645,9 +589,6 @@
         private System.Windows.Forms.PictureBox hitPic1;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Button button1;
-        private System.Windows.Forms.Label label6;
-        private System.Windows.Forms.Button viewPathToSkinsBtn;
-        private System.Windows.Forms.TextBox skinsFolderPathTextbox;
         private System.Windows.Forms.CheckBox cleanInstallCheck;
         private System.Windows.Forms.ToolTip toolTip1;
         private System.Windows.Forms.CheckBox HitsCheck;
@@ -658,6 +599,8 @@
         private System.Windows.Forms.Button button5;
         private System.Windows.Forms.Label label7;
         private System.Windows.Forms.Label currentlyInstallLabel;
+        private System.Windows.Forms.MenuStrip menuStrip1;
+        private System.Windows.Forms.ToolStripMenuItem settingMenuButton;
     }
 }
 
