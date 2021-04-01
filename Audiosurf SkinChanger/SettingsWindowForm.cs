@@ -80,5 +80,10 @@
             ApplySettings(sender, e);
             Close();
         }
+
+        private void Close(object sender, EventArgs e)
+        {
+            Close();
+        }
     }
 }

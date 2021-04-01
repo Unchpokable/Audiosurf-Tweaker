@@ -55,13 +55,13 @@
             return bmps.Cast<Bitmap>().ToArray();
         }
 
-        public static void SetProperty<TResult>(this Control @this, Expression<Func<TResult>> property, TResult value)
+        public static void SetProperty<TValue>(this Control @this, Expression<Func<TValue>> property, TValue value)
         {
             var propertyInfo = (property.Body as MemberExpression).Member as PropertyInfo;
 
             if (@this.InvokeRequired)
             {
-                @this.Invoke(new SetPropertySafeDelegate<TResult>(SetProperty), new object[] { @this, property, value });
+                @this.Invoke(new SetPropertySafeDelegate<TValue>(SetProperty), new object[] { @this, property, value });
             }
             else
             {
