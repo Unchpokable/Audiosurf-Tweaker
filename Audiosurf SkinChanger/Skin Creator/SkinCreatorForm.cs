@@ -31,6 +31,7 @@ namespace Audiosurf_SkinChanger.Skin_Creator
         private SkinPackager skinPackager;
         private PictureBox[] AllPictureboxes;
         private string[] SizesStrings = new[] { "64x64", "128x128", "256x256", "512x512" };
+        private string pathToOpenedSkin;
         private Dictionary<string, Size> picBoxSizes = new Dictionary<string, Size>()
         {
             {"SkySphere", new Size(180, 90) },
@@ -357,7 +358,7 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             skin.Particles.Apply(x => x?.Apply(bmp => bmp?.Rescale(sizesAssociationTalbe[particlesSizes.Text])));
         }
 
-        private void button3_Click(object sender, EventArgs e)
+        private void OpenSkin(object sender, EventArgs e)
         {
             //TODO: Catched exceptions show message box with info about exception
             openFileDialog.Filter = "Audiosurf Skins (.askin)|*.askin";
@@ -365,7 +366,7 @@ namespace Audiosurf_SkinChanger.Skin_Creator
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
                 skin = skinPackager.Decompile(openFileDialog.FileName);
-     
+                pathToOpenedSkin = openFileDialog.FileName;
                 try
                 {
                     Sphere1.Image = ((Bitmap)skin.SkySpheres.Group[0]).Rescale(picBoxSizes["SkySphere"]);
@@ -407,11 +408,35 @@ namespace Audiosurf_SkinChanger.Skin_Creator
                     hit2.Image = ((Bitmap)skin.Hits.Group[1]).Rescale(picBoxSizes["Texture"]);
                 }
                 catch { }
+                CreateSkinFieldsAssotiationTables();
+                AllPictureboxes.ForEach(x => RemoveMouseActions(x));
+                openFileDialog.Filter = "Supported Images(*.PNG; *.JPG)| *.PNG; *.JPG| All files(*.*) | *.*";
+                openFileDialog.FileName = "";
+                button1.Text = "Rewrite current";
+                button1.Click -= ExportSkin;
+                button1.Click += RewriteSkin;
             }
-            CreateSkinFieldsAssotiationTables();
-            AllPictureboxes.ForEach(x => RemoveMouseActions(x));
-            openFileDialog.Filter = "Supported Images(*.PNG; *.JPG)| *.PNG; *.JPG| All files(*.*) | *.*";
-            openFileDialog.FileName = "";
+        }
+
+        private void RewriteSkin(object sender, EventArgs e)
+        {
+            if (!isRescaleCheckButton.Checked)
+            {
+                RescaleSkinTextures();
+            }
+            skinPackager.RewriteCompile(skin, pathToOpenedSkin);
+            MessageBox.Show("Done!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            OnSkinExprotrted?.Invoke();
+        }
+
+        private void Reset(object sender, EventArgs e)
+        {
+            skin = new AudiosurfSkin();
+            LoadIdleImages();
+            AllPictureboxes.ForEach(x => SetMouseActions(x));
+            button1.Text = "Export";
+            button1.Click += ExportSkin;
+            button1.Click -= RewriteSkin;
         }
     }
 }

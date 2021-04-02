@@ -45,6 +45,7 @@
             this.button2 = new System.Windows.Forms.Button();
             this.button1 = new System.Windows.Forms.Button();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
+            this.openToEditSkinBtn = new System.Windows.Forms.Button();
             this.hit2 = new System.Windows.Forms.PictureBox();
             this.hit1 = new System.Windows.Forms.PictureBox();
             this.ring4 = new System.Windows.Forms.PictureBox();
@@ -64,7 +65,7 @@
             this.Sphere1 = new System.Windows.Forms.PictureBox();
             this.openFileDialog = new System.Windows.Forms.OpenFileDialog();
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
-            this.openToEditSkinBtn = new System.Windows.Forms.Button();
+            this.button3 = new System.Windows.Forms.Button();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.hit2)).BeginInit();
@@ -232,6 +233,7 @@
             // 
             // groupBox2
             // 
+            this.groupBox2.Controls.Add(this.button3);
             this.groupBox2.Controls.Add(this.openToEditSkinBtn);
             this.groupBox2.Controls.Add(this.hit2);
             this.groupBox2.Controls.Add(this.hit1);
@@ -256,6 +258,16 @@
             this.groupBox2.TabIndex = 2;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Editing";
+            // 
+            // openToEditSkinBtn
+            // 
+            this.openToEditSkinBtn.Location = new System.Drawing.Point(7, 451);
+            this.openToEditSkinBtn.Name = "openToEditSkinBtn";
+            this.openToEditSkinBtn.Size = new System.Drawing.Size(151, 23);
+            this.openToEditSkinBtn.TabIndex = 17;
+            this.openToEditSkinBtn.Text = "open skin to edit";
+            this.openToEditSkinBtn.UseVisualStyleBackColor = true;
+            this.openToEditSkinBtn.Click += new System.EventHandler(this.OpenSkin);
             // 
             // hit2
             // 
@@ -448,15 +460,15 @@
             // 
             this.openFileDialog.FileName = "openFileDialog";
             // 
-            // openToEditSkinBtn
+            // button3
             // 
-            this.openToEditSkinBtn.Location = new System.Drawing.Point(7, 451);
-            this.openToEditSkinBtn.Name = "openToEditSkinBtn";
-            this.openToEditSkinBtn.Size = new System.Drawing.Size(151, 42);
-            this.openToEditSkinBtn.TabIndex = 17;
-            this.openToEditSkinBtn.Text = "open skin to edit";
-            this.openToEditSkinBtn.UseVisualStyleBackColor = true;
-            this.openToEditSkinBtn.Click += new System.EventHandler(this.button3_Click);
+            this.button3.Location = new System.Drawing.Point(7, 481);
+            this.button3.Name = "button3";
+            this.button3.Size = new System.Drawing.Size(151, 23);
+            this.button3.TabIndex = 18;
+            this.button3.Text = "Clear";
+            this.button3.UseVisualStyleBackColor = true;
+            this.button3.Click += new System.EventHandler(this.Reset);
             // 
             // SkinCreatorForm
             // 
@@ -533,5 +545,6 @@
         private System.Windows.Forms.Label label6;
         private System.Windows.Forms.TextBox skinNameEntry;
         private System.Windows.Forms.Button openToEditSkinBtn;
+        private System.Windows.Forms.Button button3;
     }
 }
