@@ -11,6 +11,7 @@
     public static class Extensions
     {
         public delegate void SetPropertySafeDelegate<TResult>(Control @this, Expression<Func<TResult>> property, TResult value);
+
         public static Bitmap Rescale(this Bitmap source, Size newSize)
         {
             return new Bitmap(source, newSize);

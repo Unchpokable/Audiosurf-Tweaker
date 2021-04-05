@@ -62,6 +62,7 @@
             this.skySpherePic = new System.Windows.Forms.PictureBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.cleanInstallCheck = new System.Windows.Forms.CheckBox();
+            this.button5 = new System.Windows.Forms.Button();
             this.button1 = new System.Windows.Forms.Button();
             this.button4 = new System.Windows.Forms.Button();
             this.button3 = new System.Windows.Forms.Button();
@@ -70,11 +71,13 @@
             this.SkinsListBox = new System.Windows.Forms.ListBox();
             this.folderBrowserDialog1 = new System.Windows.Forms.FolderBrowserDialog();
             this.toolTip1 = new System.Windows.Forms.ToolTip(this.components);
-            this.button5 = new System.Windows.Forms.Button();
             this.label7 = new System.Windows.Forms.Label();
             this.currentlyInstallLabel = new System.Windows.Forms.Label();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.settingMenuButton = new System.Windows.Forms.ToolStripMenuItem();
+            this.label1 = new System.Windows.Forms.Label();
+            this.progressBar1 = new System.Windows.Forms.ProgressBar();
+            this.loadingSkinNameLabel = new System.Windows.Forms.Label();
             this.previewGroupBox.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.hitPic2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.hitPic1)).BeginInit();
@@ -405,6 +408,16 @@
             this.cleanInstallCheck.Text = "Clean installation";
             this.cleanInstallCheck.UseVisualStyleBackColor = true;
             // 
+            // button5
+            // 
+            this.button5.Location = new System.Drawing.Point(5, 386);
+            this.button5.Name = "button5";
+            this.button5.Size = new System.Drawing.Size(210, 23);
+            this.button5.TabIndex = 6;
+            this.button5.Text = "Open Skin Editor";
+            this.button5.UseVisualStyleBackColor = true;
+            this.button5.Click += new System.EventHandler(this.OpenSkinEditor);
+            // 
             // button1
             // 
             this.button1.Location = new System.Drawing.Point(5, 328);
@@ -466,20 +479,10 @@
             this.SkinsListBox.SelectedIndexChanged += new System.EventHandler(this.SkinsListBox_SelectedIndexChanged);
             this.SkinsListBox.KeyDown += new System.Windows.Forms.KeyEventHandler(this.SkinsListBox_KeyDown);
             // 
-            // button5
-            // 
-            this.button5.Location = new System.Drawing.Point(5, 386);
-            this.button5.Name = "button5";
-            this.button5.Size = new System.Drawing.Size(210, 23);
-            this.button5.TabIndex = 6;
-            this.button5.Text = "Open Skin Editor";
-            this.button5.UseVisualStyleBackColor = true;
-            this.button5.Click += new System.EventHandler(this.OpenSkinEditor);
-            // 
             // label7
             // 
             this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(239, 424);
+            this.label7.Location = new System.Drawing.Point(239, 436);
             this.label7.Name = "label7";
             this.label7.Size = new System.Drawing.Size(93, 13);
             this.label7.TabIndex = 7;
@@ -488,7 +491,7 @@
             // currentlyInstallLabel
             // 
             this.currentlyInstallLabel.AutoSize = true;
-            this.currentlyInstallLabel.Location = new System.Drawing.Point(338, 424);
+            this.currentlyInstallLabel.Location = new System.Drawing.Point(338, 436);
             this.currentlyInstallLabel.Name = "currentlyInstallLabel";
             this.currentlyInstallLabel.Size = new System.Drawing.Size(69, 13);
             this.currentlyInstallLabel.TabIndex = 8;
@@ -511,12 +514,40 @@
             this.settingMenuButton.Text = "Settings";
             this.settingMenuButton.Click += new System.EventHandler(this.toolStripMenuItem1_Click);
             // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(661, 436);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(48, 13);
+            this.label1.TabIndex = 10;
+            this.label1.Text = "Loading:";
+            // 
+            // progressBar1
+            // 
+            this.progressBar1.Location = new System.Drawing.Point(453, 431);
+            this.progressBar1.Name = "progressBar1";
+            this.progressBar1.Size = new System.Drawing.Size(202, 23);
+            this.progressBar1.TabIndex = 11;
+            // 
+            // loadingSkinNameLabel
+            // 
+            this.loadingSkinNameLabel.AutoSize = true;
+            this.loadingSkinNameLabel.Location = new System.Drawing.Point(715, 436);
+            this.loadingSkinNameLabel.Name = "loadingSkinNameLabel";
+            this.loadingSkinNameLabel.Size = new System.Drawing.Size(56, 13);
+            this.loadingSkinNameLabel.TabIndex = 12;
+            this.loadingSkinNameLabel.Text = "SkinName";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.SystemColors.ControlDarkDark;
             this.ClientSize = new System.Drawing.Size(862, 461);
+            this.Controls.Add(this.loadingSkinNameLabel);
+            this.Controls.Add(this.progressBar1);
+            this.Controls.Add(this.label1);
             this.Controls.Add(this.currentlyInstallLabel);
             this.Controls.Add(this.label7);
             this.Controls.Add(this.groupBox1);
@@ -601,6 +632,9 @@
         private System.Windows.Forms.Label currentlyInstallLabel;
         private System.Windows.Forms.MenuStrip menuStrip1;
         private System.Windows.Forms.ToolStripMenuItem settingMenuButton;
+        private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.ProgressBar progressBar1;
+        private System.Windows.Forms.Label loadingSkinNameLabel;
     }
 }
 
