@@ -69,7 +69,7 @@ namespace Installer
 
         internal static string FindAudiosurfSkinChangerZip(string location)
         {
-            string[] allFiles = Directory.GetFiles(location).Where(x => x.EndsWith(".package")).ToArray();
+            string[] allFiles = Directory.GetFiles(location).Where(x => x.EndsWith(".prog")).ToArray();
             string mask = "audiosurf";
             foreach(var path in allFiles)
             {
