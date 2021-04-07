@@ -2,10 +2,9 @@
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Collections.Generic;
-using System.Collections;
 using System.Diagnostics;
-using static System.Net.Mime.MediaTypeNames;
+using IWshRuntimeLibrary;
+using System.Runtime.InteropServices.ComTypes;
 
 namespace Installer
 {
@@ -53,11 +52,16 @@ namespace Installer
             else
             {
                 IconRegistry.SHChangeNotify(0x08000000, 0x0000, (IntPtr)null, (IntPtr)null);
-                Console.WriteLine("[Info] :: Icons successfully registered. Audisourf Skin Changer ready to use. Thanks for download. Enjoy");
+                Console.WriteLine("[Info] :: Icons successfully registered. Audisourf Skin Changer ready to use");
             }
+
+            Console.WriteLine("Do you want to create a shortcut on your desktop? Y/N");
+            if (Console.ReadLine().ToLower() == "y")
+                CreateShortcut();
+            Console.WriteLine("Audiosurf Skin Changer succesfully installed. Thanks for download. Enjoy");
             Console.WriteLine("Press any key to continue...");
             Console.ReadKey();
-            File.Delete(sourceArchive);
+            System.IO.File.Delete(sourceArchive);
             Process.Start(new ProcessStartInfo()
             {
                 Arguments = "/C choice /C Y /N /D Y /T 3 & Del \"" + Assembly.GetExecutingAssembly().Location + "\"",
@@ -77,6 +81,19 @@ namespace Installer
                     return path;
             }
             return null;
+        }
+
+        internal static void CreateShortcut()
+        {
+            IShellLink link = (IShellLink)new ShellLink();
+            link.SetDescription("Audiosurf Skin Changer Shortcut");
+            var folder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            link.SetPath(folder + @"\Audiosurf SkinChanger.exe");
+            link.SetWorkingDirectory(folder);
+
+            var file = (IPersistFile)link;
+            var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+            file.Save(Path.Combine(desktopPath, "Audiosurf Skin Changer.lnk"), false);
         }
     }
 }
