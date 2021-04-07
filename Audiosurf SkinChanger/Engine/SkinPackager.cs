@@ -168,7 +168,8 @@
             {
                 var origName = Path.GetFileName(file);
                 var fname = origName.ToLower();
-                if (fname.Contains(nameMask))
+                var fileExt = Path.GetExtension(fname);
+                if (fname.Contains(nameMask) && new[] { ".png", ".jpg" }.Any(x => x == fileExt))
                 {
                     var image = new NamedBitmap(origName, Image.FromFile(file));
                     group.AddImage(image);
