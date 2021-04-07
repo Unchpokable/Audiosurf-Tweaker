@@ -27,6 +27,8 @@
             EnvironmentalVeriables.DCSWarningsAllowed = allowWarnCheck.Checked;
             cfg.AppSettings.Settings["AllowWarnings"].Value = allowWarnCheck.Checked.ToString();
             cfg.AppSettings.Settings["DCSBehaviour"].Value = ConvertDCSBehaveIntoNumericValue().ToString();
+            cfg.AppSettings.Settings["skinsPath"].Value = addFolderPath.Text;
+            cfg.AppSettings.Settings["gamePath"].Value = gamePathEntry.Text;
             cfg.Save();
             ConfigurationManager.RefreshSection("appSettings");
             OnSettingsApplied?.Invoke();

@@ -26,7 +26,6 @@ namespace Audiosurf_SkinChanger
         private PictureBox[] hitsImageGroup;
         private PictureBox[][] pictureBoxes;
         private string currentlyInstalledSkinName;
-        public string TempSkinName { get; set; }
 
         private Size stdSkysphereSize = new Size(180, 60);
         private Size stdTextureSize = new Size(64, 64);
@@ -177,20 +176,18 @@ Do you want to save your current texture set as an Audiosurf Skin Changer packag
 
         private async void LoadSkinAsync()
         {
-            await LoadSkinsTask();
-        }
-
-        private Task LoadSkinsTask()
-        {
-            return Task.Run(LoadSkins);
+            await Task.Run(LoadSkins);
         }
 
         private void LoadSkins()
         {
-            var allFiles = Directory.GetFiles("Skins");
-            if (EnvironmentalVeriables.skinsFolderPath != "None")
-                allFiles.Concat(Directory.GetFiles(EnvironmentalVeriables.skinsFolderPath));
-            LoadSkins(allFiles, true);
+            lock (skinPackager)
+            {
+                var allFiles = Directory.GetFiles("Skins");
+                if (EnvironmentalVeriables.skinsFolderPath != "None")
+                    allFiles = allFiles.Concat(Directory.GetFiles(EnvironmentalVeriables.skinsFolderPath)).ToArray();
+                LoadSkins(allFiles, true);
+            }
         }
 
 
@@ -221,6 +218,7 @@ Do you want to save your current texture set as an Audiosurf Skin Changer packag
 
             if (SkinsListBox.Items.Count == 0)
                 return;
+
             progressBar1.Invoke(new Action(() => progressBar1.Value = progressBar1.Maximum));
             SkinsListBox.SetProperty(() => SkinsListBox.SelectedIndex, 0);
             SkinsListBox.Invoke(new Action(() => SkinsListBox.Invalidate()));
@@ -259,7 +257,7 @@ Do you want to save your current texture set as an Audiosurf Skin Changer packag
         }
 
 
-        private void SkinsListBox_SelectedIndexChanged(object sender, EventArgs e)
+        private async void SkinsListBox_SelectedIndexChanged(object sender, EventArgs e)
         {
             try
             {
@@ -267,7 +265,7 @@ Do you want to save your current texture set as an Audiosurf Skin Changer packag
                 if (selectedSkin == null)
                     return;
 
-                DrawPreviewOfSkin(selectedSkin);
+                await DrawPreviewOfSkin(selectedSkin);
                 currentSkin = selectedSkin.Load();
                 SetSkinPartChecked();
             }
@@ -277,16 +275,22 @@ Do you want to save your current texture set as an Audiosurf Skin Changer packag
             }
         }
 
-        private void DrawPreviewOfSkin(SkinLink link)
+        private Task DrawPreviewOfSkin(SkinLink link)
         {
-            var skin = link.Load();
-            pictureBoxes.ForEach(x => x.ClearAll());
-            tileFlyup.Image = ((Bitmap)skin.TilesFlyup)?.Rescale(stdTextureSize);
-            FillPictureBoxGruopFromImageGroup(skySpherePreview, skin.SkySpheres, stdSkysphereSize);
-            FillPictureBoxGruopFromImageGroup(tilesTexturesImageGroup, ((Bitmap)skin.Tiles)?.Squarify(), stdTextureSize);
-            FillPictureBoxGruopFromImageGroup(particlesTexturesImageGroup, skin.Particles, stdTextureSize);
-            FillPictureBoxGruopFromImageGroup(ringsTexturesImageGroup, skin.Rings, stdTextureSize);
-            FillPictureBoxGruopFromImageGroup(hitsImageGroup, skin.Hits, stdTextureSize);
+            return Task.Run(() =>
+            {
+                lock (skinPackager)
+                {
+                    var skin = link.Load();
+                    pictureBoxes.ForEach(x => x.ClearAll());
+                    tileFlyup.Image = ((Bitmap)skin.TilesFlyup)?.Rescale(stdTextureSize);
+                    FillPictureBoxGruopFromImageGroup(skySpherePreview, skin.SkySpheres, stdSkysphereSize);
+                    FillPictureBoxGruopFromImageGroup(tilesTexturesImageGroup, ((Bitmap)skin.Tiles)?.Squarify(), stdTextureSize);
+                    FillPictureBoxGruopFromImageGroup(particlesTexturesImageGroup, skin.Particles, stdTextureSize);
+                    FillPictureBoxGruopFromImageGroup(ringsTexturesImageGroup, skin.Rings, stdTextureSize);
+                    FillPictureBoxGruopFromImageGroup(hitsImageGroup, skin.Hits, stdTextureSize);
+                }
+            });
         }
 
         private void FillPictureBoxGruopFromImageGroup(PictureBox[] pictureBoxes, Bitmap[] images, Size newSize)
@@ -321,13 +325,13 @@ Do you want to save your current texture set as an Audiosurf Skin Changer packag
             packFolderIntoSkinButtonBehaviour[knownSender]?.Invoke(sender, e);
         }
 
-        private void PackAnyFolderIntoSkin(object sender, EventArgs e)
+        private async void PackAnyFolderIntoSkin(object sender, EventArgs e)
         {
             try
             {
                 if (folderBrowserDialog1.ShowDialog() == DialogResult.OK)
                 {
-                    PackFolderIntoSkin(folderBrowserDialog1.SelectedPath);
+                    await PackFolderIntoSkin(folderBrowserDialog1.SelectedPath);
                 }
             }
             catch (Exception ex)
@@ -336,12 +340,12 @@ Do you want to save your current texture set as an Audiosurf Skin Changer packag
             }
         }
 
-        private void PackCurrentTextureFolderIntoSkin(object sender, EventArgs e)
+        private async void PackCurrentTextureFolderIntoSkin(object sender, EventArgs e)
         {
             var path = EnvironmentalVeriables.gamePath;
             try
             {
-                PackFolderIntoSkin(path);
+                await PackFolderIntoSkin(path);
             }
             catch (Exception ex)
             {
@@ -349,40 +353,46 @@ Do you want to save your current texture set as an Audiosurf Skin Changer packag
             }
         }
 
-        private void PackFolderIntoSkin(string directory)
+        private Task PackFolderIntoSkin(string directory)
         {
-            AudiosurfSkin skin = skinPackager.CreateSkinFromFolder(directory);
-            if (skin == null)
+            return Task.Run(() =>
             {
-                MessageBox.Show($"Error during packaging {directory} into audiosurf skin. Please, Check selected folder", "Package Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-            if (MessageBox.Show("Do you want to name new skin?", "new skin", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
-            {
-                new OpenNewSkinForm(this).ShowDialog(this);
-                skin.Name = TempSkinName;
-            }
-            else
-            {
-                string name = new DirectoryInfo(directory).Name;
-                foreach (var skinName in EnvironmentalVeriables.Skins.Select(x => x.Name))
+                lock (skinPackager)
                 {
-                    if (name == skinName)
+                    AudiosurfSkin skin = skinPackager.CreateSkinFromFolder(directory);
+                    if (skin == null)
                     {
-                        MessageBox.Show("Skin with same name already exist! Enter new name for this skin", "Naming Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        new OpenNewSkinForm(this).ShowDialog(this);
-                        name = TempSkinName;
-                        break;
+                        MessageBox.Show($"Error during packaging {directory} into audiosurf skin. Please, Check selected folder", "Package Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
                     }
+                    if (MessageBox.Show("Do you want to name new skin?", "new skin", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                    {
+                        new OpenNewSkinForm().ShowDialog();
+                        skin.Name = EnvironmentalVeriables.TempSkinName;
+                    }
+                    else
+                    {
+                        string name = new DirectoryInfo(directory).Name;
+                        foreach (var skinName in EnvironmentalVeriables.Skins.Select(x => x.Name))
+                        {
+                            if (name == skinName)
+                            {
+                                MessageBox.Show("Skin with same name already exist! Enter new name for this skin", "Naming Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                new OpenNewSkinForm().ShowDialog();
+                                name = EnvironmentalVeriables.TempSkinName;
+                                break;
+                            }
+                        }
+                        skin.Name = name;
+                    }
+                    skinPackager.CompileTo(skin, "Skins");
+                    var link = new SkinLink(@"Skins\" + skin.Name + SkinPackager.skinExtension, skin.Name);
+                    EnvironmentalVeriables.Skins.Add(link);
+                    SkinsListBox.Invoke(new Action(() => SkinsListBox.Items.Add(link)));
+                    DrawPreviewOfSkin(link);
+                    currentSkin = skin;
                 }
-                skin.Name = name;
-            }
-            skinPackager.CompileTo(skin, "Skins");
-            var link = new SkinLink(@"Skins\" + skin.Name + SkinPackager.skinExtension, skin.Name);
-            EnvironmentalVeriables.Skins.Add(link);
-            SkinsListBox.Items.Add(link);
-            DrawPreviewOfSkin(link);
-            currentSkin = skin;
+            });
         }
 
         private void PackToSkinFile(object sender, EventArgs e)
@@ -393,14 +403,11 @@ Do you want to save your current texture set as an Audiosurf Skin Changer packag
                 return;
             }
 
-            if (EnvironmentalVeriables.skinsFolderPath == "None")
+            if (folderBrowserDialog1.ShowDialog() == DialogResult.OK)
             {
-                ExportSkin(currentSkin, "Skins");
+                ExportSkin(currentSkin, folderBrowserDialog1.SelectedPath);
+                MessageBox.Show("Done!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
-            else
-                ExportSkin(currentSkin);
-
-            MessageBox.Show("Done!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private bool ExportSkin(AudiosurfSkin skin, string path = null)
@@ -451,7 +458,7 @@ Do you want to save your current texture set as an Audiosurf Skin Changer packag
         {
             if (SkySpheresCheck.Checked || forcedInstall)
                 skin.SkySpheres?.Apply(x => x?.Save(EnvironmentalVeriables.gamePath));
-            if(HitsCheck.Checked || forcedInstall)
+            if (HitsCheck.Checked || forcedInstall)
                 skin.Hits?.Apply(x => x?.Save(EnvironmentalVeriables.gamePath));
             if (TilesCheck.Checked || forcedInstall)
             {
@@ -480,6 +487,7 @@ Do you want to save your current texture set as an Audiosurf Skin Changer packag
                 SkinsListBox.Items.RemoveAt(SkinsListBox.SelectedIndex);
                 SkinsListBox.SelectedIndex = 0;
                 SkinsListBox.Invalidate();
+                EnvironmentalVeriables.Skins.Remove(skin);
                 return true;
             }
             catch (Exception e)
@@ -492,11 +500,11 @@ Do you want to save your current texture set as an Audiosurf Skin Changer packag
 
         private void SkinsListBox_KeyDown(object sender, KeyEventArgs e)
         {
-            if (MessageBox.Show("Are you sure to delete this skin?", "Remove skin", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
-                if (e.KeyCode == Keys.Delete)
-                {
+            if (e.KeyCode == Keys.Delete)
+            {
+                if (MessageBox.Show("Are you sure to delete this skin?", "Remove skin", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                     RemoveSelectedSkin((SkinLink)SkinsListBox.SelectedItem);
-                }
+            }
         }
 
         private void Form1_Load(object sender, EventArgs e)

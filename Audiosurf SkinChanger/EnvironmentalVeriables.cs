@@ -5,6 +5,11 @@
 
     public static class EnvironmentalVeriables
     {
+        #region Editable Variables
+        public static string TempSkinName { get; set; }
+        #endregion
+
+        #region Readonly Variables
         internal static readonly IList<SkinLink> Skins = new List<SkinLink>();
         internal static string gamePath = "";
         internal static string skinsFolderPath = "None";
@@ -17,5 +22,6 @@
         internal static readonly string TilesImageName = "tiles.png";
         internal static bool DCSWarningsAllowed = true;
         internal static DCSBehaviour ControlSystemBehaviour = DCSBehaviour.OnBoot;
+        #endregion
     }
 }
