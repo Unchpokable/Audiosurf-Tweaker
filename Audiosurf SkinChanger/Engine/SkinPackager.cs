@@ -78,6 +78,26 @@
             }
         }
 
+        public bool RewriteCompile(AudiosurfSkin skin, string path)
+        {
+            try
+            {
+                IFormatter formatter = new BinaryFormatter();
+                using (Stream filestream = new FileStream(path, FileMode.Create))
+                {
+                    formatter.Serialize(filestream, skin);
+                }
+                return true;
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show($"Ooops! Something goes wrong! We cant save your skin {skin.Name}!\n Exception message: {e.Message}.\n Stack trace written in log file",
+                                "Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                logger.Log("ERROR", e.ToString());
+                return false;
+            }
+        }
+
         public AudiosurfSkin Decompile(string path)
         {
             try
@@ -148,7 +168,8 @@
             {
                 var origName = Path.GetFileName(file);
                 var fname = origName.ToLower();
-                if (fname.Contains(nameMask))
+                var fileExt = Path.GetExtension(fname);
+                if (fname.Contains(nameMask) && new[] { ".png", ".jpg" }.Any(x => x == fileExt))
                 {
                     var image = new NamedBitmap(origName, Image.FromFile(file));
                     group.AddImage(image);

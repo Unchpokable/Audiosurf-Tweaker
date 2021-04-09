@@ -6,13 +6,10 @@ namespace Audiosurf_SkinChanger
 {
     public partial class OpenNewSkinForm : Form
     {
-        private Form1 parent;
 
-        public OpenNewSkinForm(Form p)
+        public OpenNewSkinForm()
         {
             InitializeComponent();
-            parent = p as Form1;
-
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -42,7 +39,7 @@ namespace Audiosurf_SkinChanger
                 }
             }
 
-            parent.TempSkinName = textBox1.Text;
+            EnvironmentalVeriables.TempSkinName = textBox1.Text;
             this.Close();
         }
 
