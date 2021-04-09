@@ -7,7 +7,7 @@
     using System.Linq;
     using System.Reflection;
     using System.Linq.Expressions;
-
+    using System.IO;
     public static class Extensions
     {
         public delegate void SetPropertySafeDelegate<TResult>(Control @this, Expression<Func<TResult>> property, TResult value);
@@ -68,6 +68,13 @@
             {
                 @this.GetType().InvokeMember(propertyInfo.Name, BindingFlags.SetProperty, null, @this, new object[] { value });
             }
+        }
+
+        public static void MoveFile(string source, string target)
+        {
+            if (!File.Exists(source))
+                throw new InvalidOperationException($"File {source} doesn't exists");
+            File.Move(source, target);
         }
     }
 }

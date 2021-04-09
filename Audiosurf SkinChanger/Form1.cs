@@ -230,7 +230,9 @@ Do you want to save your current texture set as an Audiosurf Skin Changer packag
         {
             if (openSkinDialog.ShowDialog() == DialogResult.OK)
             {
-                AudiosurfSkin openedSkin = skinPackager.Decompile(openSkinDialog.FileName);
+                var fileName = Path.GetFileName(openSkinDialog.FileName);
+                Extensions.MoveFile(openSkinDialog.FileName, "Skins" + $@"\{fileName}");
+                AudiosurfSkin openedSkin = skinPackager.Decompile($@"Skins\{fileName}");
                 if (openedSkin == null)
                 {
                     MessageBox.Show("Cant open empty .askin file", "Empty Skin!", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -243,7 +245,7 @@ Do you want to save your current texture set as an Audiosurf Skin Changer packag
                     return;
                 }
 
-                var tempLink = new SkinLink(openSkinDialog.FileName, openedSkin.Name);
+                var tempLink = new SkinLink("Skins" + $@"\{fileName}", openedSkin.Name);
                 
                 if (!SkinsListBox.Items.Contains(openedSkin))
                 {
