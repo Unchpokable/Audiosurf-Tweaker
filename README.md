@@ -6,16 +6,23 @@
 - At the moment you can only get the .askin file from another Audiosurf Skin Changer user or use pre-installed skins.
 
 ---
-## Installation guide
-- Program uses special .askin files so it need to register this extension in Windows Registry so that you can see the custom icons for these files . For this purpose the installer.exe script is included in the archive with the program (Archives with "-Installer" in name). This script performs the registration of the extension, as well as unpacking the attached archive with the program itself.
-- After unpacking the archive you downloaded from release page, move the archive content (or subfolder content, if archive contains folder called like "x32" or "x64" or something like this) to where you want to place program. Read the installation manual carefully, run the installer.exe and wait for it to finish. This completes the installation of the program, as you will be informed by the installer script. 
-
+## Installation guide 
+### If you downloading Audiosurf Skin Changer first time:
+- Download latest Release witn -Install(er) tag from [releases page](https://github.com/Unchpokable/Audiosurf-SkinChanger/releases)
+- Extract all files from downloaded release's .zip to any folder you want
+- Check that all files that need to installation program placed in one folder ("Installer.exe", "Installer.exe.config", "Audiosurf Skin Changer v(x.x.x) x(32/64).prog(zip in old versions)")
+- Run Installer.exe as admin 
+- Dont move program files after installation, it will break custom icons
+- Enjoy
+### If you want to update your old Skin Changer:
+- Download Update.zip from latest release from [releases page](https://github.com/Unchpokable/Audiosurf-SkinChanger/releases)
+- replace your old Audiosurf Skin Changer files by new that contains in downloaded .zip
+- If your old Audiosurf Skin Changer version incompatible with latest release, use instructions above
 
 ## Userguide
-- The first thing you should do after starting the program for the first time is to check the path that is specified in the "Audiosurf Textures path" input field. Skin Changer can automatically detect Audiosurf textures folder, but, if u using illegal Audiosurf copy, this path can be invalid, cause its based on steam install path.
-- Program has folder for skins in his root directory (%SkinChanger.exe directory%\Skins), but you can add additional folder which Skin Changer will scan for .askin skinpacks ("Path to skins" entry filed)
-- To open downloaded .askin file, press "Add new .askin file" and select .askin that you want to install. New skin will be added to Skins list.
-- You can pack your textures into .askin file and send it to your friend. Press "Add new skin from folder" button and select folder with textures. Programm will offer you to name new skin, if you deny this offer, skin will be automatically named as folder that you select. Make sure that all textures are named as they should be
-- If you want to create new texturepack, but textures that you want to use placed in different folders, you can use "Skin creator" and pack all textures that you want into .askin texturepack
-- The program only replaces textures that contain .askin, so it's okay if your .askin doesn't contain anything but, for example, tiles.png (one of audiosurf texutures pictures)
-- To install texturepack, select it in ListBox and press "install selected" button
+- First time run after installation you need to open settings window and check path to game's textures. Optional, you can set up DCS behaviour and select additional folder for skins
+- To install skin, select skin that you want in skins selection window and click "Install Skin"
+- To open downloaded .askin package, place it in "Skins" folder in root program directory or in additional skins folder that you selected earlier. Also you can press "Add new .askin" button and select downloaded skin. Skin file will automatically move into "Skins" and displayed in skins selection window
+- If you want to export your textures as Audiosurf Skin Changer package, click "Export my textures as .askin". Textures from your game's texutres folder will be automatically compiled into .askin file and placed in "Skins" folder.
+- If you want to create .askin package from textures, placed in any else folder, click "Add new skin from folder" and select folder with textures that you want to pack to .askin. New package will be plased in "Skins" folder 
+- If you want to edit existing skin, you can use "Skin Editor". Click "Open Skin Editor" button, in new opened form click "Open skin to edit" and select skin that you want to edit.
