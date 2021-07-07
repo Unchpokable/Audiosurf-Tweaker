@@ -61,6 +61,26 @@ namespace SkinChangerRestyle.Properties {
         }
         
         /// <summary>
+        ///   Поиск локализованного ресурса типа System.Byte[].
+        /// </summary>
+        public static byte[] AstroSpace_eZ2Bg {
+            get {
+                object obj = ResourceManager.GetObject("AstroSpace_eZ2Bg", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Поиск локализованного ресурса типа System.Byte[].
+        /// </summary>
+        public static byte[] Atmospheric_rg4aL {
+            get {
+                object obj = ResourceManager.GetObject("Atmospheric_rg4aL", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
         ///   Поиск локализованного ресурса типа System.Drawing.Bitmap.
         /// </summary>
         public static System.Drawing.Bitmap bg {

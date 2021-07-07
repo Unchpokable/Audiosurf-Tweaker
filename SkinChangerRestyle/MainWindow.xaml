@@ -68,6 +68,68 @@
                         Margin="10 5 10 5"
                         ContentStringFormat="Open skin editor">
                 </Button>
+
+                <Border Grid.Row="6"
+                        Background="#c9c9c9"
+                        BorderBrush="Black"
+                        BorderThickness="1"
+                        CornerRadius="10"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Width="250"
+                        Height="110">
+                    <Grid>
+
+                        <Grid.RowDefinitions>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock Grid.Row="0"
+                                   FontFamily="/Fonts/#a Astro Space"
+                                   Text="Current Skin:"
+                                   Margin="10 10 0 0"
+                                   FontSize="13"/>
+                        
+                        <!-- Строка не более 14 символов, больше не влезает -->
+                        <TextBlock Grid.Row="0"
+                                   FontFamily="/Fonts/#a Astro Space"
+                                   HorizontalAlignment="Right"
+                                   VerticalAlignment="Center"
+                                   Margin="0 0 10 0"
+                                   Text="Undefined"
+                                   FontSize=" 15"
+                                   x:Name="currentSkinLabel"/>
+
+
+                        <TextBlock Grid.Row="1"
+                                   FontFamily="/Fonts/#a Astro Space"
+                                   Text="Loading:"
+                                   VerticalAlignment="Bottom"
+                                   Margin="10 0 0 0"/>
+                        
+                        <!-- Строка не более 20 символов, больше не влезает -->
+                        <TextBlock Grid.Row="1"
+                                   FontFamily="/Fonts/#a Astro Space"
+                                   Text="Undefider"
+                                   VerticalAlignment="Bottom"
+                                   HorizontalAlignment="Right"
+                                   Margin="0 0 10 0"
+                                   x:Name="currentLoadingSkinLabel"/>
+                        
+                        <ProgressBar Grid.Row="2" 
+                                    Style="{StaticResource ChangerProgressBar}"
+                                     VerticalAlignment="Bottom"
+                                     HorizontalAlignment="Center"
+                                     Width="230"
+                                     Height="20"
+                                     Margin="0 0 0 10"
+                                     x:Name="skinloadingProgressBar"
+                                     Maximum="100"
+                                     Minimum="0" LargeChange="100"/>
+                    </Grid>
+                </Border>
             </Grid>
         </Grid>
     </Border>

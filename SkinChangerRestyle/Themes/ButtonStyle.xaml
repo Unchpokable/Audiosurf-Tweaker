@@ -18,7 +18,10 @@
                                        VerticalAlignment="Center"
                                        HorizontalAlignment="Center"
                                        Foreground="Black"
-                                       FontSize="15"/>
+                                       FontSize="13"
+                                       FontFamily="/Fonts/#a Astro Space"
+                                       Margin="0 2 0 0">
+                            </TextBlock>
 
                         </Border>
                     </ControlTemplate>
@@ -28,6 +31,10 @@
         <Style.Triggers>
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Background" Value="#a0a0a0"/>
+            </Trigger>
+
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="#494a49"/>
             </Trigger>
         </Style.Triggers>
     </Style>
