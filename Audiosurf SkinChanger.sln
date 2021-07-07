@@ -3,13 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30011.22
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Audiosurf SkinChanger", "Audiosurf SkinChanger\Audiosurf SkinChanger.csproj", "{1D5057C4-7558-452A-9CAF-27989FE730E4}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Audiosurf SkinChanger Legacy", "Audiosurf SkinChanger\Audiosurf SkinChanger Legacy.csproj", "{1D5057C4-7558-452A-9CAF-27989FE730E4}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Installer", "Installer\Installer.csproj", "{EA2DCF69-436E-4959-9085-A645491B2AFA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "textpackctrl.Test", "textpackctrl.Test\textpackctrl.Test.csproj", "{8B8AF816-273F-4CE5-A53A-1521F755BDB3}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "textpackctrl", "textpackctrl\textpackctrl.csproj", "{27231428-42A6-43EC-8F0A-9F71726B2934}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkinChangerRestyle", "SkinChangerRestyle\SkinChangerRestyle.csproj", "{2EF50C5A-2850-4A66-B116-FAB3DC199702}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -69,6 +71,18 @@ Global
 		{27231428-42A6-43EC-8F0A-9F71726B2934}.x64|Any CPU.Build.0 = Debug|Any CPU
 		{27231428-42A6-43EC-8F0A-9F71726B2934}.x64|x64.ActiveCfg = Debug|Any CPU
 		{27231428-42A6-43EC-8F0A-9F71726B2934}.x64|x64.Build.0 = Debug|Any CPU
+		{2EF50C5A-2850-4A66-B116-FAB3DC199702}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2EF50C5A-2850-4A66-B116-FAB3DC199702}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2EF50C5A-2850-4A66-B116-FAB3DC199702}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{2EF50C5A-2850-4A66-B116-FAB3DC199702}.Debug|x64.Build.0 = Debug|Any CPU
+		{2EF50C5A-2850-4A66-B116-FAB3DC199702}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2EF50C5A-2850-4A66-B116-FAB3DC199702}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2EF50C5A-2850-4A66-B116-FAB3DC199702}.Release|x64.ActiveCfg = Release|Any CPU
+		{2EF50C5A-2850-4A66-B116-FAB3DC199702}.Release|x64.Build.0 = Release|Any CPU
+		{2EF50C5A-2850-4A66-B116-FAB3DC199702}.x64|Any CPU.ActiveCfg = Debug|Any CPU
+		{2EF50C5A-2850-4A66-B116-FAB3DC199702}.x64|Any CPU.Build.0 = Debug|Any CPU
+		{2EF50C5A-2850-4A66-B116-FAB3DC199702}.x64|x64.ActiveCfg = Debug|Any CPU
+		{2EF50C5A-2850-4A66-B116-FAB3DC199702}.x64|x64.Build.0 = Debug|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
