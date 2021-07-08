@@ -4,11 +4,11 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.Linq;
 using System.IO;
-using Audiosurf_SkinChanger.Engine;
-using Audiosurf_SkinChanger.Utilities;
+using ChangerAPI.Engine;
+using ChangerAPI.Utilities;
 using System.Reflection;
 
-namespace Audiosurf_SkinChanger.Skin_Creator
+namespace ChangerAPI.Skin_Creator
 {
     public partial class SkinCreatorForm : Form
     {

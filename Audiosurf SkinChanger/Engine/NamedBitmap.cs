@@ -1,11 +1,11 @@
-﻿namespace Audiosurf_SkinChanger.Engine
+﻿namespace ChangerAPI.Engine
 {
     using System.Drawing;
     using System;
     using System.Linq;
     using System.Drawing.Imaging;
     using System.Collections.Generic;
-    using Audiosurf_SkinChanger.Skin_Creator;
+    using ChangerAPI.Skin_Creator;
 
     [Serializable]
     public class NamedBitmap

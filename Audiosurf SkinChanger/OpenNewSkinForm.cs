@@ -2,7 +2,7 @@
 using System.Windows.Forms;
 using System.Linq;
 
-namespace Audiosurf_SkinChanger
+namespace ChangerAPI
 {
     public partial class OpenNewSkinForm : Form
     {

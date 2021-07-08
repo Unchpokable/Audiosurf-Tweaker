@@ -1,4 +1,4 @@
-﻿using Audiosurf_SkinChanger.Engine;
+﻿using ChangerAPI.Engine;
 using System;
 using System.Windows.Forms;
 using System.Configuration;
@@ -7,13 +7,13 @@ using System.IO;
 using System.Drawing;
 using System.Collections.Generic;
 using FolderChecker;
-using Audiosurf_SkinChanger.Utilities;
+using ChangerAPI.Utilities;
 using System.Threading.Tasks;
 using System.Threading;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace Audiosurf_SkinChanger
+namespace ChangerAPI
 {
     public partial class Form1 : Form
     {

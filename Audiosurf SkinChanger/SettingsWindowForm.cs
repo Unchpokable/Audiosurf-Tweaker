@@ -1,9 +1,9 @@
-﻿namespace Audiosurf_SkinChanger
+﻿namespace ChangerAPI
 {
     using System.Windows.Forms;
     using System;
     using System.Configuration;
-    using Audiosurf_SkinChanger.Utilities;
+    using ChangerAPI.Utilities;
     using System.IO;
 
     public partial class SettingsWindowForm : Form

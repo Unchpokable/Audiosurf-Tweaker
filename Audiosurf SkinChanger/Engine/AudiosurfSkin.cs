@@ -1,8 +1,8 @@
-﻿namespace Audiosurf_SkinChanger.Engine
+﻿namespace ChangerAPI.Engine
 {
     using System;
     using System.IO;
-    using Audiosurf_SkinChanger.Utilities;
+    using ChangerAPI.Utilities;
     using System.Runtime.Serialization;
     using System.Runtime.Serialization.Formatters.Binary;
     using System.Collections.Generic;

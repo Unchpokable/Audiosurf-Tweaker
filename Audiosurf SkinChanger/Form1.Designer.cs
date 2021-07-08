@@ -1,4 +1,4 @@
-﻿namespace Audiosurf_SkinChanger
+﻿namespace ChangerAPI
 {
     partial class Form1
     {

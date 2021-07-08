@@ -1,6 +1,6 @@
-﻿namespace Audiosurf_SkinChanger.Utilities
+﻿namespace ChangerAPI.Utilities
 {
-    using Audiosurf_SkinChanger.Engine;
+    using ChangerAPI.Engine;
 
     class SkinLink
     {

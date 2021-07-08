@@ -1,7 +1,7 @@
-﻿namespace Audiosurf_SkinChanger
+﻿namespace ChangerAPI
 {
     using System.Collections.Generic;
-    using Audiosurf_SkinChanger.Utilities;
+    using ChangerAPI.Utilities;
 
     public static class EnvironmentalVeriables
     {

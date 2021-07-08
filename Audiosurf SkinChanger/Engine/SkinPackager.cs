@@ -1,6 +1,6 @@
-﻿namespace Audiosurf_SkinChanger.Engine
+﻿namespace ChangerAPI.Engine
 {
-    using Audiosurf_SkinChanger.Utilities;
+    using ChangerAPI.Utilities;
     using System;
     using System.Drawing;
     using System.IO;

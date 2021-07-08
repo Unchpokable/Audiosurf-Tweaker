@@ -1,10 +1,10 @@
-﻿namespace Audiosurf_SkinChanger.Utilities
+﻿namespace ChangerAPI.Utilities
 {
     using System;
     using System.Collections.Generic;
     using System.Drawing;
     using System.Linq;
-    using Audiosurf_SkinChanger.Engine;
+    using ChangerAPI.Engine;
 
     [Serializable]
     class ImageGroup

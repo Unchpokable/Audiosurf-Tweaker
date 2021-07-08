@@ -1,4 +1,4 @@
-﻿namespace Audiosurf_SkinChanger.Utilities
+﻿namespace ChangerAPI.Utilities
 {
     using System;
     using System.Configuration;

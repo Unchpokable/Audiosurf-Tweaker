@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace Audiosurf_SkinChanger.Properties
+namespace ChangerAPI.Properties
 {
 
 
