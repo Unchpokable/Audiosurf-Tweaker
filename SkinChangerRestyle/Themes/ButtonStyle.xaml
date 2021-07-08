@@ -12,13 +12,11 @@
                                 Background="{TemplateBinding Background}"
                                 CornerRadius="10"
                                 BorderThickness="2"
-                                BorderBrush="#9a2d2d">
+                                BorderBrush="{TemplateBinding BorderBrush}">
 
-                            <TextBlock Text="{TemplateBinding Property=ContentStringFormat}"
+                            <TextBlock Text="{TemplateBinding Property=Content}"
                                        VerticalAlignment="Center"
                                        HorizontalAlignment="Center"
-                                       Foreground="Black"
-                                       FontSize="13"
                                        FontFamily="/Fonts/#a Astro Space"
                                        Margin="0 2 0 0">
                             </TextBlock>

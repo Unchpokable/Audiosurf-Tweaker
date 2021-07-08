@@ -36,6 +36,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Xml" />
@@ -64,12 +65,25 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Core\DCSBehaviour.cs" />
+    <Compile Include="Core\Environment.cs" />
+    <Compile Include="Core\InternalWorker.cs" />
+    <Compile Include="Core\Logger.cs" />
     <Compile Include="Core\ObservableObject.cs" />
     <Compile Include="Core\RelayCommand.cs" />
+    <Compile Include="Core\SkinLink.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Page Include="MVVM\View\SkinPreview.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="MVVM\View\UsersSkinsGrid.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Themes\ButtonStyle.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -78,8 +92,18 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Themes\ScrollViewerStyle.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="MVVM\View\SkinPreview.xaml.cs">
+      <DependentUpon>SkinPreview.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="MVVM\View\UsersSkinsGrid.xaml.cs">
+      <DependentUpon>UsersSkinsGrid.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -109,13 +133,26 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="MVVM\" />
+    <None Include="Resources\MissingTextureFullHD.png" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\logo.png" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\bg.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="MVVM\ViewModel\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ChangerAPI\ChangerAPI.csproj">
+      <Project>{81019294-ff0f-4df9-b6b2-8fd4f073c253}</Project>
+      <Name>ChangerAPI</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\textpackctrl\textpackctrl.csproj">
+      <Project>{27231428-42a6-43ec-8f0a-9f71726b2934}</Project>
+      <Name>textpackctrl</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

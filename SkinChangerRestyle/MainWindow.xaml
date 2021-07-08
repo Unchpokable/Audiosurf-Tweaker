@@ -43,30 +43,48 @@
                     <RowDefinition/>
                 </Grid.RowDefinitions>
 
+                <Border Margin="10 5 0 0"
+                        CornerRadius="20">
+                    <Border.Background>
+                        <LinearGradientBrush EndPoint="1 0" StartPoint="0.5,0">
+                            <GradientStop Color="#c9c9c9" Offset="0.9"/>
+                            <GradientStop Color="#a0a0a0"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+
+                    <TextBlock FontFamily="/Fonts/#a Astro Space"
+                               Text="Menu"
+                               FontSize="20"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Right"
+                               Margin="0 2 10 0"/>
+                </Border>
+                
+                
                 <Button Grid.Row="1"
                         Style="{StaticResource MenuButtonStyle}"
                         Margin="10 5 10 5"
-                        ContentStringFormat="Add new .askin file">
+                        Content="Add new .askin file">
                 </Button>
                 <Button Grid.Row="2"
                         Style="{StaticResource MenuButtonStyle}"
                         Margin="10 5 10 5"
-                        ContentStringFormat="Create skin file from folder">
+                        Content="Create skin file from folder">
                 </Button>
                 <Button Grid.Row="3"
                         Style="{StaticResource MenuButtonStyle}"
                         Margin="10 5 10 5"
-                        ContentStringFormat="Open skins folder">
+                        Content="Open skins folder">
                 </Button>
                 <Button Grid.Row="4"
                         Style="{StaticResource MenuButtonStyle}"
                         Margin="10 5 10 5"
-                        ContentStringFormat="Open game textures folder">
+                        Content="Open game textures folder">
                 </Button>
                 <Button Grid.Row="5"
                         Style="{StaticResource MenuButtonStyle}"
                         Margin="10 5 10 5"
-                        ContentStringFormat="Open skin editor">
+                        Content="Open skin editor">
                 </Button>
 
                 <Border Grid.Row="6"
@@ -91,7 +109,7 @@
                                    Text="Current Skin:"
                                    Margin="10 10 0 0"
                                    FontSize="13"/>
-                        
+
                         <!-- Строка не более 14 символов, больше не влезает -->
                         <TextBlock Grid.Row="0"
                                    FontFamily="/Fonts/#a Astro Space"
@@ -108,7 +126,7 @@
                                    Text="Loading:"
                                    VerticalAlignment="Bottom"
                                    Margin="10 0 0 0"/>
-                        
+
                         <!-- Строка не более 20 символов, больше не влезает -->
                         <TextBlock Grid.Row="1"
                                    FontFamily="/Fonts/#a Astro Space"
@@ -117,7 +135,7 @@
                                    HorizontalAlignment="Right"
                                    Margin="0 0 10 0"
                                    x:Name="currentLoadingSkinLabel"/>
-                        
+
                         <ProgressBar Grid.Row="2" 
                                     Style="{StaticResource ChangerProgressBar}"
                                      VerticalAlignment="Bottom"
@@ -131,6 +149,30 @@
                     </Grid>
                 </Border>
             </Grid>
+
+            
+            <Border Grid.Column="2"
+                    Grid.Row="2"
+                    CornerRadius="20"
+                    VerticalAlignment="Top"
+                    HorizontalAlignment="Left"
+                    Height="40"
+                    Width="200"
+                    Margin="2 5 0 0">
+                <Border.Background>
+                    <LinearGradientBrush EndPoint=".5 0" StartPoint="0 1">
+                        <GradientStop Color="#a0a0a0 " Offset="0.9"/>
+                        <GradientStop Color="#c9c9c9"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+
+                <TextBlock FontFamily="/Fonts/#a Astro Space"
+                               Text="My Skins"
+                               FontSize="20"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Left"
+                               Margin="10 2 10 0"/>
+            </Border>
         </Grid>
     </Border>
 
