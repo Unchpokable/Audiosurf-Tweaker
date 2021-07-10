@@ -6,8 +6,13 @@
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
              mc:Ignorable="d" 
              d:DesignHeight="380" d:DesignWidth="540">
-    <ScrollViewer Style="{StaticResource ChangerScrollViewer}">
-        <Grid>
-        </Grid>
-    </ScrollViewer>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            
+        </Grid.ColumnDefinitions>
+
+        <Grid.RowDefinitions>
+            
+        </Grid.RowDefinitions>
+    </Grid>
 </UserControl>

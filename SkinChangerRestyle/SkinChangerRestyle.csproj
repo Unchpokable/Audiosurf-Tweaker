@@ -92,12 +92,18 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Themes\ScrollbarStyle.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Themes\ScrollViewerStyle.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="MVVM\ViewModel\MainViewModel.cs" />
+    <Compile Include="MVVM\ViewModel\SkinPreviewModel.cs" />
     <Compile Include="MVVM\View\SkinPreview.xaml.cs">
       <DependentUpon>SkinPreview.xaml</DependentUpon>
     </Compile>
@@ -141,9 +147,7 @@
   <ItemGroup>
     <Resource Include="Resources\bg.png" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="MVVM\ViewModel\" />
-  </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
     <ProjectReference Include="..\ChangerAPI\ChangerAPI.csproj">
       <Project>{81019294-ff0f-4df9-b6b2-8fd4f073c253}</Project>

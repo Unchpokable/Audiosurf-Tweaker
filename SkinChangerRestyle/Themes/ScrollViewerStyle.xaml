@@ -24,10 +24,11 @@
                                 <ScrollContentPresenter CanContentScroll="{TemplateBinding CanContentScroll}" />
                             </Border>
                             <ScrollBar x:Name="PART_VerticalScrollBar"
-                                        Value="{TemplateBinding VerticalOffset}"
-                                        Maximum="{TemplateBinding ScrollableHeight}"
-                                        ViewportSize="{TemplateBinding ViewportHeight}"
-                                        Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"/>
+                                       Value="{TemplateBinding VerticalOffset}"
+                                       Maximum="{TemplateBinding ScrollableHeight}"
+                                       ViewportSize="{TemplateBinding ViewportHeight}"
+                                       Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"
+                                       Style="{StaticResource ChangerScrollbar}"/>
                         </Grid>
                     </ControlTemplate>
                 </Setter.Value>
