@@ -5,13 +5,21 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:SkinChangerRestyle"
         xmlns:properties="clr-namespace:SkinChangerRestyle.Properties"
+        xmlns:viewModel="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
         mc:Ignorable="d"
         Height="480" Width="850"
         WindowStyle="None"
         ResizeMode="NoResize"
         Background="Transparent"
-        AllowsTransparency="True">
+        AllowsTransparency="True"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown">
 
+    <Window.DataContext>
+        <viewModel:MainViewModel/>
+    </Window.DataContext>
+    
+    
+    
     <Border
             CornerRadius="15">
         <Grid>
@@ -31,6 +39,7 @@
                 <RowDefinition Height="25"/>
                 <RowDefinition/>
             </Grid.RowDefinitions>
+
 
             <Grid Grid.Row="2" Grid.Column="0">
                 <Grid.RowDefinitions>
@@ -251,7 +260,8 @@
                         x:Name="loadNextPageButton"/>
 
                 <ContentControl Grid.Row="1"
-                                Margin="5">
+                                Margin="5"
+                                Content="{Binding CurrentView}">
                     
                 </ContentControl>
             </Grid>

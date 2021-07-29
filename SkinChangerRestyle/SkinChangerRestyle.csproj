@@ -80,11 +80,19 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="MVVM\View\SkinPreviewExtended.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MVVM\View\UsersSkinsGrid.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Themes\ButtonStyle.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Themes\FadingButtonStyle.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -103,9 +111,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="MVVM\ViewModel\MainViewModel.cs" />
-    <Compile Include="MVVM\ViewModel\SkinPreviewModel.cs" />
+    <Compile Include="MVVM\ViewModel\SkinPreviewExtendedViewModel.cs" />
+    <Compile Include="MVVM\ViewModel\UserSkinsGridViewModel.cs" />
+    <Compile Include="MVVM\ViewModel\SkinPreviewViewModel.cs" />
     <Compile Include="MVVM\View\SkinPreview.xaml.cs">
       <DependentUpon>SkinPreview.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="MVVM\View\SkinPreviewExtended.xaml.cs">
+      <DependentUpon>SkinPreviewExtended.xaml</DependentUpon>
     </Compile>
     <Compile Include="MVVM\View\UsersSkinsGrid.xaml.cs">
       <DependentUpon>UsersSkinsGrid.xaml</DependentUpon>

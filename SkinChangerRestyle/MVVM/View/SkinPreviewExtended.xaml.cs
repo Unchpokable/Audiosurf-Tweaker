@@ -1,11 +1,10 @@
-﻿namespace SkinChangerRestyle
+﻿namespace SkinChangerRestyle.MVVM.View
 {
     using System;
     using System.Collections.Generic;
     using System.Linq;
     using System.Text;
     using System.Threading.Tasks;
-    using System.Threading;
     using System.Windows;
     using System.Windows.Controls;
     using System.Windows.Data;
@@ -15,22 +14,24 @@
     using System.Windows.Media.Imaging;
     using System.Windows.Navigation;
     using System.Windows.Shapes;
-    using SkinChangerRestyle.MVVM.View;
-
+    using ChangerAPI.Engine;
     /// <summary>
-    /// Логика взаимодействия для MainWindow.xaml
+    /// Логика взаимодействия для SkinPreviewExtended.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class SkinPreviewExtended : UserControl
     {
-        public MainWindow()
+        private AudiosurfSkin currentSkin;
+
+        public SkinPreviewExtended()
         {
             InitializeComponent();
         }
 
-        private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        public bool AssignSkin(AudiosurfSkin skin)
         {
-            if (e.ButtonState == MouseButtonState.Pressed)
-                DragMove();
+            if (skin == null) return false;
+            currentSkin = skin;
+            return true;
         }
     }
 }

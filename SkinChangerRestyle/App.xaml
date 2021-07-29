@@ -12,9 +12,18 @@
                 <ResourceDictionary Source="Themes/ProgressBarStyle.xaml"/>
                 <ResourceDictionary Source="Themes/ScrollViewerStyle.xaml"/>
                 <ResourceDictionary Source="Themes/ScrollbarStyle.xaml"/>
+                <ResourceDictionary Source="Themes/FadingButtonStyle.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
-            <DataTemplate DataType="{x:Type viewModel:SkinPreviewModel}">
+            <DataTemplate DataType="{x:Type viewModel:SkinPreviewExtendedViewModel}">
+                <view:SkinPreviewExtended/>
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type viewModel:UserSkinsGridViewModel}">
+                <view:UsersSkinsGrid/>
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type viewModel:SkinPreviewViewModel}">
                 <view:SkinPreview/>
             </DataTemplate>
         </ResourceDictionary>

@@ -14,7 +14,7 @@
             remove { CommandManager.RequerySuggested -= value; }
         }
 
-        public RelayCommand(Action<object> exec, Func<object, bool> canExec)
+        public RelayCommand(Action<object> exec, Func<object, bool> canExec = null)
         {
             execute = exec;
             canExecute = canExec;

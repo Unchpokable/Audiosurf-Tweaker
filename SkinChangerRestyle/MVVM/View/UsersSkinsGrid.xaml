@@ -4,15 +4,68 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
+             xmlns:viewModel="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
+             xmlns:view="clr-namespace:SkinChangerRestyle.MVVM.View"
              mc:Ignorable="d" 
              d:DesignHeight="380" d:DesignWidth="540">
+
+    <UserControl.DataContext>
+        <viewModel:UserSkinsGridViewModel/>
+    </UserControl.DataContext>
+    
     <Grid>
         <Grid.ColumnDefinitions>
-            
+            <ColumnDefinition/>
+            <ColumnDefinition/>
+            <ColumnDefinition/>
         </Grid.ColumnDefinitions>
 
         <Grid.RowDefinitions>
-            
+            <RowDefinition/>
+            <RowDefinition/>
         </Grid.RowDefinitions>
+
+        <ContentControl Grid.Row="0"
+                        Grid.Column="0"
+                        x:Name="previewPlaceholder1"
+                        Margin="10"
+                        Content="{Binding FirstView}">
+            
+        </ContentControl>
+
+        <ContentControl Grid.Row="0"
+                        Grid.Column="1"
+                        x:Name="previewPlaceholder2"
+                        Margin="10">
+
+        </ContentControl>
+
+        <ContentControl Grid.Row="0"
+                        Grid.Column="2"
+                        x:Name="previewPlaceholder3"
+                        Margin="10">
+
+        </ContentControl>
+
+        <ContentControl Grid.Row="1"
+                        Grid.Column="0"
+                        x:Name="previewPlaceholder4"
+                        Margin="10">
+
+        </ContentControl>
+
+        <ContentControl Grid.Row="1"
+                        Grid.Column="1"
+                        x:Name="previewPlaceholder5"
+                        Margin="10">
+
+        </ContentControl>
+
+        <ContentControl Grid.Row="1"
+                        Grid.Column="2"
+                        x:Name="previewPlaceholder6"
+                        Margin="10">
+
+        </ContentControl>
     </Grid>
 </UserControl>
