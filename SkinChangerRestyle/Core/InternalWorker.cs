@@ -8,33 +8,42 @@
 
     internal static class InternalWorker
     {
+        internal static Action<Exception> InitializationFaultCallback { private get; set; }
+        internal static string FingerPrint;
+
+        private static string localMachineSubkeyName = "ASCHDATA";
+
+        private static void RegisterApplication()
+        {
+            var globalTimeTickOffset = DateTime.Now.Ticks;
+            var tempGUID = Guid.NewGuid();
+            FingerPrint = $"{globalTimeTickOffset}-{tempGUID}";
+            using (RegistryKey regKey = Registry.LocalMachine.CreateSubKey(localMachineSubkeyName))
+            {
+                regKey.SetValue("ID", FingerPrint);
+            }
+        }
+
         public static void SetUpDefaultSettings()
         {
-            Configuration cfg = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
-            if (cfg.AppSettings.Settings["FirstRun"].Value != "Yes")
+            if (Registry.LocalMachine.OpenSubKey(localMachineSubkeyName) != null)
                 return;
 
-            string pathToAudiosurfTextures;
-            if (System.Environment.Is64BitOperatingSystem)
+            Configuration cfg = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+
+            var pathToAudiosurfTextures = System.Environment.Is64BitOperatingSystem
+                                          ? Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Valve\Steam", "InstallPath", null).ToString()
+                                          : Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Valve\Steam", "InstallPath", null).ToString();
+
+            if (string.IsNullOrEmpty(pathToAudiosurfTextures) 
+                || string.IsNullOrWhiteSpace(pathToAudiosurfTextures)
+                || !Directory.Exists(pathToAudiosurfTextures + @"\steamapps\common\Audiosurf"))
             {
-                pathToAudiosurfTextures = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Valve\Steam", "InstallPath", null).ToString();
-            }
-            else
-            {
-                pathToAudiosurfTextures = Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Valve\Steam", "InstallPath", null).ToString();
+                InitializationFaultCallback?.Invoke(new Exception("Couldn't find Audiosurf pathes or registry access denied by operating system"));
+                return;
             }
 
-            if (string.IsNullOrEmpty(pathToAudiosurfTextures) || string.IsNullOrWhiteSpace(pathToAudiosurfTextures))
-                //MessageBox.Show("Ooops! Audiosurf Skin Changer can't find your steam! So Please, select path to audiosurf textues manually", "Path Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-
-            if (!Directory.Exists(pathToAudiosurfTextures + @"\steamapps\common\Audiosurf"))
-                /*MessageBox.Show(
-                    $@"Ooops! Audiosurf Skin Changer can't find your Audiosurf!
-                    This can happen if you use an illegal or just non-steam copy of the game. 
-                    So Please, select path to audiosurf textues manually", "Path Error", 
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);*/
-
-            cfg.AppSettings.Settings["FirstRun"].Value = "no";
+            RegisterApplication();
             cfg.AppSettings.Settings["gamePath"].Value = pathToAudiosurfTextures + @"\steamapps\common\Audiosurf\engine\textures";
             cfg.Save();
             ConfigurationManager.RefreshSection("appSettings");
@@ -42,10 +51,18 @@
 
         public static void InitializeEnvironment()
         {
-            Env.gamePath = ConfigurationManager.AppSettings.Get("gamePath");
-            Env.skinsFolderPath = ConfigurationManager.AppSettings.Get("skinsPath");
-            Env.ControlSystemBehaviour = ParseBehaviourFromConfig();
-            Env.DCSWarningsAllowed = ParseIsWarningsAllowedFromConfig();
+            try
+            {
+                Env.gamePath = ConfigurationManager.AppSettings.Get("gamePath");
+                Env.skinsFolderPath = ConfigurationManager.AppSettings.Get("skinsPath");
+                Env.ControlSystemBehaviour = ParseBehaviourFromConfig();
+                Env.DCSWarningsAllowed = ParseIsWarningsAllowedFromConfig();
+            }
+            catch (Exception e)
+            {
+                InitializationFaultCallback.Invoke(e);
+                return;
+            }
         }
 
         private static DCSBehaviour ParseBehaviourFromConfig()

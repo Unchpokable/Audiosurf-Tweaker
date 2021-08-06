@@ -4,8 +4,12 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
+             xmlns:viewModel="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
+             xmlns:view="clr-namespace:SkinChangerRestyle.MVVM.View"
              mc:Ignorable="d" 
              d:DesignHeight="200" d:DesignWidth="200">
+
+    
     <Grid>
         <Border Background="#515151"
                 CornerRadius="30"

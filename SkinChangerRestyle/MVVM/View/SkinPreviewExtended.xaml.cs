@@ -15,23 +15,15 @@
     using System.Windows.Navigation;
     using System.Windows.Shapes;
     using ChangerAPI.Engine;
+    using SkinChangerRestyle.Core;
     /// <summary>
     /// Логика взаимодействия для SkinPreviewExtended.xaml
     /// </summary>
     public partial class SkinPreviewExtended : UserControl
     {
-        private AudiosurfSkin currentSkin;
-
         public SkinPreviewExtended()
         {
             InitializeComponent();
-        }
-
-        public bool AssignSkin(AudiosurfSkin skin)
-        {
-            if (skin == null) return false;
-            currentSkin = skin;
-            return true;
         }
     }
 }

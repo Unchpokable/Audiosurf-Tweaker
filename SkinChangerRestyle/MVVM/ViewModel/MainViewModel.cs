@@ -9,6 +9,7 @@
 
     class MainViewModel : ObservableObject
     {
+
         public RelayCommand SetSkinPreviewView { get; set; }
         public RelayCommand SetSkinsGridView { get; set; }
 
@@ -31,11 +32,14 @@
 
         public MainViewModel()
         {
+            StaticLink.RegisterObject(nameof(MainViewModel), this);
+
             SkinsGridVM = new UserSkinsGridViewModel();
             ExtendedSkinPreviewVM = new SkinPreviewExtendedViewModel();
 
             SetSkinPreviewView = new RelayCommand(o => CurrentView = ExtendedSkinPreviewVM);
             SetSkinsGridView = new RelayCommand(o => CurrentView = SkinsGridVM);
+
             CurrentView = ExtendedSkinPreviewVM;
         }
 

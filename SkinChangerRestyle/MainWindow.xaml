@@ -191,7 +191,7 @@
                 
                 <Border Grid.Row="2"
                         CornerRadius="20"
-                        Margin="50 5 120 5">
+                        Margin="120 5 120 5">
                     <Border.Background>
                         <LinearGradientBrush EndPoint="0.5 0.9" StartPoint="0.5,0">
                             <GradientStop Color="#a0a0a0 " Offset="0.9"/>
@@ -210,16 +210,15 @@
                            Text="Page"
                            HorizontalAlignment="Left"
                            VerticalAlignment="Bottom"
-                           Margin="150 15 0 10"
-                           FontSize="20"/>
+                           Margin="220 15 0 15"
+                           FontSize="15"/>
 
                 <TextBlock Grid.Row="2"
                            FontFamily="/Fonts/#a Astro Space"
-                           Text="01"
                            HorizontalAlignment="Left"
                            VerticalAlignment="Bottom"
-                           Margin="220 15 0 10"
-                           FontSize="20"
+                           Margin="275 15 0 15"
+                           FontSize="15"
                            x:Name="currPageLabel"/>
 
                 <TextBlock Grid.Row="2"
@@ -227,16 +226,15 @@
                            Text="OF"
                            HorizontalAlignment="Left"
                            VerticalAlignment="Bottom"
-                           Margin="255 15 0 10"
-                           FontSize="20"/>
+                           Margin="300 15 0 15"
+                           FontSize="15"/>
 
                 <TextBlock Grid.Row="2"
                            FontFamily="/Fonts/#a Astro Space"
-                           Text="22"
                            HorizontalAlignment="Left"
                            VerticalAlignment="Bottom"
-                           Margin="300 15 0 10"
-                           FontSize="20"
+                           Margin="330 15 0 15"
+                           FontSize="15"
                            x:Name="maxPagesLabel"/>
 
                 <Button Grid.Row="2"
@@ -245,9 +243,10 @@
                         VerticalAlignment="Bottom"
                         HorizontalAlignment="Left"
                         Style="{StaticResource MenuButtonStyle}"
-                        Margin="80 0 0 10"
+                        Margin="150 0 0 10"
                         Content="prev"
-                        x:Name="loadPrevPageButton"/>
+                        x:Name="loadPrevPageButton"
+                        Click="loadPrevPageButton_Click"/>
 
                 <Button Grid.Row="2"
                         Width="50"
@@ -257,7 +256,8 @@
                         Style="{StaticResource MenuButtonStyle}"
                         Margin="0 0 150 10"
                         Content="next"
-                        x:Name="loadNextPageButton"/>
+                        x:Name="loadNextPageButton"
+                        Click="loadNextPageButton_Click"/>
 
                 <ContentControl Grid.Row="1"
                                 Margin="5"

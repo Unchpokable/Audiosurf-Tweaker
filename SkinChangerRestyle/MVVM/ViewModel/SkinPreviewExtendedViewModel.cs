@@ -4,17 +4,14 @@
 
     class SkinPreviewExtendedViewModel : ObservableObject
     {
-        private object currImage;
+        public RelayCommand BackToGridCommand { get; set; }
 
-        public object CurrentImage
+        public SkinPreviewExtendedViewModel()
         {
-            get { return currImage; }
-            set 
+            if (StaticLink.GetObjectByTag(nameof(MainViewModel), out MainViewModel mvm))
             {
-                currImage = value;
-                OnPropertyChanged();
+                BackToGridCommand = mvm.SetSkinsGridView;
             }
         }
-
     }
 }

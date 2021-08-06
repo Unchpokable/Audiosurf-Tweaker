@@ -67,6 +67,8 @@
     </Compile>
     <Compile Include="Core\DCSBehaviour.cs" />
     <Compile Include="Core\Environment.cs" />
+    <Compile Include="Core\StaticLink.cs" />
+    <Compile Include="Core\IGlobalized.cs" />
     <Compile Include="Core\InternalWorker.cs" />
     <Compile Include="Core\Logger.cs" />
     <Compile Include="Core\ObservableObject.cs" />

@@ -22,15 +22,40 @@
     /// </summary>
     public partial class MainWindow : Window
     {
+        private int currentPage;
+        private int pages;
+
         public MainWindow()
         {
             InitializeComponent();
+            currPageLabel.Text = "1";
+            currentPage = 1;
+            pages = 10; //ONLY FOR TESTS!!!
+            maxPagesLabel.Text = pages.ToString();
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ButtonState == MouseButtonState.Pressed)
                 DragMove();
+        }
+
+        private void loadNextPageButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (currentPage < pages)
+            {
+                currentPage++;
+                currPageLabel.Text = currentPage.ToString();
+            }
+        }
+
+        private void loadPrevPageButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (currentPage > 1)
+            {
+                currentPage--;
+                currPageLabel.Text = currentPage.ToString();
+            }
         }
     }
 }

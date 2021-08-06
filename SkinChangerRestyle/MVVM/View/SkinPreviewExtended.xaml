@@ -5,10 +5,12 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
              xmlns:viewModel="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
+             xmlns:view="clr-namespace:SkinChangerRestyle.MVVM.View"
              mc:Ignorable="d" 
-             d:DesignHeight="380" d:DesignWidth="540"
-             DataContext="SkinPreviewExtendedViewModel">
-
+             d:DesignHeight="300" d:DesignWidth="540">
+    <UserControl.DataContext>
+        <viewModel:SkinPreviewExtendedViewModel/>
+    </UserControl.DataContext>
     
     <Grid>
         <Grid.ColumnDefinitions>
@@ -43,7 +45,41 @@
             
         </Image>
         
-        
-        
+        <Border Grid.Column="1"
+                Grid.Row="1"
+                Margin="5 10 5 10"
+                CornerRadius="30">
+            <Border.Background>
+                <LinearGradientBrush EndPoint="0.5 0.9" StartPoint="0.5,0">
+                    <GradientStop Color="#a0a0a0 " Offset="0.9"/>
+                    <GradientStop Color="#c9c9c9"/>
+                </LinearGradientBrush>
+            </Border.Background>
+
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="5"
+                                          Opacity=".5"
+                                          ShadowDepth="2"/>
+            </Border.Effect>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+
+                <Button Style="{StaticResource MenuButtonStyle}"
+                        Margin="20 10 20 10"
+                        Content="Install"/>
+
+                <Button Style="{StaticResource MenuButtonStyle}"
+                        Margin="20 10 20 10"
+                        Content="Back"
+                        Grid.Column="2"
+                        Command="{Binding BackToGridCommand}"/>
+            </Grid>
+        </Border>
+
     </Grid>
 </UserControl>
