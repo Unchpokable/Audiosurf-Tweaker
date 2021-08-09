@@ -1,4 +1,4 @@
-﻿namespace ChangerAPI.Utilities
+﻿namespace SkinChangerRestyle.Core
 {
     using ChangerAPI.Engine;
 

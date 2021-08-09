@@ -32,6 +32,15 @@
             currentPage = 1;
             pages = 10; //ONLY FOR TESTS!!!
             maxPagesLabel.Text = pages.ToString();
+            Loaded += MainWindow_Loaded;
+        }
+
+        private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            await Task.Run(() =>
+            {
+
+            });
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

@@ -29,42 +29,47 @@
                         Grid.Column="0"
                         x:Name="previewPlaceholder1"
                         Margin="10"
-                        Content="{Binding FirstView}">
+                        Content="{Binding View1}">
             
         </ContentControl>
 
         <ContentControl Grid.Row="0"
                         Grid.Column="1"
                         x:Name="previewPlaceholder2"
-                        Margin="10">
+                        Margin="10"
+                        Content="{Binding View2}">
 
         </ContentControl>
 
         <ContentControl Grid.Row="0"
                         Grid.Column="2"
                         x:Name="previewPlaceholder3"
-                        Margin="10">
+                        Margin="10"
+                        Content="{Binding View3}">
 
         </ContentControl>
 
         <ContentControl Grid.Row="1"
                         Grid.Column="0"
                         x:Name="previewPlaceholder4"
-                        Margin="10">
+                        Margin="10"
+                        Content="{Binding View4}">
 
         </ContentControl>
 
         <ContentControl Grid.Row="1"
                         Grid.Column="1"
                         x:Name="previewPlaceholder5"
-                        Margin="10">
+                        Margin="10"
+                        Content="{Binding View5}">
 
         </ContentControl>
 
         <ContentControl Grid.Row="1"
                         Grid.Column="2"
                         x:Name="previewPlaceholder6"
-                        Margin="10">
+                        Margin="10"
+                        Content="{Binding View6}">
 
         </ContentControl>
     </Grid>

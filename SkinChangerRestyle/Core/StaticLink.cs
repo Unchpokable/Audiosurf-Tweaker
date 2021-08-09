@@ -35,8 +35,12 @@
             return false;
         }
 
-        public static void RegisterObject(string tag, object obj)
+        public static void RegisterObject<T>(string tag, T obj)
+            where T: class
         {
+            if (obj == null)
+                throw new NullReferenceException(nameof(obj));
+
             registeredObjects.Add(new RegisteredObject(tag, obj));
         }
 
@@ -44,9 +48,9 @@
         [StructLayout(LayoutKind.Sequential)]
         private struct RegisteredObject
         {
-            internal object IncapsulatedObject;
-            internal Type ObjectType;
-            internal string ObjectTag;
+            public object IncapsulatedObject;
+            public Type ObjectType;
+            public string ObjectTag;
 
             public RegisteredObject(string tag, object obj)
             {

@@ -12,6 +12,10 @@
             {
                 BackToGridCommand = mvm.SetSkinsGridView;
             }
+            else
+            {
+                BackToGridCommand = new RelayCommand(o => { }, o => false);
+            }
         }
     }
 }

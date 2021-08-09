@@ -12,7 +12,8 @@
         ResizeMode="NoResize"
         Background="Transparent"
         AllowsTransparency="True"
-        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+        MouseLeftButtonDown="Window_MouseLeftButtonDown"
+        Title="Audiosurf Skin Changer">
 
     <Window.DataContext>
         <viewModel:MainViewModel/>
