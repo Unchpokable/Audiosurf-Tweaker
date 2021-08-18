@@ -7,9 +7,9 @@
              xmlns:viewModel="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
              xmlns:view="clr-namespace:SkinChangerRestyle.MVVM.View"
              mc:Ignorable="d" 
-             d:DesignHeight="200" d:DesignWidth="200">
+             d:DesignHeight="170" d:DesignWidth="160">
 
-    
+
     <Grid>
         <Border Background="#515151"
                 CornerRadius="30"
@@ -21,7 +21,7 @@
                     <TransformGroup>
                         <ScaleTransform/>
                         <SkewTransform/>
-                        <RotateTransform Angle="0.17"/>
+                        <RotateTransform/>
                         <TranslateTransform/>
                     </TransformGroup>
                 </Grid.RenderTransform>
@@ -35,33 +35,29 @@
                             Canvas.Top="30"
                             Width="180"
                             Height="Auto"
-                            Margin="12,12,8,0"
+                            Margin="-5,2,-17,0"
                             VerticalAlignment="Top"
                             BorderBrush="#FF3B5998"
                             BorderThickness=".5"
                             CornerRadius="18">
-                        <Border.Effect>
-                            <DropShadowEffect BlurRadius="5"
-                              Opacity=".5"
-                              ShadowDepth="3" />
-                        </Border.Effect>
                         <Border Name="ReceiverColor"
                                 BorderBrush="#515151"
                                 BorderThickness=".5"
-                                CornerRadius="15" Height="123">
-                            <Grid>
+                                CornerRadius="15" Height="166" Margin="0,0,-30,0" RenderTransformOrigin="0.5,0.5">
+
+                            <Grid Margin="10,0,47,10">
                                 <Border Name="Mask"
                                         Background="#515151"
                                         BorderBrush="#FF3B5998"
                                         BorderThickness=".5"
-                                        CornerRadius="13" Margin="0,0,0,21">
+                                        CornerRadius="13" Margin="0,10,0,11">
                                 </Border>
-                                <StackPanel>
+                                <StackPanel Margin="0,0,48,10">
                                     <StackPanel.OpacityMask>
                                         <VisualBrush Visual="{Binding ElementName=Mask}" />
                                     </StackPanel.OpacityMask>
                                     <Image x:Name="PreviewImage"
-                                           Source="/Resources/MissingTextureFullHD.png" Height="103"/>
+                                           Source="/Resources/MissingTextureFullHD.png" Height="112" Margin="0,0,-45,0"/>
                                 </StackPanel>
                             </Grid>
                         </Border>
@@ -69,39 +65,15 @@
                 </Grid>
 
 
-                <Border Grid.Row="1"
-                        Background="#5e5e5e"
-                        CornerRadius="20"
-                        Margin="5 5 5 10">
-                    <Border.Effect>
-                        <DropShadowEffect BlurRadius="5"
-                                          Opacity=".5"
-                                          ShadowDepth="1"/>
-                    </Border.Effect>
-                    <Grid>
-                        <TextBlock Grid.Row="1"
+                <TextBlock Grid.Row="1"
                                    Text="skinname"
                                    FontFamily="/Fonts/#a Astro Space"
                                    VerticalAlignment="Center"
-                                   HorizontalAlignment="Left"
+                                   HorizontalAlignment="Center"
                                    FontSize="15"
                                    Foreground="White"
                                    Margin="10 0 0 0"
                                    x:Name="skinName"/>
-
-                        <Button Grid.Row="1"
-                                Margin="10 10 10 10"
-                                Width="60"
-                                HorizontalAlignment="Right"
-                                Style="{StaticResource MenuButtonStyle}"
-                                Background="#611b1b"
-                                BorderBrush="Black"
-                                Content="VIEW"
-                                FontSize="14"
-                                Foreground="#c9c9c9"/>
-
-                    </Grid>
-                </Border>
 
             </Grid>
 

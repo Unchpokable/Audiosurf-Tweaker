@@ -13,7 +13,7 @@
         internal static List<SkinLink> LoadedSkins { get; set; }
         internal static AudiosurfSkin[] ActivePageSkins { get; set; }
 
-        internal static IEnumerable<SkinLink[]> LoadedSkinsByChanks
+        internal static IEnumerable<SkinLink[]> LoadedSkinsByChunks
         {
             get
             {
@@ -34,6 +34,6 @@
             }
         }
 
-        private static int chunkSize = 6;
+        private static readonly int chunkSize = 6;
     }
 }

@@ -9,78 +9,25 @@
 
     class UserSkinsGridViewModel : ObservableObject
     {
-        private object view1;
-        private object view2;
-        private object view3;
-        private object view4;
-        private object view5;
-        private object view6;
+        private object[] views;
 
-
-        public object View1
+        public object[] Views
         {
-            get { return view1; }
-            set 
-            {
-                view1 = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public object View2
-        {
-            get { return view2; }
+            get => views;
             set
             {
-                view2 = value;
+                if (value.Length != 6) throw new ArgumentException("views array must contains strictly 6 views");
+                views = value;
                 OnPropertyChanged();
             }
         }
 
-        public object View3
-        {
-            get { return view3; }
-            set
-            {
-                view3 = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public object View4
-        {
-            get { return view4; }
-            set
-            {
-                view4 = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public object View5
-        {
-            get { return view5; }
-            set
-            {
-                view5 = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public object View6
-        {
-            get { return view6; }
-            set
-            {
-                view6 = value;
-                OnPropertyChanged();
-            }
-        }
-
+        private MainViewModel mainVM;
 
         public UserSkinsGridViewModel()
         {
             StaticLink.RegisterObject(nameof(UserSkinsGridViewModel), this);
+            StaticLink.GetObjectByTag(nameof(MainViewModel), out mainVM);
         }
     }
 }
