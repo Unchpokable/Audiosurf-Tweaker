@@ -34,6 +34,6 @@
             }
         }
 
-        private static readonly int chunkSize = 6;
+        private static readonly int chunkSize = 9;
     }
 }

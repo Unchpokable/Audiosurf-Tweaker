@@ -28,10 +28,6 @@
         public MainWindow()
         {
             InitializeComponent();
-            currPageLabel.Text = "1";
-            currentPage = 1;
-            pages = 10; //ONLY FOR TESTS!!!
-            maxPagesLabel.Text = pages.ToString();
             Loaded += MainWindow_Loaded;
         }
 
@@ -47,24 +43,6 @@
         {
             if (e.ButtonState == MouseButtonState.Pressed)
                 DragMove();
-        }
-
-        private void loadNextPageButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (currentPage < pages)
-            {
-                currentPage++;
-                currPageLabel.Text = currentPage.ToString();
-            }
-        }
-
-        private void loadPrevPageButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (currentPage > 1)
-            {
-                currentPage--;
-                currPageLabel.Text = currentPage.ToString();
-            }
         }
     }
 }
