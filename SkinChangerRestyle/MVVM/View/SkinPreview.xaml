@@ -7,7 +7,7 @@
              xmlns:viewModel="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
              xmlns:view="clr-namespace:SkinChangerRestyle.MVVM.View"
              mc:Ignorable="d" 
-             d:DesignHeight="170" d:DesignWidth="160">
+             d:DesignHeight="100" d:DesignWidth="180">
 
 
     <Grid>

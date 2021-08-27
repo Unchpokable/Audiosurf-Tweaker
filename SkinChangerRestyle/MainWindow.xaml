@@ -45,11 +45,11 @@
             <Grid Grid.Row="2" Grid.Column="0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="45"/>
-                    <RowDefinition Height="45"/>
-                    <RowDefinition Height="45"/>
-                    <RowDefinition Height="45"/>
-                    <RowDefinition Height="45"/>
-                    <RowDefinition Height="45"/>
+                    <RowDefinition Height="35"/>
+                    <RowDefinition Height="35"/>
+                    <RowDefinition Height="35"/>
+                    <RowDefinition Height="35"/>
+                    <RowDefinition Height="35"/>
                     <RowDefinition/>
                 </Grid.RowDefinitions>
 
@@ -74,38 +74,46 @@
                 <Button Grid.Row="1"
                         Style="{StaticResource MenuButtonStyle}"
                         Margin="10 5 10 5"
-                        Content="Add new .askin file">
+                        Content="Add new .askin file"
+                        FontSize="10">
                 </Button>
                 <Button Grid.Row="2"
                         Style="{StaticResource MenuButtonStyle}"
                         Margin="10 5 10 5"
-                        Content="Create skin file from folder">
+                        Content="Create skin file from folder"
+                        FontSize="10">
                 </Button>
                 <Button Grid.Row="3"
                         Style="{StaticResource MenuButtonStyle}"
                         Margin="10 5 10 5"
-                        Content="Open skins folder">
+                        Content="Open skins folder"
+                        FontSize="10">
                 </Button>
                 <Button Grid.Row="4"
                         Style="{StaticResource MenuButtonStyle}"
                         Margin="10 5 10 5"
-                        Content="Open game textures folder">
+                        Content="Open game textures folder"
+                        FontSize="10">
                 </Button>
                 <Button Grid.Row="5"
                         Style="{StaticResource MenuButtonStyle}"
                         Margin="10 5 10 5"
-                        Content="Open skin editor">
+                        Content="Open skin editor"
+                        FontSize="10">
                 </Button>
 
                 <Border Grid.Row="6"
-                        Background="#c9c9c9"
                         BorderBrush="Black"
                         BorderThickness="1"
                         CornerRadius="10"
-                        VerticalAlignment="Center"
-                        HorizontalAlignment="Center"
-                        Width="250"
-                        Height="110">
+                        Margin="10 10 10 20">
+                    <Border.Background>
+                        <LinearGradientBrush EndPoint="0.5 0.9" StartPoint="0.5,0">
+                            <GradientStop Color="#a0a0a0 " Offset="0.9"/>
+                            <GradientStop Color="#c9c9c9"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    
                     <Grid>
 
                         <Grid.RowDefinitions>
@@ -114,48 +122,7 @@
                             <RowDefinition/>
                         </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0"
-                                   FontFamily="/Fonts/#a Astro Space"
-                                   Text="Current Skin:"
-                                   Margin="10 10 0 0"
-                                   FontSize="13"/>
 
-                        <!-- Строка не более 14 символов, больше не влезает -->
-                        <TextBlock Grid.Row="0"
-                                   FontFamily="/Fonts/#a Astro Space"
-                                   HorizontalAlignment="Right"
-                                   VerticalAlignment="Center"
-                                   Margin="0 0 10 0"
-                                   Text="Undefined"
-                                   FontSize=" 15"
-                                   x:Name="currentSkinLabel"/>
-
-
-                        <TextBlock Grid.Row="1"
-                                   FontFamily="/Fonts/#a Astro Space"
-                                   Text="Loading:"
-                                   VerticalAlignment="Bottom"
-                                   Margin="10 0 0 0"/>
-
-                        <!-- Строка не более 20 символов, больше не влезает -->
-                        <TextBlock Grid.Row="1"
-                                   FontFamily="/Fonts/#a Astro Space"
-                                   Text="Undefider"
-                                   VerticalAlignment="Bottom"
-                                   HorizontalAlignment="Right"
-                                   Margin="0 0 10 0"
-                                   x:Name="currentLoadingSkinLabel"/>
-
-                        <ProgressBar Grid.Row="2" 
-                                    Style="{StaticResource ChangerProgressBar}"
-                                     VerticalAlignment="Bottom"
-                                     HorizontalAlignment="Center"
-                                     Width="230"
-                                     Height="20"
-                                     Margin="0 0 0 10"
-                                     x:Name="skinloadingProgressBar"
-                                     Maximum="100"
-                                     Minimum="0" LargeChange="100"/>
                     </Grid>
                 </Border>
             </Grid>
@@ -182,86 +149,14 @@
                                HorizontalAlignment="Left"
                                Margin="10 2 10 0"/>
             </Border>
-            <Grid   Grid.Row="2"
-                    Grid.Column="2">
+            <Grid Grid.Row="2"
+                  Grid.Column="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="50"/>
                     <RowDefinition/>
-                    <RowDefinition Height="50"/>
                 </Grid.RowDefinitions>
-                
-                <Border Grid.Row="2"
-                        CornerRadius="20"
-                        Margin="120 5 120 5">
-                    <Border.Background>
-                        <LinearGradientBrush EndPoint="0.5 0.9" StartPoint="0.5,0">
-                            <GradientStop Color="#a0a0a0 " Offset="0.9"/>
-                            <GradientStop Color="#c9c9c9"/>
-                        </LinearGradientBrush>
-                    </Border.Background>
-
-                    <Border.Effect>
-                        <DropShadowEffect BlurRadius="5"
-                                          Opacity=".5"
-                                          ShadowDepth="2"/>
-                    </Border.Effect>
-                </Border>
-                <TextBlock Grid.Row="2"
-                           FontFamily="/Fonts/#a Astro Space"
-                           Text="Page"
-                           HorizontalAlignment="Left"
-                           VerticalAlignment="Bottom"
-                           Margin="220 15 0 15"
-                           FontSize="15"/>
-
-                <TextBlock Grid.Row="2"
-                           FontFamily="/Fonts/#a Astro Space"
-                           HorizontalAlignment="Left"
-                           VerticalAlignment="Bottom"
-                           Margin="275 15 0 15"
-                           FontSize="15"
-                           x:Name="currPageLabel"/>
-
-                <TextBlock Grid.Row="2"
-                           FontFamily="/Fonts/#a Astro Space"
-                           Text="OF"
-                           HorizontalAlignment="Left"
-                           VerticalAlignment="Bottom"
-                           Margin="300 15 0 15"
-                           FontSize="15"/>
-
-                <TextBlock Grid.Row="2"
-                           FontFamily="/Fonts/#a Astro Space"
-                           HorizontalAlignment="Left"
-                           VerticalAlignment="Bottom"
-                           Margin="330 15 0 15"
-                           FontSize="15"
-                           x:Name="maxPagesLabel"/>
-
-                <Button Grid.Row="2"
-                        Width="50"
-                        Height="30"
-                        VerticalAlignment="Bottom"
-                        HorizontalAlignment="Left"
-                        Style="{StaticResource MenuButtonStyle}"
-                        Margin="150 0 0 10"
-                        Content="prev"
-                        x:Name="loadPrevPageButton"
-                        Click="loadPrevPageButton_Click"/>
-
-                <Button Grid.Row="2"
-                        Width="50"
-                        Height="30"
-                        VerticalAlignment="Bottom"
-                        HorizontalAlignment="Right"
-                        Style="{StaticResource MenuButtonStyle}"
-                        Margin="0 0 150 10"
-                        Content="next"
-                        x:Name="loadNextPageButton"
-                        Click="loadNextPageButton_Click"/>
 
                 <ContentControl Grid.Row="1"
-                                Margin="5"
                                 Content="{Binding CurrentView}">
                     
                 </ContentControl>

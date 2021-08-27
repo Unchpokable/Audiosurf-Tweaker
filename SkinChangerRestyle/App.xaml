@@ -10,8 +10,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Themes/ButtonStyle.xaml"/>
                 <ResourceDictionary Source="Themes/ProgressBarStyle.xaml"/>
-                <ResourceDictionary Source="Themes/ScrollViewerStyle.xaml"/>
-                <ResourceDictionary Source="Themes/ScrollbarStyle.xaml"/>
+                <ResourceDictionary Source="Themes/CheckBoxStyle.xaml"/>
                 <ResourceDictionary Source="Themes/FadingButtonStyle.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 

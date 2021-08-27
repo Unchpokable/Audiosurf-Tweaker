@@ -6,13 +6,12 @@
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
              xmlns:viewModel="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
              xmlns:view="clr-namespace:SkinChangerRestyle.MVVM.View"
-             mc:Ignorable="d" 
-             d:DesignHeight="380" d:DesignWidth="540">
+             mc:Ignorable="d" d:DesignWidth="540" Height="320">
 
     <UserControl.DataContext>
         <viewModel:UserSkinsGridViewModel/>
     </UserControl.DataContext>
-    
+
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition/>
@@ -21,8 +20,10 @@
         </Grid.ColumnDefinitions>
 
         <Grid.RowDefinitions>
-            <RowDefinition/>
-            <RowDefinition/>
+            <RowDefinition Height="100"/>
+            <RowDefinition Height="100"/>
+            <RowDefinition Height="100"/>
+            <RowDefinition Height="100"/>
         </Grid.RowDefinitions>
 
         <ContentControl Grid.Row="0"
@@ -30,7 +31,7 @@
                         x:Name="previewPlaceholder1"
                         Margin="10"
                         Content="{Binding Views[0]}">
-            
+
         </ContentControl>
 
         <ContentControl Grid.Row="0"
@@ -71,6 +72,84 @@
                         Margin="10"
                         Content="{Binding Views[5]}">
 
+
         </ContentControl>
+
+        <Grid   Grid.Row="2" Grid.ColumnSpan="3" Margin="122,68,122,25" Grid.RowSpan="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="50"/>
+            </Grid.RowDefinitions>
+
+            <Border
+                        CornerRadius="20" Margin="0,0,1,0">
+                <Border.Background>
+                    <LinearGradientBrush EndPoint="0.5 0.9" StartPoint="0.5,0">
+                        <GradientStop Color="#a0a0a0 " Offset="0.9"/>
+                        <GradientStop Color="#c9c9c9"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="5"
+                                          Opacity=".5"
+                                          ShadowDepth="2"/>
+                </Border.Effect>
+            </Border>
+            <TextBlock
+                           FontFamily="/Fonts/#a Astro Space"
+                           Text="Page"
+                           HorizontalAlignment="Left"
+                           VerticalAlignment="Bottom"
+                           Margin="70,0,0,15"
+                           FontSize="15"/>
+
+            <TextBlock
+                           FontFamily="/Fonts/#a Astro Space"
+                           HorizontalAlignment="Left"
+                           VerticalAlignment="Bottom"
+                           Margin="128,0,0,15"
+                           FontSize="15"
+                       Text="01"
+                           x:Name="currPageLabel"/>
+
+            <TextBlock
+                           FontFamily="/Fonts/#a Astro Space"
+                           Text="OF"
+                           HorizontalAlignment="Left"
+                           VerticalAlignment="Bottom"
+                           Margin="160,0,0,15"
+                           FontSize="15" RenderTransformOrigin="0.343,0.504"/>
+
+            <TextBlock
+                           FontFamily="/Fonts/#a Astro Space"
+                           HorizontalAlignment="Left"
+                           VerticalAlignment="Bottom"
+                           Margin="200,0,0,16"
+                           FontSize="15"
+                       Text="22"
+                           x:Name="maxPagesLabel" RenderTransformOrigin="-0.087,0.555"/>
+
+            <Button
+                        Width="50"
+                        Height="30"
+                        VerticalAlignment="Bottom"
+                        HorizontalAlignment="Left"
+                        Style="{StaticResource MenuButtonStyle}"
+                        Margin="10,0,0,9"
+                        Content="prev"
+                        x:Name="loadPrevPageButton"/>
+
+            <Button
+                        Width="50"
+                        Height="30"
+                        VerticalAlignment="Bottom"
+                        HorizontalAlignment="Right"
+                        Style="{StaticResource MenuButtonStyle}"
+                        Margin="0,0,10,9"
+                        Content="next"
+                        x:Name="loadNextPageButton"/>
+
+        </Grid>
+
     </Grid>
 </UserControl>
