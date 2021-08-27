@@ -18,8 +18,7 @@
     <Window.DataContext>
         <viewModel:MainViewModel/>
     </Window.DataContext>
-    
-    
+
     
     <Border
             CornerRadius="15">

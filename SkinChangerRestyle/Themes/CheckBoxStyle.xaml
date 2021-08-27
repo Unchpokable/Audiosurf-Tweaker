@@ -33,7 +33,7 @@
                 <Setter Property="Foreground" Value="#c9c9c9"/>
             </Trigger>
 
-            <Trigger Property="IsPressed" Value="True">
+            <Trigger Property="IsChecked" Value="False">
                 <Setter Property="Background" Value="#c9c9c9"/>
                 <Setter Property="Foreground" Value="Black"/>
             </Trigger>

@@ -158,7 +158,6 @@
   <ItemGroup>
     <Resource Include="Resources\bg.png" />
   </ItemGroup>
-  <ItemGroup />
   <ItemGroup>
     <ProjectReference Include="..\ChangerAPI\ChangerAPI.csproj">
       <Project>{81019294-ff0f-4df9-b6b2-8fd4f073c253}</Project>
@@ -168,6 +167,9 @@
       <Project>{27231428-42a6-43ec-8f0a-9f71726b2934}</Project>
       <Name>textpackctrl</Name>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <SplashScreen Include="Resources\ChangerSplashScreen.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -40,7 +40,7 @@
             SetSkinPreviewView = new RelayCommand(o => CurrentView = ExtendedSkinPreviewVM);
             SetSkinsGridView = new RelayCommand(o => CurrentView = SkinsGridVM);
 
-            CurrentView = ExtendedSkinPreviewVM;
+            CurrentView = SkinsGridVM;
         }
 
     }

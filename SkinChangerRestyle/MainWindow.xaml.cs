@@ -22,11 +22,10 @@
     /// </summary>
     public partial class MainWindow : Window
     {
-        private int currentPage;
-        private int pages;
 
         public MainWindow()
         {
+            Thread.Sleep(2000);
             InitializeComponent();
             Loaded += MainWindow_Loaded;
         }
