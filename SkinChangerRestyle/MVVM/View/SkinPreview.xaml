@@ -7,75 +7,45 @@
              xmlns:viewModel="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
              xmlns:view="clr-namespace:SkinChangerRestyle.MVVM.View"
              mc:Ignorable="d" 
-             d:DesignHeight="100" d:DesignWidth="180">
+             d:DesignHeight="100" d:DesignWidth="180"
+             Margin="5"
+             x:Name="MiniPreview">
+    
+    <UserControl.Triggers>
+        <EventTrigger RoutedEvent="Mouse.MouseEnter">
+            <EventTrigger.Actions>
+                <BeginStoryboard>
+                    <Storyboard TargetProperty="Margin" TargetName="MiniPreview">
+                        <ThicknessAnimation From="5" To="0" 
+                                         RepeatBehavior="1x"
+                                         Duration="0:0:0.1"/>
+                    </Storyboard>
+                </BeginStoryboard>
+            </EventTrigger.Actions>
+        </EventTrigger>
 
+        <EventTrigger RoutedEvent="Mouse.MouseLeave">
+            <EventTrigger.Actions>
+                <BeginStoryboard>
+                    <Storyboard TargetProperty="Margin" TargetName="MiniPreview">
+                        <ThicknessAnimation From="0" To="5" 
+                                         RepeatBehavior="1x"
+                                         Duration="0:0:0.1"/>
+                    </Storyboard>
+                </BeginStoryboard>
+            </EventTrigger.Actions>
+        </EventTrigger>
+    </UserControl.Triggers>
 
     <Grid>
-        <Border Background="#515151"
-                CornerRadius="30"
+        <Border 
+                CornerRadius="10"
                 BorderBrush="Black"
-                BorderThickness="1">
-
-            <Grid RenderTransformOrigin="0.5,0.5">
-                <Grid.RenderTransform>
-                    <TransformGroup>
-                        <ScaleTransform/>
-                        <SkewTransform/>
-                        <RotateTransform/>
-                        <TranslateTransform/>
-                    </TransformGroup>
-                </Grid.RenderTransform>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="140"/>
-                    <RowDefinition/>
-                </Grid.RowDefinitions>
-
-                <Grid>
-                    <Border Canvas.Left="55"
-                            Canvas.Top="30"
-                            Width="180"
-                            Height="Auto"
-                            Margin="-5,2,-17,0"
-                            VerticalAlignment="Top"
-                            BorderBrush="#FF3B5998"
-                            BorderThickness=".5"
-                            CornerRadius="18">
-                        <Border Name="ReceiverColor"
-                                BorderBrush="#515151"
-                                BorderThickness=".5"
-                                CornerRadius="15" Height="166" Margin="0,0,-30,0" RenderTransformOrigin="0.5,0.5">
-
-                            <Grid Margin="10,0,47,10">
-                                <Border Name="Mask"
-                                        Background="#515151"
-                                        BorderBrush="#FF3B5998"
-                                        BorderThickness=".5"
-                                        CornerRadius="13" Margin="0,10,0,11">
-                                </Border>
-                                <StackPanel Margin="0,0,48,10">
-                                    <StackPanel.OpacityMask>
-                                        <VisualBrush Visual="{Binding ElementName=Mask}" />
-                                    </StackPanel.OpacityMask>
-                                    <Image x:Name="PreviewImage"
-                                           Source="/Resources/MissingTextureFullHD.png" Height="112" Margin="0,0,-45,0"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-                    </Border>
-                </Grid>
-
-
-                <TextBlock Grid.Row="1"
-                                   Text="skinname"
-                                   FontFamily="/Fonts/#a Astro Space"
-                                   VerticalAlignment="Center"
-                                   HorizontalAlignment="Center"
-                                   FontSize="15"
-                                   Foreground="White"
-                                   Margin="10 0 0 0"
-                                   x:Name="skinName"/>
-
-            </Grid>
+                BorderThickness="1"
+                Name="Mask">
+            <Border.Background>
+                <ImageBrush x:Name="previewImage"/>
+            </Border.Background>
 
         </Border>
     </Grid>

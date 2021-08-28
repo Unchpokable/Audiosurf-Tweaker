@@ -150,7 +150,7 @@
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\MissingTextureFullHD.png" />
+    <Resource Include="Resources\MissingTextureFullHD.png" />
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\logo.png" />

@@ -6,7 +6,7 @@
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
              xmlns:viewModel="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
              xmlns:view="clr-namespace:SkinChangerRestyle.MVVM.View"
-             mc:Ignorable="d" d:DesignWidth="540" Height="320">
+             mc:Ignorable="d" d:DesignWidth="540" Height="370">
 
     <UserControl.DataContext>
         <viewModel:UserSkinsGridViewModel/>
@@ -75,13 +75,40 @@
 
         </ContentControl>
 
-        <Grid   Grid.Row="2" Grid.ColumnSpan="3" Margin="122,68,122,25" Grid.RowSpan="2">
+        <ContentControl Grid.Row="2"
+                        Grid.Column="0"
+                        x:Name="previewPlaceholder7"
+                        Margin="10"
+                        Content="{Binding Views[5]}">
+
+
+        </ContentControl>
+
+        <ContentControl Grid.Row="2"
+                        Grid.Column="1"
+                        x:Name="previewPlaceholder8"
+                        Margin="10"
+                        Content="{Binding Views[5]}">
+
+
+        </ContentControl>
+
+        <ContentControl Grid.Row="2"
+                        Grid.Column="2"
+                        x:Name="previewPlaceholder9"
+                        Margin="10"
+                        Content="{Binding Views[5]}">
+
+
+        </ContentControl>
+
+        <Grid   Grid.Row="3" Grid.ColumnSpan="3" Margin="122,10,122,40">
             <Grid.RowDefinitions>
                 <RowDefinition Height="50"/>
             </Grid.RowDefinitions>
 
             <Border
-                        CornerRadius="20" Margin="0,0,1,0">
+                        CornerRadius="20" Margin="0,0,1,10">
                 <Border.Background>
                     <LinearGradientBrush EndPoint="0.5 0.9" StartPoint="0.5,0">
                         <GradientStop Color="#a0a0a0 " Offset="0.9"/>
@@ -100,31 +127,31 @@
                            Text="Page"
                            HorizontalAlignment="Left"
                            VerticalAlignment="Bottom"
-                           Margin="70,0,0,15"
-                           FontSize="15"/>
+                           Margin="65,0,0,21"
+                           FontSize="15" RenderTransformOrigin="0.535,-0.625"/>
 
             <TextBlock
                            FontFamily="/Fonts/#a Astro Space"
                            HorizontalAlignment="Left"
                            VerticalAlignment="Bottom"
-                           Margin="128,0,0,15"
+                           Margin="123,0,0,20"
                            FontSize="15"
                        Text="01"
-                           x:Name="currPageLabel"/>
+                           x:Name="currPageLabel" RenderTransformOrigin="0.625,0.375"/>
 
             <TextBlock
                            FontFamily="/Fonts/#a Astro Space"
                            Text="OF"
                            HorizontalAlignment="Left"
                            VerticalAlignment="Bottom"
-                           Margin="160,0,0,15"
-                           FontSize="15" RenderTransformOrigin="0.343,0.504"/>
+                           Margin="158,0,0,20"
+                           FontSize="15" RenderTransformOrigin="0.455,-0.063"/>
 
             <TextBlock
                            FontFamily="/Fonts/#a Astro Space"
                            HorizontalAlignment="Left"
                            VerticalAlignment="Bottom"
-                           Margin="200,0,0,16"
+                           Margin="200,0,0,20"
                            FontSize="15"
                        Text="22"
                            x:Name="maxPagesLabel" RenderTransformOrigin="-0.087,0.555"/>
@@ -135,7 +162,7 @@
                         VerticalAlignment="Bottom"
                         HorizontalAlignment="Left"
                         Style="{StaticResource MenuButtonStyle}"
-                        Margin="10,0,0,9"
+                        Margin="10,0,0,15"
                         Content="prev"
                         x:Name="loadPrevPageButton"/>
 
@@ -145,9 +172,9 @@
                         VerticalAlignment="Bottom"
                         HorizontalAlignment="Right"
                         Style="{StaticResource MenuButtonStyle}"
-                        Margin="0,0,10,9"
+                        Margin="0,0,10,15"
                         Content="next"
-                        x:Name="loadNextPageButton"/>
+                        x:Name="loadNextPageButton" RenderTransformOrigin="0.5,0.333"/>
 
         </Grid>
 

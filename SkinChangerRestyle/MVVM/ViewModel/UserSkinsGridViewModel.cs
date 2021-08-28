@@ -28,6 +28,19 @@
         {
             StaticLink.RegisterObject(nameof(UserSkinsGridViewModel), this);
             StaticLink.GetObjectByTag(nameof(MainViewModel), out mainVM);
+
+            views = new SkinPreviewViewModel[]
+            {
+                new SkinPreviewViewModel(),
+                new SkinPreviewViewModel(),
+                new SkinPreviewViewModel(),
+                new SkinPreviewViewModel(),
+                new SkinPreviewViewModel(),
+                new SkinPreviewViewModel(),
+                new SkinPreviewViewModel(),
+                new SkinPreviewViewModel(),
+                new SkinPreviewViewModel()
+            };
         }
     }
 }

@@ -6,14 +6,21 @@
         <Style.Setters>
             <Setter Property="Template">
                 <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type Button}"> 
+                    <ControlTemplate TargetType="{x:Type Button}">
                         <Border VerticalAlignment="Stretch"
                                 HorizontalAlignment="Stretch"
                                 Background="{TemplateBinding Background}"
                                 CornerRadius="10"
                                 BorderThickness="2"
-                                BorderBrush="{TemplateBinding BorderBrush}">
-
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                x:Name="buttonBorder">
+                            <Border.RenderTransform>
+                                <ScaleTransform x:Name="ButtonScale"
+                                                ScaleX="1"
+                                                ScaleY="1">
+                                    
+                                </ScaleTransform>
+                            </Border.RenderTransform>
                             <TextBlock Text="{TemplateBinding Property=Content}"
                                        VerticalAlignment="Center"
                                        HorizontalAlignment="Center"
@@ -27,13 +34,40 @@
             </Setter>
         </Style.Setters>
         <Style.Triggers>
+            <!--
             <Trigger Property="IsMouseOver" Value="True">
                 <Setter Property="Background" Value="#a0a0a0"/>
             </Trigger>
-
+-->
             <Trigger Property="IsPressed" Value="True">
                 <Setter Property="Background" Value="#494a49"/>
             </Trigger>
+
+
+            <EventTrigger RoutedEvent="Mouse.MouseEnter">
+                <EventTrigger.Actions>
+                    <BeginStoryboard>
+                        <Storyboard TargetProperty="Background.Color">
+                            <ColorAnimation From="#dbdbdb" To="#a0a0a0"
+                                             RepeatBehavior="1x"
+                                             Duration="0:0:0.1"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger.Actions>
+            </EventTrigger>
+
+            <EventTrigger RoutedEvent="Mouse.MouseLeave">
+                <EventTrigger.Actions>
+                    <BeginStoryboard>
+                        <Storyboard TargetProperty="Background.Color">
+                            <ColorAnimation From="#a0a0a0" To="#dbdbdb"
+                                             RepeatBehavior="1x"
+                                             Duration="0:0:0.1"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger.Actions>
+            </EventTrigger>
+
         </Style.Triggers>
     </Style>
 </ResourceDictionary>

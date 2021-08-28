@@ -156,6 +156,7 @@
                 </Grid.RowDefinitions>
 
                 <ContentControl Grid.Row="1"
+                                Margin="0 -10 0 0"
                                 Content="{Binding CurrentView}">
                     
                 </ContentControl>

@@ -7,6 +7,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type CheckBox}">
+
                         <Border VerticalAlignment="Stretch"
                                 HorizontalAlignment="Stretch"
                                 Background="{TemplateBinding Property=Background}"
@@ -21,21 +22,46 @@
                                        Margin="0 2 0 0"
                                        Foreground="{TemplateBinding Property=Foreground}">
                             </TextBlock>
-
                         </Border>
+                        
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style.Setters>
         <Style.Triggers>
             <Trigger Property="IsChecked" Value="True">
-                <Setter Property="Background" Value="#911010"/>
-                <Setter Property="Foreground" Value="#c9c9c9"/>
+                <Trigger.EnterActions>
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <ColorAnimation Storyboard.TargetProperty="Background.Color"
+                                                From="#c9c9c9" To="#911010"
+                                                RepeatBehavior="1x"
+                                                Duration="0:0:0.1"/>
+                            <ColorAnimation Storyboard.TargetProperty="Foreground.Color"
+                                                From="Black" To="#c9c9c9"
+                                                RepeatBehavior="1x"
+                                                Duration="0:0:0.1"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </Trigger.EnterActions>
+
+                <Trigger.ExitActions>
+                    <BeginStoryboard>
+                        <Storyboard>
+                            <ColorAnimation Storyboard.TargetProperty="Background.Color"
+                                                From="#911010" To="#c9c9c9"
+                                                RepeatBehavior="1x"
+                                                Duration="0:0:0.1"/>
+                            <ColorAnimation Storyboard.TargetProperty="Foreground.Color"
+                                                From="#c9c9c9" To="Black"
+                                                RepeatBehavior="1x"
+                                                Duration="0:0:0.1"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </Trigger.ExitActions>
             </Trigger>
 
             <Trigger Property="IsChecked" Value="False">
-                <Setter Property="Background" Value="#c9c9c9"/>
-                <Setter Property="Foreground" Value="Black"/>
             </Trigger>
         </Style.Triggers>
     </Style>

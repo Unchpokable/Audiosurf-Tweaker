@@ -25,17 +25,7 @@
 
         public MainWindow()
         {
-            Thread.Sleep(2000);
             InitializeComponent();
-            Loaded += MainWindow_Loaded;
-        }
-
-        private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
-        {
-            await Task.Run(() =>
-            {
-
-            });
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
