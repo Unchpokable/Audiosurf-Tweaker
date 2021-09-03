@@ -25,6 +25,7 @@
 
         public MainWindow()
         {
+            Thread.Sleep(1000);
             InitializeComponent();
         }
 

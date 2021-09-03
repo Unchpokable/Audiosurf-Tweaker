@@ -6,11 +6,25 @@
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
              xmlns:viewModel="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
              xmlns:view="clr-namespace:SkinChangerRestyle.MVVM.View"
-             mc:Ignorable="d" d:DesignWidth="540" Height="370">
+             mc:Ignorable="d" d:DesignWidth="540" Height="370"
+             x:Name="PreviewGrid">
 
     <UserControl.DataContext>
         <viewModel:UserSkinsGridViewModel/>
     </UserControl.DataContext>
+
+    <UserControl.Triggers>
+        <EventTrigger RoutedEvent="Loaded">
+            <BeginStoryboard>
+                <Storyboard TargetProperty="Opacity" TargetName="PreviewGrid">
+                    <DoubleAnimation From="0" To="1"
+                                     RepeatBehavior="1x"
+                                     Duration="0:0:0.3"/>
+                </Storyboard>
+            </BeginStoryboard>
+
+        </EventTrigger>
+    </UserControl.Triggers>
 
     <Grid>
         <Grid.ColumnDefinitions>

@@ -35,6 +35,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Microsoft.Xaml.Behaviors, Version=1.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Xaml.Behaviors.Wpf.1.1.31\lib\net45\Microsoft.Xaml.Behaviors.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Data" />
@@ -66,7 +69,8 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Core\DCSBehaviour.cs" />
-    <Compile Include="Core\Environment.cs" />
+    <Compile Include="Core\EnvironmentContainer.cs" />
+    <Compile Include="Core\Extensions\Extensions.cs" />
     <Compile Include="Core\StaticLink.cs" />
     <Compile Include="Core\IGlobalized.cs" />
     <Compile Include="Core\InternalWorker.cs" />
@@ -141,6 +145,7 @@
     </EmbeddedResource>
     <Resource Include="Fonts\AstroSpace-eZ2Bg.ttf" />
     <Resource Include="Fonts\Atmospheric-rg4aL.ttf" />
+    <None Include="packages.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>

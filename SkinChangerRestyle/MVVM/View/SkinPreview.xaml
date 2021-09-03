@@ -10,7 +10,11 @@
              d:DesignHeight="100" d:DesignWidth="180"
              Margin="5"
              x:Name="MiniPreview">
-    
+
+    <UserControl.DataContext>
+        <viewModel:SkinPreviewViewModel/>
+    </UserControl.DataContext>
+
     <UserControl.Triggers>
         <EventTrigger RoutedEvent="Mouse.MouseEnter">
             <EventTrigger.Actions>
@@ -44,9 +48,14 @@
                 BorderThickness="1"
                 Name="Mask">
             <Border.Background>
-                <ImageBrush x:Name="previewImage"/>
+                <ImageBrush x:Name="previewImage"
+                            ImageSource="{Binding CoverImage}"/>
             </Border.Background>
 
+            <Border.InputBindings>
+                <MouseBinding MouseAction="LeftClick" Command="{Binding ShowExtendedPreviewCommand}"/>
+            </Border.InputBindings>
+            
         </Border>
     </Grid>
 </UserControl>

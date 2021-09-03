@@ -2,14 +2,16 @@
 {
     using System;
     using System.Collections.Generic;
+    using System.IO;
     using System.Linq;
     using System.Text;
     using System.Threading.Tasks;
+    using ChangerAPI.Engine;
     using SkinChangerRestyle.Core;
+    using Env = SkinChangerRestyle.Core.EnvironmentContainer;
 
     class MainViewModel : ObservableObject
     {
-
         public RelayCommand SetSkinPreviewView { get; set; }
         public RelayCommand SetSkinsGridView { get; set; }
 
@@ -43,5 +45,17 @@
             CurrentView = ExtendedSkinPreviewVM;
         }
 
+        private void LoadSkins(string path)
+        {
+            var targets = Directory.EnumerateFiles(path);
+            foreach (var target in targets)
+            {
+                AudiosurfSkinExtended skin = SkinPackager.Decompile(target);
+
+                if (skin == null) continue;
+
+                Env.LoadedSkins.Add(new SkinLink(target, skin.Name));
+            }
+        }
     }
 }
