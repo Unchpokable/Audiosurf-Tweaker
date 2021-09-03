@@ -20,6 +20,8 @@
         public static readonly string TileFlyupImageMask = "tileflyup.png";
         public static readonly string TilesImageName = "tiles.png";
         public static readonly bool DCSWarningsAllowed = true;
+        public static readonly string LegacySkinExtention = ".askin";
+        public static readonly string ActualSkinExtention = ".askin2";
         #endregion
     }
 }

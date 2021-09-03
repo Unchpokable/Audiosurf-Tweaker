@@ -7,19 +7,18 @@
     using System.Linq;
     using System.Runtime.Serialization;
     using System.Runtime.Serialization.Formatters.Binary;
+    using Env = EnvironmentalVeriables;
 
-    public class SkinPackager
+    public static class SkinPackager
     {
         public static readonly string skinExtension = @".askin";
-        public string OutputPath { get; set; }
-        //private Logger logger;
-        private string[] texturesNames;
-        private string[] masks;
-        private readonly string defaultOutput = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        public static string OutputPath { get; set; }
+        private static string[] texturesNames;
+        private static string[] masks;
+        private readonly static string defaultOutput = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
-        public SkinPackager()
+        static SkinPackager()
         {
-            //logger = new Logger();
             texturesNames = new[]
             {
                 "cliff-1.png", "cliff-2.png", "cliff2-1.png", "cliff2-1.png", "hit1.png", "hit2.png",
@@ -30,15 +29,15 @@
 
             masks = new[]
             {
-                EnvironmentalVeriables.CliffImagesMask,
-                EnvironmentalVeriables.HitImageMask,
-                EnvironmentalVeriables.ParticlesImageMask,
-                EnvironmentalVeriables.RingsImageMask,
-                EnvironmentalVeriables.SkysphereImagesMask,
+                Env.CliffImagesMask,
+                Env.HitImageMask,
+                Env.ParticlesImageMask,
+                Env.RingsImageMask,
+                Env.SkysphereImagesMask,
             };
         }
 
-        public bool Compile(AudiosurfSkin skin)
+        public static bool Compile(AudiosurfSkinExtended skin)
         {
             try
             {
@@ -55,7 +54,7 @@
             }
         }
 
-        public bool CompileTo(AudiosurfSkin skin, string path)
+        public static bool CompileTo(AudiosurfSkinExtended skin, string path)
         {
             try
             {
@@ -72,7 +71,7 @@
             }
         }
 
-        public bool RewriteCompile(AudiosurfSkin skin, string path)
+        public static bool RewriteCompile(AudiosurfSkinExtended skin, string path)
         {
             try
             {
@@ -89,13 +88,20 @@
             }
         }
 
-        public AudiosurfSkin Decompile(string path)
+        public static AudiosurfSkinExtended Decompile(string path)
         {
+            if (!new[] { Env.LegacySkinExtention, Env.ActualSkinExtention }.Any(ext => ext == Path.GetExtension(path)))
+                return null;
+
             try
             {
                 IFormatter formatter = new BinaryFormatter();
                 using (Stream skinFileStream = new FileStream(path, FileMode.Open))
-                    return (AudiosurfSkin)formatter.Deserialize(skinFileStream);
+                {
+                    if (Path.GetExtension(path) == EnvironmentalVeriables.LegacySkinExtention)
+                        return AudiosurfSkinExtended.Reinterpret((AudiosurfSkin)formatter.Deserialize(skinFileStream));
+                    return (AudiosurfSkinExtended)formatter.Deserialize(skinFileStream);
+                }
             }
 
             catch (IOException e)
@@ -109,9 +115,9 @@
             }
         }
 
-        public AudiosurfSkin CreateSkinFromFolder(string path)
+        public static AudiosurfSkinExtended CreateSkinFromFolder(string path)
         {
-            var result = new AudiosurfSkin();
+            var result = new AudiosurfSkinExtended();
             
             string[] AllPictures = Directory.GetFiles(path);
             if (!AllPictures.Any(fileName => texturesNames.Contains(Path.GetFileName(fileName))))
@@ -144,7 +150,7 @@
             return result;
         }
 
-        private ImageGroup GetAllImagesByNameMask(string groupName, string nameMask, string path)
+        private static ImageGroup GetAllImagesByNameMask(string groupName, string nameMask, string path)
         {
             var group = new ImageGroup(groupName);
 

@@ -44,6 +44,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Engine\AudiosurfSkin.cs" />
+    <Compile Include="Engine\AudiosurfSkinExtended.cs" />
     <Compile Include="Engine\EnvironmentalVeriables.cs" />
     <Compile Include="Utilities\ImageInfo.cs" />
     <Compile Include="Engine\NamedBitmap.cs" />
