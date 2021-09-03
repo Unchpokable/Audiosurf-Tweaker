@@ -4,7 +4,7 @@
     using System.Configuration;
     using Microsoft.Win32;
     using System.IO;
-    using Env = SkinChangerRestyle.Core.Environment;
+    using Env = SkinChangerRestyle.Core.EnvironmentContainer;
 
     internal static class InternalWorker
     {

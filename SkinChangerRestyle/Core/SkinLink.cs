@@ -6,19 +6,16 @@
     {
         public string Path;
         public string Name;
-
-        private SkinPackager packager; 
          
         public SkinLink(string path, string skinName)
         {
             Path = path;
             Name = skinName;
-            packager = new SkinPackager();
         }
 
-        public AudiosurfSkin Load()
+        public AudiosurfSkinExtended Load()
         {
-            return packager.Decompile(Path);
+            return AudiosurfSkinExtended.Reinterpret(SkinPackager.Decompile(Path));
         }
 
         public override string ToString()

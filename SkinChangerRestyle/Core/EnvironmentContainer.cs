@@ -3,7 +3,7 @@
     using ChangerAPI.Engine;
     using System.Collections.Generic;
 
-    internal static class Environment
+    internal static class EnvironmentContainer
     {
         internal static string skinsFolderPath { get; set; }
         internal static string gamePath { get; set; }
@@ -11,7 +11,7 @@
         internal static bool DCSWarningsAllowed { get; set; }
 
         internal static List<SkinLink> LoadedSkins { get; set; }
-        internal static AudiosurfSkin[] ActivePageSkins { get; set; }
+        internal static AudiosurfSkinExtended[] ActivePageSkins { get; set; }
 
         internal static IEnumerable<SkinLink[]> LoadedSkinsByChunks
         {

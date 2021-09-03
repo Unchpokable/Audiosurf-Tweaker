@@ -20,23 +20,17 @@
 
         public void Log(string logTitle, string message)
         {
-            Stream logStream;
-
             if (!File.Exists(LogFilePath))
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(LogFilePath));
                 File.Create(LogFilePath);
             }
 
-            logStream = new FileStream(LogFilePath, FileMode.Append);
-
+            using (var logStream = new FileStream(LogFilePath, FileMode.Append))
             using (var writer = new StreamWriter(logStream, Encoding.UTF8))
             {
                 writer.WriteLine(FormatMessage(logTitle, message));
             }
-
-            logStream.Close();
-            logStream.Dispose();
         }
 
         private string FormatMessage(string logTitle, string message)

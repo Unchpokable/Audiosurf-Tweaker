@@ -3,10 +3,10 @@
     using System;
     using System.Windows.Input;
 
-    class RelayCommand : ICommand
+    internal class RelayCommand : ICommand
     {
-        private Action<object> execute;
-        private Func<object, bool> canExecute;
+        protected Action<object> execute;
+        protected Func<object, bool> canExecute;
 
         public event EventHandler CanExecuteChanged
         {
