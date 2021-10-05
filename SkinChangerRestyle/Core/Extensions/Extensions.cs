@@ -30,9 +30,25 @@
             finally { DeleteObject(handle); }
         }
 
-        public static ImageSource ToImageSource(this NamedBitmap bitmapSource)
+        public static ImageSource ToImageSource(this Bitmap bitmapSource)
         {
-            return ImageSourceFromBitmap((Bitmap)bitmapSource);
+            return ImageSourceFromBitmap(bitmapSource);
+        }
+
+        public static Queue<T> ToQueue<T>(this IEnumerable<T> source)
+        {
+            var temp = new Queue<T>();
+            foreach (var item in source)
+                temp.Enqueue(item);
+            return temp;
+        }
+
+        public static Queue<T> ToQueue<T>(this T[] source)
+        {
+            var temp = new Queue<T>();
+            foreach (var item in source)
+                temp.Enqueue(item);
+            return temp;
         }
     }
 }

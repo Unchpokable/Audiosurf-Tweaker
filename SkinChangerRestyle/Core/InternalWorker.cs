@@ -43,7 +43,7 @@
                 return;
             }
 
-            RegisterApplication();
+            //RegisterApplication();
             cfg.AppSettings.Settings["gamePath"].Value = pathToAudiosurfTextures + @"\steamapps\common\Audiosurf\engine\textures";
             cfg.Save();
             ConfigurationManager.RefreshSection("appSettings");

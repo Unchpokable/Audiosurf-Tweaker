@@ -2,6 +2,7 @@
 {
     using ChangerAPI.Engine;
     using System.Collections.Generic;
+    using System.IO;
 
     internal static class EnvironmentContainer
     {
@@ -13,17 +14,27 @@
         internal static List<SkinLink> LoadedSkins { get; set; }
         internal static AudiosurfSkinExtended[] ActivePageSkins { get; set; }
 
+        internal static string DefaultSkinsPath
+        {
+            get
+            {
+                return Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\\Skins";
+            }
+        }
+
         internal static IEnumerable<SkinLink[]> LoadedSkinsByChunks
         {
             get
             {
-                var chunk = new List<SkinLink>(chunkSize);
+                if (LoadedSkins == null) yield break; 
+
+                var chunk = new List<SkinLink>(ChunkSize);
                 using (var sourceEnumerator = LoadedSkins.GetEnumerator())
                 {
                     while (sourceEnumerator.MoveNext())
                     {
                         chunk.Add(sourceEnumerator.Current);
-                        if (chunk.Count == chunk.Capacity)
+                        if (chunk.Count == chunk.Capacity) 
                         {
                             yield return chunk.ToArray();
                             chunk.Clear();
@@ -34,6 +45,6 @@
             }
         }
 
-        private static readonly int chunkSize = 9;
+        public static readonly int ChunkSize = 9;
     }
 }
