@@ -18,7 +18,7 @@
         public static readonly string RingsImageMask = "ring";
         public static readonly string SkysphereImagesMask = "skysphere";
         public static readonly string TileFlyupImageMask = "tileflyup.png";
-        public static readonly string TilesImageName = "tiles.png";
+        public static readonly string TilesImageNameMask = "tiles.png";
         public static readonly bool DCSWarningsAllowed = true;
         public static readonly string LegacySkinExtention = ".askin";
         public static readonly string ActualSkinExtention = ".askin2";

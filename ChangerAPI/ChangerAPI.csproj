@@ -46,6 +46,7 @@
     <Compile Include="Engine\AudiosurfSkin.cs" />
     <Compile Include="Engine\AudiosurfSkinExtended.cs" />
     <Compile Include="Engine\EnvironmentalVeriables.cs" />
+    <Compile Include="Engine\UID.cs" />
     <Compile Include="Utilities\ImageInfo.cs" />
     <Compile Include="Engine\NamedBitmap.cs" />
     <Compile Include="Engine\SkinPackager.cs" />

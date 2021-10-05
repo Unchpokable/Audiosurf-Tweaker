@@ -22,6 +22,8 @@
         public static AudiosurfSkinExtended Reinterpret(AudiosurfSkin source)
         {
             var tempSkin = new AudiosurfSkinExtended();
+            tempSkin.Cover = new NamedBitmap();
+            
             tempSkin.Name = source.Name;
             tempSkin.SkySpheres = source.SkySpheres;
             tempSkin.SkySphereSource = source.SkySphereSource;
@@ -39,21 +41,34 @@
             return tempSkin;
         }
 
-        private struct UID
+        public new AudiosurfSkinExtended DeepClone()
         {
-            public uint CreationTime { get; }
-            public Guid uID { get; }
-
-            public UID(uint cTime)
+            using (var memory = new MemoryStream())
             {
-                CreationTime = cTime;
-                uID = Guid.NewGuid();
-            }
-
-            public override string ToString()
-            {
-                return $"{CreationTime}::{uID}";
+                IFormatter formatter = new BinaryFormatter();
+                formatter.Serialize(memory, this);
+                memory.Position = 0;
+                return (AudiosurfSkinExtended)formatter.Deserialize(memory);
             }
         }
+
+        public new AudiosurfSkinExtended Clone()
+        {
+            return new AudiosurfSkinExtended()
+            {
+                Source = this.Source,
+                Name = this.Name,
+                SkySpheres = this.SkySpheres,
+                Cliffs = this.Cliffs,
+                Hits = this.Hits,
+                Tiles = this.Tiles,
+                TilesFlyup = this.TilesFlyup,
+                Particles = this.Particles,
+                Rings = this.Rings,
+                Previews = this.Previews,
+                Cover = this.Cover,
+                id = new UID((uint)DateTime.Now.Ticks)
+            };
+        }    
     }
 }

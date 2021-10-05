@@ -2,6 +2,7 @@
 {
     using ChangerAPI.Utilities;
     using System;
+    using System.Collections.Generic;
     using System.Drawing;
     using System.IO;
     using System.Linq;
@@ -11,14 +12,19 @@
 
     public static class SkinPackager
     {
-        public static readonly string skinExtension = @".askin";
+        public static readonly string skinExtension = @".askin2";
         public static string OutputPath { get; set; }
+
+        private static AudiosurfSkinExtended temporalSkin;
         private static string[] texturesNames;
         private static string[] masks;
+        private static Dictionary<string, ImageGroup> skintypeFieldsAssocialtionTable;
+
         private readonly static string defaultOutput = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
         static SkinPackager()
         {
+            temporalSkin = new AudiosurfSkinExtended();
             texturesNames = new[]
             {
                 "cliff-1.png", "cliff-2.png", "cliff2-1.png", "cliff2-1.png", "hit1.png", "hit2.png",
@@ -33,9 +39,12 @@
                 Env.HitImageMask,
                 Env.ParticlesImageMask,
                 Env.RingsImageMask,
-                Env.SkysphereImagesMask,
+                Env.SkysphereImagesMask
             };
+
+            InitializeSkintypeFieldsAssociation();
         }
+
 
         public static bool Compile(AudiosurfSkinExtended skin)
         {
@@ -98,7 +107,7 @@
                 IFormatter formatter = new BinaryFormatter();
                 using (Stream skinFileStream = new FileStream(path, FileMode.Open))
                 {
-                    if (Path.GetExtension(path) == EnvironmentalVeriables.LegacySkinExtention)
+                    if (Path.GetExtension(path) == Env.LegacySkinExtention)
                         return AudiosurfSkinExtended.Reinterpret((AudiosurfSkin)formatter.Deserialize(skinFileStream));
                     return (AudiosurfSkinExtended)formatter.Deserialize(skinFileStream);
                 }
@@ -125,16 +134,7 @@
 
             foreach(var mask in masks)
             {
-                if (mask == EnvironmentalVeriables.CliffImagesMask)
-                    result.Cliffs = GetAllImagesByNameMask("cliffs", mask, path);
-                if (mask == EnvironmentalVeriables.HitImageMask)
-                    result.Hits = GetAllImagesByNameMask("hits", mask, path);
-                if (mask == EnvironmentalVeriables.ParticlesImageMask)
-                    result.Particles = GetAllImagesByNameMask("particles", mask, path);
-                if (mask == EnvironmentalVeriables.RingsImageMask)
-                    result.Rings = GetAllImagesByNameMask("rings", mask, path);
-                if (mask == EnvironmentalVeriables.SkysphereImagesMask)
-                    result.SkySpheres = GetAllImagesByNameMask("skysphere", mask, path);
+                skintypeFieldsAssocialtionTable[mask] = GetAllImagesByNameMask("texture", mask, path);
             }
 
             ImageGroup tiles = GetAllImagesByNameMask("tiles", "tiles.png", path);
@@ -169,6 +169,18 @@
             }
 
             return group;
+        }
+
+        private static void InitializeSkintypeFieldsAssociation()
+        {
+            skintypeFieldsAssocialtionTable = new Dictionary<string, ImageGroup>()
+            {
+                { Env.CliffImagesMask, temporalSkin.Cliffs },
+                { Env.HitImageMask, temporalSkin.Hits },
+                { Env.ParticlesImageMask, temporalSkin.Particles},
+                { Env.RingsImageMask, temporalSkin.Rings },
+                { Env.SkysphereImagesMask, temporalSkin.SkySpheres },
+            };
         }
     }
 }
