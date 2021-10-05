@@ -15,11 +15,16 @@
         public RelayCommand SetSkinPreviewView { get; set; }
         public RelayCommand SetSkinsGridView { get; set; }
 
+        public RelayCommand RunSkinEditorCommand { get; set; }
+
         public UserSkinsGridViewModel SkinsGridVM { get; set; }
         public SkinPreviewExtendedViewModel ExtendedSkinPreviewVM { get; set; }
 
 
         private object currentView;
+
+
+        private SkinEditorTool.SkinEditorController skinEditorController = new SkinEditorTool.SkinEditorController();
 
         public object CurrentView
         {
@@ -35,12 +40,17 @@
         public MainViewModel()
         {
             StaticLink.RegisterObject(nameof(MainViewModel), this);
+            InternalWorker.SetUpDefaultSettings();
+            InternalWorker.InitializeEnvironment();
+            //LoadSkins(Env.DefaultSkinsPath);
 
             SkinsGridVM = new UserSkinsGridViewModel();
             ExtendedSkinPreviewVM = new SkinPreviewExtendedViewModel();
 
             SetSkinPreviewView = new RelayCommand(o => CurrentView = ExtendedSkinPreviewVM);
             SetSkinsGridView = new RelayCommand(o => CurrentView = SkinsGridVM);
+            RunSkinEditorCommand = new RelayCommand(o => skinEditorController.Show());
+
 
             CurrentView = ExtendedSkinPreviewVM;
         }
@@ -54,7 +64,7 @@
 
                 if (skin == null) continue;
 
-                Env.LoadedSkins.Add(new SkinLink(target, skin.Name));
+                Env.LoadedSkins.Add(new SkinLink(target, skin));
             }
         }
     }
