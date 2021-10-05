@@ -49,6 +49,7 @@
                     <RowDefinition Height="35"/>
                     <RowDefinition Height="35"/>
                     <RowDefinition Height="35"/>
+                    <RowDefinition Height="35"/>
                     <RowDefinition/>
                 </Grid.RowDefinitions>
 
@@ -85,23 +86,31 @@
                 <Button Grid.Row="3"
                         Style="{StaticResource MenuButtonStyle}"
                         Margin="10 5 10 5"
-                        Content="Open skins folder"
+                        Content="Export my textures to skin file"
                         FontSize="10">
                 </Button>
                 <Button Grid.Row="4"
                         Style="{StaticResource MenuButtonStyle}"
                         Margin="10 5 10 5"
-                        Content="Open game textures folder"
+                        Content="Open skins folder"
                         FontSize="10">
                 </Button>
                 <Button Grid.Row="5"
                         Style="{StaticResource MenuButtonStyle}"
                         Margin="10 5 10 5"
-                        Content="Open skin editor"
+                        Content="Open game textures folder"
                         FontSize="10">
                 </Button>
 
-                <Border Grid.Row="6"
+                <Button Grid.Row="6"
+                        Style="{StaticResource MenuButtonStyle}"
+                        Margin="10 5 10 5"
+                        Content="Open skin editor"
+                        FontSize="10"
+                        Command="{Binding RunSkinEditorCommand}">
+                </Button>
+
+                <Border Grid.Row="7"
                         BorderBrush="Black"
                         BorderThickness="1"
                         CornerRadius="10"

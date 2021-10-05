@@ -72,7 +72,6 @@
     <Compile Include="Core\EnvironmentContainer.cs" />
     <Compile Include="Core\Extensions\Extensions.cs" />
     <Compile Include="Core\StaticLink.cs" />
-    <Compile Include="Core\IGlobalized.cs" />
     <Compile Include="Core\InternalWorker.cs" />
     <Compile Include="Core\Logger.cs" />
     <Compile Include="Core\ObservableObject.cs" />
@@ -112,6 +111,7 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="MVVM\Model\PageChangeDirection.cs" />
     <Compile Include="MVVM\ViewModel\MainViewModel.cs" />
     <Compile Include="MVVM\ViewModel\SkinPreviewExtendedViewModel.cs" />
     <Compile Include="MVVM\ViewModel\UserSkinsGridViewModel.cs" />
@@ -167,6 +167,10 @@
     <ProjectReference Include="..\ChangerAPI\ChangerAPI.csproj">
       <Project>{81019294-ff0f-4df9-b6b2-8fd4f073c253}</Project>
       <Name>ChangerAPI</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\SkinEditorTool\SkinEditorTool.csproj">
+      <Project>{81225a48-7552-456b-95db-bbb058d2a64a}</Project>
+      <Name>SkinEditorTool</Name>
     </ProjectReference>
     <ProjectReference Include="..\textpackctrl\textpackctrl.csproj">
       <Project>{27231428-42a6-43ec-8f0a-9f71726b2934}</Project>
