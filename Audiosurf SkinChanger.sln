@@ -3,8 +3,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.30011.22
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Audiosurf SkinChanger Legacy", "Audiosurf SkinChanger\Audiosurf SkinChanger Legacy.csproj", "{1D5057C4-7558-452A-9CAF-27989FE730E4}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Installer", "Installer\Installer.csproj", "{EA2DCF69-436E-4959-9085-A645491B2AFA}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "textpackctrl.Test", "textpackctrl.Test\textpackctrl.Test.csproj", "{8B8AF816-273F-4CE5-A53A-1521F755BDB3}"
@@ -17,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ChangerAPI", "ChangerAPI\Ch
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ASCommander", "ASCommander\ASCommander.csproj", "{D22FB897-36DC-4A33-8C79-FE9A50543773}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SkinEditorTool", "SkinEditorTool\SkinEditorTool.csproj", "{81225A48-7552-456B-95DB-BBB058D2A64A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,18 +27,6 @@ Global
 		x64|x64 = x64|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{1D5057C4-7558-452A-9CAF-27989FE730E4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1D5057C4-7558-452A-9CAF-27989FE730E4}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1D5057C4-7558-452A-9CAF-27989FE730E4}.Debug|x64.ActiveCfg = Debug|x64
-		{1D5057C4-7558-452A-9CAF-27989FE730E4}.Debug|x64.Build.0 = Debug|x64
-		{1D5057C4-7558-452A-9CAF-27989FE730E4}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1D5057C4-7558-452A-9CAF-27989FE730E4}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1D5057C4-7558-452A-9CAF-27989FE730E4}.Release|x64.ActiveCfg = Release|x64
-		{1D5057C4-7558-452A-9CAF-27989FE730E4}.Release|x64.Build.0 = Release|x64
-		{1D5057C4-7558-452A-9CAF-27989FE730E4}.x64|Any CPU.ActiveCfg = x64|Any CPU
-		{1D5057C4-7558-452A-9CAF-27989FE730E4}.x64|Any CPU.Build.0 = x64|Any CPU
-		{1D5057C4-7558-452A-9CAF-27989FE730E4}.x64|x64.ActiveCfg = x64|x64
-		{1D5057C4-7558-452A-9CAF-27989FE730E4}.x64|x64.Build.0 = x64|x64
 		{EA2DCF69-436E-4959-9085-A645491B2AFA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{EA2DCF69-436E-4959-9085-A645491B2AFA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EA2DCF69-436E-4959-9085-A645491B2AFA}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -111,6 +99,18 @@ Global
 		{D22FB897-36DC-4A33-8C79-FE9A50543773}.x64|Any CPU.Build.0 = Debug|Any CPU
 		{D22FB897-36DC-4A33-8C79-FE9A50543773}.x64|x64.ActiveCfg = Debug|Any CPU
 		{D22FB897-36DC-4A33-8C79-FE9A50543773}.x64|x64.Build.0 = Debug|Any CPU
+		{81225A48-7552-456B-95DB-BBB058D2A64A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{81225A48-7552-456B-95DB-BBB058D2A64A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{81225A48-7552-456B-95DB-BBB058D2A64A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{81225A48-7552-456B-95DB-BBB058D2A64A}.Debug|x64.Build.0 = Debug|Any CPU
+		{81225A48-7552-456B-95DB-BBB058D2A64A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{81225A48-7552-456B-95DB-BBB058D2A64A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{81225A48-7552-456B-95DB-BBB058D2A64A}.Release|x64.ActiveCfg = Release|Any CPU
+		{81225A48-7552-456B-95DB-BBB058D2A64A}.Release|x64.Build.0 = Release|Any CPU
+		{81225A48-7552-456B-95DB-BBB058D2A64A}.x64|Any CPU.ActiveCfg = Debug|Any CPU
+		{81225A48-7552-456B-95DB-BBB058D2A64A}.x64|Any CPU.Build.0 = Debug|Any CPU
+		{81225A48-7552-456B-95DB-BBB058D2A64A}.x64|x64.ActiveCfg = Debug|Any CPU
+		{81225A48-7552-456B-95DB-BBB058D2A64A}.x64|x64.Build.0 = Debug|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
