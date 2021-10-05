@@ -6,6 +6,7 @@
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
              xmlns:viewModel="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
              xmlns:view="clr-namespace:SkinChangerRestyle.MVVM.View"
+             xmlns:model="clr-namespace:SkinChangerRestyle.MVVM.Model"
              mc:Ignorable="d" d:DesignWidth="540" Height="370"
              x:Name="PreviewGrid">
 
@@ -148,9 +149,9 @@
                            FontFamily="/Fonts/#a Astro Space"
                            HorizontalAlignment="Left"
                            VerticalAlignment="Bottom"
-                           Margin="123,0,0,20"
+                           Margin="125,0,0,21"
                            FontSize="15"
-                       Text="01"
+                           Text="{Binding CurrentPage}"
                            x:Name="currPageLabel" RenderTransformOrigin="0.625,0.375"/>
 
             <TextBlock
@@ -158,16 +159,16 @@
                            Text="OF"
                            HorizontalAlignment="Left"
                            VerticalAlignment="Bottom"
-                           Margin="158,0,0,20"
+                           Margin="159,0,0,21"
                            FontSize="15" RenderTransformOrigin="0.455,-0.063"/>
 
             <TextBlock
                            FontFamily="/Fonts/#a Astro Space"
                            HorizontalAlignment="Left"
                            VerticalAlignment="Bottom"
-                           Margin="200,0,0,20"
+                           Margin="200,0,0,21"
                            FontSize="15"
-                       Text="22"
+                       Text="{Binding MaxPages}"
                            x:Name="maxPagesLabel" RenderTransformOrigin="-0.087,0.555"/>
 
             <Button
@@ -178,7 +179,9 @@
                         Style="{StaticResource MenuButtonStyle}"
                         Margin="10,0,0,15"
                         Content="prev"
-                        x:Name="loadPrevPageButton"/>
+                        x:Name="loadPrevPageButton"
+                        Command="{Binding ChangePageCommand}"
+                        CommandParameter="{x:Static model:PageChangingDirection.Previous}"/>
 
             <Button
                         Width="50"
@@ -188,7 +191,9 @@
                         Style="{StaticResource MenuButtonStyle}"
                         Margin="0,0,10,15"
                         Content="next"
-                        x:Name="loadNextPageButton" RenderTransformOrigin="0.5,0.333"/>
+                        x:Name="loadNextPageButton" RenderTransformOrigin="0.5,0.333"
+                        Command="{Binding ChangePageCommand}"
+                        CommandParameter="{x:Static model:PageChangingDirection.Next}"/>
 
         </Grid>
 

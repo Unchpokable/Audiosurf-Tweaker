@@ -21,9 +21,9 @@
                 <BeginStoryboard>
                     <Storyboard TargetProperty="Margin" TargetName="MiniPreview">
                         <ThicknessAnimation From="5" To="0" 
-                                         RepeatBehavior="1x"
-                                         Duration="0:0:0.1"/>
-                    </Storyboard>
+                                            RepeatBehavior="1x"
+                                            Duration="0:0:0.1"/>
+                    </Storyboard>   
                 </BeginStoryboard>
             </EventTrigger.Actions>
         </EventTrigger>
@@ -33,8 +33,8 @@
                 <BeginStoryboard>
                     <Storyboard TargetProperty="Margin" TargetName="MiniPreview">
                         <ThicknessAnimation From="0" To="5" 
-                                         RepeatBehavior="1x"
-                                         Duration="0:0:0.1"/>
+                                            RepeatBehavior="1x"
+                                            Duration="0:0:0.1"/>
                     </Storyboard>
                 </BeginStoryboard>
             </EventTrigger.Actions>
