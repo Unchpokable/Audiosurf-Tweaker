@@ -52,7 +52,7 @@
             RunSkinEditorCommand = new RelayCommand(o => skinEditorController.Show());
 
 
-            CurrentView = ExtendedSkinPreviewVM;
+            //CurrentView = ExtendedSkinPreviewVM;
         }
 
         private void LoadSkins(string path)
