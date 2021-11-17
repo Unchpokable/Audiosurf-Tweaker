@@ -13,7 +13,7 @@ namespace ChangerAPI.Skin_Creator
 {
     public partial class SkinCreatorForm : Form
     {
-        public event Action OnSkinExprotrted;
+        public event EventHandler OnSkinExprotrted;
 
         private enum States
         {
@@ -329,7 +329,7 @@ namespace ChangerAPI.Skin_Creator
             skin.Name = skinNameEntry.Text;
             SkinPackager.CompileTo(skin, "Skins");
             MessageBox.Show("Done!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            OnSkinExprotrted?.Invoke();
+            OnSkinExprotrted?.Invoke(this, EventArgs.Empty);
         }
 
         private void ExportSkinTo(object sender, EventArgs e)
@@ -344,7 +344,7 @@ namespace ChangerAPI.Skin_Creator
                 skin.Name = skinNameEntry.Text;
                 SkinPackager.CompileTo(skin, path);
                 MessageBox.Show("Done!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                OnSkinExprotrted?.Invoke();
+                OnSkinExprotrted?.Invoke(this, EventArgs.Empty);
             }
         }
 
@@ -431,7 +431,7 @@ namespace ChangerAPI.Skin_Creator
             }
             SkinPackager.RewriteCompile(skin, pathToOpenedSkin);
             MessageBox.Show("Done!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            OnSkinExprotrted?.Invoke();
+            OnSkinExprotrted?.Invoke(this, EventArgs.Empty);
         }
 
         private void Reset(object sender, EventArgs e)

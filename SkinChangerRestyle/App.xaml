@@ -12,6 +12,8 @@
                 <ResourceDictionary Source="Themes/ProgressBarStyle.xaml"/>
                 <ResourceDictionary Source="Themes/CheckBoxStyle.xaml"/>
                 <ResourceDictionary Source="Themes/FadingButtonStyle.xaml"/>
+                <ResourceDictionary Source="Themes/RadioButton.xaml"/>
+                <ResourceDictionary Source="Themes/transparentbutton.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <DataTemplate DataType="{x:Type viewModel:SkinPreviewExtendedViewModel}">
