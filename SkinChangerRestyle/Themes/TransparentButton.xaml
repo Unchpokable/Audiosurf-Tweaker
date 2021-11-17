@@ -2,56 +2,45 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Style BasedOn="{StaticResource {x:Type Button}}"
            TargetType="{x:Type Button}"
-           x:Key="MenuButtonStyle">
+           x:Key="TransparentButton">
         <Style.Setters>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type Button}">
+
                         <Border VerticalAlignment="Stretch"
                                 HorizontalAlignment="Stretch"
                                 Background="{TemplateBinding Background}"
-                                CornerRadius="5"
-                                BorderThickness="1"
                                 BorderBrush="{TemplateBinding BorderBrush}"
-                                Margin="0 0 10 0"
-                                x:Name="buttonBorder">
-                            <Border.RenderTransform>
-                                <ScaleTransform x:Name="ButtonScale"
-                                                ScaleX="1"
-                                                ScaleY="1">
-                                    
-                                </ScaleTransform>
-                            </Border.RenderTransform>
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Opacity="{TemplateBinding Opacity}"
+                                Margin="{TemplateBinding Margin}"
+                                CornerRadius="5">
                             <TextBlock Text="{TemplateBinding Property=Content}"
                                        VerticalAlignment="Center"
                                        HorizontalAlignment="Center"
-                                       FontFamily="/Fonts/#a Astro Space"
-                                       Margin="0 2 0 0">
+                                       FontFamily="{TemplateBinding FontFamily}"
+                                       FontSize="{TemplateBinding FontSize}"
+                                       FontWeight="{TemplateBinding FontWeight}"
+                                       Margin="0 0 0 2">
+                                
                             </TextBlock>
-
                         </Border>
+
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style.Setters>
-        <Style.Triggers>
-            <!--
-            <Trigger Property="IsMouseOver" Value="True">
-                <Setter Property="Background" Value="#a0a0a0"/>
-            </Trigger>
--->
-            <Trigger Property="IsPressed" Value="True">
-                <Setter Property="Background" Value="#494a49"/>
-            </Trigger>
 
+        <Style.Triggers>
 
             <EventTrigger RoutedEvent="Mouse.MouseEnter">
                 <EventTrigger.Actions>
                     <BeginStoryboard>
-                        <Storyboard TargetProperty="Background.Color">
-                            <ColorAnimation From="#dbdbdb" To="#a0a0a0"
+                        <Storyboard TargetProperty="Opacity">
+                            <DoubleAnimation From="0.6" To="0.8"
                                              RepeatBehavior="1x"
-                                             Duration="0:0:0.1"/>
+                                             Duration="0:0:0.05"></DoubleAnimation>
                         </Storyboard>
                     </BeginStoryboard>
                 </EventTrigger.Actions>
@@ -60,15 +49,25 @@
             <EventTrigger RoutedEvent="Mouse.MouseLeave">
                 <EventTrigger.Actions>
                     <BeginStoryboard>
-                        <Storyboard TargetProperty="Background.Color">
-                            <ColorAnimation From="#a0a0a0" To="#dbdbdb"
+                        <Storyboard TargetProperty="Opacity">
+                            <DoubleAnimation From="0.8" To="0.6"
                                              RepeatBehavior="1x"
-                                             Duration="0:0:0.1"/>
+                                             Duration="0:0:0.05"></DoubleAnimation>
                         </Storyboard>
                     </BeginStoryboard>
                 </EventTrigger.Actions>
             </EventTrigger>
 
+            <Trigger Property="IsEnabled" Value="True">
+                <Setter Property="Opacity" Value="0.6"/>
+            </Trigger>
+
+
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="#112432"/>
+            </Trigger>
+
         </Style.Triggers>
+        
     </Style>
 </ResourceDictionary>
