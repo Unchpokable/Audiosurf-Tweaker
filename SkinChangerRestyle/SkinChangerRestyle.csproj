@@ -61,6 +61,7 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="MVVM\Model\AudiosurfHandle.cs" />
     <Compile Include="SkinInstallationDetails.xaml.cs">
       <DependentUpon>SkinInstallationDetails.xaml</DependentUpon>
     </Compile>
@@ -135,7 +136,6 @@
     </Page>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="MVVM\Model\PageChangeDirection.cs" />
     <Compile Include="MVVM\Model\SkinCard.cs" />
     <Compile Include="MVVM\ViewModel\MainViewModel.cs" />
     <Compile Include="MVVM\ViewModel\SkinPreviewExtendedViewModel.cs" />

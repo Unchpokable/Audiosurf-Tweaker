@@ -51,7 +51,7 @@ namespace ASCommander
 
         protected override void WndProc(Message message)
         {
-            if (message.Msg != 0x001C) //Ignore WM_ACTIVEAPP Message
+            if (message.Msg != WinAPI.WM_ACTIVATEAPP) //Ignore WM_ACTIVEAPP Message cause it useless for this app
                 MessageRecieved?.Invoke(this, message);
             base.WndProc(message);
         }
