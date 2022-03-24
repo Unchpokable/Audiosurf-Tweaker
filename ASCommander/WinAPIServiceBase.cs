@@ -11,26 +11,6 @@ namespace ASCommander
     {
         protected static string nwCaption = "AsMsgHandler";
 
-        private sealed class SpongeWindow : NativeWindow
-        {
-            public event EventHandler<Message> WndProced;
-
-            private CreateParams windowParams;
-
-            public SpongeWindow()
-            {
-                windowParams = new CreateParams();
-                windowParams.Caption = nwCaption;
-                CreateHandle(windowParams);
-            }
-
-            protected override void WndProc(ref Message m)
-            {
-                WndProced?.Invoke(this, m);
-                base.WndProc(ref m);
-            }
-        }
-
         private static readonly SpongeWindow Sponge;
         protected static readonly IntPtr SpongeHandle;
 
@@ -56,6 +36,27 @@ namespace ASCommander
         public virtual void Dispose()
         {
             Sponge.WndProced -= LocalWndProced;
+        }
+
+        private sealed class SpongeWindow : NativeWindow
+        {
+            public event EventHandler<Message> WndProced;
+
+            private CreateParams windowParams;
+
+            public SpongeWindow()
+            {
+                windowParams = new CreateParams();
+                windowParams.Caption = nwCaption;
+                CreateHandle(windowParams);
+            }
+
+            [System.Security.Permissions.PermissionSet(System.Security.Permissions.SecurityAction.Assert)]
+            protected override void WndProc(ref Message m)
+            {
+                WndProced?.Invoke(this, m);
+                base.WndProc(ref m);
+            }
         }
     }
 }

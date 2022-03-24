@@ -1,18 +1,13 @@
 ﻿using ASCommander.PInvoke;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Win32;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
 
 namespace ASCommander
 {
-    class WndProcMessageService : WinApiServiceBase
+    public class WndProcMessageService : WinApiServiceBase
     {
-        public EventHandler<Message> OnMessageRecieved;
+        public event EventHandler<Message> MessageRecieved;
         public Func<string, bool> MsgContentFilter { get; set; }
 
         private IntPtr targetWindowHandle;
@@ -56,15 +51,8 @@ namespace ASCommander
 
         protected override void WndProc(Message message)
         {
-            switch (message.Msg)
-            {
-                case (int)WinAPI.WM_COPYDATA:
-                    {
-                        if(MsgContentFilter(Marshal.PtrToStringUni(message.LParam)))
-                            OnMessageRecieved?.Invoke(this, message);
-                        break;
-                    }
-            }
+            if (message.Msg != 0x001C) //Ignore WM_ACTIVEAPP Message
+                MessageRecieved?.Invoke(this, message);
             base.WndProc(message);
         }
     }
