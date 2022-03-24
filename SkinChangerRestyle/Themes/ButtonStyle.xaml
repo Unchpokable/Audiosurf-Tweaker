@@ -11,7 +11,7 @@
                                 HorizontalAlignment="Stretch"
                                 Background="{TemplateBinding Background}"
                                 CornerRadius="5"
-                                BorderThickness="1"
+                                BorderThickness="0"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 Margin="0 0 10 0"
                                 x:Name="buttonBorder">
@@ -23,13 +23,16 @@
                                 </ScaleTransform>
                             </Border.RenderTransform>
                             <TextBlock Text="{TemplateBinding Property=Content}"
+                                       FontSize="15"
                                        VerticalAlignment="Center"
                                        HorizontalAlignment="Center"
-                                       FontFamily="/Fonts/#a Astro Space"
-                                       Margin="0 2 0 0">
+                                       FontWeight="Bold"
+                                       Foreground="#d2d2d2"
+                                       Margin="0 0 0 2">
                             </TextBlock>
 
-                        </Border>
+                        </Border> 
+
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -41,15 +44,18 @@
             </Trigger>
 -->
             <Trigger Property="IsPressed" Value="True">
-                <Setter Property="Background" Value="#494a49"/>
+                <Setter Property="Background" Value="#620021"/>
             </Trigger>
 
+            <Trigger Property="IsPressed" Value="False">
+                <Setter Property="Background" Value="#A41646"/>
+            </Trigger>
 
             <EventTrigger RoutedEvent="Mouse.MouseEnter">
                 <EventTrigger.Actions>
                     <BeginStoryboard>
                         <Storyboard TargetProperty="Background.Color">
-                            <ColorAnimation From="#dbdbdb" To="#a0a0a0"
+                            <ColorAnimation From="#A41646" To="#870430"
                                              RepeatBehavior="1x"
                                              Duration="0:0:0.1"/>
                         </Storyboard>
@@ -61,14 +67,13 @@
                 <EventTrigger.Actions>
                     <BeginStoryboard>
                         <Storyboard TargetProperty="Background.Color">
-                            <ColorAnimation From="#a0a0a0" To="#dbdbdb"
+                            <ColorAnimation From="#870430" To="#A41646"
                                              RepeatBehavior="1x"
                                              Duration="0:0:0.1"/>
                         </Storyboard>
                     </BeginStoryboard>
                 </EventTrigger.Actions>
             </EventTrigger>
-
         </Style.Triggers>
     </Style>
 </ResourceDictionary>

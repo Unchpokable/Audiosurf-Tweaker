@@ -34,13 +34,21 @@
 
         <Style.Triggers>
 
+            <Trigger Property="IsPressed" Value="True">
+                <Setter Property="Background" Value="#112432"/>
+            </Trigger>
+
+            <Trigger Property="IsPressed" Value="False">
+                <Setter Property="Background" Value="#1e303e"/>
+            </Trigger>
+            
             <EventTrigger RoutedEvent="Mouse.MouseEnter">
                 <EventTrigger.Actions>
                     <BeginStoryboard>
-                        <Storyboard TargetProperty="Opacity">
-                            <DoubleAnimation From="0.6" To="0.8"
+                        <Storyboard TargetProperty="Background.Color">
+                            <ColorAnimation From="#1e303e" To="#495B69"
                                              RepeatBehavior="1x"
-                                             Duration="0:0:0.05"></DoubleAnimation>
+                                             Duration="0:0:0.05"></ColorAnimation>
                         </Storyboard>
                     </BeginStoryboard>
                 </EventTrigger.Actions>
@@ -49,23 +57,15 @@
             <EventTrigger RoutedEvent="Mouse.MouseLeave">
                 <EventTrigger.Actions>
                     <BeginStoryboard>
-                        <Storyboard TargetProperty="Opacity">
-                            <DoubleAnimation From="0.8" To="0.6"
+                        <Storyboard TargetProperty="Background.Color">
+                            <ColorAnimation From="#495B69" To="#1e303e"
                                              RepeatBehavior="1x"
-                                             Duration="0:0:0.05"></DoubleAnimation>
+                                             Duration="0:0:0.05"></ColorAnimation>
                         </Storyboard>
                     </BeginStoryboard>
                 </EventTrigger.Actions>
             </EventTrigger>
 
-            <Trigger Property="IsEnabled" Value="True">
-                <Setter Property="Opacity" Value="0.6"/>
-            </Trigger>
-
-
-            <Trigger Property="IsPressed" Value="True">
-                <Setter Property="Background" Value="#112432"/>
-            </Trigger>
 
         </Style.Triggers>
         

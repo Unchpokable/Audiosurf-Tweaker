@@ -10,13 +10,17 @@
 
                         <Border VerticalAlignment="Stretch"
                                 HorizontalAlignment="Stretch"
-                                Background="{TemplateBinding Background}">
+                                Background="{TemplateBinding Background}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                Margin="{TemplateBinding Margin}"
+                                CornerRadius="5">
 
                             <TextBlock Text="{TemplateBinding Property=Content}"
                                        VerticalAlignment="Center"
                                        HorizontalAlignment="Center"
                                        Margin="0 0 5 0"
-                                       FontWeight="SemiBold"
+                                       FontWeight="Bold"
                                        FontSize="20"
                                        Foreground="LightGray">
                             </TextBlock>
@@ -34,7 +38,7 @@
                     <BeginStoryboard>
                         <Storyboard TargetProperty="Background.Color"
                                     x:Name="EnableAnimationStoryboard">
-                            <ColorAnimation From="#495b69" To="#112432"
+                            <ColorAnimation From="#495b69" To="#32424e"
                                             RepeatBehavior="1x"
                                             Duration="0:0:0.1"/>
                         </Storyboard>
@@ -45,7 +49,7 @@
                     <BeginStoryboard>
                         <Storyboard TargetProperty="Background.Color"
                                     x:Name="DisableAnimationStoryboard">
-                            <ColorAnimation From="#112432" To="#495b69"
+                            <ColorAnimation From="#32424e" To="#495b69"
                                             RepeatBehavior="1x"
                                             Duration="0:0:0.1"/>
                         </Storyboard>
@@ -56,9 +60,29 @@
             <Trigger Property="IsChecked" Value="False">
             </Trigger>
 
-            <Trigger Property="IsEnabled" Value="True">
-                <Setter Property="Background" Value="#495b69"/>
-            </Trigger>
+            <EventTrigger RoutedEvent="Mouse.MouseEnter">
+                <EventTrigger.Actions>
+                    <BeginStoryboard>
+                        <Storyboard TargetProperty="BorderThickness">
+                            <ThicknessAnimation From="0" To="2"
+                                             RepeatBehavior="1x"
+                                             Duration="0:0:0.1"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger.Actions>
+            </EventTrigger>
+
+            <EventTrigger RoutedEvent="Mouse.MouseLeave">
+                <EventTrigger.Actions>
+                    <BeginStoryboard>
+                        <Storyboard TargetProperty="BorderThickness">
+                            <ThicknessAnimation From="2" To="0"
+                                             RepeatBehavior="1x"
+                                             Duration="0:0:0.1"/>
+                        </Storyboard>
+                    </BeginStoryboard>
+                </EventTrigger.Actions>
+            </EventTrigger>
         </Style.Triggers>
     </Style>
 </ResourceDictionary>
