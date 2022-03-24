@@ -9,7 +9,7 @@
         mc:Ignorable="d"
         Height="750" Width="1080"
         WindowStyle="None"
-        ResizeMode="NoResize"
+        ResizeMode="CanResizeWithGrip"
         Background="Transparent"
         AllowsTransparency="True"
         Title="Audiosurf Skin Changer">
@@ -20,7 +20,7 @@
 
 
     <Border Background="#667783"
-            CornerRadius="5">
+            CornerRadius="6 6 5 5">
         <Grid>
             <!--
             <Grid.Background>
@@ -134,11 +134,11 @@
                             VerticalAlignment="Center">
                     <Button Style="{StaticResource TransparentButton}"
                             Content="Settings"
-                            Background="#495B69"
+                            Background="#1e303d"
                             BorderBrush="Transparent"
-                            Foreground="White" Width="100"
-                            Margin="2 0 0 1"
-                            FontSize="10"
+                            Foreground="LightGray" Width="72"
+                            Margin="2 0 0 0"
+                            FontSize="12"
                             FontWeight="SemiBold"/>
                 </StackPanel>
             </Grid>
@@ -167,7 +167,7 @@
                 <Button Grid.Row="1"
                         Style="{StaticResource MenuButtonStyle}"
                         Margin="10 5 10 5"
-                        Content="Add new .askin file"
+                        Content="Add new skin"
                         FontSize="10">
                 </Button>
                 <Button Grid.Row="2"
@@ -192,16 +192,42 @@
                         Style="{StaticResource MenuButtonStyle}"
                         Margin="10 5 10 5"
                         Content="Open game textures folder"
-                        FontSize="10">
+                        FontSize="10"
+                        Click="Button_Click">
                 </Button>
 
-                <Button Grid.Row="6"
-                        Style="{StaticResource MenuButtonStyle}"
-                        Margin="10 5 10 5"
-                        Content="Open skin editor"
-                        FontSize="10"
-                        Command="{Binding RunSkinEditorCommand}">
-                </Button>
+
+                <Grid Grid.Row="7"
+                            VerticalAlignment="Bottom"
+                            Height="100">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="50"/>
+                        <RowDefinition/>
+                    </Grid.RowDefinitions>
+                    <Border x:Name="StatusLabel"
+                            CornerRadius="5"
+                            Margin="10"
+                            Background="White">
+                        
+                        <TextBlock FontSize="15"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Center"
+                                   FontWeight="Bold"
+                                   Foreground="#d2d2d2"
+                                   Margin="0 0 0 2"
+                                   x:Name="StatusLabelContent">
+                            Audiosurf Connected
+                        </TextBlock>
+                    </Border>
+
+                    <Button Grid.Row="1"
+                            Style="{StaticResource MenuButtonStyle}"
+                            Margin="10 5 0 10"
+                            Content="Connect"
+                            Click="ConnectAudiosurfWindow">
+                        
+                    </Button>
+                </Grid>
             </Grid>
 
             <Grid Grid.Row="2"
@@ -210,23 +236,17 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition/>
                     <ColumnDefinition/>
-                    <ColumnDefinition/>
-                    <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
 
                 <RadioButton Style="{StaticResource RadioButton}"
                              Content="Skins"
                              FontSize="20"
                              GroupName="MainViewState"
-                             IsChecked="True">
-
-                </RadioButton>
-
-                <RadioButton Grid.Column="1"
-                             Style="{StaticResource RadioButton}"
-                             Content="Tags"
-                             FontSize="20"
-                             GroupName="MainViewState">
+                             IsChecked="True"
+                             Margin="2"
+                             Background="#32424e"
+                             BorderThickness="0"
+                             BorderBrush="#32424e">
 
                 </RadioButton>
 
@@ -234,18 +254,92 @@
                              Style="{StaticResource RadioButton}"
                              Content="Player"
                              FontSize="20"
-                             GroupName="MainViewState">
+                             GroupName="MainViewState"
+                             Margin="2"
+                             Background="#495b69"
+                             BorderThickness="0"
+                             BorderBrush="#32424e">
 
                 </RadioButton>
 
             </Grid>
 
-                <ContentControl Grid.Row="3"
-                                Grid.Column="2"
+            <Grid Grid.Row="3"
+                  Grid.Column="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition Height="200"/>
+                </Grid.RowDefinitions>
+                
+                
+                <ContentControl Grid.Row="0"
+                                Grid.Column="0"
                                 
                                 Margin="10"
-                                Content="{Binding CurrentView}" Grid.ColumnSpan="2" Grid.RowSpan="2"/>
+                                Content="{Binding CurrentView}"/>
+
+                <Border Grid.Row="1"
+                        Margin="10"
+                        BorderThickness="0 1 0 0"
+                        BorderBrush="#1e303d">
+                    
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="30"/>
+                            <RowDefinition/>
+                        </Grid.RowDefinitions>
+
+                        <TextBlock FontSize="17"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Left"
+                                   FontWeight="Bold"
+                                   Foreground="#d2d2d2"
+                                   Margin="0 0 0 2">
+                            Additional Features
+                        </TextBlock>
+                        
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0"
+                                        Margin="0 10 0 0">
+                                <CheckBox Content="Hide Road" 
+                                          x:Name="hideRoad"
+                                          IsChecked="False"
+                                          Style="{StaticResource CheckBoxWithSeparatedText}"
+                                          Checked="OnAddFeaturesCheckboxChecked"
+                                          Unchecked="OnAddFeaturesCheckboxUnchecked"/>
+                                <CheckBox Content="Sidewinder camera" 
+                                          x:Name="sidewinder"
+                                          IsChecked="False"
+                                          Style="{StaticResource CheckBoxWithSeparatedText}"
+                                          Checked="OnAddFeaturesCheckboxChecked"
+                                          Unchecked="OnAddFeaturesCheckboxUnchecked"/>
+                                <CheckBox Content="Banking camera" 
+                                          IsChecked="False"
+                                          x:Name="bankcam"
+                                          Style="{StaticResource CheckBoxWithSeparatedText}"
+                                          Checked="OnAddFeaturesCheckboxChecked"
+                                          Unchecked="OnAddFeaturesCheckboxUnchecked"/>
+                                <CheckBox Content="Hide song name" 
+                                          IsChecked="False"
+                                          x:Name="hidesong"
+                                          Style="{StaticResource CheckBoxWithSeparatedText}"
+                                          Checked="OnAddFeaturesCheckboxChecked"
+                                          Unchecked="OnAddFeaturesCheckboxUnchecked"/>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                    
+                </Border>
+
             </Grid>
+                
+        </Grid>
     </Border>
 
 </Window>

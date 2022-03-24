@@ -42,6 +42,7 @@
     <Reference Include="System.Configuration" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Core" />
@@ -60,6 +61,9 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="SkinInstallationDetails.xaml.cs">
+      <DependentUpon>SkinInstallationDetails.xaml</DependentUpon>
+    </Compile>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -93,7 +97,15 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="SkinInstallationDetails.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Themes\ButtonStyle.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Themes\CheckBoxAlternative.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -102,6 +114,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Themes\FadingButtonStyle.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Themes\LVI_ASCSkin.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -120,6 +136,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="MVVM\Model\PageChangeDirection.cs" />
+    <Compile Include="MVVM\Model\SkinCard.cs" />
     <Compile Include="MVVM\ViewModel\MainViewModel.cs" />
     <Compile Include="MVVM\ViewModel\SkinPreviewExtendedViewModel.cs" />
     <Compile Include="MVVM\ViewModel\UserSkinsGridViewModel.cs" />
@@ -172,6 +189,10 @@
     <Resource Include="Resources\bg.png" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\ASCommander\ASCommander.csproj">
+      <Project>{d22fb897-36dc-4a33-8c79-fe9a50543773}</Project>
+      <Name>ASCommander</Name>
+    </ProjectReference>
     <ProjectReference Include="..\ChangerAPI\ChangerAPI.csproj">
       <Project>{81019294-ff0f-4df9-b6b2-8fd4f073c253}</Project>
       <Name>ChangerAPI</Name>
