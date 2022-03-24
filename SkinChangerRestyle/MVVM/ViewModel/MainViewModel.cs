@@ -1,11 +1,6 @@
 ﻿namespace SkinChangerRestyle.MVVM.ViewModel
 {
-    using System;
-    using System.Collections.Generic;
     using System.IO;
-    using System.Linq;
-    using System.Text;
-    using System.Threading.Tasks;
     using ChangerAPI.Engine;
     using SkinChangerRestyle.Core;
     using Env = SkinChangerRestyle.Core.EnvironmentContainer;
@@ -24,7 +19,7 @@
         private object currentView;
 
 
-        private SkinEditorTool.SkinEditorController skinEditorController = new SkinEditorTool.SkinEditorController();
+        //private SkinEditorTool.SkinEditorController skinEditorController = new SkinEditorTool.SkinEditorController();
 
         public object CurrentView
         {
@@ -49,8 +44,6 @@
 
             SetSkinPreviewView = new RelayCommand(o => CurrentView = ExtendedSkinPreviewVM);
             SetSkinsGridView = new RelayCommand(o => CurrentView = SkinsGridVM);
-            RunSkinEditorCommand = new RelayCommand(o => skinEditorController.Show());
-
 
             //CurrentView = ExtendedSkinPreviewVM;
         }
