@@ -82,12 +82,6 @@
            Process.Start(EnvironmentContainer.gamePath ?? @"C:/");
         }
 
-        private void ShowSubForm(object sender, RoutedEventArgs e)
-        {
-            SkinInstallationDetails details = new SkinInstallationDetails();
-            details.Show();
-        }
-
 
         private void OnAddFeaturesCheckboxChecked(object sender, RoutedEventArgs e)
         {

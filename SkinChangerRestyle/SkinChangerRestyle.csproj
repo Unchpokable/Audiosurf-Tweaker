@@ -62,8 +62,9 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="MVVM\Model\AudiosurfHandle.cs" />
-    <Compile Include="SkinInstallationDetails.xaml.cs">
-      <DependentUpon>SkinInstallationDetails.xaml</DependentUpon>
+    <Compile Include="MVVM\Model\SkinLoader.cs" />
+    <Compile Include="SettingsWindow.xaml.cs">
+      <DependentUpon>SettingsWindow.xaml</DependentUpon>
     </Compile>
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
@@ -86,10 +87,6 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Page Include="MVVM\View\SkinPreview.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
     <Page Include="MVVM\View\SkinPreviewExtended.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -98,7 +95,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="SkinInstallationDetails.xaml">
+    <Page Include="SettingsWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -141,9 +138,6 @@
     <Compile Include="MVVM\ViewModel\SkinPreviewExtendedViewModel.cs" />
     <Compile Include="MVVM\ViewModel\UserSkinsGridViewModel.cs" />
     <Compile Include="MVVM\ViewModel\SkinPreviewViewModel.cs" />
-    <Compile Include="MVVM\View\SkinPreview.xaml.cs">
-      <DependentUpon>SkinPreview.xaml</DependentUpon>
-    </Compile>
     <Compile Include="MVVM\View\SkinPreviewExtended.xaml.cs">
       <DependentUpon>SkinPreviewExtended.xaml</DependentUpon>
     </Compile>
@@ -184,9 +178,6 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\logo.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <Resource Include="Resources\bg.png" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ASCommander\ASCommander.csproj">

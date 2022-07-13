@@ -24,10 +24,6 @@
             <DataTemplate DataType="{x:Type viewModel:UserSkinsGridViewModel}">
                 <view:UsersSkinsGrid/>
             </DataTemplate>
-
-            <DataTemplate DataType="{x:Type viewModel:SkinPreviewViewModel}">
-                <view:SkinPreview/>
-            </DataTemplate>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

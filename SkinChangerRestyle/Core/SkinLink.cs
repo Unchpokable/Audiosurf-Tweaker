@@ -5,10 +5,10 @@
     using System.Drawing;
     using System.Windows.Media;
 
-    class SkinLink
+    public class SkinLink
     {
-        public string Path;
-        public string Name;
+        public string Path { get; set; }
+        public string Name { get; set; }
         public ImageSource Cover { get; private set; } 
 
         public SkinLink(string path, AudiosurfSkinExtended source)

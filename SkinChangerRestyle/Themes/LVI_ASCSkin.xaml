@@ -8,12 +8,30 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate>
+                        
                         <Border Background="{TemplateBinding Background}"
                                 Height="70"
                                 CornerRadius="5"
                                 Margin="5 2 5 2">
+
+                            <StackPanel Orientation="Horizontal"
+                                        Margin="10 2 2 2">
+                                <Ellipse>
+                                    <Ellipse.Fill>
+                                        <ImageBrush ImageSource="{Binding Cover}"/>
+                                    </Ellipse.Fill>
+                                </Ellipse>
+                                <Label Margin="20 0 0 0" Content="{Binding Name}"/>
+                                <Button Style="{StaticResource MenuButtonStyle}" 
+                                        Margin="5" 
+                                        FontSize="10" 
+                                        FontWeight="SemiBold" 
+                                        Command="{Binding ShowInstallationDetails}"
+                                        Content="Details"/>
+                            </StackPanel>
                             
                         </Border>
+                        
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>

@@ -13,8 +13,8 @@
 
     class UserSkinsGridViewModel : ObservableObject
     {
-    
-        //public ObservableCollection<>    
+
+        public ObservableCollection<SkinCard> Skins { get; set; }    
 
         public UserSkinsGridViewModel()
         {

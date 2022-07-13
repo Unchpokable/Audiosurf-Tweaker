@@ -15,24 +15,24 @@ using System.Windows.Shapes;
 namespace SkinChangerRestyle
 {
     /// <summary>
-    /// Логика взаимодействия для SkinInstallationDetails.xaml
+    /// Логика взаимодействия для SettingsWindow.xaml
     /// </summary>
-    public partial class SkinInstallationDetails : Window
+    public partial class SettingsWindow : Window
     {
-        public SkinInstallationDetails()
+        public SettingsWindow()
         {
             InitializeComponent();
-        }
-
-        private void Button_Click(object sender, RoutedEventArgs e)
-        {
-            Close();
         }
 
         private void Border_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (e.ButtonState == MouseButtonState.Pressed)
                 DragMove();
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            Application.Current.Shutdown();
         }
     }
 }

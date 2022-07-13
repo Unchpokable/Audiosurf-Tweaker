@@ -11,8 +11,8 @@
                         <Border VerticalAlignment="Stretch"
                                 HorizontalAlignment="Stretch"
                                 Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
+                                BorderBrush="Transparent"
+                                BorderThickness="0"
                                 Opacity="{TemplateBinding Opacity}"
                                 Margin="{TemplateBinding Margin}"
                                 CornerRadius="5">

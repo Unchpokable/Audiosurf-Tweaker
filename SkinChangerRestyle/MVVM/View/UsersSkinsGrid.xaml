@@ -28,11 +28,7 @@
     </UserControl.Triggers>
 
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition/>
-            <RowDefinition/>
-        </Grid.RowDefinitions>
-        
+
         <ListView Background="Transparent"
                   ItemsSource="{Binding Skins}">
                 
