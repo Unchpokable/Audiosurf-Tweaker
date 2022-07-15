@@ -5,25 +5,24 @@
              xmlns:viewModel="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
              xmlns:view="clr-namespace:SkinChangerRestyle.MVVM.View"
              StartupUri="MainWindow.xaml">
+    <!--xmlns:view="clr-namespace:SkinChangerRestyle.MVVM.View" -->
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="Themes/ButtonStyle.xaml"/>
-                <ResourceDictionary Source="Themes/ProgressBarStyle.xaml"/>
-                <ResourceDictionary Source="Themes/CheckBoxStyle.xaml"/>
-                <ResourceDictionary Source="Themes/FadingButtonStyle.xaml"/>
-                <ResourceDictionary Source="Themes/RadioButton.xaml"/>
-                <ResourceDictionary Source="Themes/transparentbutton.xaml"/>
-                <ResourceDictionary Source="Themes/CheckBoxAlternative.xaml"/>
+                <ResourceDictionary Source="Themes/SimpleLeftMenuRadioButton.xaml"/>
+                <ResourceDictionary Source="Themes/FlatButton.xaml"/>
+                <ResourceDictionary Source="Themes/FlatCheckBox.xaml"/>
+                <ResourceDictionary Source="Themes/lvItemSkin.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
-            <DataTemplate DataType="{x:Type viewModel:SkinPreviewExtendedViewModel}">
-                <view:SkinPreviewExtended/>
+            <DataTemplate DataType="{x:Type viewModel:SkinChangerViewModel}">
+                <view:SkinChanger/>
             </DataTemplate>
 
-            <DataTemplate DataType="{x:Type viewModel:UserSkinsGridViewModel}">
-                <view:UsersSkinsGrid/>
+            <DataTemplate DataType="{x:Type viewModel:TweakerViewModel}">
+                <view:Tweaker/>
             </DataTemplate>
+            
         </ResourceDictionary>
     </Application.Resources>
 </Application>

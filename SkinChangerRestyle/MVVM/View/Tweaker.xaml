@@ -1,0 +1,54 @@
+﻿<UserControl x:Class="SkinChangerRestyle.MVVM.View.Tweaker"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
+             xmlns:viewmodel="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+    
+    <UserControl.DataContext>
+        <viewmodel:TweakerViewModel/>
+    </UserControl.DataContext>
+    
+    <Border Background="White">
+        <Grid Margin="0 18 0 0">
+            <Grid.RowDefinitions>
+                <RowDefinition/>
+                <RowDefinition/>
+                <RowDefinition/>
+            </Grid.RowDefinitions>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="50"/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+
+                <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
+                        BorderThickness="0 0 0 2"
+                        Width="400"
+                        HorizontalAlignment="Left">
+                    <Label Content="Tweaks" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                </Border>
+
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Row="0" Grid.Column="0" Margin="10">
+                        <CheckBox Content="Sidewinder camera"/>
+                        <CheckBox Content="Banking camera"/>
+                        <CheckBox Content="Invisible road"/>
+                        <CheckBox Content="Hidden song title"/>
+                    </StackPanel>
+                    
+                </Grid>
+                
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

@@ -43,9 +43,9 @@
 
         public SkinPreviewViewModel()
         {
-            if (StaticLink.GetObjectByTag(nameof(MainViewModel), out MainViewModel mvmSource) && StaticLink.GetObjectByTag(nameof(UserSkinsGridViewModel), out UserSkinsGridViewModel usgridVMSource))
+            if (StaticLink.GetObjectByTag(nameof(MainViewModel), out MainViewModel mvmSource) && StaticLink.GetObjectByTag(nameof(SkinChangerViewModel), out SkinChangerViewModel usgridVMSource))
             {
-                ShowExtendedPreviewCommand = mvmSource.SetSkinPreviewView;
+                ShowExtendedPreviewCommand = mvmSource.SetCommandCenterView;
 
             }
             else

@@ -20,30 +20,10 @@
     /// </summary>
     public partial class MainWindow : Window
     {
-        private AudiosurfHandle asHandle;
-
-        private Dictionary<string, string> addFeaturesChecksEnableCommandRoute = new Dictionary<string, string>()
-        {
-            {"hideRoad", "asconfig roadvisible false" },
-            {"sidewinder", "asconfig sidewinder true" },
-            {"bankcam", "asconfig usebankingcamera true" },
-            {"hidesong", "asconfig showsongname false" }
-        };
-
-        private Dictionary<string, string> addFeaturesChecksDisableCommandRoute = new Dictionary<string, string>()
-        {
-            {"hideRoad", "asconfig roadvisible true" },
-            {"sidewinder", "asconfig sidewinder false" },
-            {"bankcam", "asconfig usebankingcamera false" },
-            {"hidesong", "asconfig showsongname true" }
-        };
-
         public MainWindow()
         {
             Thread.Sleep(1000);
             InitializeComponent();
-            asHandle = AudiosurfHandle.Instance;
-            asHandle.Registered += (sender, e) => asNotConnectedWarning.Visibility = Visibility.Hidden;
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -80,19 +60,6 @@
         private void Button_Click(object sender, RoutedEventArgs e)
         {
            Process.Start(EnvironmentContainer.gamePath ?? @"C:/");
-        }
-
-
-        private void OnAddFeaturesCheckboxChecked(object sender, RoutedEventArgs e)
-        {
-            var checkbox = sender as CheckBox;
-            asHandle.Command(addFeaturesChecksEnableCommandRoute[checkbox.Name]);
-        }
-
-        private void OnAddFeaturesCheckboxUnchecked(object sender, RoutedEventArgs e)
-        {
-            var checkbox = sender as CheckBox;
-            asHandle.Command(addFeaturesChecksDisableCommandRoute[checkbox.Name]);
         }
     }
 }

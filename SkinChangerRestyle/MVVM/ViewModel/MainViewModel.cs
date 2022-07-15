@@ -10,19 +10,17 @@
 
     class MainViewModel : ObservableObject
     {
-        public RelayCommand SetSkinPreviewView { get; set; }
-        public RelayCommand SetSkinsGridView { get; set; }
+        public RelayCommand SetCommandCenterView { get; set; }
+        public RelayCommand SetChangerView { get; set; }
         public RelayCommand ConnectAudiosurfWindow { get; set; }
 
-        public UserSkinsGridViewModel SkinsGridVM { get; set; }
-        public SkinPreviewExtendedViewModel ExtendedSkinPreviewVM { get; set; }
+        public SkinChangerViewModel SkinsGridVM { get; set; }
+        public TweakerViewModel TweakerVM { get; set; }
         public object AudiosurfStatusMessage => asHandle?.StateMessage;
         public object AudiosurfStatusBackgroundColor => asHandle?.StateColor;
 
         private object currentView;
         private AudiosurfHandle asHandle;
-
-        //private SkinEditorTool.SkinEditorController skinEditorController = new SkinEditorTool.SkinEditorController();
 
         public object CurrentView
         {
@@ -41,9 +39,12 @@
             InternalWorker.InitializeEnvironment();
             asHandle = AudiosurfHandle.Instance;
             asHandle.StateChanged += OnASHandleStateChanged;
-            SkinsGridVM = new UserSkinsGridViewModel();
-            SetSkinsGridView = new RelayCommand(o => CurrentView = SkinsGridVM);
+            SkinsGridVM = new SkinChangerViewModel();
+            TweakerVM = new TweakerViewModel();
+            CurrentView = SkinsGridVM;
+            SetChangerView = new RelayCommand(o => CurrentView = SkinsGridVM);
             ConnectAudiosurfWindow = new RelayCommand(o => asHandle.TryConnect());
+            SetCommandCenterView = new RelayCommand(o => CurrentView = TweakerVM);
         }
 
         private void OnASHandleStateChanged(object sender, EventArgs e)

@@ -16,11 +16,11 @@ using System.Windows.Shapes;
 namespace SkinChangerRestyle.MVVM.View
 {
     /// <summary>
-    /// Логика взаимодействия для UsersSkinsGrid.xaml
+    /// Логика взаимодействия для Tweaker.xaml
     /// </summary>
-    public partial class UsersSkinsGrid : UserControl
+    public partial class Tweaker : UserControl
     {
-        public UsersSkinsGrid()
+        public Tweaker()
         {
             InitializeComponent();
         }
