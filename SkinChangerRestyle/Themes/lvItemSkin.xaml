@@ -10,7 +10,8 @@
                                  Fill="#FF9D5BF5"
                                  x:Name="Body">
                         </Ellipse>
-                        <Image Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" Source="{TemplateBinding Content}"/>
+                        <Image Width="{TemplateBinding Width}" Height="{TemplateBinding Height}" Source="{TemplateBinding Content}"
+                               RenderOptions.BitmapScalingMode="Fant"/>
                     </Grid>
 
                     <ControlTemplate.Triggers>
@@ -34,10 +35,15 @@
                     <Border Width="auto" Height="70"
                             Background="White"
                             BorderThickness="0 0 0 1" BorderBrush="#FFC3C3C3"
-                            x:Name="Body">
+                            x:Name="Body"
+                            ToolTipService.InitialShowDelay="1000"
+                            ToolTipService.BetweenShowDelay="500">
+                        <Border.ToolTip>
+                            <Image Source="{Binding Cover}" Width="640" Height="360" Stretch="Uniform"/>
+                        </Border.ToolTip>
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="6*"/>
+                                <ColumnDefinition Width="8*"/>
                                 <ColumnDefinition Width="1*"/>
                                 <ColumnDefinition Width="1*"/>
                                 <ColumnDefinition Width="1*"/>
@@ -45,7 +51,7 @@
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0" Text="{Binding Name}" Margin="20 0 0 0" VerticalAlignment="Center" HorizontalAlignment="Left"
-                                       FontFamily="Exo 2 Light" FontSize="20" Foreground="#FF8A8A8A" />
+                                       FontFamily="Exo 2 Light" FontSize="20" Foreground="#FF8A8A8A" x:Name="Title"/>
                             <Button Margin="15" Grid.Column="1" Command="{Binding InstallCommand}" Style="{StaticResource RoundIconButton}"
                                     Content="{Binding InstallIcon}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                     ToolTip="{Binding InstallTooltip}"/>
@@ -64,10 +70,12 @@
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Body" Property="Background" Value="#FFA2D7FF"/>
+                            <Setter Property="Cursor" Value="Hand"/>
                         </Trigger>
 
                         <Trigger Property="IsSelected" Value="True">
                             <Setter TargetName="Body" Property="Background" Value="#FFA7B8FF"/>
+                            <Setter TargetName="Title" Property="Foreground" Value="#FF525252"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

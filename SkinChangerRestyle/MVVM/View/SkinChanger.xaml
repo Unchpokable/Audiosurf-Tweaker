@@ -6,29 +6,99 @@
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
              xmlns:vm="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
-    <UserControl.DataContext>
+             d:DesignHeight="665" d:DesignWidth="800">
+    <!--<UserControl.DataContext>
         <vm:SkinChangerViewModel/>
-    </UserControl.DataContext>
-        
+    </UserControl.DataContext>-->
+
     <Border Background="White">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="2*"/>
                 <RowDefinition/>
             </Grid.RowDefinitions>
-            
+
             <ListView Background="Transparent"
                       BorderThickness="0 1 0 1"
-                      ItemsSource="{Binding Skins}" ItemContainerStyle="{StaticResource LvItemSkinViewport}" BorderBrush="#FFC3C3C3">
+                      SelectedItem="{Binding SelectedItem}"
+                      ItemsSource="{Binding Skins}"
+                      ItemContainerStyle="{StaticResource LvItemSkinViewport}" BorderBrush="#FFC3C3C3">
             </ListView>
-            <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
-                <Button Content="{Binding InstallIcon}"  ToolTip="Install this skin full" Grid.Row="1" Width="40" Height="40" Style="{StaticResource RoundIconButton}"/>
-                <Button Content="{Binding ExportCopyIcon}"  ToolTip="Create copy of this skin and export it" Grid.Row="1" Width="40" Height="40" Style="{StaticResource RoundIconButton}"/>
-                <Button Content="{Binding RenameIcon}"  ToolTip="Rename this skin" Grid.Row="1" Width="40" Height="40" Style="{StaticResource RoundIconButton}"/>
-                <Button Content="{Binding EditOnDiskIcon}"  ToolTip="Edit this skin on disk" Grid.Row="1" Width="40" Height="40" Style="{StaticResource RoundIconButton}"/>
-            </StackPanel>
-            
+
+            <Grid Grid.Row="1" Background="Transparent">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width=".9*"/>
+                    <ColumnDefinition Width=".9*"/>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="1*"/>
+                    <RowDefinition Height="3*"/>
+                </Grid.RowDefinitions>
+
+                <Border BorderBrush="#FFC3C3C3"
+                        BorderThickness="0 0 0 1"
+                        Margin="5 5 0 0" HorizontalAlignment="Left" VerticalAlignment="Top">
+                    <Label Content="Custom Installation" FontFamily="Exo 2 Light" Foreground="#FF8A8A8A" FontSize="18" HorizontalAlignment="Left" VerticalAlignment="Stretch" Margin="0,0,0,0" BorderBrush="#FFC3C3C3"/>
+                </Border>
+
+                <StackPanel Grid.Row="1" Margin="5" Orientation="Vertical" HorizontalAlignment="Left" VerticalAlignment="Top">
+                    <CheckBox FontSize="16" Style="{StaticResource FlatCheckBox}" Content="Skyspheres" Command="{Binding TurnSkinPartInstallation}" CommandParameter="{x:Static vm:SkinPart.Skyspheres}"/>
+                    <CheckBox FontSize="16" Style="{StaticResource FlatCheckBox}" Content="Tileset" Command="{Binding TurnSkinPartInstallation}" CommandParameter="{x:Static vm:SkinPart.Tileset}"/>
+                    <CheckBox FontSize="16" Style="{StaticResource FlatCheckBox}" Content="Particles" Command="{Binding TurnSkinPartInstallation}" CommandParameter="{x:Static vm:SkinPart.Particles}"/>
+                </StackPanel>
+
+                <Border
+                            Grid.Row="1" HorizontalAlignment="Stretch" Height="47" VerticalAlignment="Bottom">
+                    <Button 
+                                Style="{StaticResource FlatButton}"
+                                Content="Install"
+                                FontSize="15"
+                                Command="{Binding ApartedInstallSelected}" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Margin="10 0 10 0" Height="50">
+                        <Button.ToolTip>
+                            Replace only selected textures, keep other textures
+                        </Button.ToolTip>
+                    </Button>
+                </Border>
+
+                <Border
+                            Grid.Row="1" HorizontalAlignment="Stretch" Height="47" VerticalAlignment="Bottom" Grid.Column="1">
+                    <Button 
+                                Style="{StaticResource FlatButton}"
+                                Content="Clear Install"
+                                FontSize="15"
+                                Command="{Binding ApartedInstallSelected}" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Margin="10 0 10 0" Height="50">
+                        <Button.ToolTip>
+                            Rollback to default Audiosurf look, replace selected texture
+                        </Button.ToolTip>
+                    </Button>
+                </Border>
+
+
+                <StackPanel Grid.Row="1" Grid.Column="1" Margin="5" VerticalAlignment="Top" HorizontalAlignment="Left">
+                    <CheckBox FontSize="16" Style="{StaticResource FlatCheckBox}" Content="Rings" Command="{Binding TurnSkinPartInstallation}" CommandParameter="{x:Static vm:SkinPart.Rings}"/>
+                    <CheckBox FontSize="16" Style="{StaticResource FlatCheckBox}" Content="Hits" Command="{Binding TurnSkinPartInstallation}" CommandParameter="{x:Static vm:SkinPart.Hits}"/>
+                </StackPanel>
+
+                <Border Grid.Column="2" Grid.RowSpan="2" Grid.ColumnSpan="2" Background="#FFEFEFEF"/>
+
+                <Border BorderBrush="#FFC3C3C3"
+                        BorderThickness="0 0 0 1"
+                        Margin="5 5 0 0" HorizontalAlignment="Left" VerticalAlignment="Top" Grid.Column="2">
+                    <Label Content="Screenshots" FontFamily="Exo 2 Light" Foreground="#FF8A8A8A" FontSize="18" HorizontalAlignment="Left" VerticalAlignment="Stretch" Margin="0,0,0,0" BorderBrush="#FFC3C3C3"/>
+                </Border>
+                <ListView Grid.Column="2" Grid.Row="1"
+                          Background="Transparent"
+                          BorderBrush="Transparent"
+                          BorderThickness="0"
+                          ItemsSource="{Binding SelectedItem.Screenshots}"
+                          ItemContainerStyle="{StaticResource ImageListViewItem}" Grid.ColumnSpan="2">
+                    
+                </ListView>
+            </Grid>
+
         </Grid>
     </Border>
 </UserControl>

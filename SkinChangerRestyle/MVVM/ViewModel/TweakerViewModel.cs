@@ -1,32 +1,57 @@
-﻿using System;
+﻿using SkinChangerRestyle.Core;
+using SkinChangerRestyle.Core.Extensions;
+using SkinChangerRestyle.MVVM.Model;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Media;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
-    internal class TweakerViewModel
+    internal class TweakerViewModel : ObservableObject
     {
-        public TweakerViewModel()
+        public bool IsAudiosurfConnected
         {
-
+            get => _isAudiosurfConnected;
+            set
+            {
+                _isAudiosurfConnected = value;
+                OnPropertyChanged();
+            }
         }
 
-        private Dictionary<string, string> addFeaturesChecksEnableCommandRoute = new Dictionary<string, string>()
-        {
-            {"hideroad", "asconfig roadvisible false" },
-            {"sidewinder", "asconfig sidewinder true" },
-            {"bankcam", "asconfig usebankingcamera true" },
-            {"hidesong", "asconfig showsongname false" }
-        };
+        public RelayCommand EnableTweak { get; private set; }
+        public RelayCommand DisableTweak { get; private set; }
+        public RelayCommand SendCommand { get; private set; }
 
-        private Dictionary<string, string> addFeaturesChecksDisableCommandRoute = new Dictionary<string, string>()
+        public ImageSource Cat => Properties.Resources.Cat.ToImageSource();
+
+        private AudiosurfHandle _audiosurfHandle;
+        private bool _isAudiosurfConnected;
+
+        public TweakerViewModel()
         {
-            {"hideroad", "asconfig roadvisible true" },
-            {"sidewinder", "asconfig sidewinder false" },
-            {"bankcam", "asconfig usebankingcamera false" },
-            {"hidesong", "asconfig showsongname true" }
-        };
+            _audiosurfHandle = AudiosurfHandle.Instance;
+            _audiosurfHandle.StateChanged += (sender, e) => IsAudiosurfConnected = _audiosurfHandle.IsValid;
+
+            EnableTweak = new RelayCommand(param =>
+            {
+                var fullMessage = $"asconfig {param}";
+                _audiosurfHandle.Command(fullMessage);
+            });
+
+            DisableTweak = new RelayCommand(param =>
+            {
+                var fullMessage = $"asconfig {param}";
+                _audiosurfHandle.Command(fullMessage);
+            });
+
+            SendCommand = new RelayCommand(param =>
+            {
+                _audiosurfHandle.Command($"ascommand {param}");
+            });
+        }
     }
 }

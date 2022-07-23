@@ -7,11 +7,55 @@
                     <BulletDecorator>
                         <BulletDecorator.Bullet>
                             <Border x:Name="MarkOuterBorder"
-                                    Background="#6e00ff">
-                                
+                                    Background="#FFD4D4D4"
+                                    CornerRadius="1"
+                                    Width="15"
+                                    Height="15"
+                                    VerticalAlignment="Center"
+                                    HorizontalAlignment="Center"
+                                    Margin="2">
+                                <Border x:Name="MarkCheck"
+                                        Background="#FF6E00FF"
+                                        Width="10"
+                                        Height="10"
+                                        CornerRadius="2"
+                                        VerticalAlignment="Center"
+                                        HorizontalAlignment="Center">
+                                </Border>
                             </Border>
                         </BulletDecorator.Bullet>
+
+                        <BulletDecorator.Child>
+                            <Border x:Name="TextBorder"
+                                        Background="Transparent">
+                                <TextBlock Text="{TemplateBinding Property=Content}"
+                                           FontFamily="Exo 2 Light"
+                                           FontSize="{TemplateBinding Property=FontSize}"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Left"
+                                           Foreground="{TemplateBinding Property=Foreground}"
+                                           Margin="10 0 0 0"
+                                           x:Name="Text">
+
+                                </TextBlock>
+                            </Border>
+                        </BulletDecorator.Child>
+
                     </BulletDecorator>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger SourceName="TextBorder" Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Text" Property="Foreground" Value="#9d5bf5"/>
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="MarkCheck" Property="Background" Value="#FF6E00FF"/>
+                        </Trigger>
+
+                        <Trigger Property="IsChecked" Value="False">
+                            <Setter TargetName="MarkCheck" Property="Background" Value="Transparent"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

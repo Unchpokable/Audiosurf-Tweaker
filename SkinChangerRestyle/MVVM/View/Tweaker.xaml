@@ -5,18 +5,19 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
              xmlns:viewmodel="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
+             xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800">
+             d:DesignHeight="665" d:DesignWidth="800">
     
-    <UserControl.DataContext>
+    <!--<UserControl.DataContext>
         <viewmodel:TweakerViewModel/>
-    </UserControl.DataContext>
+    </UserControl.DataContext>-->
     
     <Border Background="White">
         <Grid Margin="0 18 0 0">
             <Grid.RowDefinitions>
-                <RowDefinition/>
-                <RowDefinition/>
+                <RowDefinition Height=".7*"/>
+                <RowDefinition Height="*"/>
                 <RowDefinition/>
             </Grid.RowDefinitions>
             <Grid>
@@ -36,19 +37,149 @@
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition/>
                         <ColumnDefinition/>
-                        <ColumnDefinition/>
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Row="0" Grid.Column="0" Margin="10">
-                        <CheckBox Content="Sidewinder camera"/>
-                        <CheckBox Content="Banking camera"/>
-                        <CheckBox Content="Invisible road"/>
-                        <CheckBox Content="Hidden song title"/>
+                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Sidewinder camera" Margin="0 0 0 5" FontSize="14">
+                            <i:Interaction.Triggers>
+                                <i:EventTrigger EventName="Checked">
+                                    <i:InvokeCommandAction Command="{Binding EnableTweak}" CommandParameter="sidewinder true"/>
+                                </i:EventTrigger>
+                                <i:EventTrigger EventName="Unchecked">
+                                    <i:InvokeCommandAction Command="{Binding DisableTweak}" CommandParameter="sidewinder false"/>
+                                </i:EventTrigger>
+                            </i:Interaction.Triggers>
+                        </CheckBox>
+                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Banking camera" Margin="0 0 0 5" FontSize="14">
+                            <i:Interaction.Triggers>
+                                <i:EventTrigger EventName="Checked">
+                                    <i:InvokeCommandAction Command="{Binding EnableTweak}" CommandParameter="usebankingcamera true"/>
+                                </i:EventTrigger>
+                                <i:EventTrigger EventName="Unchecked">
+                                    <i:InvokeCommandAction Command="{Binding DisableTweak}" CommandParameter="usebankingcamera false"/>
+                                </i:EventTrigger>
+                            </i:Interaction.Triggers>
+                        </CheckBox>
+                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Invisible road" Margin="0 0 0 5" FontSize="14">
+                            <i:Interaction.Triggers>
+                                <i:EventTrigger EventName="Checked">
+                                    <i:InvokeCommandAction Command="{Binding EnableTweak}" CommandParameter="roadvisible false"/>
+                                </i:EventTrigger>
+                                <i:EventTrigger EventName="Unchecked">
+                                    <i:InvokeCommandAction Command="{Binding DisableTweak}" CommandParameter="roadvisible true"/>
+                                </i:EventTrigger>
+                            </i:Interaction.Triggers>
+                        </CheckBox>
+                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Hidden song title" Margin="0 0 0 5" FontSize="14">
+                            <i:Interaction.Triggers>
+                                <i:EventTrigger EventName="Checked">
+                                    <i:InvokeCommandAction Command="{Binding EnableTweak}" CommandParameter="showsongname false"/>
+                                </i:EventTrigger>
+                                <i:EventTrigger EventName="Unchecked">
+                                    <i:InvokeCommandAction Command="{Binding DisableTweak}" CommandParameter="showsongname true"/>
+                                </i:EventTrigger>
+                            </i:Interaction.Triggers>
+                        </CheckBox>
                     </StackPanel>
-                    
+
+                    <StackPanel Grid.Column="1" Margin="10">
+                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Disable freeride blocks" Margin="0 0 0 5" FontSize="14" Background="White">
+                            <i:Interaction.Triggers>
+                                <i:EventTrigger EventName="Checked">
+                                    <i:InvokeCommandAction Command="{Binding EnableTweak}" CommandParameter="freerideblocks false"/>
+                                </i:EventTrigger>
+                                <i:EventTrigger EventName="Unchecked">
+                                    <i:InvokeCommandAction Command="{Binding DisableTweak}" CommandParameter="freerideblocks true"/>
+                                </i:EventTrigger>
+                            </i:Interaction.Triggers>
+                        </CheckBox>
+                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Freeride block caterpillars" Margin="0 0 0 5" FontSize="14">
+                            <i:Interaction.Triggers>
+                                <i:EventTrigger EventName="Checked">
+                                    <i:InvokeCommandAction Command="{Binding EnableTweak}" CommandParameter="freeridecaterpillars true"/>
+                                </i:EventTrigger>
+                                <i:EventTrigger EventName="Unchecked">
+                                    <i:InvokeCommandAction Command="{Binding DisableTweak}" CommandParameter="freeridecaterpillars false"/>
+                                </i:EventTrigger>
+                            </i:Interaction.Triggers>
+                        </CheckBox>
+                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Disable Freeride Auto Advance" Margin="0 0 0 5" FontSize="14">
+                            <i:Interaction.Triggers>
+                                <i:EventTrigger EventName="Checked">
+                                    <i:InvokeCommandAction Command="{Binding EnableTweak}" CommandParameter="freerideautoadvance false"/>
+                                </i:EventTrigger>
+                                <i:EventTrigger EventName="Unchecked">
+                                    <i:InvokeCommandAction Command="{Binding DisableTweak}" CommandParameter="freerideautoadvance true"/>
+                                </i:EventTrigger>
+                            </i:Interaction.Triggers>
+                        </CheckBox>
+                    </StackPanel>
+
                 </Grid>
-                
             </Grid>
+
+            <Grid Grid.Row="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="50"/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+
+                <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
+                        BorderThickness="0 0 0 2"
+                        Width="400"
+                        HorizontalAlignment="Left">
+                    <Label Content="Commands" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                </Border>
+
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Margin="10">
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="setwindowalwaysontop" Height="30" Style="{StaticResource UnderscoredButton}" Content="Set Audiosurf Always on top" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="setwindowalwaysontopnoborder" Height="30" Style="{StaticResource UnderscoredButton}" Content="Always on top without border" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="runwithoutfocus" Height="30" Style="{StaticResource UnderscoredButton}" Content="Run Audiosurf without focus" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="closeaudiosurf" Height="30" Style="{StaticResource UnderscoredButton}" Content="Close Audiosurf" Margin="0 0 0 5" FontSize="14"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="10" Grid.Column="1">
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="gotocharacterscreen" Height="30" Style="{StaticResource UnderscoredButton}" Content="To characters screen" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="maximize" Height="30" Style="{StaticResource UnderscoredButton}" Content="Maximize Audiosurf" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="gofullscreen" Height="30" Style="{StaticResource UnderscoredButton}" Content="Go Audiosurf in Fullscreen mode" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="restorenormalwindowstyle" Height="30" Style="{StaticResource UnderscoredButton}" Content="Restore Audiosurf window config" Margin="0 0 0 5" FontSize="14"/>
+                    </StackPanel>
+
+                </Grid>
+            </Grid>
+
+            <Grid Grid.Row="3">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="50"/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+
+                <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
+                        BorderThickness="0 0 0 2"
+                        Width="400"
+                        HorizontalAlignment="Left">
+                    <Label Content="Cat" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                </Border>
+
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+
+                    <Image Source="{Binding Cat}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0 0 0 5"/>
+                    <Image Source="{Binding Cat}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0 0 0 5" Grid.Column="1"/>
+                    <Image Source="{Binding Cat}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0 0 0 5" Grid.Column="2"/>
+                </Grid>
+            </Grid>
+
         </Grid>
     </Border>
 </UserControl>
