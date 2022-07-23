@@ -7,7 +7,7 @@
         xmlns:properties="clr-namespace:SkinChangerRestyle.Properties"
         xmlns:viewModel="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
         mc:Ignorable="d"
-        Height="700" Width="1100"
+        Height="700" Width="1200"
         Background="White"
         AllowsTransparency="True"
         WindowStyle="None"
@@ -28,10 +28,10 @@
                     <ColumnDefinition/>
                     <ColumnDefinition/>
                 </Grid.ColumnDefinitions>
-                <Label Content="Audiosurf Tweaker&#xD;&#xA;" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Center" FontFamily="Exo 2 SemiBold" FontWeight="Normal" FontSize="20" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Padding="5,4,5,7" Foreground="#FF5F5F5F"/>
+                <Label Content="Audiosurf Tweaker" HorizontalAlignment="Left" Margin="10,0,0,0" VerticalAlignment="Center" FontFamily="Exo 2 SemiBold" FontWeight="Normal" FontSize="20" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Padding="5,4,5,7" Foreground="#FF5F5F5F"/>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                    <Button Grid.Column="1" Content="_" HorizontalAlignment="Left" Margin="0,0,0,0" VerticalAlignment="Center" Height="35" Width="35" Background="{x:Null}" BorderBrush="{x:Null}" Padding="1,-3,1,1" Click="MinimizeButton_Click"/>
-                    <Button Grid.Column="1" Content="╳" HorizontalAlignment="Right" Margin="0,0,0,0" VerticalAlignment="Center" Height="35" Width="35" Padding="0,-4,1,1" Background="{x:Null}" BorderBrush="{x:Null}" Click="CloseButton_Click" HorizontalContentAlignment="Center"/>
+                    <Button Style="{StaticResource UnderscoredButton}" Grid.Column="1" Content="_" HorizontalAlignment="Left" Margin="0,0,0,0" VerticalAlignment="Center" Height="35" Width="35" Background="{x:Null}" BorderBrush="{x:Null}" Padding="1,-3,1,1" Click="MinimizeButton_Click"/>
+                    <Button Style="{StaticResource UnderscoredButton}" Grid.Column="1" Content="╳" HorizontalAlignment="Right" Margin="0,0,0,0" VerticalAlignment="Center" Height="35" Width="35" Padding="0,-4,1,1" Background="{x:Null}" BorderBrush="{x:Null}" Click="CloseButton_Click" HorizontalContentAlignment="Center"/>
                 </StackPanel>
                
             </Grid>
@@ -53,9 +53,9 @@
                     <RowDefinition Height="100"/>
                 </Grid.RowDefinitions>
                 <Label BorderThickness="0 0 0 2" Content="Menu" FontFamily="Exo 2 Medium" FontSize="22" BorderBrush="#FFC3C3C3" RenderTransformOrigin="0.518,1.065" Foreground="#FF5D5D5D" VerticalAlignment="Top" HorizontalAlignment="Center" Width="280" Height="50" Margin="0,8,0,0"/>
-                <RadioButton Command="{Binding SetChangerView}" Grid.Row="1" IsChecked="True" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Skin Changer" HorizontalAlignment="Center" Margin="0,5,5,5" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" FontFamily="Exo 2 Light" Height="55" Width="300" RenderTransformOrigin="0.5,0.5" Padding="0,0,0,0"/>
-                <RadioButton Command ="{Binding SetCommandCenterView}" Grid.Row="2" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Command Center" HorizontalAlignment="Center" Margin="0,5,5,5" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" Height="55" Width="300"/>
-                <RadioButton Grid.Row="3" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Settings" HorizontalAlignment="Center" Margin="0,5,5,5" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" Height="55" Width="300"/>
+                <RadioButton Command="{Binding SetChangerView}" Grid.Row="1" IsChecked="True" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Skin Changer" HorizontalAlignment="Center" Margin="0,5,5,5" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" FontFamily="Exo 2 Light" Height="55" Width="300" Padding="0,0,0,0"/>
+                <RadioButton Command ="{Binding SetCommandCenterView}" Grid.Row="2" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Command and Control" HorizontalAlignment="Center" Margin="0,5,5,5" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" Height="55" Width="300"/>
+                <RadioButton Command="{Binding SetSettingsView}" Grid.Row="3" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Settings" HorizontalAlignment="Center" Margin="0,5,5,5" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" Height="55" Width="300"/>
 
                 <Border Grid.Row="5" BorderThickness="0 2 0 0" BorderBrush="#FFC3C3C3" Margin="10,0,10,0">
                     <Grid>
@@ -64,17 +64,17 @@
                             <RowDefinition Height="50"/>
                         </Grid.RowDefinitions>
 
-                        <Grid>
+                        <Grid Grid.Row="0">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="30"/>
                                 <ColumnDefinition/>
                             </Grid.ColumnDefinitions>
 
-                            <Ellipse x:Name="ConnectionStatusIndicator" ClipToBounds="False" Fill="Red" Margin="0,0,0,0" Stroke="DarkGray" Width="10" Height="10" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                            <Label x:Name="ConnectionStatusLabel" Content="Audiosurf not connected" HorizontalAlignment="Left" Margin="0,0,0,0" VerticalAlignment="Center" Grid.Column="1" FontFamily="Exo 2 Light" FontSize="18" Foreground="#FF717171"/>
+                            <Ellipse x:Name="ConnectionStatusIndicator" ClipToBounds="False" Fill="{Binding AudiosurfStatusBackgroundColor}" Margin="0,0,0,0" Stroke="DarkGray" Width="10" Height="10" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                            <Label x:Name="ConnectionStatusLabel" Content="{Binding AudiosurfStatusMessage}" HorizontalAlignment="Left" Margin="0,0,0,0" VerticalAlignment="Center" Grid.Column="1" FontFamily="Exo 2 Light" FontSize="18" Foreground="#FF717171"/>
                         </Grid>
 
-                        <Button Content="Connect Audiosurf" Style="{StaticResource FlatButton}" Foreground="#FFE0E0E0" BorderBrush="{x:Null}" FontSize="16" FontFamily="Exo 2 Light" Height="49" VerticalAlignment="Center" Grid.Row="1"/>
+                        <Button Command="{Binding ConnectAudiosurfWindow}" Content="Connect Audiosurf" Style="{StaticResource FlatButton}" Foreground="#FFE0E0E0" BorderBrush="{x:Null}" FontSize="16" FontFamily="Exo 2 Light" Height="50" VerticalAlignment="Center" Grid.Row="1"/>
 
                     </Grid>
                 </Border>

@@ -35,20 +35,14 @@
             return ImageSourceFromBitmap(bitmapSource);
         }
 
-        public static Queue<T> ToQueue<T>(this IEnumerable<T> source)
+        public static Bitmap Rescale(this Bitmap source, int newX, int newY)
         {
-            var temp = new Queue<T>();
-            foreach (var item in source)
-                temp.Enqueue(item);
-            return temp;
+            return new Bitmap((Image)source, newX, newY);
         }
 
-        public static Queue<T> ToQueue<T>(this T[] source)
+        public static Bitmap Rescale(this Bitmap source, float scaleX, float scaleY)
         {
-            var temp = new Queue<T>();
-            foreach (var item in source)
-                temp.Enqueue(item);
-            return temp;
+            return new Bitmap(source, (int)(source.Width * scaleX), (int)(source.Height * scaleY));
         }
     }
 }

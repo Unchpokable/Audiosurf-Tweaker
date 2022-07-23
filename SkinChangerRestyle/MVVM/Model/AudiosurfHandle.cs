@@ -5,17 +5,24 @@ using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Media;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace SkinChangerRestyle.MVVM.Model
 {
+    internal delegate void MessageEventHandler(object sender, string messageContent);
+
     class AudiosurfHandle
     {
         public event EventHandler StateChanged;
-        public event EventHandler Registered; 
-
-        public readonly IntPtr Handle;
+        public event EventHandler Registered;
+        public event MessageEventHandler MessageResieved;
+        public bool IsValid { get; private set; }
+        public IntPtr Handle { get; private set; }
         public string StateMessage => currentState.Message;
         public SolidColorBrush StateColor => currentState.ColorInterpretation;
+
+        private System.Windows.Forms.Timer _timer;
 
         public static AudiosurfHandle Instance
         {
@@ -39,7 +46,22 @@ namespace SkinChangerRestyle.MVVM.Model
             currentState = ASHandleState.NotConnected;
             StateChanged?.Invoke(this, EventArgs.Empty);
             wndProcMessageService.MessageRecieved += OnMessageRecieved;
+
+            _timer = new System.Windows.Forms.Timer();
+            _timer.Interval = 1000;
+            _timer.Tick += (s, e) =>
+            {
+                if (Handle == IntPtr.Zero)
+                {
+                    TryConnect();
+                    return;
+                }
+                ValidateHandle();
+            };
+
+            _timer.Start();
         }
+
 
         public bool TryConnect()
         {
@@ -48,11 +70,12 @@ namespace SkinChangerRestyle.MVVM.Model
                 var handle = WinAPI.FindWindow(null, "Audiosurf");
                 if (handle == IntPtr.Zero)
                     return false;
-
+                Handle = handle;
                 currentState = ASHandleState.Awaiting;
                 StateChanged?.Invoke(this, EventArgs.Empty);
                 wndProcMessageService.Handle(handle);
                 wndProcMessageService.Command(WinAPI.WM_COPYDATA, "ascommand registerlistenerwindow AsMsgHandler");
+                IsValid = true;
                 return true;
             }
         }
@@ -77,19 +100,35 @@ namespace SkinChangerRestyle.MVVM.Model
                             StateChanged?.Invoke(this, EventArgs.Empty);
                             Registered?.Invoke(this, EventArgs.Empty);
                         }
+                        MessageResieved?.Invoke(this, cds.lpData);
                     }
                 }
             }
         }
+
+        public bool ValidateHandle()
+        {
+            if (!WinAPI.IsWindow(Handle))
+            {
+                Handle = IntPtr.Zero;
+                currentState = ASHandleState.NotConnected;
+                wndProcMessageService.Invalidate();
+                IsValid = false;
+                StateChanged?.Invoke(this, EventArgs.Empty);
+                return false;
+            }
+            return true;
+        }
+
 
         public class ASHandleState
         {
             public string Message { get; set; }
             public SolidColorBrush ColorInterpretation { get; set; }
 
-            private static string asNotConnectedStatusColor = "#9c0202";
-            private static string asConnectedStatusColor = "#029c07";
-            private static string asWaitForRegistratingColor = "#9c9c02";
+            private static string asNotConnectedStatusColor = "#ff0000";
+            private static string asConnectedStatusColor = "#11ff00";
+            private static string asWaitForRegistratingColor = "#ffff00";
 
             private static ASHandleState connectedState;
             private static ASHandleState authorizationAwaitingState;

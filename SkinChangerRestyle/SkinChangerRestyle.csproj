@@ -85,7 +85,18 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="ImageViewWindow.xaml.cs">
+      <DependentUpon>ImageViewWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="MVVM\Model\AudiosurfHandle.cs" />
+    <Page Include="ImageViewWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="MVVM\View\SettingView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="MVVM\View\SkinChanger.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -123,7 +134,15 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Themes\ImageListViewItem.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Themes\lvItemSkin.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Themes\PinkScrollBar.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -131,13 +150,25 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Themes\StylishTextInput.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Themes\UnderscoredTransparentButton.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="MVVM\Model\IteractableScreenshot.cs" />
     <Compile Include="MVVM\Model\SkinCard.cs" />
     <Compile Include="MVVM\ViewModel\MainViewModel.cs" />
+    <Compile Include="MVVM\ViewModel\SettingViewModel.cs" />
     <Compile Include="MVVM\ViewModel\SkinChangerViewModel.cs" />
-    <Compile Include="MVVM\ViewModel\SkinPreviewViewModel.cs" />
     <Compile Include="MVVM\ViewModel\TweakerViewModel.cs" />
+    <Compile Include="MVVM\View\SettingView.xaml.cs">
+      <DependentUpon>SettingView.xaml</DependentUpon>
+    </Compile>
     <Compile Include="MVVM\View\SkinChanger.xaml.cs">
       <DependentUpon>SkinChanger.xaml</DependentUpon>
     </Compile>
@@ -226,6 +257,21 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Resources\install.svg" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Audiosurf2_2RizSZYKN4.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\pintman.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Stopframe.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Stopframe2.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\cat.jpg" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

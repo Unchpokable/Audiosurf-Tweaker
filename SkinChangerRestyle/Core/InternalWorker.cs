@@ -6,9 +6,11 @@
     using System.IO;
     using Env = SkinChangerRestyle.Core.EnvironmentContainer;
 
+    internal delegate void ExternExceptionHandler(Exception innerException);
+
     internal static class InternalWorker
     {
-        internal static Action<Exception> InitializationFaultCallback { private get; set; }
+        internal static ExternExceptionHandler InitializationFaultCallback { private get; set; }
         internal static string FingerPrint;
 
         private static string localMachineSubkeyName = "ASCHDATA";

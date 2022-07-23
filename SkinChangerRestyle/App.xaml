@@ -13,14 +13,22 @@
                 <ResourceDictionary Source="Themes/FlatButton.xaml"/>
                 <ResourceDictionary Source="Themes/FlatCheckBox.xaml"/>
                 <ResourceDictionary Source="Themes/lvItemSkin.xaml"/>
+                <ResourceDictionary Source="Themes/PinkScrollBar.xaml"/>
+                <ResourceDictionary Source="Themes/ImageListViewItem.xaml"/>
+                <ResourceDictionary Source="Themes/UnderscoredTransparentButton.xaml"/>
+                <ResourceDictionary Source="Themes/StylishTextInput.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
-            <DataTemplate DataType="{x:Type viewModel:SkinChangerViewModel}">
+            <DataTemplate x:Shared="true" DataType="{x:Type viewModel:SkinChangerViewModel}">
                 <view:SkinChanger/>
             </DataTemplate>
 
-            <DataTemplate DataType="{x:Type viewModel:TweakerViewModel}">
+            <DataTemplate x:Shared="true"  DataType="{x:Type viewModel:TweakerViewModel}">
                 <view:Tweaker/>
+            </DataTemplate>
+
+            <DataTemplate x:Shared="true" DataType="{x:Type viewModel:SettingViewModel}">
+                <view:SettingView/>
             </DataTemplate>
             
         </ResourceDictionary>

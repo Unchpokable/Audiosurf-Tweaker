@@ -26,6 +26,7 @@
             SkySpheres = new ImageGroup();
             Cliffs = new ImageGroup();
             Hits = new ImageGroup();
+            Previews = new ImageGroup();
             Particles = new ImageGroup();
             Rings = new ImageGroup();
             Tiles = new NamedBitmap();
