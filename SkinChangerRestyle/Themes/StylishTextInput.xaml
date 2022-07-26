@@ -20,8 +20,7 @@
                                          x:Name="TextInput"
                                          FontFamily="Exo 2 Light"
                                          FontSize="{TemplateBinding FontSize}"
-                                         TextWrapping="Wrap" CaretBrush="#FF616161" SelectionBrush="#FF6BACE0" Foreground="#FF616161" SelectionTextBrush="#FFBFBFBF"
-                                         Text="{TemplateBinding Text}">
+                                         TextWrapping="Wrap" CaretBrush="#FF616161" SelectionBrush="#FF6BACE0" Foreground="#FF616161" SelectionTextBrush="#FFBFBFBF">
                                 </TextBox>
                             </Grid>
                         </Border>
@@ -29,5 +28,39 @@
                 </Setter.Value>
             </Setter>
         </Style.Setters>        
+    </Style>
+
+    <Style x:Key="RenameTextInput" TargetType="{x:Type TextBox}" BasedOn="{StaticResource {x:Type TextBox}}">
+        <Style.Setters>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TextBox}">
+                        <Border x:Name="Background"
+                                Background="#FFEDEDED"
+                                CornerRadius="3" BorderThickness="2" BorderBrush="#FFB1B1B1">
+                            <Grid>
+                                <TextBox Background="Transparent"
+                                         BorderBrush="Transparent"
+                                         BorderThickness="0"
+                                         VerticalContentAlignment="Center"
+                                         HorizontalContentAlignment="Left"
+                                         VerticalAlignment="Stretch"
+                                         HorizontalAlignment="Stretch"
+                                         x:Name="TextInput"
+                                         FontFamily="Exo 2 Light"
+                                         FontSize="{TemplateBinding FontSize}"
+                                         TextWrapping="Wrap" CaretBrush="#FF616161" SelectionBrush="#FF6BACE0" Foreground="#FF616161" SelectionTextBrush="#FFBFBFBF"
+                                         Text="{Binding NewName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                    <TextBox.InputBindings>
+                                        <KeyBinding Command="{Binding ApplyRename}" Key="Return"/>
+                                    </TextBox.InputBindings>
+                                </TextBox>
+                            </Grid>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style.Setters>
     </Style>
 </ResourceDictionary>

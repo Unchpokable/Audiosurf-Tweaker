@@ -17,6 +17,12 @@
         public AudiosurfSkinExtended() : base()
         {
             Cover = new NamedBitmap();
+            Console.WriteLine("Object Instantiated");
+        }
+
+        ~AudiosurfSkinExtended()
+        {
+            Console.WriteLine("Object Destroyed");
         }
 
         public static AudiosurfSkinExtended Reinterpret(AudiosurfSkin source)

@@ -38,30 +38,6 @@
     <Reference Include="Microsoft.Xaml.Behaviors, Version=1.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Xaml.Behaviors.Wpf.1.1.31\lib\net45\Microsoft.Xaml.Behaviors.dll</HintPath>
     </Reference>
-    <Reference Include="SharpVectors.Converters.Wpf, Version=1.8.0.0, Culture=neutral, PublicKeyToken=b532964b8548be77, processorArchitecture=MSIL">
-      <HintPath>..\packages\SharpVectors.1.8.0\lib\net48\SharpVectors.Converters.Wpf.dll</HintPath>
-    </Reference>
-    <Reference Include="SharpVectors.Core, Version=1.8.0.0, Culture=neutral, PublicKeyToken=7407205e337c98ef, processorArchitecture=MSIL">
-      <HintPath>..\packages\SharpVectors.1.8.0\lib\net48\SharpVectors.Core.dll</HintPath>
-    </Reference>
-    <Reference Include="SharpVectors.Css, Version=1.8.0.0, Culture=neutral, PublicKeyToken=7a46e3f532fdb787, processorArchitecture=MSIL">
-      <HintPath>..\packages\SharpVectors.1.8.0\lib\net48\SharpVectors.Css.dll</HintPath>
-    </Reference>
-    <Reference Include="SharpVectors.Dom, Version=1.8.0.0, Culture=neutral, PublicKeyToken=517340b6277b1a7a, processorArchitecture=MSIL">
-      <HintPath>..\packages\SharpVectors.1.8.0\lib\net48\SharpVectors.Dom.dll</HintPath>
-    </Reference>
-    <Reference Include="SharpVectors.Model, Version=1.8.0.0, Culture=neutral, PublicKeyToken=2236cfc76b505845, processorArchitecture=MSIL">
-      <HintPath>..\packages\SharpVectors.1.8.0\lib\net48\SharpVectors.Model.dll</HintPath>
-    </Reference>
-    <Reference Include="SharpVectors.Rendering.Gdi, Version=1.8.0.0, Culture=neutral, PublicKeyToken=03902092284347e3, processorArchitecture=MSIL">
-      <HintPath>..\packages\SharpVectors.1.8.0\lib\net48\SharpVectors.Rendering.Gdi.dll</HintPath>
-    </Reference>
-    <Reference Include="SharpVectors.Rendering.Wpf, Version=1.8.0.0, Culture=neutral, PublicKeyToken=d0902381100df30e, processorArchitecture=MSIL">
-      <HintPath>..\packages\SharpVectors.1.8.0\lib\net48\SharpVectors.Rendering.Wpf.dll</HintPath>
-    </Reference>
-    <Reference Include="SharpVectors.Runtime.Wpf, Version=1.8.0.0, Culture=neutral, PublicKeyToken=d16e717f0a981fb9, processorArchitecture=MSIL">
-      <HintPath>..\packages\SharpVectors.1.8.0\lib\net48\SharpVectors.Runtime.Wpf.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Data" />
@@ -85,10 +61,17 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="EditOnDiskLockWindow.xaml.cs">
+      <DependentUpon>EditOnDiskLockWindow.xaml</DependentUpon>
+    </Compile>
     <Compile Include="ImageViewWindow.xaml.cs">
       <DependentUpon>ImageViewWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="MVVM\Model\AudiosurfHandle.cs" />
+    <Page Include="EditOnDiskLockWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="ImageViewWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -117,8 +100,7 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Core\DCSBehaviour.cs" />
-    <Compile Include="Core\EnvironmentContainer.cs" />
+    <Compile Include="Core\SettingsProvider.cs" />
     <Compile Include="Core\Extensions\Extensions.cs" />
     <Compile Include="Core\StaticLink.cs" />
     <Compile Include="Core\InternalWorker.cs" />

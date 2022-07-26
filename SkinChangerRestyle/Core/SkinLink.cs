@@ -14,8 +14,8 @@
         public SkinLink(string path, AudiosurfSkinExtended source)
         {
             Path = path;
-            Name = source.Name;
-            Cover = ((Bitmap)source.Cover).ToImageSource();
+            Name = $"{source.Name}";
+            Cover = new Bitmap((Bitmap)source.Cover).Rescale(.5f, .5f).ToImageSource();
         }
 
         public AudiosurfSkinExtended Load()

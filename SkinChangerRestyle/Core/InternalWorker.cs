@@ -4,7 +4,7 @@
     using System.Configuration;
     using Microsoft.Win32;
     using System.IO;
-    using Env = SkinChangerRestyle.Core.EnvironmentContainer;
+    using Settings = SkinChangerRestyle.Core.SettingsProvider;
 
     internal delegate void ExternExceptionHandler(Exception innerException);
 
@@ -13,27 +13,15 @@
         internal static ExternExceptionHandler InitializationFaultCallback { private get; set; }
         internal static string FingerPrint;
 
-        private static string localMachineSubkeyName = "ASCHDATA";
-
-        private static void RegisterApplication()
-        {
-            var globalTimeTickOffset = DateTime.Now.Ticks;
-            var tempGUID = Guid.NewGuid();
-            FingerPrint = $"{globalTimeTickOffset}-{tempGUID}";
-            using (RegistryKey regKey = Registry.LocalMachine.CreateSubKey(localMachineSubkeyName))
-            {
-                regKey.SetValue("ID", FingerPrint);
-            }
-        }
 
         public static void SetUpDefaultSettings()
         {
-            if (Registry.LocalMachine.OpenSubKey(localMachineSubkeyName) != null)
-                return;
-
             Configuration cfg = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
 
-            var pathToAudiosurfTextures = System.Environment.Is64BitOperatingSystem
+            if (!bool.Parse(cfg.AppSettings.Settings["FirstRun"].Value))
+                return;
+
+            var pathToAudiosurfTextures = Environment.Is64BitOperatingSystem
                                           ? Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Valve\Steam", "InstallPath", null).ToString()
                                           : Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Valve\Steam", "InstallPath", null).ToString();
 
@@ -45,8 +33,7 @@
                 return;
             }
 
-            //RegisterApplication();
-            cfg.AppSettings.Settings["gamePath"].Value = pathToAudiosurfTextures + @"\steamapps\common\Audiosurf\engine\textures";
+            cfg.AppSettings.Settings["TexturesPath"].Value = pathToAudiosurfTextures + @"\steamapps\common\Audiosurf\engine\textures";
             cfg.Save();
             ConfigurationManager.RefreshSection("appSettings");
         }
@@ -55,10 +42,10 @@
         {
             try
             {
-                Env.gamePath = ConfigurationManager.AppSettings.Get("gamePath");
-                Env.skinsFolderPath = ConfigurationManager.AppSettings.Get("skinsPath");
-                Env.ControlSystemBehaviour = ParseBehaviourFromConfig();
-                Env.DCSWarningsAllowed = ParseIsWarningsAllowedFromConfig();
+                Settings.GameTexturesPath = ConfigurationManager.AppSettings.Get("TexturesPath");
+                Settings.SkinsFolderPath = ConfigurationManager.AppSettings.Get("AddSkinsPath");
+                Settings.ControlSystemActive = bool.Parse(ConfigurationManager.AppSettings.Get("DCSActive"));
+                Settings.HotReload = bool.Parse(ConfigurationManager.AppSettings.Get("HotReload"));
             }
             catch (Exception e)
             {
@@ -67,23 +54,21 @@
             }
         }
 
-        private static DCSBehaviour ParseBehaviourFromConfig()
+        public static void RewriteSettings()
         {
-            var currentValue = ConfigurationManager.AppSettings.Get("DCSBehaviour");
-            switch (currentValue)
+            try
             {
-                case "0":
-                    return DCSBehaviour.OnBoot;
-                case "1":
-                    return DCSBehaviour.AsyncAfterBoot;
-                default:
-                    throw new Exception("Wrong Configuration parameter");
+                Configuration cfg = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+                cfg.AppSettings.Settings["TexturesPath"].Value = Settings.GameTexturesPath;
+                cfg.AppSettings.Settings["AddSkinsPath"].Value = Settings.SkinsFolderPath;
+                cfg.AppSettings.Settings["HotReload"].Value = Settings.HotReload.ToString();
+                cfg.AppSettings.Settings["DCSActive"].Value = Settings.ControlSystemActive.ToString();
             }
-        }
-
-        private static bool ParseIsWarningsAllowedFromConfig()
-        {
-            return bool.Parse(ConfigurationManager.AppSettings.Get("AllowWarnings"));
+            catch (Exception e)
+            {
+                InitializationFaultCallback.Invoke(e);
+                return;
+            }
         }
     }
 }

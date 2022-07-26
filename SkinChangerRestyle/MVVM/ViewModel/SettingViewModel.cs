@@ -1,4 +1,5 @@
 ﻿using SkinChangerRestyle.Core;
+using SkinChangerRestyle.Properties;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -22,6 +23,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             set
             {
                 _texturesPath = value;
+                ApplySettings();
                 OnPropertyChanged();
             }
         }
@@ -31,6 +33,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             set
             {
                 _additionalSkinsPath = value;
+                ApplySettings();
                 OnPropertyChanged();
             }
         }
@@ -41,11 +44,23 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             set
             {
                 _isShouldCheckTextures = value;
+                SettingsProvider.ControlSystemActive = value;
+                ApplySettings();
                 OnPropertyChanged();
             }
         }
 
-        public bool IsHotReload { get; set; }
+        public bool IsHotReload
+        {
+            get => _isHotReload;
+            set
+            {
+                _isHotReload = value;
+                SettingsProvider.HotReload = value;
+                ApplySettings();
+                OnPropertyChanged();
+            }
+        }
         
 
         public RelayCommand SetConfigurationValue { get; set; }
@@ -53,10 +68,15 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private string _texturesPath;
         private string _additionalSkinsPath;
         private bool _isShouldCheckTextures;
+        private bool _isHotReload;
 
         public SettingViewModel()
         {
             SetConfigurationValue = new RelayCommand(AskAndSetConfigValue);
+            TexturesFolderPath = SettingsProvider.GameTexturesPath;
+            AdditionalSkinsFolderPath = SettingsProvider.SkinsFolderPath;
+            IsHotReload = SettingsProvider.HotReload;
+            IsShouldCheckTextures = SettingsProvider.ControlSystemActive;
         }
 
         private void AskAndSetConfigValue(object parameter)
@@ -70,12 +90,20 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 {
                     case SettingsFields.TexturesPath:
                         TexturesFolderPath = pathSelectionDialog.SelectedPath;
-                        return;
+                        SettingsProvider.GameTexturesPath = TexturesFolderPath;
+                        break;
                     case SettingsFields.AddSkinsPath:
                         AdditionalSkinsFolderPath = pathSelectionDialog.SelectedPath;
-                        return;
+                        SettingsProvider.SkinsFolderPath = AdditionalSkinsFolderPath;
+                        break;
                 }
+                ApplySettings();
             }
+        }
+
+        private void ApplySettings()
+        {
+            InternalWorker.RewriteSettings();
         }
     }
 }

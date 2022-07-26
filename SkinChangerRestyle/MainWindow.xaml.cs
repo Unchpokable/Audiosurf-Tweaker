@@ -59,7 +59,7 @@
 
         private void Button_Click(object sender, RoutedEventArgs e)
         {
-           Process.Start(EnvironmentContainer.gamePath ?? @"C:/");
+           Process.Start(SettingsProvider.GameTexturesPath ?? @"C:/");
         }
     }
 }

@@ -104,12 +104,16 @@
 
             try
             {
+                AudiosurfSkinExtended result;
                 IFormatter formatter = new BinaryFormatter();
                 using (Stream skinFileStream = new FileStream(path, FileMode.Open))
                 {
                     if (Path.GetExtension(path) == Env.LegacySkinExtention)
-                        return AudiosurfSkinExtended.Reinterpret((AudiosurfSkin)formatter.Deserialize(skinFileStream));
-                    return (AudiosurfSkinExtended)formatter.Deserialize(skinFileStream);
+                        result = AudiosurfSkinExtended.Reinterpret((AudiosurfSkin)formatter.Deserialize(skinFileStream));
+                    else
+                        result = (AudiosurfSkinExtended)formatter.Deserialize(skinFileStream);
+                    result.Source = path;
+                    return result;
                 }
             }
 
@@ -132,13 +136,19 @@
             if (!AllPictures.Any(fileName => texturesNames.Contains(Path.GetFileName(fileName))))
                 return null;
 
-            foreach(var mask in masks)
-            {
-                skintypeFieldsAssocialtionTable[mask] = GetAllImagesByNameMask("texture", mask, path);
-            }
+            result.Cliffs = GetAllImagesByNameMask("cliffs", Env.CliffImagesMask, path);
+            result.Hits = GetAllImagesByNameMask("hits", Env.HitImageMask, path);
+            result.Particles = GetAllImagesByNameMask("particles", Env.ParticlesImageMask, path);
+            result.Rings = GetAllImagesByNameMask("rings", Env.RingsImageMask, path);
+            result.SkySpheres = GetAllImagesByNameMask("skysphere", Env.SkysphereImagesMask, path);
 
             ImageGroup tiles = GetAllImagesByNameMask("tiles", "tiles.png", path);
             ImageGroup tileflyup = GetAllImagesByNameMask("tiles flyup", "tileflyup.png", path);
+            if (Directory.Exists(path + @"\Screenshots"))
+            {
+                result.Previews = GetAllImagesByNameMask("Screenshots", "screenshot", path + @"\Screenshots");
+                result.Cover = temporalSkin.Previews?.Group?.FirstOrDefault();
+            }
 
             if (tiles.Group.Count > 1 || tileflyup.Group.Count > 1)
             {

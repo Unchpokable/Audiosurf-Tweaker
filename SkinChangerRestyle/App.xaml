@@ -9,6 +9,7 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/StylishTextInput.xaml"/>
                 <ResourceDictionary Source="Themes/SimpleLeftMenuRadioButton.xaml"/>
                 <ResourceDictionary Source="Themes/FlatButton.xaml"/>
                 <ResourceDictionary Source="Themes/FlatCheckBox.xaml"/>
@@ -16,7 +17,6 @@
                 <ResourceDictionary Source="Themes/PinkScrollBar.xaml"/>
                 <ResourceDictionary Source="Themes/ImageListViewItem.xaml"/>
                 <ResourceDictionary Source="Themes/UnderscoredTransparentButton.xaml"/>
-                <ResourceDictionary Source="Themes/StylishTextInput.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <DataTemplate x:Shared="true" DataType="{x:Type viewModel:SkinChangerViewModel}">
