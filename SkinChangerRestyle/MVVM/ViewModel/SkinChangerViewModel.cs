@@ -15,37 +15,31 @@
     using SkinChangerRestyle.Core.Extensions;
     using SkinChangerRestyle.MVVM.Model;
     using System.Windows.Data;
-
-    enum SkinPart
-    {
-        Skyspheres,
-        Tileset,
-        Particles,
-        Rings,
-        Hits
-    }
+    using FolderChecker;
+    using System.Windows.Forms;
 
     class SkinChangerViewModel : ObservableObject
     {
         protected SkinChangerViewModel()
         {
-
-            InstallIcon = Properties.Resources.install.ToImageSource();
-            ExportCopyIcon = Properties.Resources.export.ToImageSource();
-            RenameIcon = Properties.Resources.edit.ToImageSource();
-            EditOnDiskIcon = Properties.Resources.editondisk.ToImageSource();
+            ShouldInstallSkyspheres = true;
+            ShouldInstallTileset = true;
+            ShouldInstallRings = true;
+            ShouldInstallParticles = true;
+            ShouldInstallHits = true;
 
             AddNewSkin = new RelayCommand(AddNewSkinInternal);
             ExportCurrentTextures = new RelayCommand(ExportCurrentTexturesInternal);
+            InstallSelectedCommand = new RelayCommand(InstallSelected);
 
             Skins = new ObservableCollection<SkinCard>();
 
             LoadSkins();
 
-            InstallSelected = new RelayCommand((param) =>
-            {
-                InstallSelectedAsync();
-            });
+            if (EnvironmentChecker.CheckEnvironment(SettingsProvider.GameTexturesPath, out FolderHashInfo state))
+                CurrentInstalledSkin = state.StateName;
+            else 
+                CurrentInstalledSkin = null;
 
             BindingOperations.EnableCollectionSynchronization(Skins, _lockObject);
         }
@@ -69,30 +63,118 @@
             }
         }
 
-        public ObservableCollection<SkinCard> Skins { get; set; }     
+        public string CurrentInstalledSkin
+        {
+            get => _currentSkinName == null ? "Unsaved" : _currentSkinName;
+            set
+            {
+                _currentSkinName = value;
+                OnPropertyChanged();
+            }
+        }
 
-        public ImageSource InstallIcon { get; set; }
-        public ImageSource ExportCopyIcon { get; set; }
-        public ImageSource RenameIcon { get; set; }
-        public ImageSource EditOnDiskIcon { get; set; }
+        public bool ShouldInstallSkyspheres
+        {   
+            get => _shouldInstallSkyspheres;
+            set
+            {
+                _shouldInstallSkyspheres = value;
+                OnPropertyChanged();
+            }
+        }
 
-        public RelayCommand InstallSelected { get; set; }
-        public RelayCommand InstallFull { get; set; }
+        public bool ShouldInstallTileset
+        {
+            get => _shouldInstallTileset;
+            set
+            {
+                _shouldInstallTileset = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool ShouldInstallParticles
+        {
+            get => _shouldInstallSkyspheres;
+            set
+            {
+                _shouldInstallParticles = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool ShouldInstallRings
+        {
+            get => _shouldInstallRings;
+            set
+            {
+                _shouldInstallRings = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public bool ShouldInstallHits
+        {
+            get => _shouldInstallHits;
+            set
+            {
+                _shouldInstallHits = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public ObservableCollection<SkinCard> Skins { get; set; }
+
+        public RelayCommand InstallSelectedCommand { get; set; }
+        public RelayCommand InstallFullCommand { get; set; }
         public RelayCommand AddNewSkin { get; set; }
         public RelayCommand ExportCurrentTextures { get; set; }
 
-        public bool ShouldInstallSkyshpheres { get; set; }
-        public bool ShouldInstallTileset { get; set; }
-        public bool ShouldInstallParticles { get; set; }
-        public bool ShouldInstallRings { get; set; }
-        public bool ShouldInstallHits { get; set; }
-
+        public bool _shouldInstallSkyspheres;
+        public bool _shouldInstallTileset;
+        public bool _shouldInstallParticles;
+        public bool _shouldInstallRings;
+        public bool _shouldInstallHits;
 
         private SkinCard _selectedItem;
         private static SkinChangerViewModel _instance;
+        private string _currentSkinName;
         private object _lockObject = new object();
 
-        public Task InstallSkin(string pathToOrigin, string target, bool forced = false, bool unpackScreenshots = false)
+        public async void InstallSkin(string pathToOrigin, string target, bool forced = false, bool unpackScreenshots = false, bool clearInstall = false)
+        {
+            if (SettingsProvider.SafeInstall)
+            {
+                if (!EnvironmentChecker.CheckEnvironment(target, out FolderHashInfo _))
+                {
+                    MessageBox.Show("Current texutre set in unsaved. Skin installation prohibited", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+            }
+
+            if (!EnvironmentChecker.CheckEnvironment(target, out FolderHashInfo _) && SettingsProvider.ControlSystemActive)
+            {
+                var userReply = MessageBox.Show("Your current texture set is unsaved. Installing skin will overwrite unsaved changes and you will lost it. Do you want to continue?", "Warning",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                if (userReply == DialogResult.No)
+                    return;
+            }
+
+            if (clearInstall)
+            {
+                Clean(target);
+                await InstallSkinInternal(@"Skins\Default.askin2", target, forced: true, saveState: false);
+            }
+            await InstallSkinInternal(pathToOrigin, target, forced: forced, unpackScreenshots: unpackScreenshots, saveState: true);
+
+            if (SettingsProvider.HotReload)
+                AudiosurfHandle.Instance.Command("ascommand reloadtextures");
+        }
+
+        private Task InstallSkinInternal(string pathToOrigin, string target,
+                                         bool forced = false,
+                                         bool unpackScreenshots = false,
+                                         bool saveState = false)
         {
             return Task.Run(() =>
             {
@@ -100,7 +182,7 @@
                 if (skin == null)
                     return;
 
-                if (ShouldInstallSkyshpheres || forced)
+                if (ShouldInstallSkyspheres || forced)
                     skin.SkySpheres?.Apply(x => x?.Save(target));
 
                 if (ShouldInstallHits || forced)
@@ -123,21 +205,31 @@
                     Directory.CreateDirectory($@"{target}\Screenshots\");
                     skin.Previews.Apply(x => x?.Save($@"{target}\Screenshots"));
                 }
+
+                if (saveState)
+                {
+                    var state = FolderHashInfo.Create(target, skin.Name);
+                    state.Save(target);
+                }
+
+                if (SettingsProvider.HotReload)
+                    AudiosurfHandle.Instance.Command("ascommand reloadtextures");
             });
         }
 
-        private async void InstallSelectedAsync()
+        private void InstallSelected(object freameworkRequieredParameter)
         {
-            await InstallSkin(_selectedItem.PathToOrigin, SettingsProvider.GameTexturesPath);
+            InstallSkin(_selectedItem.PathToOrigin, SettingsProvider.GameTexturesPath);
         }
+
 
         private void AddNewSkinInternal(object frameworkReqieredParameter)
         {
-            var path = new System.Windows.Forms.OpenFileDialog();
+            var path = new OpenFileDialog();
             path.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Personal) + @"\Downloads";
             path.Filter = "Tweaker Skin Package|*.askin2";
 
-            if (path.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            if (path.ShowDialog() == DialogResult.OK)
             {
                 var card = new SkinCard(SkinPackager.Decompile(path.FileName), this);
                 Skins.Add(card);
@@ -167,7 +259,21 @@
             skin.Source = $@"Skins\{skin.Name}.askin2";
             var card = new SkinCard(skin, this);
             Skins.Add(card);
-            SkinPackager.CompileTo(skin, "Skins");   
+            SkinPackager.CompileTo(skin, "Skins");
+        }
+
+        private void Clean(string path)
+        {
+            DirectoryInfo di = new DirectoryInfo(path);
+
+            foreach (FileInfo file in di.EnumerateFiles())
+            {
+                file.Delete();
+            }
+            foreach (DirectoryInfo dir in di.EnumerateDirectories())
+            {
+                dir.Delete(true);
+            }
         }
     }
 }

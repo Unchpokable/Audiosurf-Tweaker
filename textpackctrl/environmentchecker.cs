@@ -12,11 +12,13 @@
             return info.Equals(actualInfo);
         }
 
-        public static bool CheckEnvironment(string path)
+        public static bool CheckEnvironment(string path, out FolderHashInfo currentState)
         {
+            currentState = null;
             if (!FolderHashInfo.TryFind(path, out FolderHashInfo savedInfo))
                 return false;
             var actualInfo = FolderHashInfo.Create(path);
+            currentState = savedInfo;
             return savedInfo.Equals(actualInfo);
         }
 

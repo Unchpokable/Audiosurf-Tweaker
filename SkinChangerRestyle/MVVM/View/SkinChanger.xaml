@@ -23,17 +23,35 @@
                       BorderThickness="0 1 0 1"
                       SelectedItem="{Binding SelectedItem}"
                       ItemsSource="{Binding Skins}"
-                      ItemContainerStyle="{StaticResource LvItemSkinViewportDT}" BorderBrush="#FFC3C3C3">
+                      ItemContainerStyle="{StaticResource LvItemSkinViewport}" BorderBrush="#FFC3C3C3">
             
             </ListView>
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
 
-            <StackPanel Margin="10 0 0 0" Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
-                <Button VerticalAlignment="Center" Command="{Binding AddNewSkin}" Height="50" FontSize="12" Width="150" Style="{StaticResource FlatButton}" Content="Add New Skin"
+                <StackPanel Margin="10 0 0 0" Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <Button VerticalAlignment="Center" Command="{Binding AddNewSkin}" Height="50" FontSize="14" Width="160" Style="{StaticResource FlatButton}" Content="Add New Skin"
                         ToolTip="Add new .askin package"/>
-                <Button VerticalAlignment="Center" Command="{Binding ExportCurrentTextures}" Height="50" FontSize="12" Width="150" Style="{StaticResource FlatButton}" Content="Export my textures"
+                    <Button VerticalAlignment="Center" Command="{Binding ExportCurrentTextures}" Height="50" FontSize="14" Width="160" Style="{StaticResource FlatButton}" Content="Export my textures"
                         ToolTip="Export your game's textures folder content into .askin package and save it"/>
-            </StackPanel>
-            
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Label FontFamily="Exo 2 Light" FontSize="20" 
+                       HorizontalAlignment="Right" 
+                       Content="Currently installed:"
+                       VerticalAlignment="Center" Foreground="#FF7F7F7F"/>
+
+                    <Label FontFamily="Exo 2 Light" FontSize="20" 
+                       HorizontalAlignment="Right" 
+                       Content="{Binding CurrentInstalledSkin}"
+                       VerticalAlignment="Center"
+                       Margin="0 0 10 0" Foreground="#FF7F7F7F"/>
+                </StackPanel>
+            </Grid>
+
             <Grid Grid.Row="2" Background="Transparent">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width=".9*"/>
@@ -59,31 +77,21 @@
                     <CheckBox FontSize="16" Style="{StaticResource FlatCheckBox}" Content="Particles" IsChecked="{Binding ShouldInstallParticles}"/>
                 </StackPanel>
 
-                <Border
+                <Border     Grid.ColumnSpan="2"
+                            Width="250"
                             Grid.Row="1" HorizontalAlignment="Stretch" Height="47" VerticalAlignment="Bottom">
                     <Button     
                                 Style="{StaticResource FlatButton}"
                                 Content="Install"
                                 FontSize="15"
-                                Command="{Binding InstallSelected}" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Margin="10 0 10 0" Height="50">
+                                Command="{Binding InstallSelectedCommand}" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Margin="10 0 10 0" Height="50">
                         <Button.ToolTip>
                             Replace only selected textures, keep other textures
                         </Button.ToolTip>
                     </Button>
                 </Border>
 
-                <Border
-                            Grid.Row="1" HorizontalAlignment="Stretch" Height="47" VerticalAlignment="Bottom" Grid.Column="1">
-                    <Button     
-                                Style="{StaticResource FlatButton}"
-                                Content="Clear Install"
-                                FontSize="15"
-                                Command="{Binding InstallFull}" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Margin="10 0 10 0" Height="50">
-                        <Button.ToolTip>
-                            Rollback to default Audiosurf look, replace selected texture
-                        </Button.ToolTip>
-                    </Button>
-                </Border>
+               
 
 
                 <StackPanel Grid.Row="1" Grid.Column="1" Margin="5" VerticalAlignment="Top" HorizontalAlignment="Left">

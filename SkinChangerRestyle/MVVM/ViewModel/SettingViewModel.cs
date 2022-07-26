@@ -62,6 +62,17 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
         }
         
+        public bool IsShouldUseSafetyInstallation
+        {
+            get => _isSafeInstall;
+            set
+            {
+                _isSafeInstall = value;
+                SettingsProvider.SafeInstall = value;
+                ApplySettings();
+                OnPropertyChanged();
+            }
+        }
 
         public RelayCommand SetConfigurationValue { get; set; }
 
@@ -69,6 +80,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private string _additionalSkinsPath;
         private bool _isShouldCheckTextures;
         private bool _isHotReload;
+        private bool _isSafeInstall;
 
         public SettingViewModel()
         {

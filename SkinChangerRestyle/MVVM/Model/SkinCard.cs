@@ -121,9 +121,9 @@ namespace SkinChangerRestyle.MVVM.Model
             Screenshots = new ObservableCollection<InteractableScreenshot>(skin.Previews.Group.Select(screenshot => new InteractableScreenshot(((System.Drawing.Bitmap)screenshot).ToImageSource())));
         }
 
-        private async void Install(object frameworkRequieredParameter)
+        private void Install(object frameworkRequieredParameter)
         {
-            await _rootVM.InstallSkin(_pathToOriginFile, SettingsProvider.GameTexturesPath, forced: true);
+            _rootVM.InstallSkin(_pathToOriginFile, SettingsProvider.GameTexturesPath, forced: true, clearInstall: true);
         }
 
         private void EnableRenameInternal(object frameworkRequieredParameter)
@@ -151,7 +151,7 @@ namespace SkinChangerRestyle.MVVM.Model
         {
             string tempDirectory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
             Directory.CreateDirectory(tempDirectory);
-            _rootVM.InstallSkin(_pathToOriginFile, tempDirectory, forced: true, unpackScreenshots: true).Wait();
+            _rootVM.InstallSkin(_pathToOriginFile, tempDirectory, forced: true, unpackScreenshots: true);
             var dirproc = Process.Start(tempDirectory);
             new EditOnDiskLockWindow().ShowDialog();
             var redactedSkin = SkinPackager.CreateSkinFromFolder(tempDirectory);

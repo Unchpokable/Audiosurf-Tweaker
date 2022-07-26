@@ -10,6 +10,7 @@
         internal static string GameTexturesPath { get; set; }
         internal static bool ControlSystemActive { get; set; }
         internal static bool HotReload { get; set; }
+        internal static bool SafeInstall { get; set; }
 
         internal static string DefaultSkinsPath
         {

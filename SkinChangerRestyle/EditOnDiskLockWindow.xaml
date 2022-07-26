@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:SkinChangerRestyle"
         mc:Ignorable="d"
         WindowStyle="None"
-        Title="EditOnDiskLockWindow" Height="200" Width="300">
+        Title="EditOnDiskLockWindow" Height="250" Width="450">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height=".6*"/>
@@ -23,7 +23,7 @@
             <Label Content="Info" VerticalAlignment="Center" FontFamily="Exo 2 Light" FontSize="14" />
             <Button Grid.Column="1" Style="{StaticResource UnderscoredButton}" Width="30" HorizontalAlignment="Right" Content="X" Click="Button_Click"/>
         </Grid>
-        
+
         <TextBlock FontFamily="Exo 2 Light" FontSize="16"
                    TextWrapping="Wrap"
                    VerticalAlignment="Center"

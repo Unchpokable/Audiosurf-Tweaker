@@ -46,6 +46,7 @@
                 Settings.SkinsFolderPath = ConfigurationManager.AppSettings.Get("AddSkinsPath");
                 Settings.ControlSystemActive = bool.Parse(ConfigurationManager.AppSettings.Get("DCSActive"));
                 Settings.HotReload = bool.Parse(ConfigurationManager.AppSettings.Get("HotReload"));
+                Settings.SafeInstall = bool.Parse(ConfigurationManager.AppSettings.Get("SafeInstall"));
             }
             catch (Exception e)
             {
@@ -63,6 +64,7 @@
                 cfg.AppSettings.Settings["AddSkinsPath"].Value = Settings.SkinsFolderPath;
                 cfg.AppSettings.Settings["HotReload"].Value = Settings.HotReload.ToString();
                 cfg.AppSettings.Settings["DCSActive"].Value = Settings.ControlSystemActive.ToString();
+                cfg.AppSettings.Settings["SafeInstall"].Value = Settings.SafeInstall.ToString();
             }
             catch (Exception e)
             {
