@@ -7,9 +7,6 @@
              xmlns:vm="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
              mc:Ignorable="d" 
              d:DesignHeight="665" d:DesignWidth="800">
-    <!--<UserControl.DataContext>
-        <vm:SkinChangerViewModel/>
-    </UserControl.DataContext>-->
 
     <Border Background="White">
         <Grid>
@@ -33,10 +30,11 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Margin="10 0 0 0" Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
-                    <Button VerticalAlignment="Center" Command="{Binding AddNewSkin}" Height="50" FontSize="14" Width="160" Style="{StaticResource FlatButton}" Content="Add New Skin"
+                    <Button VerticalAlignment="Center" Command="{Binding AddNewSkin}" Height="50" FontSize="14" Width="200" Style="{StaticResource FlatButton}" Content="Add New Skin"
                         ToolTip="Add new .askin package"/>
-                    <Button VerticalAlignment="Center" Command="{Binding ExportCurrentTextures}" Height="50" FontSize="14" Width="160" Style="{StaticResource FlatButton}" Content="Export my textures"
-                        ToolTip="Export your game's textures folder content into .askin package and save it"/>
+                    <Button VerticalAlignment="Center" Command="{Binding ExportCurrentTextures}" Height="50" FontSize="14" Width="200" Style="{StaticResource FlatButton}" Content="Export my textures"
+                        ToolTip="Export your game's textures folder content into .askin package and save it"
+                            Margin="5 0 0 0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
                     <Label FontFamily="Exo 2 Light" FontSize="20" 
@@ -78,11 +76,11 @@
                 </StackPanel>
 
                 <Border     Grid.ColumnSpan="2"
-                            Width="250"
+                            
                             Grid.Row="1" HorizontalAlignment="Stretch" Height="47" VerticalAlignment="Bottom">
                     <Button     
                                 Style="{StaticResource FlatButton}"
-                                Content="Install"
+                                Content="Install Selected"
                                 FontSize="15"
                                 Command="{Binding InstallSelectedCommand}" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Margin="10 0 10 0" Height="50">
                         <Button.ToolTip>

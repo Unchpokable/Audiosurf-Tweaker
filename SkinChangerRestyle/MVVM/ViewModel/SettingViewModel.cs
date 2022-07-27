@@ -23,6 +23,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             set
             {
                 _texturesPath = value;
+                SettingsProvider.GameTexturesPath = value;
                 ApplySettings();
                 OnPropertyChanged();
             }
@@ -33,6 +34,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             set
             {
                 _additionalSkinsPath = value;
+                SettingsProvider.SkinsFolderPath = value;
                 ApplySettings();
                 OnPropertyChanged();
             }

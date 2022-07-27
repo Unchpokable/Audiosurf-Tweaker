@@ -95,7 +95,7 @@
 
         public bool ShouldInstallParticles
         {
-            get => _shouldInstallSkyspheres;
+            get => _shouldInstallParticles;
             set
             {
                 _shouldInstallParticles = value;
@@ -141,7 +141,7 @@
         private string _currentSkinName;
         private object _lockObject = new object();
 
-        public async void InstallSkin(string pathToOrigin, string target, bool forced = false, bool unpackScreenshots = false, bool clearInstall = false)
+        public async void InstallSkin(string pathToOrigin, string target, bool forced = false, bool unpackScreenshots = false, bool clearInstall = false, bool saveState = true)
         {
             if (target.Equals(SettingsProvider.GameTexturesPath, StringComparison.InvariantCultureIgnoreCase))
             {
@@ -168,7 +168,7 @@
                 Clean(target);
                 await InstallSkinInternal(@"Skins\Default.askin2", target, forced: true, saveState: false);
             }
-            await InstallSkinInternal(pathToOrigin, target, forced: forced, unpackScreenshots: unpackScreenshots, saveState: true);
+            await InstallSkinInternal(pathToOrigin, target, forced: forced, unpackScreenshots: unpackScreenshots, saveState: saveState);
 
             if (SettingsProvider.HotReload)
                 AudiosurfHandle.Instance.Command("ascommand reloadtextures");
@@ -223,6 +223,9 @@
 
         private void InstallSelected(object freameworkRequieredParameter)
         {
+            if (_selectedItem == null)
+                return;
+
             InstallSkin(_selectedItem.PathToOrigin, SettingsProvider.GameTexturesPath);
         }
 

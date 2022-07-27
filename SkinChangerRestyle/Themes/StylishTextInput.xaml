@@ -20,7 +20,8 @@
                                          x:Name="TextInput"
                                          FontFamily="Exo 2 Light"
                                          FontSize="{TemplateBinding FontSize}"
-                                         TextWrapping="Wrap" CaretBrush="#FF616161" SelectionBrush="#FF6BACE0" Foreground="#FF616161" SelectionTextBrush="#FFBFBFBF">
+                                         TextWrapping="Wrap" CaretBrush="#FF616161" SelectionBrush="#FF6BACE0" Foreground="#FF616161" SelectionTextBrush="#FFBFBFBF"
+                                         Text="{TemplateBinding Text}">
                                 </TextBox>
                             </Grid>
                         </Border>
