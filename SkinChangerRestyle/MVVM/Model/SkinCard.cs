@@ -149,23 +149,28 @@ namespace SkinChangerRestyle.MVVM.Model
 
         private void EditOnDisk(object frameworkRequieredParameter)
         {
+            string tempDirectory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+            Directory.CreateDirectory(tempDirectory);
+            _rootVM.InstallSkin(_pathToOriginFile, tempDirectory, forced: true, unpackScreenshots: true, saveState: false);
+            var dirproc = Process.Start(tempDirectory);
+            new EditOnDiskLockWindow().ShowDialog();
+            var redactedSkin = SkinPackager.CreateSkinFromFolder(tempDirectory);
+                
+            if (redactedSkin == null) 
+                return;
+
+            redactedSkin.Name = Name;
+            SkinPackager.RewriteCompile(redactedSkin, _pathToOriginFile);
+            AssignSkin(redactedSkin);
+            dirproc?.Close();
+
             try
             {
-                string tempDirectory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
-                Directory.CreateDirectory(tempDirectory);
-                _rootVM.InstallSkin(_pathToOriginFile, tempDirectory, forced: true, unpackScreenshots: true, saveState: false);
-                var dirproc = Process.Start(tempDirectory);
-                new EditOnDiskLockWindow().ShowDialog();
-                var redactedSkin = SkinPackager.CreateSkinFromFolder(tempDirectory);
-                redactedSkin.Name = Name;
-                SkinPackager.RewriteCompile(redactedSkin, _pathToOriginFile);
-                AssignSkin(redactedSkin);
-                dirproc?.Close();
                 Directory.Delete(tempDirectory, true);
             }
             catch (IOException)
             {
-                System.Windows.Forms.MessageBox.Show("Something went wrong while rewriting skin. Please, check program permissions, your temp folder permissions and location, and try again", "Ooops!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                System.Windows.Forms.MessageBox.Show($"Something went wrong while cleaning working directory at {tempDirectory}, so this directory still exists but its unused. Sorry for poop in your temp :)", "Ooops!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
         }
 
