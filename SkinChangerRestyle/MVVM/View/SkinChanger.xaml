@@ -30,11 +30,12 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Margin="10 0 0 0" Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
-                    <Button VerticalAlignment="Center" Command="{Binding AddNewSkin}" Height="50" FontSize="14" Width="200" Style="{StaticResource FlatButton}" Content="Add New Skin"
+                    <Button VerticalAlignment="Center" Command="{Binding AddNewSkin}" Height="50" FontSize="14" Width="150" Style="{StaticResource FlatButton}" Content="Add New Skin"
                         ToolTip="Add new .askin package"/>
-                    <Button VerticalAlignment="Center" Command="{Binding ExportCurrentTextures}" Height="50" FontSize="14" Width="200" Style="{StaticResource FlatButton}" Content="Export my textures"
-                        ToolTip="Export your game's textures folder content into .askin package and save it"
-                            Margin="5 0 0 0"/>
+                    <Button VerticalAlignment="Center" Command="{Binding ExportCurrentTextures}" Height="50" FontSize="14" Width="150" Style="{StaticResource FlatButton}" Content="Export my textures"
+                        ToolTip="Export your game's textures folder content into .askin package and save it"/>
+                    <Button VerticalAlignment="Center" Command="{Binding ReloadSkins}" Height="50" FontSize="14" Width="150" Style="{StaticResource FlatButton}" Content="Reload"
+                        ToolTip="Forget all loaded skins and load it once again. Sometimes fixes errors when skin source is empty string"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
                     <Label FontFamily="Exo 2 Light" FontSize="20" 

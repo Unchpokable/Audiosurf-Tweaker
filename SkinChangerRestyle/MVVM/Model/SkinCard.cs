@@ -94,10 +94,10 @@ namespace SkinChangerRestyle.MVVM.Model
         private bool _renameActive;
         private Visibility _renameVisible;
 
-        public SkinCard(AudiosurfSkinExtended skin, SkinChangerViewModel root = null)
+        public SkinCard(AudiosurfSkinExtended skin, string pathToOrigin, SkinChangerViewModel root = null)
         {
             _rootVM = root;
-            AssignSkin(skin);
+            AssignSkin(skin, pathToOrigin);
             InstallIcon = Properties.Resources.install.ToImageSource();
             ExportCopyIcon = Properties.Resources.export.ToImageSource();
             RenameIcon = Properties.Resources.edit.ToImageSource();
@@ -112,11 +112,11 @@ namespace SkinChangerRestyle.MVVM.Model
             ExportCopyCommand = new RelayCommand(ExportCopyInternal);
         }
 
-        private void AssignSkin(AudiosurfSkinExtended skin)
+        private void AssignSkin(AudiosurfSkinExtended skin, string pathToOrigin)
         {
             if (skin == null) return;
 
-            _pathToOriginFile = $"{skin.Source}";
+            _pathToOriginFile = pathToOrigin;
             Name = $"{skin.Name}";
             Screenshots = new ObservableCollection<InteractableScreenshot>(skin.Previews.Group.Select(screenshot => new InteractableScreenshot(((System.Drawing.Bitmap)screenshot).ToImageSource())));
         }
@@ -149,6 +149,8 @@ namespace SkinChangerRestyle.MVVM.Model
 
         private void EditOnDisk(object frameworkRequieredParameter)
         {
+            if (string.IsNullOrEmpty(_pathToOriginFile))
+                return;
             string tempDirectory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
             Directory.CreateDirectory(tempDirectory);
             _rootVM.InstallSkin(_pathToOriginFile, tempDirectory, forced: true, unpackScreenshots: true, saveState: false);
@@ -161,7 +163,7 @@ namespace SkinChangerRestyle.MVVM.Model
 
             redactedSkin.Name = Name;
             SkinPackager.RewriteCompile(redactedSkin, _pathToOriginFile);
-            AssignSkin(redactedSkin);
+            AssignSkin(redactedSkin, _pathToOriginFile);
             dirproc?.Close();
 
             try

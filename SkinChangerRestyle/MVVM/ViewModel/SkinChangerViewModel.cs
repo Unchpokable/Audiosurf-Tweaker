@@ -34,6 +34,12 @@
 
             Skins = new ObservableCollection<SkinCard>();
 
+            ReloadSkins = new RelayCommand((param) =>
+            {
+                Skins.Clear();
+                LoadSkins();     
+            });
+
             LoadSkins();
 
             if (EnvironmentChecker.CheckEnvironment(SettingsProvider.GameTexturesPath, out FolderHashInfo state))
@@ -129,6 +135,7 @@
         public RelayCommand InstallFullCommand { get; set; }
         public RelayCommand AddNewSkin { get; set; }
         public RelayCommand ExportCurrentTextures { get; set; }
+        public RelayCommand ReloadSkins { get; set; }
 
         public bool _shouldInstallSkyspheres;
         public bool _shouldInstallTileset;
@@ -238,7 +245,13 @@
 
             if (path.ShowDialog() == DialogResult.OK)
             {
-                var card = new SkinCard(SkinPackager.Decompile(path.FileName), this);
+                var skin = SkinPackager.Decompile(path.FileName);
+                if (skin == null)
+                {
+                    MessageBox.Show("Selected file isn't Audiosurf Tweaker package", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
+                var card = new SkinCard(skin, path.FileName, this);
                 Skins.Add(card);
             }
         }
@@ -254,7 +267,7 @@
                 var skin = SkinPackager.Decompile(file);
                 if (skin == null) continue;
 
-                var card = new SkinCard(skin, this);
+                var card = new SkinCard(skin, file, this);
                 Skins.Add(card);
             }
         }
@@ -264,7 +277,7 @@
             var skin = SkinPackager.CreateSkinFromFolder(SettingsProvider.GameTexturesPath);
             skin.Name = "New exported skin";
             skin.Source = $@"Skins\{skin.Name}.askin2";
-            var card = new SkinCard(skin, this);
+            var card = new SkinCard(skin, skin.Source, this);
             Skins.Add(card);
             SkinPackager.CompileTo(skin, "Skins");
         }
