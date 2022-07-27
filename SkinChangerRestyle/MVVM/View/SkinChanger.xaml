@@ -111,7 +111,8 @@
                           BorderBrush="Transparent"
                           BorderThickness="0"
                           ItemsSource="{Binding SelectedItem.Screenshots}"
-                          ItemContainerStyle="{StaticResource ImageListViewItem}" Grid.ColumnSpan="2">
+                          ItemContainerStyle="{StaticResource ImageListViewItem}" Grid.ColumnSpan="2"
+                          ScrollViewer.CanContentScroll="False">
                     
                 </ListView>
             </Grid>

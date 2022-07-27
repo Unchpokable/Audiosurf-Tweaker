@@ -143,21 +143,24 @@
 
         public async void InstallSkin(string pathToOrigin, string target, bool forced = false, bool unpackScreenshots = false, bool clearInstall = false)
         {
-            if (SettingsProvider.SafeInstall)
+            if (target.Equals(SettingsProvider.GameTexturesPath, StringComparison.InvariantCultureIgnoreCase))
             {
-                if (!EnvironmentChecker.CheckEnvironment(target, out FolderHashInfo _))
+                if (SettingsProvider.SafeInstall)
                 {
-                    MessageBox.Show("Current texutre set in unsaved. Skin installation prohibited", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
+                    if (!EnvironmentChecker.CheckEnvironment(target, out FolderHashInfo _))
+                    {
+                        MessageBox.Show("Current texutre set in unsaved. Skin installation prohibited", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
                 }
-            }
 
-            if (!EnvironmentChecker.CheckEnvironment(target, out FolderHashInfo _) && SettingsProvider.ControlSystemActive)
-            {
-                var userReply = MessageBox.Show("Your current texture set is unsaved. Installing skin will overwrite unsaved changes and you will lost it. Do you want to continue?", "Warning",
-                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-                if (userReply == DialogResult.No)
-                    return;
+                if (!EnvironmentChecker.CheckEnvironment(target, out FolderHashInfo _) && SettingsProvider.ControlSystemActive)
+                {
+                    var userReply = MessageBox.Show("Your current texture set is unsaved. Installing skin will overwrite unsaved changes and you will lost it. Do you want to continue?", "Warning",
+                        MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                    if (userReply == DialogResult.No)
+                        return;
+                }
             }
 
             if (clearInstall)
@@ -210,6 +213,7 @@
                 {
                     var state = FolderHashInfo.Create(target, skin.Name);
                     state.Save(target);
+                    CurrentInstalledSkin = state.StateName;
                 }
 
                 if (SettingsProvider.HotReload)
