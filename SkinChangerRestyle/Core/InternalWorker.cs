@@ -63,6 +63,7 @@
                 cfg.AppSettings.Settings["HotReload"].Value = Settings.HotReload.ToString();
                 cfg.AppSettings.Settings["DCSActive"].Value = Settings.ControlSystemActive.ToString();
                 cfg.AppSettings.Settings["SafeInstall"].Value = Settings.SafeInstall.ToString();
+                cfg.Save();
             }
             catch (Exception e)
             {
