@@ -12,12 +12,6 @@
         internal static bool HotReload { get; set; }
         internal static bool SafeInstall { get; set; }
 
-        internal static string DefaultSkinsPath
-        {
-            get
-            {
-                return Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\\Skins";
-            }
-        }
+        internal static string DefaultSkinsPath => Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\\Skins";
     }
 }
