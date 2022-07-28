@@ -105,12 +105,10 @@
     </Compile>
     <Compile Include="Core\SettingsProvider.cs" />
     <Compile Include="Core\Extensions\Extensions.cs" />
-    <Compile Include="Core\StaticLink.cs" />
     <Compile Include="Core\InternalWorker.cs" />
     <Compile Include="Core\Logger.cs" />
     <Compile Include="Core\ObservableObject.cs" />
     <Compile Include="Core\RelayCommand.cs" />
-    <Compile Include="Core\SkinLink.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
