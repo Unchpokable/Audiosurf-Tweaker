@@ -11,8 +11,6 @@
     internal static class InternalWorker
     {
         internal static ExternExceptionHandler InitializationFaultCallback { private get; set; }
-        internal static string FingerPrint;
-
 
         public static void SetUpDefaultSettings()
         {

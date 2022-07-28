@@ -19,12 +19,15 @@ namespace SkinChangerRestyle
     /// </summary>
     public partial class ImageViewWindow : Window
     {
+        public int ProportialHeight => ((int)Width * 9) / 16;
+
         public ImageViewWindow(ImageSource image)
         {
+            Width = 800;
+            Height = 450;
             InitializeComponent();
             ImageViewport.Source = image;
         }
-
 
         protected override void OnDeactivated(EventArgs e)
         {

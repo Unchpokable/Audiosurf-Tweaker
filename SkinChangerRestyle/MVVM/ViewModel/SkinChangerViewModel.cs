@@ -36,8 +36,8 @@
 
             ReloadSkins = new RelayCommand((param) =>
             {
-                Skins.Clear();
-                LoadSkins();     
+                _skins.Clear();
+                LoadSkins();
             });
 
             LoadSkins();
@@ -129,7 +129,15 @@
             }
         }
 
-        public ObservableCollection<SkinCard> Skins { get; set; }
+        public ObservableCollection<SkinCard> Skins
+        {
+            get => _skins;
+            set
+            {
+                _skins = value;
+                BindingOperations.EnableCollectionSynchronization(_skins, _lockObject);
+            }
+        }
 
         public RelayCommand InstallSelectedCommand { get; set; }
         public RelayCommand InstallFullCommand { get; set; }
@@ -137,12 +145,13 @@
         public RelayCommand ExportCurrentTextures { get; set; }
         public RelayCommand ReloadSkins { get; set; }
 
-        public bool _shouldInstallSkyspheres;
-        public bool _shouldInstallTileset;
-        public bool _shouldInstallParticles;
-        public bool _shouldInstallRings;
-        public bool _shouldInstallHits;
+        private bool _shouldInstallSkyspheres;
+        private bool _shouldInstallTileset;
+        private bool _shouldInstallParticles;
+        private bool _shouldInstallRings;
+        private bool _shouldInstallHits;
 
+        private ObservableCollection<SkinCard> _skins;
         private SkinCard _selectedItem;
         private static SkinChangerViewModel _instance;
         private string _currentSkinName;
@@ -173,7 +182,8 @@
             if (clearInstall)
             {
                 Clean(target);
-                await InstallSkinInternal(@"Skins\Default.askin2", target, forced: true, saveState: false);
+                //await InstallSkinInternal(@"Skins\Default.askin2", target, forced: true, saveState: false);
+                AudiosurfHandle.Instance.Command("ascommand reloadtextures");
             }
             await InstallSkinInternal(pathToOrigin, target, forced: forced, unpackScreenshots: unpackScreenshots, saveState: saveState);
 
@@ -268,7 +278,7 @@
                 if (skin == null) continue;
 
                 var card = new SkinCard(skin, file, this);
-                Skins.Add(card);
+                _skins.Add(card);
             }
         }
 

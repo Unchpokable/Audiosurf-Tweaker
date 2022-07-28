@@ -8,11 +8,7 @@
              xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
              mc:Ignorable="d" 
              d:DesignHeight="665" d:DesignWidth="800">
-    
-    <!--<UserControl.DataContext>
-        <viewmodel:TweakerViewModel/>
-    </UserControl.DataContext>-->
-    
+
     <Border Background="White">
         <Grid Margin="0 18 0 0">
             <Grid.RowDefinitions>
@@ -40,78 +36,35 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Row="0" Grid.Column="0" Margin="10">
-                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Sidewinder camera" Margin="0 0 0 5" FontSize="14">
-                            <i:Interaction.Triggers>
-                                <i:EventTrigger EventName="Checked">
-                                    <i:InvokeCommandAction Command="{Binding EnableTweak}" CommandParameter="sidewinder true"/>
-                                </i:EventTrigger>
-                                <i:EventTrigger EventName="Unchecked">
-                                    <i:InvokeCommandAction Command="{Binding DisableTweak}" CommandParameter="sidewinder false"/>
-                                </i:EventTrigger>
-                            </i:Interaction.Triggers>
+                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Sidewinder camera" Margin="0 0 0 5" FontSize="14"
+                                  IsChecked="{Binding SidewinderCameraTweakActive}">
                         </CheckBox>
-                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Banking camera" Margin="0 0 0 5" FontSize="14">
-                            <i:Interaction.Triggers>
-                                <i:EventTrigger EventName="Checked">
-                                    <i:InvokeCommandAction Command="{Binding EnableTweak}" CommandParameter="usebankingcamera true"/>
-                                </i:EventTrigger>
-                                <i:EventTrigger EventName="Unchecked">
-                                    <i:InvokeCommandAction Command="{Binding DisableTweak}" CommandParameter="usebankingcamera false"/>
-                                </i:EventTrigger>
-                            </i:Interaction.Triggers>
+                        
+                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Banking camera" Margin="0 0 0 5" FontSize="14"
+                                  IsChecked="{Binding BankingCameraTweakActive}">
                         </CheckBox>
-                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Invisible road" Margin="0 0 0 5" FontSize="14">
-                            <i:Interaction.Triggers>
-                                <i:EventTrigger EventName="Checked">
-                                    <i:InvokeCommandAction Command="{Binding EnableTweak}" CommandParameter="roadvisible false"/>
-                                </i:EventTrigger>
-                                <i:EventTrigger EventName="Unchecked">
-                                    <i:InvokeCommandAction Command="{Binding DisableTweak}" CommandParameter="roadvisible true"/>
-                                </i:EventTrigger>
-                            </i:Interaction.Triggers>
+                        
+                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Invisible road" Margin="0 0 0 5" FontSize="14"
+                                  IsChecked="{Binding InvisibleRoadTweakActive}">
+
                         </CheckBox>
-                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Hidden song title" Margin="0 0 0 5" FontSize="14">
-                            <i:Interaction.Triggers>
-                                <i:EventTrigger EventName="Checked">
-                                    <i:InvokeCommandAction Command="{Binding EnableTweak}" CommandParameter="showsongname false"/>
-                                </i:EventTrigger>
-                                <i:EventTrigger EventName="Unchecked">
-                                    <i:InvokeCommandAction Command="{Binding DisableTweak}" CommandParameter="showsongname true"/>
-                                </i:EventTrigger>
-                            </i:Interaction.Triggers>
+                        
+                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Hidden song title" Margin="0 0 0 5" FontSize="14"
+                                  IsChecked="{Binding HiddenSongTweakActive}">
                         </CheckBox>
                     </StackPanel>
 
                     <StackPanel Grid.Column="1" Margin="10">
-                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Disable freeride blocks" Margin="0 0 0 5" FontSize="14" Background="White">
-                            <i:Interaction.Triggers>
-                                <i:EventTrigger EventName="Checked">
-                                    <i:InvokeCommandAction Command="{Binding EnableTweak}" CommandParameter="freerideblocks false"/>
-                                </i:EventTrigger>
-                                <i:EventTrigger EventName="Unchecked">
-                                    <i:InvokeCommandAction Command="{Binding DisableTweak}" CommandParameter="freerideblocks true"/>
-                                </i:EventTrigger>
-                            </i:Interaction.Triggers>
+                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Disable freeride blocks" Margin="0 0 0 5" FontSize="14" Background="White"
+                                  IsChecked="{Binding FreerideNoBlocksTweakActive}">
                         </CheckBox>
-                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Freeride block caterpillars" Margin="0 0 0 5" FontSize="14">
-                            <i:Interaction.Triggers>
-                                <i:EventTrigger EventName="Checked">
-                                    <i:InvokeCommandAction Command="{Binding EnableTweak}" CommandParameter="freeridecaterpillars true"/>
-                                </i:EventTrigger>
-                                <i:EventTrigger EventName="Unchecked">
-                                    <i:InvokeCommandAction Command="{Binding DisableTweak}" CommandParameter="freeridecaterpillars false"/>
-                                </i:EventTrigger>
-                            </i:Interaction.Triggers>
+                        
+                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Freeride block caterpillars" Margin="0 0 0 5" FontSize="14"
+                                  IsChecked="{Binding FreerideBlocksCaterpillarsTweakActive}">
                         </CheckBox>
-                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Disable Freeride Auto Advance" Margin="0 0 0 5" FontSize="14">
-                            <i:Interaction.Triggers>
-                                <i:EventTrigger EventName="Checked">
-                                    <i:InvokeCommandAction Command="{Binding EnableTweak}" CommandParameter="freerideautoadvance false"/>
-                                </i:EventTrigger>
-                                <i:EventTrigger EventName="Unchecked">
-                                    <i:InvokeCommandAction Command="{Binding DisableTweak}" CommandParameter="freerideautoadvance true"/>
-                                </i:EventTrigger>
-                            </i:Interaction.Triggers>
+
+                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Disable Freeride Auto Advance" Margin="0 0 0 5" FontSize="14"
+                                  IsChecked="{Binding FreerideAutoAdvanceDisableTweakActive}">
                         </CheckBox>
                     </StackPanel>
 

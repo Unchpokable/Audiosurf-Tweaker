@@ -6,8 +6,8 @@
         xmlns:local="clr-namespace:SkinChangerRestyle"
         mc:Ignorable="d"
         WindowStyle="None"
-        Title="Screenshot Preview" Height="450" Width="800"
-        ResizeMode="CanResizeWithGrip">
+        Title="Screenshot Preview" Height="550" Width="900"
+        ResizeMode="NoResize">
     <Border MouseLeftButtonDown="Border_MouseLeftButtonDown">
         <Grid>
             <Grid.RowDefinitions>

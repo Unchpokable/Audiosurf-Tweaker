@@ -118,7 +118,7 @@ namespace SkinChangerRestyle.MVVM.Model
 
             _pathToOriginFile = pathToOrigin;
             Name = $"{skin.Name}";
-            Screenshots = new ObservableCollection<InteractableScreenshot>(skin.Previews.Group.Select(screenshot => new InteractableScreenshot(((System.Drawing.Bitmap)screenshot).ToImageSource())));
+            Screenshots = new ObservableCollection<InteractableScreenshot>(skin.Previews.Group.Select(screenshot => new InteractableScreenshot(((System.Drawing.Bitmap)screenshot).Rescale(860, 440).ToImageSource())));
         }
 
         private void Install(object frameworkRequieredParameter)

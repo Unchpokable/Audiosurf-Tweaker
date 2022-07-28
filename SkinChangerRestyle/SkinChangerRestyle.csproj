@@ -7,7 +7,7 @@
     <ProjectGuid>{2EF50C5A-2850-4A66-B116-FAB3DC199702}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <RootNamespace>SkinChangerRestyle</RootNamespace>
-    <AssemblyName>SkinChangerRestyle</AssemblyName>
+    <AssemblyName>Audiosurf Tweaker</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
@@ -33,6 +33,9 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ApplicationIcon>TweakerIcon.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.Xaml.Behaviors, Version=1.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
@@ -201,17 +204,13 @@
       <Project>{81019294-ff0f-4df9-b6b2-8fd4f073c253}</Project>
       <Name>ChangerAPI</Name>
     </ProjectReference>
-    <ProjectReference Include="..\SkinEditorTool\SkinEditorTool.csproj">
-      <Project>{81225a48-7552-456b-95db-bbb058d2a64a}</Project>
-      <Name>SkinEditorTool</Name>
-    </ProjectReference>
     <ProjectReference Include="..\textpackctrl\textpackctrl.csproj">
       <Project>{27231428-42a6-43ec-8f0a-9f71726b2934}</Project>
       <Name>textpackctrl</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <SplashScreen Include="Resources\ChangerSplashScreen.png" />
+    <None Include="Resources\ChangerSplashScreen.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\testicon.png" />
@@ -254,6 +253,18 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\cat.jpg" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\TweakerIcon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\TweakerIcon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="TweakerIcon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <SplashScreen Include="Resources\TweakerSplashScreen.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
