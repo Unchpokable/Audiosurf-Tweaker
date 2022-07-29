@@ -280,6 +280,7 @@
                 var card = new SkinCard(skin, file, this);
                 _skins.Add(card);
             }
+            GC.Collect();
         }
 
         private void ExportCurrentTexturesInternal(object frameworkRequeredParameter)

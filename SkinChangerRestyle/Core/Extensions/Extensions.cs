@@ -15,7 +15,6 @@
 
     public static class Extensions
     {
-
         [DllImport("gdi32.dll", EntryPoint = "DeleteObject")]
         [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool DeleteObject([In] IntPtr hObject);

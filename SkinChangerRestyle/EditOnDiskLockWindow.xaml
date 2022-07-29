@@ -19,7 +19,7 @@
                 <ColumnDefinition/>
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
-            <Border MouseLeftButtonDown="Label_MouseLeftButtonDown">
+            <Border Grid.ColumnSpan="2" MouseLeftButtonDown="Label_MouseLeftButtonDown">
                 <Label Content="Info" VerticalAlignment="Center" FontFamily="Exo 2 Light" FontSize="14"/>
             </Border>
             <Button  Grid.Column="1" Style="{StaticResource UnderscoredButton}" Width="30" HorizontalAlignment="Right" Content="X" Click="Button_Click"/>
