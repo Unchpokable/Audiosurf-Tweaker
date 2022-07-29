@@ -8,20 +8,22 @@
     using System.Collections.Generic;
 
     [Serializable]
-    public class NamedBitmap
+    public class NamedBitmap : IDisposable
     {
         public int Width => source.Width;
         public int Height => source.Height;
         public Size Size => new Size(Width, Height);
         public string Name;
 
+
+        [NonSerialized] public ImageFormat DefaultFormat = ImageFormat.Png;
         public ImageInfo Info => new ImageInfo(format, Name);
 
         private Bitmap source;
         private string format;
 
-        [NonSerialized]
-        public ImageFormat DefaultFormat = ImageFormat.Png;
+        
+        private bool disposedValue;
 
         public NamedBitmap()
         {
@@ -117,5 +119,23 @@
             source?.Save(filepath + @"\\" + Name, GetImageFormatByExtension(format.ToLower()));
         }
 
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    source.Dispose();
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
     }
 }

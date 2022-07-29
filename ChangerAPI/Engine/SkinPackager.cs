@@ -108,9 +108,9 @@
                 IFormatter formatter = new BinaryFormatter();
                 using (Stream skinFileStream = new FileStream(path, FileMode.Open))
                 {
-                    if (Path.GetExtension(path) == Env.LegacySkinExtention)
-                        result = AudiosurfSkinExtended.Reinterpret((AudiosurfSkin)formatter.Deserialize(skinFileStream));
-                    else
+                    //if (Path.GetExtension(path) == Env.LegacySkinExtention)
+                    //    result = AudiosurfSkinExtended.Reinterpret((AudiosurfSkin)formatter.Deserialize(skinFileStream));
+                    //else
                         result = (AudiosurfSkinExtended)formatter.Deserialize(skinFileStream);
                     result.Source = path;
                     return result;

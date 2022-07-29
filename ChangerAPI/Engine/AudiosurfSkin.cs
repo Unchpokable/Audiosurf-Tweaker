@@ -7,8 +7,10 @@
     using System.Runtime.Serialization.Formatters.Binary;
 
     [Serializable]
-    public class AudiosurfSkin
+    public class AudiosurfSkin : IDisposable
     {
+        private bool disposedValue;
+
         public string Source { get; set; }
         public string Name { get; set; }
         public ImageGroup SkySpheres { get; set; }
@@ -63,6 +65,35 @@
         public override string ToString()
         {
             return Name;
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    SkySpheres.Dispose();
+                    Cliffs.Dispose();
+                    Hits.Dispose();
+                    Tiles.Dispose();
+                    Rings.Dispose();
+                    Previews.Dispose();
+                }
+                SkySpheres = null;
+                Cliffs = null;
+                Tiles = null;
+                Rings = null;
+                Hits = null;
+                Previews = null;
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

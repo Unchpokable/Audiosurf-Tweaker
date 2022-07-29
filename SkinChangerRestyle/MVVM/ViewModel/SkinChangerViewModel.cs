@@ -235,6 +235,8 @@
 
                 if (SettingsProvider.HotReload)
                     AudiosurfHandle.Instance.Command("ascommand reloadtextures");
+                skin.Dispose();
+                GC.Collect();
             });
         }
 
@@ -268,17 +270,18 @@
 
         private void LoadSkins()
         {
-            var files = Directory.EnumerateFiles(@"Skins");
+            var files = Directory.EnumerateFiles(@"Skins").ToList();
             if (Directory.Exists(SettingsProvider.SkinsFolderPath))
-                files = files.Concat(Directory.EnumerateFiles(SettingsProvider.SkinsFolderPath));
+                files.AddRange(Directory.EnumerateFiles(SettingsProvider.SkinsFolderPath));
 
             foreach (var file in files)
             {
                 var skin = SkinPackager.Decompile(file);
                 if (skin == null) continue;
-
                 var card = new SkinCard(skin, file, this);
                 _skins.Add(card);
+                skin.Dispose();
+                GC.Collect();
             }
             GC.Collect();
         }

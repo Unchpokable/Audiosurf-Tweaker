@@ -7,8 +7,10 @@
     using ChangerAPI.Engine;
 
     [Serializable]
-    public class ImageGroup
+    public class ImageGroup : IDisposable
     {
+        private bool disposedValue;
+
         public string Name { get; set; }
         public IList<NamedBitmap> Group { get; private set; }
 
@@ -98,6 +100,26 @@
         public static explicit operator ImageGroup(Bitmap obj)
         {
             return new ImageGroup(obj);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    Group.ForEach(x => x.Dispose());
+                }
+                Group = null;
+                disposedValue = true;
+            }
+        }
+
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }

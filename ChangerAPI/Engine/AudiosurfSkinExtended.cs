@@ -7,7 +7,7 @@
     using System.Runtime.Serialization.Formatters.Binary;
 
     [Serializable]
-    public class AudiosurfSkinExtended : AudiosurfSkin
+    public class AudiosurfSkinExtended : AudiosurfSkin, IDisposable
     {
         public NamedBitmap Cover { get; set; }
         public string ID => id.ToString();
