@@ -14,12 +14,15 @@
     using System.Windows.Controls;
     using System.Collections.Generic;
     using SkinChangerRestyle.MVVM.Model;
+    using System.Windows.Threading;
 
     /// <summary>
     /// Логика взаимодействия для MainWindow.xaml
     /// </summary>
     public partial class MainWindow : Window
     {
+        public static Dispatcher WindowDispatcher => Application.Current.Dispatcher;
+
         public MainWindow()
         {
             Thread.Sleep(1000);

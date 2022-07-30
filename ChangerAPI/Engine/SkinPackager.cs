@@ -104,17 +104,14 @@
 
             try
             {
-                AudiosurfSkinExtended result;
+                AudiosurfSkinExtended result = null;
                 IFormatter formatter = new BinaryFormatter();
                 using (Stream skinFileStream = new FileStream(path, FileMode.Open))
                 {
-                    //if (Path.GetExtension(path) == Env.LegacySkinExtention)
-                    //    result = AudiosurfSkinExtended.Reinterpret((AudiosurfSkin)formatter.Deserialize(skinFileStream));
-                    //else
-                        result = (AudiosurfSkinExtended)formatter.Deserialize(skinFileStream);
+                    result = (AudiosurfSkinExtended)formatter.Deserialize(skinFileStream);
                     result.Source = path;
-                    return result;
                 }
+                return result.Clone();
             }
 
             catch (IOException e)
@@ -127,6 +124,7 @@
                 return null;
             }
         }
+
 
         public static AudiosurfSkinExtended CreateSkinFromFolder(string path)
         {

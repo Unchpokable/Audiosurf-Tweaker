@@ -20,7 +20,8 @@
                       BorderThickness="0 1 0 1"
                       SelectedItem="{Binding SelectedItem}"
                       ItemsSource="{Binding Skins}"
-                      ItemContainerStyle="{StaticResource LvItemSkinViewport}" BorderBrush="#FFC3C3C3">
+                      ItemContainerStyle="{StaticResource LvItemSkinViewport}" 
+                      BorderBrush="#FFC3C3C3">
             
             </ListView>
             <Grid Grid.Row="1">
@@ -34,7 +35,7 @@
                         ToolTip="Add new .askin package"/>
                     <Button VerticalAlignment="Center" Command="{Binding ExportCurrentTextures}" Height="50" FontSize="14" Width="150" Style="{StaticResource FlatButton}" Content="Export my textures"
                         ToolTip="Export your game's textures folder content into .askin package and save it"/>
-                    <Button VerticalAlignment="Center" Command="{Binding ReloadSkins}" Height="50" FontSize="14" Width="150" Style="{StaticResource FlatButton}" Content="Reload"
+                    <Button IsEnabled="{Binding ReloadButtonUnlocked}" VerticalAlignment="Center" Command="{Binding ReloadSkins}" Height="50" FontSize="14" Width="150" Style="{StaticResource FlatButton}" Content="Reload"
                         ToolTip="Forget all loaded skins and load it once again. Sometimes fixes errors when skin source is empty string"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">

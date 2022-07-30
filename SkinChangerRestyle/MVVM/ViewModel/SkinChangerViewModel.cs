@@ -17,6 +17,8 @@
     using System.Windows.Data;
     using FolderChecker;
     using System.Windows.Forms;
+    using System.Collections.Concurrent;
+    using System.Threading;
 
     class SkinChangerViewModel : ObservableObject
     {
@@ -27,6 +29,7 @@
             ShouldInstallRings = true;
             ShouldInstallParticles = true;
             ShouldInstallHits = true;
+            ReloadButtonUnlocked = true;
 
             AddNewSkin = new RelayCommand(AddNewSkinInternal);
             ExportCurrentTextures = new RelayCommand(ExportCurrentTexturesInternal);
@@ -36,11 +39,13 @@
 
             ReloadSkins = new RelayCommand((param) =>
             {
-                _skins.Clear();
+                ReloadButtonUnlocked = false;
+                Skins.Clear();
                 LoadSkins();
             });
 
             LoadSkins();
+            //LoadSkinParallel();
 
             if (EnvironmentChecker.CheckEnvironment(SettingsProvider.GameTexturesPath, out FolderHashInfo state))
                 CurrentInstalledSkin = state.StateName;
@@ -58,7 +63,18 @@
                 return _instance;
             }
         }
-        
+
+        private bool _reloadButtonLocked;
+        public bool ReloadButtonUnlocked
+        {
+            get => _reloadButtonLocked;
+            set
+            {
+                _reloadButtonLocked = value;
+                OnPropertyChanged();
+            }
+        }
+
         public SkinCard SelectedItem
         {
             get => _selectedItem;
@@ -135,9 +151,19 @@
             set
             {
                 _skins = value;
+                OnPropertyChanged();
                 BindingOperations.EnableCollectionSynchronization(_skins, _lockObject);
             }
         }
+
+        private ObservableCollection<int> _test;
+
+        public ObservableCollection<int> Test
+        {
+            get { return _test; }
+            set { _test = value; OnPropertyChanged(); }
+        }
+
 
         public RelayCommand InstallSelectedCommand { get; set; }
         public RelayCommand InstallFullCommand { get; set; }
@@ -274,16 +300,26 @@
             if (Directory.Exists(SettingsProvider.SkinsFolderPath))
                 files.AddRange(Directory.EnumerateFiles(SettingsProvider.SkinsFolderPath));
 
-            foreach (var file in files)
+            Task.Factory.StartNew(() =>
             {
-                var skin = SkinPackager.Decompile(file);
-                if (skin == null) continue;
-                var card = new SkinCard(skin, file, this);
-                _skins.Add(card);
-                skin.Dispose();
-                GC.Collect();
-            }
-            GC.Collect();
+                foreach (var file in files)
+                {
+                    var skin = SkinPackager.Decompile(file);
+                    MainWindow.WindowDispatcher.Invoke(new Action(() =>
+                    {
+                        if (skin == null) return;
+                        var card = new SkinCard(skin, file, this);
+                        Skins.Add(card);
+                    }));
+                    skin.Dispose();
+                }
+                After(1000, () =>
+                {
+                    ReloadButtonUnlocked = true;
+                    GC.Collect();
+                    // Ye, i know that manual calling GC.Collct() is a very bad practice, but idk why, in this certain case GC works as shit bag and left over 500MB unsed memory for an undefined long while
+                });
+            });
         }
 
         private void ExportCurrentTexturesInternal(object frameworkRequeredParameter)
@@ -308,6 +344,15 @@
             {
                 dir.Delete(true);
             }
+        }
+
+        private void After(int msec, Action command)
+        {
+            Task.Factory.StartNew(() =>
+            {
+                Thread.Sleep(msec);
+                command?.Invoke();
+            });
         }
     }
 }

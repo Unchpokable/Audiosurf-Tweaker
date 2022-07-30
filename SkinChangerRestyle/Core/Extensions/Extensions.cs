@@ -17,9 +17,9 @@
     {
         [DllImport("gdi32.dll", EntryPoint = "DeleteObject")]
         [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool DeleteObject([In] IntPtr hObject);
+        public static extern bool DeleteObject([In] IntPtr hObject);
 
-        private static ImageSource ImageSourceFromBitmap(Bitmap bmp)
+        public static ImageSource ImageSourceFromBitmap(Bitmap bmp)
         {
             var handle = bmp.GetHbitmap();
             try
@@ -27,6 +27,16 @@
                 return Imaging.CreateBitmapSourceFromHBitmap(handle, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
             }
             finally { DeleteObject(handle); }
+        }
+
+        public static ImageSource ImageSourceFromUri(string uri)
+        {
+            var bmp = new BitmapImage();
+            bmp.BeginInit();
+            bmp.UriSource = new Uri(uri);
+            bmp.CacheOption = BitmapCacheOption.OnLoad;
+            bmp.EndInit();
+            return bmp;
         }
 
         public static ImageSource ToImageSource(this Bitmap bitmapSource)

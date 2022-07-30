@@ -125,7 +125,7 @@
             {
                 if (disposing)
                 {
-                    source.Dispose();
+                    source?.Dispose();
                 }
 
                 disposedValue = true;

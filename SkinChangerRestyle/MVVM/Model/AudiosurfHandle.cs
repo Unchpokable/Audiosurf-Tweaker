@@ -51,6 +51,12 @@ namespace SkinChangerRestyle.MVVM.Model
             _timer.Interval = 1000;
             _timer.Tick += (s, e) =>
             {
+                if (currentState == ASHandleState.Awaiting)
+                {
+                    TryConnect();
+                    return;
+                }    
+
                 if (Handle == IntPtr.Zero)
                 {
                     TryConnect();

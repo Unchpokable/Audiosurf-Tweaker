@@ -5,17 +5,44 @@ using SkinChangerRestyle.MVVM.ViewModel;
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
+using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace SkinChangerRestyle.MVVM.Model
 {
     class SkinCard : ObservableObject
     {
+        public SkinCard(AudiosurfSkinExtended skin, string pathToOrigin, SkinChangerViewModel root = null)
+        {
+            _rootVM = root;
+            AssignSkin(skin, pathToOrigin);
+            InstallIcon = Properties.Resources.install.ToImageSource();
+            ExportCopyIcon = Properties.Resources.export.ToImageSource();
+            RenameIcon = Properties.Resources.edit.ToImageSource();
+            EditOnDiskIcon = Properties.Resources.editondisk.ToImageSource();
+            _renameVisible = Visibility.Hidden;
+            _renameActive = false;
+
+            EnableRename = new RelayCommand(EnableRenameInternal);
+            ApplyRename = new RelayCommand(ApplyRenameInternal);
+            InstallCommand = new RelayCommand(Install);
+            EditOnDiskCommand = new RelayCommand(EditOnDisk);
+            ExportCopyCommand = new RelayCommand(ExportCopyInternal);
+        }
+
+        public SkinCard()
+        {
+
+        }
+
         public bool RenameActive
         {
             get => _renameActive;
@@ -94,24 +121,6 @@ namespace SkinChangerRestyle.MVVM.Model
         private bool _renameActive;
         private Visibility _renameVisible;
 
-        public SkinCard(AudiosurfSkinExtended skin, string pathToOrigin, SkinChangerViewModel root = null)
-        {
-            _rootVM = root;
-            AssignSkin(skin, pathToOrigin);
-            InstallIcon = Properties.Resources.install.ToImageSource();
-            ExportCopyIcon = Properties.Resources.export.ToImageSource();
-            RenameIcon = Properties.Resources.edit.ToImageSource();
-            EditOnDiskIcon = Properties.Resources.editondisk.ToImageSource();
-            _renameVisible = Visibility.Hidden;
-            _renameActive = false;
-
-            EnableRename = new RelayCommand(EnableRenameInternal);
-            ApplyRename = new RelayCommand(ApplyRenameInternal);
-            InstallCommand = new RelayCommand(Install);
-            EditOnDiskCommand = new RelayCommand(EditOnDisk);
-            ExportCopyCommand = new RelayCommand(ExportCopyInternal);
-        }
-
         private void AssignSkin(AudiosurfSkinExtended skin, string pathToOrigin)
         {
             if (skin == null) return;
@@ -157,8 +166,8 @@ namespace SkinChangerRestyle.MVVM.Model
             var dirproc = Process.Start(tempDirectory);
             new EditOnDiskLockWindow().ShowDialog();
             var redactedSkin = SkinPackager.CreateSkinFromFolder(tempDirectory);
-                
-            if (redactedSkin == null) 
+
+            if (redactedSkin == null)
                 return;
 
             redactedSkin.Name = Name;
@@ -192,6 +201,32 @@ namespace SkinChangerRestyle.MVVM.Model
             {
                 System.Windows.Forms.MessageBox.Show("Something went wrong! Please, check that destination path contains only latin symbols and you're trying to export valid skin and try again", "Ooops!", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+    }
+    internal class DebugSkinCard
+    {
+        public string Name => _name;
+
+        public string InstallTooltip => "Install this skin fully";
+        public string ExportCopyTooltip => "Export copy of this skin";
+        public string RenameTooltip => "Rename this skin";
+        public string EditOnDiskTooltip => "Turn ASTweaker into EditOnDisk mode";
+
+        public ImageSource InstallIcon => Properties.Resources.install.ToImageSource();
+        public ImageSource ExportCopyIcon => Properties.Resources.export.ToImageSource();
+        public ImageSource RenameIcon => Properties.Resources.edit.ToImageSource();
+        public ImageSource EditOnDiskIcon => Properties.Resources.editondisk.ToImageSource();
+
+        public RelayCommand InstallCommand { get; set; }
+        public RelayCommand ExportCopyCommand { get; set; }
+        public RelayCommand RenameCommand { get; set; }
+        public RelayCommand EditOnDiskCommand { get; set; }
+
+        private string _name;
+
+        public DebugSkinCard(string name)
+        {
+            _name = name;
         }
     }
 }
