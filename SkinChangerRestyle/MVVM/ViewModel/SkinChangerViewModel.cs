@@ -310,8 +310,8 @@
                         if (skin == null) return;
                         var card = new SkinCard(skin, file, this);
                         Skins.Add(card);
+                        skin.Dispose();
                     }));
-                    skin.Dispose();
                 }
                 After(1000, () =>
                 {
