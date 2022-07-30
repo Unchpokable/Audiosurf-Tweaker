@@ -328,12 +328,15 @@
             });
         }
 
-        private void InstallSelected(object freameworkRequieredParameter)
+        private void InstallSelected(object clearInstall)
         {
+            if (!bool.TryParse(clearInstall.ToString(), out bool isClear))
+                return;
+
             if (_selectedItem == null)
                 return;
 
-            InstallSkin(_selectedItem.PathToOrigin, SettingsProvider.GameTexturesPath);
+            InstallSkin(_selectedItem.PathToOrigin, SettingsProvider.GameTexturesPath, clearInstall: isClear);
         }
 
 

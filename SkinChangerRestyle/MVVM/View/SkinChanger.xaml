@@ -84,21 +84,37 @@
                     <CheckBox FontSize="16" Style="{StaticResource FlatCheckBox}" Content="Particles" IsChecked="{Binding ShouldInstallParticles}"/>
                 </StackPanel>
 
-                <Border     Grid.ColumnSpan="2"
-                            
+                <Border     
                             Grid.Row="1" HorizontalAlignment="Stretch" Height="47" VerticalAlignment="Bottom">
                     <Button     
                                 Style="{StaticResource FlatButton}"
                                 Content="Install Selected"
                                 FontSize="15"
-                                Command="{Binding InstallSelectedCommand}" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Margin="10 0 10 0" Height="50">
+                                Command="{Binding InstallSelectedCommand}" 
+                                CommandParameter="false"
+                                VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Margin="10 0 10 0" Height="50">
                         <Button.ToolTip>
                             Replace only selected textures, keep other textures
                         </Button.ToolTip>
                     </Button>
                 </Border>
 
-               
+                <Border     Grid.Column="1"
+                            Grid.Row="1" HorizontalAlignment="Stretch" Height="47" VerticalAlignment="Bottom">
+                    <Button     
+                                Style="{StaticResource FlatButton}"
+                                Content="Clear install selected"
+                                FontSize="15"
+                                Command="{Binding InstallSelectedCommand}" 
+                                CommandParameter="true"
+                                VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Margin="10 0 10 0" Height="50">
+                        <Button.ToolTip>
+                            Replace only selected textures, set other textures to default Audiosurf look
+                        </Button.ToolTip>
+                    </Button>
+                </Border>
+
+
 
 
                 <StackPanel Grid.Row="1" Grid.Column="1" Margin="5" VerticalAlignment="Top" HorizontalAlignment="Left">
