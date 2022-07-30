@@ -40,6 +40,7 @@
                     <ControlTemplate.Triggers>
                         <Trigger SourceName="TextBorder" Property="IsMouseOver" Value="True">
                             <Setter TargetName="Text" Property="Foreground" Value="#9d5bf5"/>
+                            <Setter Property="Cursor" Value="Hand"/>
                         </Trigger>
                         <Trigger Property="IsChecked" Value="True">
                             <Setter TargetName="BulletBorder" Property="Background" Value="#6e00ff"/>

@@ -23,6 +23,7 @@
                     <ControlTemplate.Triggers>
                         <Trigger SourceName="ButtonBackground" Property="IsMouseOver" Value="True">
                             <Setter TargetName="ButtonBackground" Property="Background" Value="#FF8A32FF"/>
+                            <Setter Property="Cursor" Value="Hand"/>
                         </Trigger>
 
                         <Trigger Property="IsPressed" Value="True">

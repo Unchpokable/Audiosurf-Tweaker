@@ -46,6 +46,15 @@ namespace SkinChangerRestyle.MVVM.Model
 
         }
 
+        private bool _isRenameFocused;
+
+        public bool IsRenameFocused
+        {
+            get { return _isRenameFocused; }
+            set { _isRenameFocused = value; }
+        }
+
+
         public bool RenameActive
         {
             get => _renameActive;
@@ -146,6 +155,7 @@ namespace SkinChangerRestyle.MVVM.Model
             NewName = "";
             RenameVisible = Visibility.Visible;
             RenameActive = true;
+            IsRenameFocused = true;
         }
 
         private async void ApplyRenameInternal(object frameworkRequieredParameter)
@@ -157,6 +167,9 @@ namespace SkinChangerRestyle.MVVM.Model
             var newFile = $@"Skins\{newName}.askin2";
             var oldFile = $"{_pathToOriginFile}";
             _pathToOriginFile = newFile;
+            RenameActive = false;
+            RenameVisible = Visibility.Hidden;
+            IsRenameFocused = false;
             await Task.Run(() =>
             {
                 SkinPackager.CompileTo(skinObject, "Skins");
@@ -164,10 +177,6 @@ namespace SkinChangerRestyle.MVVM.Model
                 skinObject.Dispose();
                 After(1000, () => GC.Collect());
             });
-
-            RenameActive = false;
-            RenameVisible = Visibility.Hidden;
-            
         }
 
         private void EditOnDisk(object frameworkRequieredParameter)
