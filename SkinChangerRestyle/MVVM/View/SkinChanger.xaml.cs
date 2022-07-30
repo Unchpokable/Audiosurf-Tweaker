@@ -24,5 +24,12 @@ namespace SkinChangerRestyle.MVVM.View
         {
             InitializeComponent();
         }
+
+        private void ListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (e.AddedItems.Count == 0) return;
+
+            ((ListBox)sender).ScrollIntoView(e.AddedItems[0]);
+        }
     }
 }

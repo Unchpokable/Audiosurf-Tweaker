@@ -9,6 +9,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
@@ -28,6 +29,7 @@ namespace SkinChangerRestyle.MVVM.Model
             ExportCopyIcon = Properties.Resources.export.ToImageSource();
             RenameIcon = Properties.Resources.edit.ToImageSource();
             EditOnDiskIcon = Properties.Resources.editondisk.ToImageSource();
+            RemoveIcon = Properties.Resources.trash.ToImageSource();
             _renameVisible = Visibility.Hidden;
             _renameActive = false;
 
@@ -36,6 +38,7 @@ namespace SkinChangerRestyle.MVVM.Model
             InstallCommand = new RelayCommand(Install);
             EditOnDiskCommand = new RelayCommand(EditOnDisk);
             ExportCopyCommand = new RelayCommand(ExportCopyInternal);
+            RemoveCommand = new RelayCommand(RemoveSkinInternal);
         }
 
         public SkinCard()
@@ -90,13 +93,16 @@ namespace SkinChangerRestyle.MVVM.Model
         public string ExportCopyTooltip => "Export copy of this skin";
         public string RenameTooltip => "Rename this skin";
         public string EditOnDiskTooltip => "Turn ASTweaker into EditOnDisk mode";
+        public string RemoveToolTip => "Remove this skin";
         public string PathToOrigin => _pathToOriginFile;
 
         public ImageSource InstallIcon { get; set; }
         public ImageSource ExportCopyIcon { get; set; }
         public ImageSource RenameIcon { get; set; }
         public ImageSource EditOnDiskIcon { get; set; }
+        public ImageSource RemoveIcon { get; set; }
 
+        public RelayCommand RemoveCommand { get; set; }
         public RelayCommand InstallCommand { get; set; }
         public RelayCommand ExportCopyCommand { get; set; }
         public RelayCommand EditOnDiskCommand { get; set; }
@@ -142,18 +148,26 @@ namespace SkinChangerRestyle.MVVM.Model
             RenameActive = true;
         }
 
-        private void ApplyRenameInternal(object frameworkRequieredParameter)
+        private async void ApplyRenameInternal(object frameworkRequieredParameter)
         {
             var newName = NewName;
             var skinObject = SkinPackager.Decompile(_pathToOriginFile);
             skinObject.Name = newName;
             Name = newName;
             var newFile = $@"Skins\{newName}.askin2";
-            SkinPackager.CompileTo(skinObject, "Skins");
-            File.Delete(_pathToOriginFile);
+            var oldFile = $"{_pathToOriginFile}";
             _pathToOriginFile = newFile;
+            await Task.Run(() =>
+            {
+                SkinPackager.CompileTo(skinObject, "Skins");
+                File.Delete(oldFile);
+                skinObject.Dispose();
+                After(1000, () => GC.Collect());
+            });
+
             RenameActive = false;
             RenameVisible = Visibility.Hidden;
+            
         }
 
         private void EditOnDisk(object frameworkRequieredParameter)
@@ -174,6 +188,7 @@ namespace SkinChangerRestyle.MVVM.Model
             SkinPackager.RewriteCompile(redactedSkin, _pathToOriginFile);
             AssignSkin(redactedSkin, _pathToOriginFile);
             dirproc?.Close();
+            redactedSkin?.Dispose();
 
             try
             {
@@ -195,12 +210,27 @@ namespace SkinChangerRestyle.MVVM.Model
                 {
                     var skin = SkinPackager.Decompile(_pathToOriginFile);
                     SkinPackager.CompileTo(skin, output.SelectedPath);
+                    skin.Dispose();
                 }
             }
             catch
             {
                 System.Windows.Forms.MessageBox.Show("Something went wrong! Please, check that destination path contains only latin symbols and you're trying to export valid skin and try again", "Ooops!", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private void RemoveSkinInternal(object obj)
+        {
+            _rootVM.RemoveSkin(this);
+        }
+
+        private async void After(int msec, Action action)
+        {
+            await Task.Run(() =>
+            {
+                Thread.Sleep(msec);
+                action?.Invoke();
+            });
         }
     }
     internal class DebugSkinCard

@@ -21,8 +21,12 @@
                       SelectedItem="{Binding SelectedItem}"
                       ItemsSource="{Binding Skins}"
                       ItemContainerStyle="{StaticResource LvItemSkinViewport}" 
-                      BorderBrush="#FFC3C3C3">
-            
+                      BorderBrush="#FFC3C3C3"
+                      SelectionChanged="ListView_SelectionChanged"
+                      Margin="0 0 0 10">
+                <ListView.InputBindings>
+                    <KeyBinding Command="{Binding RemoveSelected}" Key="Delete"/>
+                </ListView.InputBindings>
             </ListView>
             <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
@@ -31,12 +35,14 @@
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Margin="10 0 0 0" Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center">
-                    <Button VerticalAlignment="Center" Command="{Binding AddNewSkin}" Height="50" FontSize="14" Width="150" Style="{StaticResource FlatButton}" Content="Add New Skin"
+                    <Button VerticalAlignment="Center" Command="{Binding AddNewSkin}" Height="35" FontSize="14" Width="35" Style="{StaticResource RoundIconButton}" Content="{Binding AddNewIcon}"
                         ToolTip="Add new .askin package"/>
-                    <Button VerticalAlignment="Center" Command="{Binding ExportCurrentTextures}" Height="50" FontSize="14" Width="150" Style="{StaticResource FlatButton}" Content="Export my textures"
+                    <Button Margin="10 0 0 0" VerticalAlignment="Center" Command="{Binding ExportCurrentTextures}" Height="35" FontSize="14" Width="35" Style="{StaticResource RoundIconButton}" Content="{Binding ExportMyTexturesIcon}"
                         ToolTip="Export your game's textures folder content into .askin package and save it"/>
-                    <Button IsEnabled="{Binding ReloadButtonUnlocked}" VerticalAlignment="Center" Command="{Binding ReloadSkins}" Height="50" FontSize="14" Width="150" Style="{StaticResource FlatButton}" Content="Reload"
+                    <Button Margin="10 0 0 0" IsEnabled="{Binding ReloadButtonUnlocked}" VerticalAlignment="Center" Command="{Binding ReloadSkins}" Height="35" FontSize="14" Width="35" Style="{StaticResource RoundIconButton}" Content="{Binding RefreshIcon}"
                         ToolTip="Forget all loaded skins and load it once again. Sometimes fixes errors when skin source is empty string"/>
+                    <ProgressBar Style="{StaticResource ChangerProgressBar}" Width="280" Height="25" Margin="30 0 0 0" Value="{Binding CurrentLoadStep}" Maximum="{Binding TotalSkinsToLoad}"
+                                 Visibility="{Binding LoadingProgressbarVisible}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
                     <Label FontFamily="Exo 2 Light" FontSize="20" 
@@ -67,6 +73,7 @@
 
                 <Border BorderBrush="#FFC3C3C3"
                         BorderThickness="0 0 0 1"
+                        Grid.ColumnSpan="2"
                         Margin="5 5 0 0" HorizontalAlignment="Left" VerticalAlignment="Top">
                     <Label Content="Custom Installation" FontFamily="Exo 2 Light" Foreground="#FF8A8A8A" FontSize="18" HorizontalAlignment="Left" VerticalAlignment="Stretch" Margin="0,0,0,0" BorderBrush="#FFC3C3C3"/>
                 </Border>

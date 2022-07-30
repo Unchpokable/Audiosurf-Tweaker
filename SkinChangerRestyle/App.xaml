@@ -17,6 +17,7 @@
                 <ResourceDictionary Source="Themes/PinkScrollBar.xaml"/>
                 <ResourceDictionary Source="Themes/ImageListViewItem.xaml"/>
                 <ResourceDictionary Source="Themes/UnderscoredTransparentButton.xaml"/>
+                <ResourceDictionary Source="Themes/StylishProgressBar.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
             <DataTemplate x:Shared="true" DataType="{x:Type viewModel:SkinChangerViewModel}">

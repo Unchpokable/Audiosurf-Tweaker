@@ -148,6 +148,9 @@
   <data name="ExportCopyIcon" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\export.svg;System.Byte[], mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </data>
+  <data name="exportmy" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\exportmy.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="install" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\install.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -163,6 +166,12 @@
   <data name="Pintman" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\pintman.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
+  <data name="plus" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\plus.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="refreshing" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\refreshing.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
   <data name="Stopframe" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Stopframe.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
@@ -174,6 +183,9 @@
   </data>
   <data name="TestScreenshot" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\Audiosurf2_2RizSZYKN4.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
+  </data>
+  <data name="trash" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>..\Resources\trash.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
   <data name="TweakerIcon" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Resources\TweakerIcon.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>

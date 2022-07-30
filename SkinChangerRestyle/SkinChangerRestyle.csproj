@@ -64,12 +64,14 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Core\LoadedSkinData.cs" />
     <Compile Include="EditOnDiskLockWindow.xaml.cs">
       <DependentUpon>EditOnDiskLockWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="ImageViewWindow.xaml.cs">
       <DependentUpon>ImageViewWindow.xaml</DependentUpon>
     </Compile>
+    <Compile Include="Core\LoadingCache.cs" />
     <Compile Include="MVVM\Model\AudiosurfHandle.cs" />
     <Page Include="EditOnDiskLockWindow.xaml">
       <SubType>Designer</SubType>
@@ -130,6 +132,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Themes\SimpleLeftMenuRadioButton.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Themes\StylishProgressBar.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -263,6 +269,18 @@
   </ItemGroup>
   <ItemGroup>
     <SplashScreen Include="Resources\TweakerSplashScreen.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\trash.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\refreshing.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\plus.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\exportmy.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

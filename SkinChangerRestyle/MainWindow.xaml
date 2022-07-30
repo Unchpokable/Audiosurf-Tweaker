@@ -8,11 +8,13 @@
         xmlns:viewModel="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
         mc:Ignorable="d"
         Height="700" Width="1200"
+        MinHeight="700"
+        MinWidth="1200"
         Background="White"
         AllowsTransparency="True"
         WindowStyle="None"
         Title="Audiosurf Tweaker"
-        ResizeMode="NoResize">
+        ResizeMode="CanResizeWithGrip">
 
     <Window.DataContext>
         <viewModel:MainViewModel/>
