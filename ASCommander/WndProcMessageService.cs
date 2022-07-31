@@ -9,6 +9,7 @@ namespace ASCommander
     {
         public event EventHandler<Message> MessageRecieved;
         public Func<string, bool> MsgContentFilter { get; set; }
+        public bool Valid => isValid;
 
         private IntPtr targetWindowHandle;
         private bool isValid;
