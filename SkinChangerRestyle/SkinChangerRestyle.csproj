@@ -7,13 +7,14 @@
     <ProjectGuid>{2EF50C5A-2850-4A66-B116-FAB3DC199702}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <RootNamespace>SkinChangerRestyle</RootNamespace>
-    <AssemblyName>Audiosurf Tweaker</AssemblyName>
+    <AssemblyName>tweaker</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
     <WarningLevel>4</WarningLevel>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
+    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>

@@ -41,19 +41,31 @@
 
         public MainViewModel()
         {
-            InternalWorker.SetUpDefaultSettings();
-            InternalWorker.InitializeEnvironment();
-            _asHandle = AudiosurfHandle.Instance;
-            _asHandle.StateChanged += OnASHandleStateChanged;
-            SkinsGridVM = SkinChangerViewModel.Instance;
-            TweakerVM = new TweakerViewModel();
-            SettingsVM = new SettingViewModel();
-            CurrentView = SkinsGridVM;
-            SetChangerView = new RelayCommand(o => CurrentView = SkinsGridVM);
-            ConnectAudiosurfWindow = new RelayCommand(o => { _asHandle.TryConnect(); });
-            SetCommandCenterView = new RelayCommand(o => CurrentView = TweakerVM);
-            SetSettingsView = new RelayCommand(o => CurrentView = SettingsVM);
-            After(1000, () => GC.Collect());
+            try
+            {
+                File.WriteAllText("Internal.txt", "");
+                InternalWorker.InitializationFaultCallback += (e) =>
+                {
+                    File.AppendAllText("Internal.txt", $"{e.Source}\n{e.Message}\n{e.StackTrace}\n{e.InnerException}");
+                };
+                InternalWorker.SetUpDefaultSettings();
+                InternalWorker.InitializeEnvironment();
+                _asHandle = AudiosurfHandle.Instance;
+                _asHandle.StateChanged += OnASHandleStateChanged;
+                SkinsGridVM = SkinChangerViewModel.Instance;
+                TweakerVM = new TweakerViewModel();
+                SettingsVM = new SettingViewModel();
+                CurrentView = SkinsGridVM;
+                SetChangerView = new RelayCommand(o => CurrentView = SkinsGridVM);
+                ConnectAudiosurfWindow = new RelayCommand(o => { _asHandle.TryConnect(); });
+                SetCommandCenterView = new RelayCommand(o => CurrentView = TweakerVM);
+                SetSettingsView = new RelayCommand(o => CurrentView = SettingsVM);
+                After(1000, () => GC.Collect());
+            }
+            catch (Exception e)
+            {
+                File.WriteAllText("MainVM.txt", $"{e.Source}\n{e.Message}\n{e.StackTrace}\n{e.InnerException}");
+            }
         }
 
         private void OnASHandleStateChanged(object sender, EventArgs e)

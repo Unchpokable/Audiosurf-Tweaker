@@ -14,32 +14,6 @@ namespace SkinChangerRestyle.MVVM.Model
 
     class AudiosurfHandle
     {
-        public event EventHandler StateChanged;
-        public event EventHandler Registered;
-        public event MessageEventHandler MessageResieved;
-        public bool IsValid { get; private set; }
-        public IntPtr Handle { get; private set; }
-        public string StateMessage => currentState.Message;
-        public SolidColorBrush StateColor => currentState.ColorInterpretation;
-
-        private System.Windows.Forms.Timer _timer;
-
-        public static AudiosurfHandle Instance
-        {
-            get
-            {
-                if (instance != null) return instance;
-                instance = new AudiosurfHandle();
-                return instance;
-            }
-        }
-
-        private WndProcMessageService wndProcMessageService;
-        private object lockObject = new object();
-        
-        private ASHandleState currentState;
-        private static AudiosurfHandle instance;
-
         private AudiosurfHandle()
         {
             wndProcMessageService = new WndProcMessageService();
@@ -55,7 +29,7 @@ namespace SkinChangerRestyle.MVVM.Model
                 {
                     TryConnect();
                     return;
-                }    
+                }
 
                 if (Handle == IntPtr.Zero)
                 {
@@ -66,8 +40,34 @@ namespace SkinChangerRestyle.MVVM.Model
             };
 
             _timer.Start();
+            _queuedCommands = new Queue<string>();
         }
 
+        public event EventHandler StateChanged;
+        public event EventHandler Registered;
+        public event MessageEventHandler MessageResieved;
+        public bool IsValid { get; private set; }
+        public IntPtr Handle { get; private set; }
+        public string StateMessage => currentState.Message;
+        public SolidColorBrush StateColor => currentState.ColorInterpretation;
+
+        private System.Windows.Forms.Timer _timer;
+        private Queue<string> _queuedCommands;
+        private WndProcMessageService wndProcMessageService;
+        private object lockObject = new object();
+
+        private ASHandleState currentState;
+        private static AudiosurfHandle instance;
+
+        public static AudiosurfHandle Instance
+        {
+            get
+            {
+                if (instance != null) return instance;
+                instance = new AudiosurfHandle();
+                return instance;
+            }
+        }
 
         public bool TryConnect()
         {
@@ -88,6 +88,12 @@ namespace SkinChangerRestyle.MVVM.Model
 
         public void Command(string message)
         {
+            if (wndProcMessageService.Valid == false)
+            {
+                _queuedCommands.Enqueue(message);
+                return;
+            }
+
             wndProcMessageService.Command(WinAPI.WM_COPYDATA, message);
         }
 
@@ -104,7 +110,7 @@ namespace SkinChangerRestyle.MVVM.Model
                         {
                             currentState = ASHandleState.Connected;
                             StateChanged?.Invoke(this, EventArgs.Empty);
-                            Registered?.Invoke(this, EventArgs.Empty);
+                            OnRegistered();
                         }
                         MessageResieved?.Invoke(this, cds.lpData);
                     }
@@ -124,6 +130,16 @@ namespace SkinChangerRestyle.MVVM.Model
                 return false;
             }
             return true;
+        }
+
+        private void OnRegistered()
+        {
+            Registered?.Invoke(this, EventArgs.Empty);
+            for (int i = 0; i < _queuedCommands.Count; i++)
+            {
+                var command = _queuedCommands.Dequeue();
+                wndProcMessageService.Command(WinAPI.WM_COPYDATA, command);
+            }
         }
 
 

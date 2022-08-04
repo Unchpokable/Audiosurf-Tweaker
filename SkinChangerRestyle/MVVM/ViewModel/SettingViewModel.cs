@@ -2,6 +2,7 @@
 using SkinChangerRestyle.Properties;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -86,11 +87,18 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         public SettingViewModel()
         {
-            SetConfigurationValue = new RelayCommand(AskAndSetConfigValue);
-            TexturesFolderPath = SettingsProvider.GameTexturesPath;
-            AdditionalSkinsFolderPath = SettingsProvider.SkinsFolderPath;
-            IsHotReload = SettingsProvider.HotReload;
-            IsShouldCheckTextures = SettingsProvider.ControlSystemActive;
+            try
+            {
+                SetConfigurationValue = new RelayCommand(AskAndSetConfigValue);
+                TexturesFolderPath = SettingsProvider.GameTexturesPath;
+                AdditionalSkinsFolderPath = SettingsProvider.SkinsFolderPath;
+                IsHotReload = SettingsProvider.HotReload;
+                IsShouldCheckTextures = SettingsProvider.ControlSystemActive;
+            }
+            catch(Exception e)
+            {
+                File.WriteAllText("SVM.txt", e.Message);
+            }
         }
 
         private void AskAndSetConfigValue(object parameter)

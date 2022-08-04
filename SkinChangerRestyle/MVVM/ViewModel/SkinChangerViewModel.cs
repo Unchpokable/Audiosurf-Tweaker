@@ -24,40 +24,47 @@
     {
         protected SkinChangerViewModel()
         {
-            ShouldInstallSkyspheres = true;
-            ShouldInstallTileset = true;
-            ShouldInstallRings = true;
-            ShouldInstallParticles = true;
-            ShouldInstallHits = true;
-            ReloadButtonUnlocked = true;
-
-            AddNewSkin = new RelayCommand(AddNewSkinInternal);
-            ExportCurrentTextures = new RelayCommand(ExportCurrentTexturesInternal);
-            InstallSelectedCommand = new RelayCommand(InstallSelected);
-            RemoveSelected = new RelayCommand(o => RemoveSkin(SelectedItem));
-
-            AddNewIcon = Properties.Resources.plus.ToImageSource();
-            ExportMyTexturesIcon = Properties.Resources.exportmy.ToImageSource();
-            RefreshIcon = Properties.Resources.refreshing.ToImageSource();
-
-            Skins = new ObservableCollection<SkinCard>();
-
-            ReloadSkins = new RelayCommand((param) =>
+            try
             {
-                ReloadButtonUnlocked = false;
-                Skins.Clear();
+                ShouldInstallSkyspheres = true;
+                ShouldInstallTileset = true;
+                ShouldInstallRings = true;
+                ShouldInstallParticles = true;
+                ShouldInstallHits = true;
+                ReloadButtonUnlocked = true;
+
+                AddNewSkin = new RelayCommand(AddNewSkinInternal);
+                ExportCurrentTextures = new RelayCommand(ExportCurrentTexturesInternal);
+                InstallSelectedCommand = new RelayCommand(InstallSelected);
+                RemoveSelected = new RelayCommand(o => RemoveSkin(SelectedItem));
+
+                AddNewIcon = Properties.Resources.plus.ToImageSource();
+                ExportMyTexturesIcon = Properties.Resources.exportmy.ToImageSource();
+                RefreshIcon = Properties.Resources.refreshing.ToImageSource();
+
+                Skins = new ObservableCollection<SkinCard>();
+
+                ReloadSkins = new RelayCommand((param) =>
+                {
+                    ReloadButtonUnlocked = false;
+                    Skins.Clear();
+                    LoadSkins();
+                });
+
                 LoadSkins();
-            });
+                //LoadSkinParallel();
 
-            LoadSkins();
-            //LoadSkinParallel();
+                if (EnvironmentChecker.CheckEnvironment(SettingsProvider.GameTexturesPath, out FolderHashInfo state))
+                    CurrentInstalledSkin = state.StateName;
+                else
+                    CurrentInstalledSkin = null;
 
-            if (EnvironmentChecker.CheckEnvironment(SettingsProvider.GameTexturesPath, out FolderHashInfo state))
-                CurrentInstalledSkin = state.StateName;
-            else 
-                CurrentInstalledSkin = null;
-
-            BindingOperations.EnableCollectionSynchronization(Skins, _lockObject);
+                BindingOperations.EnableCollectionSynchronization(Skins, _lockObject);
+            }
+            catch (Exception e)
+            {
+                File.WriteAllText("SCVM.txt", $"{e.Source}\n{e.Message}\n{e.StackTrace}\n{e.InnerException}");
+            }
         }
 
         public static SkinChangerViewModel Instance

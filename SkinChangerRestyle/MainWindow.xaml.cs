@@ -15,6 +15,7 @@
     using System.Collections.Generic;
     using SkinChangerRestyle.MVVM.Model;
     using System.Windows.Threading;
+    using System.IO;
 
     /// <summary>
     /// Логика взаимодействия для MainWindow.xaml
@@ -25,8 +26,15 @@
 
         public MainWindow()
         {
-            Thread.Sleep(1000);
-            InitializeComponent();
+            try
+            {
+                Thread.Sleep(1000);
+                InitializeComponent();
+            }
+            catch (Exception e)
+            {
+                File.WriteAllText("output.txt", e.Message);
+            }
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
