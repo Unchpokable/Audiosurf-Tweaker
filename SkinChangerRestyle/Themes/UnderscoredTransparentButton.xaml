@@ -8,6 +8,7 @@
             <SolidColorBrush x:Key="MouseOverUnderscore" Color="#FF8A32FF"/>
             <SolidColorBrush x:Key="MouseOverBackground" Color="#d1f7ff"/>
             <SolidColorBrush x:Key="ClickedBackground" Color="#FFA7B8FF"/>
+            <SolidColorBrush x:Key="DisabledBackground" Color="LightGray"/>
         </Style.Resources>
         
         <Setter Property="Template">
@@ -41,8 +42,6 @@
 
                         </Grid>
                     </Border>
-                    
-                    
 
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
@@ -52,6 +51,10 @@
 
                         <Trigger Property="IsPressed" Value="True">
                             <Setter TargetName="Background" Property="Background" Value="{DynamicResource ResourceKey=ClickedBackground}"/>
+                        </Trigger>
+
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Background" Property="Background" Value="{DynamicResource ResourceKey=DisabledBackground}"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

@@ -47,19 +47,23 @@
                         </Border.ToolTip>
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="4*"/>
-                                <ColumnDefinition Width="4*"/>
                                 <ColumnDefinition Width="1*"/>
+                                <ColumnDefinition Width="3*"/>
+                                <ColumnDefinition Width="5*"/>
                                 <ColumnDefinition Width="1*"/>
                                 <ColumnDefinition Width="1*"/>
                                 <ColumnDefinition Width="1*"/>
                                 <ColumnDefinition Width="1*"/>
                             </Grid.ColumnDefinitions>
 
-                            <TextBlock Grid.Column="0" Text="{Binding Name}" Margin="20 0 0 0" VerticalAlignment="Center" HorizontalAlignment="Left"
+                            <Button Margin="17" Grid.Column="0" Command="{Binding InstallCommand}"
+                                    Content="{Binding InstallIcon}" Style="{StaticResource RoundIconButton}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    ToolTip="{Binding InstallTooltip}"/>
+
+                            <TextBlock Grid.Column="1" Text="{Binding Name}" Margin="20 0 0 0" VerticalAlignment="Center" HorizontalAlignment="Left"
                                        FontFamily="Exo 2 Light" FontSize="20" Foreground="#FF8A8A8A" x:Name="Title"/>
 
-                            <TextBox Grid.Column="1" 
+                            <TextBox Grid.Column="2" 
                                 IsEnabled="{Binding RenameActive, UpdateSourceTrigger=PropertyChanged}"
                                 Visibility="{Binding RenameVisible, UpdateSourceTrigger=PropertyChanged}"
                                 Style="{StaticResource RenameTextInput}"
@@ -69,20 +73,16 @@
                                 x:Name="TextInput">
                             </TextBox>
 
-                            <Button Margin="15" Grid.Column="2" Command="{Binding InstallCommand}"
-                                    Content="{Binding InstallIcon}" Style="{StaticResource RoundIconButton}" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                    ToolTip="{Binding InstallTooltip}"/>
-                            <Button Margin="15" Grid.Column="3" Command="{Binding ExportCopyCommand}" Style="{StaticResource RoundIconButton}"
+                            <Button Margin="17" Grid.Column="3" Command="{Binding ExportCopyCommand}" Style="{StaticResource RoundIconButton}"
                                     Content="{Binding ExportCopyIcon}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                     ToolTip="{Binding ExportCopyTooltip}"/>
-                            <Button Margin="15" Grid.Column="4" Command="{Binding EnableRename}" Style="{StaticResource RoundIconButton}"
+                            <Button Margin="17" Grid.Column="4" Command="{Binding EnableRename}" Style="{StaticResource RoundIconButton}"
                                     Content="{Binding RenameIcon}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                     ToolTip="{Binding RenameTooltip}"/>
-                            <Button Margin="15" Grid.Column="5" Command="{Binding EditOnDiskCommand}" Style="{StaticResource RoundIconButton}"
+                            <Button Margin="17" Grid.Column="5" Command="{Binding EditOnDiskCommand}" Style="{StaticResource RoundIconButton}"
                                     Content="{Binding EditOnDiskIcon}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                     ToolTip="{Binding EditOnDiskTooltip}"/>
-
-                            <Button Margin="15" Grid.Column="6" Command="{Binding RemoveCommand}" Style="{StaticResource RoundIconButton}"
+                            <Button Margin="17" Grid.Column="6" Command="{Binding RemoveCommand}" Style="{StaticResource RoundIconButton}"
                                     Content="{Binding RemoveIcon}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                     ToolTip="{Binding RemoveToolTip}">
                             </Button>

@@ -203,14 +203,6 @@
             }
         }
 
-        private ObservableCollection<int> _test;
-
-        public ObservableCollection<int> Test
-        {
-            get { return _test; }
-            set { _test = value; OnPropertyChanged(); }
-        }
-
         public ImageSource AddNewIcon { get; set; }
         public ImageSource ExportMyTexturesIcon { get; set; }
         public ImageSource RefreshIcon { get; set; }
