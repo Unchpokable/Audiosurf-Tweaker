@@ -1,4 +1,5 @@
 ﻿using ChangerAPI.Engine;
+using FolderChecker;
 using SkinChangerRestyle.Core;
 using SkinChangerRestyle.Core.Extensions;
 using SkinChangerRestyle.MVVM.ViewModel;
@@ -8,6 +9,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,25 +27,14 @@ namespace SkinChangerRestyle.MVVM.Model
         {
             _rootVM = root;
             AssignSkin(skin, pathToOrigin);
-            InstallIcon = Properties.Resources.install.ToImageSource();
-            ExportCopyIcon = Properties.Resources.export.ToImageSource();
-            RenameIcon = Properties.Resources.edit.ToImageSource();
-            EditOnDiskIcon = Properties.Resources.editondisk.ToImageSource();
-            RemoveIcon = Properties.Resources.trash.ToImageSource();
-            _renameVisible = Visibility.Hidden;
-            _renameActive = false;
-
-            EnableRename = new RelayCommand(EnableRenameInternal);
-            ApplyRename = new RelayCommand(ApplyRenameInternal);
-            InstallCommand = new RelayCommand(Install);
-            EditOnDiskCommand = new RelayCommand(EditOnDisk);
-            ExportCopyCommand = new RelayCommand(ExportCopyInternal);
-            RemoveCommand = new RelayCommand(RemoveSkinInternal);
+            InitializeFields();
         }
 
-        public SkinCard()
+        public SkinCard(LoadedSkinData skin, SkinChangerViewModel root = null)
         {
-
+            _rootVM = root;
+            AssignSkin(skin);
+            InitializeFields();
         }
 
         private bool _isRenameFocused;
@@ -142,7 +133,15 @@ namespace SkinChangerRestyle.MVVM.Model
 
             _pathToOriginFile = pathToOrigin;
             Name = $"{skin.Name}";
-            Screenshots = new ObservableCollection<InteractableScreenshot>(skin.Previews.Group.Select(screenshot => new InteractableScreenshot(((System.Drawing.Bitmap)screenshot).Rescale(860, 440).ToImageSource())));
+            Screenshots = new ObservableCollection<InteractableScreenshot>(skin.Previews.Group.Select(screenshot => new InteractableScreenshot(((Bitmap)screenshot).Rescale(860, 440).ToImageSource())));
+        }
+
+        private void AssignSkin(LoadedSkinData skin)
+        {
+            if (skin == null) return;
+            _pathToOriginFile = skin.PathToOriginFile;
+            Name = skin.Name;
+            Screenshots = new ObservableCollection<InteractableScreenshot>(skin.Screenshots.Select(x => new InteractableScreenshot(x.ToImageSource())));
         }
 
         private void Install(object frameworkRequieredParameter)
@@ -160,6 +159,7 @@ namespace SkinChangerRestyle.MVVM.Model
 
         private async void ApplyRenameInternal(object frameworkRequieredParameter)
         {
+            var oldName = Name;
             var newName = NewName;
             var skinObject = SkinPackager.Decompile(_pathToOriginFile);
             skinObject.Name = newName;
@@ -174,12 +174,21 @@ namespace SkinChangerRestyle.MVVM.Model
             {
                 SkinPackager.CompileTo(skinObject, "Skins");
                 File.Delete(oldFile);
+
+                if (LoadingCache.TryFind(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), out LoadingCache cache))
+                {
+                    cache.Data.RemoveIf(x => x.Name == oldName);
+                    cache.Data.Add(new LoadedSkinData(skinObject, newFile));
+                    cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
+                    cache.Dispose();
+                }
+
                 skinObject.Dispose();
                 After(1000, () => GC.Collect());
             });
         }
 
-        private void EditOnDisk(object frameworkRequieredParameter)
+        private async void EditOnDisk(object frameworkRequieredParameter)
         {
             if (string.IsNullOrEmpty(_pathToOriginFile))
                 return;
@@ -194,7 +203,18 @@ namespace SkinChangerRestyle.MVVM.Model
                 return;
 
             redactedSkin.Name = Name;
-            SkinPackager.RewriteCompile(redactedSkin, _pathToOriginFile);
+            await Task.Run(() =>
+            {
+                SkinPackager.RewriteCompile(redactedSkin, _pathToOriginFile);
+                if (LoadingCache.TryFind(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), out LoadingCache cache))
+                {
+                    cache.Data.RemoveIf(x => x.Name == Name);
+                    cache.Data.Add(new LoadedSkinData(redactedSkin, _pathToOriginFile));
+                    cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
+                    cache.Dispose();
+                }
+            });
+
             AssignSkin(redactedSkin, _pathToOriginFile);
             dirproc?.Close();
             redactedSkin?.Dispose();
@@ -240,6 +260,24 @@ namespace SkinChangerRestyle.MVVM.Model
                 Thread.Sleep(msec);
                 action?.Invoke();
             });
+        }
+
+        private void InitializeFields()
+        {
+            InstallIcon = Properties.Resources.install.ToImageSource();
+            ExportCopyIcon = Properties.Resources.export.ToImageSource();
+            RenameIcon = Properties.Resources.edit.ToImageSource();
+            EditOnDiskIcon = Properties.Resources.editondisk.ToImageSource();
+            RemoveIcon = Properties.Resources.trash.ToImageSource();
+            _renameVisible = Visibility.Hidden;
+            _renameActive = false;
+
+            EnableRename = new RelayCommand(EnableRenameInternal);
+            ApplyRename = new RelayCommand(ApplyRenameInternal);
+            InstallCommand = new RelayCommand(Install);
+            EditOnDiskCommand = new RelayCommand(EditOnDisk);
+            ExportCopyCommand = new RelayCommand(ExportCopyInternal);
+            RemoveCommand = new RelayCommand(RemoveSkinInternal);
         }
     }
     internal class DebugSkinCard

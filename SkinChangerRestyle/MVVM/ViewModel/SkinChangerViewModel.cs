@@ -19,6 +19,7 @@
     using System.Windows.Forms;
     using System.Collections.Concurrent;
     using System.Threading;
+    using System.Reflection;
 
     class SkinChangerViewModel : ObservableObject
     {
@@ -48,11 +49,10 @@
                 {
                     ReloadButtonUnlocked = false;
                     Skins.Clear();
-                    LoadSkins();
+                    Task.Factory.StartNew(() => LoadSkinsFull());
                 });
 
                 LoadSkins();
-                //LoadSkinParallel();
 
                 if (EnvironmentChecker.CheckEnvironment(SettingsProvider.GameTexturesPath, out FolderHashInfo state))
                     CurrentInstalledSkin = state.StateName;
@@ -274,6 +274,13 @@
                 await Task.Run(() =>
                 {
                     File.Delete(target.PathToOrigin);
+                    if (LoadingCache.TryFind(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), out LoadingCache cache))
+                    {
+                        cache.Data.RemoveIf(x => x.Name == target.Name);
+                        cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
+                        cache.Dispose();
+                    }
+                    After(1000, () => GC.Collect());
                 });
             }
         }
@@ -360,6 +367,54 @@
 
         private void LoadSkins()
         {
+            LoadingProgressbarVisible = System.Windows.Visibility.Visible;
+
+            Task.Factory.StartNew(() =>
+            {
+                if (LoadingCache.TryFind(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), out LoadingCache cache)
+                && Directory.EnumerateFiles("Skins").ToList().UnorderedSequenceEquals(cache.Data.Select(x => x.PathToOriginFile).ToList()))
+                {
+                    LoadSkinsFromCache(cache);
+                    return;
+                }
+                LoadSkinsFull();
+            });
+        }
+
+        private void LoadSkinsFromCache(LoadingCache cache)
+        {
+            TotalSkinsToLoad = cache.Data.Count;
+            CurrentLoadStep = 0;
+
+            foreach (var cachedSkin in cache.Data.OrderBy(x => x?.Name))
+            {
+                if (cachedSkin == null)
+                {
+                    MessageBox.Show("Cache error occurred, skins will be loaded from source files");
+                    LoadSkinsFull();
+                    return;
+                }
+
+                MainWindow.WindowDispatcher.Invoke(new Action(() =>
+                {
+                    var card = new SkinCard(cachedSkin, this);
+                    Skins.Add(card);
+                }));
+                CurrentLoadStep++;
+            }
+            cache.Dispose();
+
+            After(1000, () =>
+            {
+                ReloadButtonUnlocked = true;
+                GC.Collect();
+            });
+            LoadingProgressbarVisible = System.Windows.Visibility.Hidden;
+        }
+
+        private void LoadSkinsFull()
+        {
+            MainWindow.WindowDispatcher.Invoke(new Action(() => Skins.Clear()));
             var files = Directory.EnumerateFiles(@"Skins").ToList();
             if (Directory.Exists(SettingsProvider.SkinsFolderPath))
                 files.AddRange(Directory.EnumerateFiles(SettingsProvider.SkinsFolderPath));
@@ -367,28 +422,30 @@
             TotalSkinsToLoad = files.Count;
             CurrentLoadStep = 0;
             LoadingProgressbarVisible = System.Windows.Visibility.Visible;
-            Task.Factory.StartNew(() =>
+            var cache = new LoadingCache();
+            foreach (var file in files)
             {
-                foreach (var file in files)
+                var skin = SkinPackager.Decompile(file);
+                if (skin == null) continue;
+                cache.Data.Add(new LoadedSkinData(skin, file));
+                MainWindow.WindowDispatcher.Invoke(new Action(() =>
                 {
-                    var skin = SkinPackager.Decompile(file);
-                    MainWindow.WindowDispatcher.Invoke(new Action(() =>
-                    {
-                        if (skin == null) return;
-                        var card = new SkinCard(skin, file, this);
-                        Skins.Add(card);
-                        skin.Dispose();
-                    }));
-                    CurrentLoadStep++;
-                }
-                After(1000, () =>
-                {
-                    ReloadButtonUnlocked = true;
-                    GC.Collect();
-                    // Ye, i know that manual calling GC.Collct() is a very bad practice, but idk why, in this certain case GC works as shit bag and lefts OVER NINE THOUSANDS unsed memory for an undefined long while
-                });
-                LoadingProgressbarVisible = System.Windows.Visibility.Hidden;
+                    var card = new SkinCard(skin, file, this);
+                    Skins.Add(card);
+                    skin.Dispose();
+                }));
+                CurrentLoadStep++;
+            }
+            cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
+            cache.Dispose();
+
+            After(1000, () =>
+            {
+                ReloadButtonUnlocked = true;
+                GC.Collect();
+                // Ye, i know that manual calling GC.Collct() is a very bad practice, but idk why, in this certain case GC works as shit bag and lefts OVER NINE THOUSANDS unsed memory for an undefined long while
             });
+            LoadingProgressbarVisible = System.Windows.Visibility.Hidden;
         }
 
         private async void ExportCurrentTexturesInternal(object frameworkRequeredParameter)

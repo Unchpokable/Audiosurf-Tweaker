@@ -53,5 +53,24 @@
         {
             return new Bitmap(source, (int)(source.Width * scaleX), (int)(source.Height * scaleY));
         }
+
+        public static void RemoveIf<TElem>(this List<TElem> origin, Func<TElem, bool> predicate)
+        {
+            var copy = new TElem[origin.Count];
+            origin.CopyTo(copy);
+
+            foreach (var item in copy)
+            {
+                if (predicate(item))
+                    origin.Remove(item);
+            }
+        }
+
+        public static bool UnorderedSequenceEquals<TElem>(this IList<TElem> origin, IList<TElem> compareWith)
+        {
+            var hashset = new HashSet<TElem>(origin);
+
+            return origin.Count == compareWith.Count && compareWith.All(hashset.Contains);
+        }
     }
 }
