@@ -253,7 +253,6 @@
             if (clearInstall)
             {
                 Clean(target);
-                //await InstallSkinInternal(@"Skins\Default.askin2", target, forced: true, saveState: false);
                 AudiosurfHandle.Instance.Command("ascommand reloadtextures");
             }
             await InstallSkinInternal(pathToOrigin, target, forced: forced, unpackScreenshots: unpackScreenshots, saveState: saveState);
