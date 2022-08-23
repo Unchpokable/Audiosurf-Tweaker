@@ -7,6 +7,7 @@
     using System.Linq;
     using System.Runtime.InteropServices;
     using System.Text;
+    using System.Threading;
     using System.Threading.Tasks;
     using System.Windows;
     using System.Windows.Interop;
@@ -60,6 +61,19 @@
             var hashset = new HashSet<TElem>(origin);
 
             return origin.Count == compareWith.Count && compareWith.All(hashset.Contains);
+        }
+
+        public static async void DisposeAndClear(params IDisposable[] disposable)
+        {
+            foreach (var d in disposable)
+                d?.Dispose();
+
+            await Task.Run(() =>
+            {
+                Thread.Sleep(1000);
+                // Ye, i know that manual calling GC.Collct() is a very bad practice, but idk why, in this certain case GC works as shit bag and lefts OVER NINE THOUSANDS unused memory for an undefined long while
+                GC.Collect();
+            });
         }
     }
 }

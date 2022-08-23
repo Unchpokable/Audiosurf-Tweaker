@@ -14,7 +14,6 @@
 
         public static void SetUpDefaultSettings()
         {
-            InitializationFaultCallback?.Invoke(new Exception("Test throw"));
             try
             {
                 Configuration cfg = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);

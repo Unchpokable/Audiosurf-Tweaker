@@ -277,9 +277,8 @@
                     {
                         cache.Data.RemoveAll(x => x.Name == target.Name);
                         cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
-                        cache.Dispose();
+                        Extensions.DisposeAndClear(cache);
                     }
-                    After(1000, () => GC.Collect());
                 });
             }
         }
@@ -359,8 +358,18 @@
                     MessageBox.Show("Selected file isn't Audiosurf Tweaker package", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
-                var card = new SkinCard(skin, path.FileName, this);
+                var newPath = $@"Skins\{Path.GetFileName(path.FileName)}";
+                File.Move(path.FileName, newPath);
+
+                var card = new SkinCard(skin, newPath, this);
                 Skins.Add(card);
+                SelectedItem = card;
+                if (LoadingCache.TryFind(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), out LoadingCache cache))
+                {
+                    cache.Data.Add(new LoadedSkinData(skin, newPath));
+                    cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
+                }
+                Extensions.DisposeAndClear(cache, skin);
             }
         }
 
@@ -370,8 +379,12 @@
 
             Task.Factory.StartNew(() =>
             {
+                var files = Directory.EnumerateFiles(@"Skins").ToList();
+                if (Directory.Exists(SettingsProvider.SkinsFolderPath))
+                    files.AddRange(Directory.EnumerateFiles(SettingsProvider.SkinsFolderPath));
+
                 if (LoadingCache.TryFind(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), out LoadingCache cache)
-                && Directory.EnumerateFiles("Skins").ToList().UnorderedSequenceEquals(cache.Data.Select(x => x.PathToOriginFile).ToList()))
+                && files.UnorderedSequenceEquals(cache.Data.Select(x => x.PathToOriginFile).ToList()))
                 {
                     LoadSkinsFromCache(cache);
                     return;
@@ -402,13 +415,8 @@
                 CurrentLoadStep++;
             }
             LoadingProgressbarVisible = System.Windows.Visibility.Hidden;
-            cache.Dispose();
 
-            After(1000, () =>
-            {
-                ReloadButtonUnlocked = true;
-                GC.Collect();
-            });
+            Extensions.DisposeAndClear(cache);
         }
 
         private void LoadSkinsFull()
@@ -435,16 +443,10 @@
                 }));
                 CurrentLoadStep++;
             }
+
             LoadingProgressbarVisible = System.Windows.Visibility.Hidden;
             cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
-            cache.Dispose();
-
-            After(1000, () =>
-            {
-                ReloadButtonUnlocked = true;
-                GC.Collect();
-                // Ye, i know that manual calling GC.Collct() is a very bad practice, but idk why, in this certain case GC works as shit bag and lefts OVER NINE THOUSANDS unused memory for an undefined long while
-            });
+            Extensions.DisposeAndClear(cache);
             
         }
 
@@ -462,9 +464,13 @@
                 Skins.Add(card);
             }
             card.EnableRename.Execute(new object());
-            await Task.Run(() => { SkinPackager.CompileTo(skin, "Skins"); skin.Dispose(); });
+            await Task.Run(() => 
+            { 
+                SkinPackager.CompileTo(skin, "Skins"); 
+                Extensions.DisposeAndClear(skin); 
+            });
+
             SelectedItem = card;
-            After(1000, () => GC.Collect());
         }
 
         private void Clean(string path)
@@ -479,15 +485,6 @@
             {
                 dir.Delete(true);
             }
-        }
-
-        private void After(int msec, Action command)
-        {
-            Task.Factory.StartNew(() =>
-            {
-                Thread.Sleep(msec);
-                command?.Invoke();
-            });
         }
     }
 }
