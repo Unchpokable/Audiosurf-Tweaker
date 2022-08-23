@@ -5,6 +5,7 @@
     using System.IO;
     using System.Linq;
     using System.Threading;
+    using System.Windows.Forms;
     using System.Windows.Data;
     using System.Windows.Media;
     using ChangerAPI.Engine;
@@ -43,11 +44,14 @@
         {
             try
             {
-                File.WriteAllText("Internal.txt", "");
-                InternalWorker.InitializationFaultCallback += (e) =>
+                InternalWorker.InitializationFaultCallback += async (e) =>
                 {
-                    File.AppendAllText("Internal.txt", $"{e.Source}\n{e.Message}\n{e.StackTrace}\n{e.InnerException}");
+                    await System.Threading.Tasks.Task.Run(() =>
+                    {
+                        MessageBox.Show($"{e.Message}\nPlease, check your settings tab", "Default Configuration initialization fault", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    });
                 };
+
                 InternalWorker.SetUpDefaultSettings();
                 InternalWorker.InitializeEnvironment();
                 _asHandle = AudiosurfHandle.Instance;

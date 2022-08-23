@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:SkinChangerRestyle"
         mc:Ignorable="d"
         WindowStyle="None"
-        Title="EditOnDiskLockWindow" Height="290" Width="450">
+        Title="EditOnDiskLockWindow" Height="200" Width="250">
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height=".6*"/>
@@ -22,15 +22,15 @@
             <Border Grid.ColumnSpan="2" MouseLeftButtonDown="Label_MouseLeftButtonDown">
                 <Label Content="Info" VerticalAlignment="Center" FontFamily="Exo 2 Light" FontSize="14"/>
             </Border>
-            <Button  Grid.Column="1" Style="{StaticResource UnderscoredButton}" Width="30" HorizontalAlignment="Right" Content="X" Click="Button_Click"/>
+            <!--<Button  Grid.Column="1" Style="{StaticResource UnderscoredButton}" Width="30" HorizontalAlignment="Right" Content="X" Click="Button_Click"/>-->
         </Grid>
 
         <TextBlock FontFamily="Exo 2 Light" FontSize="16"
                    TextWrapping="Wrap"
                    VerticalAlignment="Center"
                    HorizontalAlignment="Center" Foreground="#FFA7A7A7" Grid.Row="1">
-            All skin textures was exported in temporal folder. Do whatever you want,
-            and press "Complete" button when you ready. Selected skin textures will be overwrited by content in that temporal folder.
+            All skin textures was exported in temporal folder. "Complete" button will overwrite selected skin by content from temporal folder.
+            Main tweaker window will still locked while this window active
         </TextBlock>
         <Button x:Name="CompleteButton" Grid.Row="2" Width="150" Height="45" Style="{StaticResource FlatButton}" Content="Complete" VerticalAlignment="Center" Click="Button_Click"/>
     </Grid>

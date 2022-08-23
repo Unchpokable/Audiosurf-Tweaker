@@ -55,6 +55,7 @@
 
                         <Trigger Property="IsEnabled" Value="False">
                             <Setter TargetName="Background" Property="Background" Value="{DynamicResource ResourceKey=DisabledBackground}"/>
+                            <Setter TargetName="Underscore" Property="Margin" Value="0"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

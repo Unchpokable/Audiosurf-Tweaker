@@ -36,20 +36,20 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Row="0" Grid.Column="0" Margin="10">
-                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Sidewinder camera" Margin="0 0 0 5" FontSize="14"
+                        <CheckBox Style="{StaticResource FlatCheckBox}" Content="Sidewinder camera" Margin="0 0 0 5" FontSize="14"
                                   IsChecked="{Binding SidewinderCameraTweakActive}">
                         </CheckBox>
                         
-                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Banking camera" Margin="0 0 0 5" FontSize="14"
+                        <CheckBox Style="{StaticResource FlatCheckBox}" Content="Banking camera" Margin="0 0 0 5" FontSize="14"
                                   IsChecked="{Binding BankingCameraTweakActive}">
                         </CheckBox>
                         
-                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Invisible road" Margin="0 0 0 5" FontSize="14"
+                        <CheckBox Style="{StaticResource FlatCheckBox}" Content="Invisible road" Margin="0 0 0 5" FontSize="14"
                                   IsChecked="{Binding InvisibleRoadTweakActive}">
 
                         </CheckBox>
                         
-                        <CheckBox IsEnabled="{Binding IsAudiosurfConnected}" Style="{StaticResource FlatCheckBox}" Content="Hidden song title" Margin="0 0 0 5" FontSize="14"
+                        <CheckBox Style="{StaticResource FlatCheckBox}" Content="Hidden song title" Margin="0 0 0 5" FontSize="14"
                                   IsChecked="{Binding HiddenSongTweakActive}">
                         </CheckBox>
                     </StackPanel>

@@ -5,7 +5,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListViewItem">
-                    <Border Width="auto" Height="120"
+                    <Border Width="auto" Height="140"
                             Background="Transparent"
                             x:Name="Body"
                             Margin="0 0 0 5"

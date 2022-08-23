@@ -177,7 +177,7 @@ namespace SkinChangerRestyle.MVVM.Model
 
                 if (LoadingCache.TryFind(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), out LoadingCache cache))
                 {
-                    cache.Data.RemoveIf(x => x.Name == oldName);
+                    cache.Data.RemoveAll(x => x.Name == oldName);
                     cache.Data.Add(new LoadedSkinData(skinObject, newFile));
                     cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
                     cache.Dispose();
@@ -208,7 +208,7 @@ namespace SkinChangerRestyle.MVVM.Model
                 SkinPackager.RewriteCompile(redactedSkin, _pathToOriginFile);
                 if (LoadingCache.TryFind(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), out LoadingCache cache))
                 {
-                    cache.Data.RemoveIf(x => x.Name == Name);
+                    cache.Data.RemoveAll(x => x.Name == Name);
                     cache.Data.Add(new LoadedSkinData(redactedSkin, _pathToOriginFile));
                     cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
                     cache.Dispose();

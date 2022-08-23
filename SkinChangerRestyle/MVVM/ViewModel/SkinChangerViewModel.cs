@@ -275,7 +275,7 @@
                     File.Delete(target.PathToOrigin);
                     if (LoadingCache.TryFind(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), out LoadingCache cache))
                     {
-                        cache.Data.RemoveIf(x => x.Name == target.Name);
+                        cache.Data.RemoveAll(x => x.Name == target.Name);
                         cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
                         cache.Dispose();
                     }
@@ -384,7 +384,7 @@
         {
             TotalSkinsToLoad = cache.Data.Count;
             CurrentLoadStep = 0;
-
+            LoadingProgressbarVisible = System.Windows.Visibility.Visible;
             foreach (var cachedSkin in cache.Data.OrderBy(x => x?.Name))
             {
                 if (cachedSkin == null)
@@ -401,6 +401,7 @@
                 }));
                 CurrentLoadStep++;
             }
+            LoadingProgressbarVisible = System.Windows.Visibility.Hidden;
             cache.Dispose();
 
             After(1000, () =>
@@ -408,7 +409,6 @@
                 ReloadButtonUnlocked = true;
                 GC.Collect();
             });
-            LoadingProgressbarVisible = System.Windows.Visibility.Hidden;
         }
 
         private void LoadSkinsFull()
@@ -435,6 +435,7 @@
                 }));
                 CurrentLoadStep++;
             }
+            LoadingProgressbarVisible = System.Windows.Visibility.Hidden;
             cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
             cache.Dispose();
 
@@ -442,9 +443,9 @@
             {
                 ReloadButtonUnlocked = true;
                 GC.Collect();
-                // Ye, i know that manual calling GC.Collct() is a very bad practice, but idk why, in this certain case GC works as shit bag and lefts OVER NINE THOUSANDS unsed memory for an undefined long while
+                // Ye, i know that manual calling GC.Collct() is a very bad practice, but idk why, in this certain case GC works as shit bag and lefts OVER NINE THOUSANDS unused memory for an undefined long while
             });
-            LoadingProgressbarVisible = System.Windows.Visibility.Hidden;
+            
         }
 
         private async void ExportCurrentTexturesInternal(object frameworkRequeredParameter)
