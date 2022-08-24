@@ -12,6 +12,7 @@
     using SkinChangerRestyle.Core;
     using SkinChangerRestyle.MVVM.Model;
     using Env = SkinChangerRestyle.Core.SettingsProvider;
+    using SkinChangerRestyle.Core.Extensions;
 
     class MainViewModel : ObservableObject
     {
@@ -64,7 +65,7 @@
                 ConnectAudiosurfWindow = new RelayCommand(o => { _asHandle.TryConnect(); });
                 SetCommandCenterView = new RelayCommand(o => CurrentView = TweakerVM);
                 SetSettingsView = new RelayCommand(o => CurrentView = SettingsVM);
-                After(1000, () => GC.Collect());
+                Extensions.DisposeAndClear();
             }
             catch (Exception e)
             {
@@ -76,15 +77,6 @@
         {
             OnPropertyChanged(nameof(AudiosurfStatusMessage));
             OnPropertyChanged(nameof(AudiosurfStatusBackgroundColor));
-        }
-
-        private void After(int msec, Action action)
-        {
-            new Thread(() =>
-            {
-                Thread.Sleep(msec);
-                action?.Invoke();
-            }).Start();
         }
     }
 }

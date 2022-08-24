@@ -47,7 +47,7 @@
 
         public static Bitmap Rescale(this Bitmap source, int newX, int newY)
         {
-            return new Bitmap((Image)source, newX, newY);
+            return new Bitmap(source, newX, newY);
         }
 
         public static Bitmap Rescale(this Bitmap source, float scaleX, float scaleY)
@@ -68,9 +68,9 @@
             foreach (var d in disposable)
                 d?.Dispose();
 
-            await Task.Run(() =>
+            await Task.Run(async () =>
             {
-                Thread.Sleep(1000);
+                await Task.Delay(1000);
                 // Ye, i know that manual calling GC.Collct() is a very bad practice, but idk why, in this certain case GC works as shit bag and lefts OVER NINE THOUSANDS unused memory for an undefined long while
                 GC.Collect();
             });

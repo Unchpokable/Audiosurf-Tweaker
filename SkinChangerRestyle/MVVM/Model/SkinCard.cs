@@ -180,11 +180,9 @@ namespace SkinChangerRestyle.MVVM.Model
                     cache.Data.RemoveAll(x => x.Name == oldName);
                     cache.Data.Add(new LoadedSkinData(skinObject, newFile));
                     cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
-                    cache.Dispose();
                 }
 
-                skinObject.Dispose();
-                After(1000, () => GC.Collect());
+                Extensions.DisposeAndClear(cache, skinObject);
             });
         }
 
@@ -216,8 +214,7 @@ namespace SkinChangerRestyle.MVVM.Model
             });
 
             AssignSkin(redactedSkin, _pathToOriginFile);
-            dirproc?.Close();
-            redactedSkin?.Dispose();
+            Extensions.DisposeAndClear(dirproc, redactedSkin);
 
             try
             {
@@ -233,14 +230,13 @@ namespace SkinChangerRestyle.MVVM.Model
         {
             try
             {
-                var output = new FolderBrowserDialog();
-
-                if (output.ShowDialog() == DialogResult.OK)
-                {
-                    var skin = SkinPackager.Decompile(_pathToOriginFile);
-                    SkinPackager.CompileTo(skin, output.SelectedPath);
-                    skin.Dispose();
-                }
+                using (var output = new FolderBrowserDialog())
+                    if (output.ShowDialog() == DialogResult.OK)
+                    {
+                        var skin = SkinPackager.Decompile(_pathToOriginFile);
+                        SkinPackager.CompileTo(skin, output.SelectedPath);
+                        Extensions.DisposeAndClear(skin);
+                    }
             }
             catch
             {
@@ -251,15 +247,6 @@ namespace SkinChangerRestyle.MVVM.Model
         private void RemoveSkinInternal(object obj)
         {
             _rootVM.RemoveSkin(this);
-        }
-
-        private async void After(int msec, Action action)
-        {
-            await Task.Run(() =>
-            {
-                Thread.Sleep(msec);
-                action?.Invoke();
-            });
         }
 
         private void InitializeFields()
@@ -280,6 +267,7 @@ namespace SkinChangerRestyle.MVVM.Model
             RemoveCommand = new RelayCommand(RemoveSkinInternal);
         }
     }
+
     internal class DebugSkinCard
     {
         public string Name => _name;
