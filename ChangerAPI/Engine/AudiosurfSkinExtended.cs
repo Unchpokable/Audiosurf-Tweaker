@@ -75,6 +75,6 @@
                 Cover = this.Cover,
                 id = new UID((uint)DateTime.Now.Ticks)
             };
-        }    
+        }
     }
 }

@@ -72,7 +72,9 @@
             {
                 await Task.Delay(1000);
                 // Ye, i know that manual calling GC.Collct() is a very bad practice, but idk why, in this certain case GC works as shit bag and lefts OVER NINE THOUSANDS unused memory for an undefined long while
-                GC.Collect();
+                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, false, true);
+                GC.WaitForPendingFinalizers();
+                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, false, true);
             });
         }
     }
