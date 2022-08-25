@@ -222,7 +222,7 @@ namespace SkinChangerRestyle.MVVM.Model
             }
             catch (IOException)
             {
-                System.Windows.Forms.MessageBox.Show($"Something went wrong while cleaning working directory at {tempDirectory}, so this directory still exists but its unused. Sorry for poop in your temp :)", "Ooops!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                System.Windows.MessageBox.Show($"Something went wrong while cleaning working directory at {tempDirectory}, so this directory still exists but its unused. Sorry for poop in your temp :)", "Ooops!", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -240,7 +240,7 @@ namespace SkinChangerRestyle.MVVM.Model
             }
             catch
             {
-                System.Windows.Forms.MessageBox.Show("Something went wrong! Please, check that destination path contains only latin symbols and you're trying to export valid skin and try again", "Ooops!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                System.Windows.MessageBox.Show("Something went wrong! Please, check that destination path contains only latin symbols and you're trying to export valid skin and try again", "Ooops!", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
