@@ -475,15 +475,22 @@
 
         private void Clean(string path)
         {
-            DirectoryInfo di = new DirectoryInfo(path);
-
-            foreach (FileInfo file in di.EnumerateFiles())
+            // Absolute and fast annihilation of any content in specified folder
+            if (Directory.Exists(path))
             {
-                file.Delete();
-            }
-            foreach (DirectoryInfo dir in di.EnumerateDirectories())
-            {
-                dir.Delete(true);
+                try
+                {
+                    Directory.GetFiles(path).AsParallel().ForAll(x =>
+                    {
+                        try { File.SetAttributes(path, File.GetAttributes(path) & ~FileAttributes.ReadOnly); } catch { }
+                        try { File.Delete(path); } catch { }
+                    });
+                    Directory.GetDirectories(path).AsParallel().ForAll(x =>
+                    {
+                        try { Directory.Delete(x, true); } catch { };
+                    });
+                }
+                catch { }
             }
         }
     }
