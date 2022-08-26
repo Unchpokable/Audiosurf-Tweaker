@@ -43,34 +43,28 @@
 
         public MainViewModel()
         {
-            try
+            InternalWorker.InitializationFaultCallback += async (e) =>
             {
-                InternalWorker.InitializationFaultCallback += async (e) =>
+                await System.Threading.Tasks.Task.Run(() =>
                 {
-                    await System.Threading.Tasks.Task.Run(() =>
-                    {
-                        MessageBox.Show($"{e.Message}\nPlease, check your settings tab", "Default Configuration initialization fault", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    });
-                };
+                    MessageBox.Show($"{e.Message}\nPlease, check your settings tab", "Default Configuration initialization fault", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                });
+            };
 
-                InternalWorker.SetUpDefaultSettings();
-                InternalWorker.InitializeEnvironment();
-                _asHandle = AudiosurfHandle.Instance;
-                _asHandle.StateChanged += OnASHandleStateChanged;
-                SkinsGridVM = SkinChangerViewModel.Instance;
-                TweakerVM = new TweakerViewModel();
-                SettingsVM = new SettingViewModel();
-                CurrentView = SkinsGridVM;
-                SetChangerView = new RelayCommand(o => CurrentView = SkinsGridVM);
-                ConnectAudiosurfWindow = new RelayCommand(o => { _asHandle.TryConnect(); });
-                SetCommandCenterView = new RelayCommand(o => CurrentView = TweakerVM);
-                SetSettingsView = new RelayCommand(o => CurrentView = SettingsVM);
-                Extensions.DisposeAndClear();
-            }
-            catch (Exception e)
-            {
-                File.WriteAllText("MainVM.txt", $"{e.Source}\n{e.Message}\n{e.StackTrace}\n{e.InnerException}");
-            }
+            InternalWorker.SetUpDefaultSettings();
+            InternalWorker.InitializeEnvironment();
+            _asHandle = AudiosurfHandle.Instance;
+            _asHandle.StateChanged += OnASHandleStateChanged;
+            SkinsGridVM = SkinChangerViewModel.Instance;
+            TweakerVM = new TweakerViewModel();
+            SettingsVM = new SettingViewModel();
+            CurrentView = SkinsGridVM;
+            SetChangerView = new RelayCommand(o => CurrentView = SkinsGridVM);
+            ConnectAudiosurfWindow = new RelayCommand(o => { _asHandle.TryConnect(); });
+            SetCommandCenterView = new RelayCommand(o => CurrentView = TweakerVM);
+            SetSettingsView = new RelayCommand(o => CurrentView = SettingsVM);
+            Extensions.DisposeAndClear();
+            
         }
 
         private void OnASHandleStateChanged(object sender, EventArgs e)

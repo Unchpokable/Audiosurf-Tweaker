@@ -1,21 +1,12 @@
 ﻿namespace SkinChangerRestyle
 {
-    using System.Threading;
     using System.Windows;
     using System.Windows.Input;
     using System.Diagnostics;
     using SkinChangerRestyle.Core;
-    using ASCommander;
-    using ASCommander.PInvoke;
-    using System.Drawing;
-    using System.Windows.Media;
-    using System.Runtime.InteropServices;
     using System;
-    using System.Windows.Controls;
-    using System.Collections.Generic;
-    using SkinChangerRestyle.MVVM.Model;
     using System.Windows.Threading;
-    using System.IO;
+    using System.Runtime.ExceptionServices;
 
     /// <summary>
     /// Логика взаимодействия для MainWindow.xaml
@@ -26,15 +17,9 @@
 
         public MainWindow()
         {
-            try
-            {
-                Thread.Sleep(1000);
-                InitializeComponent();
-            }
-            catch (Exception e)
-            {
-                File.WriteAllText("output.txt", e.Message);
-            }
+            AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
+            AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceUnhandledException;
+            InitializeComponent();
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -71,6 +56,27 @@
         private void Button_Click(object sender, RoutedEventArgs e)
         {
            Process.Start(SettingsProvider.GameTexturesPath ?? @"C:/");
+        }
+
+        private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            var exception = e.ExceptionObject as Exception;
+            var formattedMessage = $"Ooops! An unhandled exception occurred!\n{exception.Message}\nStack Trace: {exception.StackTrace}\n";
+            MessageBox.Show(formattedMessage, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            Log("Initialization fault", formattedMessage);
+        }
+
+        private void OnFirstChanceUnhandledException(object sender, FirstChanceExceptionEventArgs e)
+        {
+            var exception = e.Exception;
+            var formattedMessage = $"Ooops! An unhandled exception occurred!\n{exception.Message}\nStack Trace: {exception.StackTrace}\n";
+            MessageBox.Show(formattedMessage, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+
+        private void Log(string title, string message)
+        {
+            var logger = new Logger();
+            logger.Log(title, message);
         }
     }
 }

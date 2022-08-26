@@ -1,4 +1,4 @@
-﻿namespace ChangerAPI.Utilities
+﻿namespace SkinChangerRestyle.Core
 {
     using System;
     using System.IO;
@@ -6,11 +6,13 @@
 
     public class Logger
     {
+        public UnhandledExceptionEventHandler ReadWriteException;
+
         private string LogFilePath;
 
         public Logger()
         {
-            LogFilePath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + @"\Audiosurf SkinChanger Logs\log.txt";
+            LogFilePath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + $@"\Audiosurf Tweaker Logs\log.txt";
         }
 
         public Logger(string path)
@@ -20,16 +22,23 @@
 
         public void Log(string logTitle, string message)
         {
-            if (!File.Exists(LogFilePath))
+            try
             {
-                Directory.CreateDirectory(Path.GetDirectoryName(LogFilePath));
-                File.Create(LogFilePath);
-            }
+                if (!File.Exists(LogFilePath))
+                {
+                    Directory.CreateDirectory(Path.GetDirectoryName(LogFilePath));
+                    File.Create(LogFilePath);
+                }
 
-            using (var logStream = new FileStream(LogFilePath, FileMode.Append))
-            using (var writer = new StreamWriter(logStream, Encoding.UTF8))
+                using (var logStream = new FileStream(LogFilePath, FileMode.Append))
+                using (var writer = new StreamWriter(logStream, Encoding.UTF8))
+                {
+                    writer.WriteLine(FormatMessage(logTitle, message));
+                }
+            }
+            catch (IOException e)
             {
-                writer.WriteLine(FormatMessage(logTitle, message));
+                ReadWriteException?.Invoke(this, new UnhandledExceptionEventArgs(e, false));
             }
         }
 

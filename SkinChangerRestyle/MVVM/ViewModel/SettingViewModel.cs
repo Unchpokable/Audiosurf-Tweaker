@@ -87,18 +87,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         public SettingViewModel()
         {
-            try
-            {
-                SetConfigurationValue = new RelayCommand(AskAndSetConfigValue);
-                TexturesFolderPath = SettingsProvider.GameTexturesPath;
-                AdditionalSkinsFolderPath = SettingsProvider.SkinsFolderPath;
-                IsHotReload = SettingsProvider.HotReload;
-                IsShouldCheckTextures = SettingsProvider.ControlSystemActive;
-            }
-            catch(Exception e)
-            {
-                File.WriteAllText("SVM.txt", e.Message);
-            }
+            SetConfigurationValue = new RelayCommand(AskAndSetConfigValue);
+            TexturesFolderPath = SettingsProvider.GameTexturesPath;
+            AdditionalSkinsFolderPath = SettingsProvider.SkinsFolderPath;
+            IsHotReload = SettingsProvider.HotReload;
+            IsShouldCheckTextures = SettingsProvider.ControlSystemActive;
         }
 
         private void AskAndSetConfigValue(object parameter)
