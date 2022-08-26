@@ -1,17 +1,9 @@
 ﻿namespace SkinChangerRestyle.MVVM.ViewModel
 {
     using System;
-    using System.Diagnostics;
-    using System.IO;
-    using System.Linq;
-    using System.Threading;
     using System.Windows.Forms;
-    using System.Windows.Data;
-    using System.Windows.Media;
-    using ChangerAPI.Engine;
     using SkinChangerRestyle.Core;
     using SkinChangerRestyle.MVVM.Model;
-    using Env = SkinChangerRestyle.Core.SettingsProvider;
     using SkinChangerRestyle.Core.Extensions;
 
     class MainViewModel : ObservableObject

@@ -36,7 +36,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>TweakerIcon.ico</ApplicationIcon>
+    <ApplicationIcon>Tweaker_Icon.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
@@ -302,6 +302,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\exportmy.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Tweaker_Icon.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

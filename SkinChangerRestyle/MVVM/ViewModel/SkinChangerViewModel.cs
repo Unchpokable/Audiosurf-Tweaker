@@ -476,7 +476,7 @@
                     Directory.GetFiles(path).AsParallel().ForAll(x =>
                     {
                         try { File.SetAttributes(path, File.GetAttributes(path) & ~FileAttributes.ReadOnly); } catch { }
-                        try { File.Delete(path); } catch { }
+                        try { File.Delete(x); } catch { }
                     });
                     Directory.GetDirectories(path).AsParallel().ForAll(x =>
                     {
