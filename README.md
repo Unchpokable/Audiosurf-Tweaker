@@ -51,6 +51,7 @@
 - From here you can send to audiosurf some configuration commands.
 ![Command and control](https://github.com/Unchpokable/Audiosurf-SkinChanger/blob/Beta-Alt-Design/Docs/readme/Commands.png "Tweaker")
   * Checkboxes in "Tweaks" section represents some game configs that have 2 state - enabled or disabled. This checkboxes will be active even if audiosurf is not connected and after game window will connect, Tweaker will send to it all config commands that accumulated in queue while you clicking this checkboxes without game connected.
+  * Tweaks "Invisible Road", "Banking camera" and "Hidden song title" applies in real time, other need to you be in the game menu
   * Commands section will be inactive while game not connected, because most of this configurations targeted to game' main window parameters. Little thing - on the different game versions and different moon phases this commands works also different (say thanks to game' dev), so be careful with it. Sometimes some of them will crash game or cause it' undefined behaviour. Some - not. You will never know how this commands will work today 'till you try. It's like a russian roulette, enjoy :)
 
 ### Settings tab
@@ -61,3 +62,6 @@
   * Hot Reload - After skin installation Tweaker will send to Audiosurf command to reload textures so you can see changes even without retry song. Sadly, Audiosurf does not reloading skysphere so in real time updates only tiles, rings, hits and fireworks
   * Control game' textures folder content - Tweaker will track content in game' textures folder and warn you if it dont match with content that Tweaker remember.
   * Safety installation - Can be enabled only if enabled folder content control. Will block installation of skins while content in game' textures folder is unsaved by Tweaker.
+  
+### Other features
+- Audiosurf Tweaker can find active game process automatically, but only if it has his default name "QuestViewer.exe" and there is a single process called like that in the system. If your Tweaker hangs on "Wait for AS Approve" even if game running on the character screen or even in track, it can be caused by Tweaker handled wrong process. In this case you can click "Find running Audiosurf" and in the opened window select your game process.
