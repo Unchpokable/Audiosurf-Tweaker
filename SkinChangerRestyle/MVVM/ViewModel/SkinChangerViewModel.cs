@@ -372,6 +372,11 @@
 
             Task.Factory.StartNew(() =>
             {
+                if (!Directory.Exists("Skins"))
+                {
+                    MessageBox.Show("Root skins directory not found. Unable to load", "File system error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
                 var files = Directory.EnumerateFiles(@"Skins").ToList();
                 if (Directory.Exists(SettingsProvider.SkinsFolderPath))
                     files.AddRange(Directory.EnumerateFiles(SettingsProvider.SkinsFolderPath));

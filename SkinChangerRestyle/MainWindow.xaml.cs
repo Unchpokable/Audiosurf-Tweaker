@@ -18,7 +18,6 @@
         public MainWindow()
         {
             AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
-            AppDomain.CurrentDomain.FirstChanceException += OnFirstChanceUnhandledException;
             InitializeComponent();
         }
 

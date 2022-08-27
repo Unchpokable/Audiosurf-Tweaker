@@ -75,15 +75,15 @@ namespace SkinChangerRestyle.MVVM.Model
             lock (_lockObject)
             {
                 var handle = GetAudiosurfMainwindowHandle();
-                if (handle == IntPtr.Zero)
-                    return false;
-                Handle = handle;
-                _currentState = ASHandleState.Awaiting;
-                StateChanged?.Invoke(this, EventArgs.Empty);
-                _wndProcMessageService.Handle(handle);
-                _wndProcMessageService.Command(WinAPI.WM_COPYDATA, "ascommand registerlistenerwindow AsMsgHandler");
-                IsValid = true;
-                return true;
+                return SetHandle(handle);
+            }
+        }
+
+        public bool SetHandle(Process target)
+        {
+            lock (_lockObject)
+            {
+                return SetHandle(target.MainWindowHandle);
             }
         }
 
@@ -141,6 +141,18 @@ namespace SkinChangerRestyle.MVVM.Model
                 var command = _queuedCommands.Dequeue();
                 _wndProcMessageService.Command(WinAPI.WM_COPYDATA, command);
             }
+        }
+
+        private bool SetHandle(IntPtr handle)
+        {
+            if (handle == IntPtr.Zero) return false;
+            Handle = handle;
+            _currentState = ASHandleState.Awaiting;
+            StateChanged?.Invoke(this, EventArgs.Empty);
+            _wndProcMessageService.Handle(handle);
+            _wndProcMessageService.Command(WinAPI.WM_COPYDATA, "ascommand registerlistenerwindow AsMsgHandler");
+            IsValid = true;
+            return true;
         }
 
         private IntPtr GetAudiosurfMainwindowHandle()

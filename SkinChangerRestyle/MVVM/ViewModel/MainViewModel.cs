@@ -2,6 +2,7 @@
 {
     using System;
     using System.Windows.Forms;
+    using SkinChangerRestyle;
     using SkinChangerRestyle.Core;
     using SkinChangerRestyle.MVVM.Model;
     using SkinChangerRestyle.Core.Extensions;
@@ -52,7 +53,7 @@
             SettingsVM = new SettingViewModel();
             CurrentView = SkinsGridVM;
             SetChangerView = new RelayCommand(o => CurrentView = SkinsGridVM);
-            ConnectAudiosurfWindow = new RelayCommand(o => { _asHandle.TryConnect(); });
+            ConnectAudiosurfWindow = new RelayCommand(ConnectAudiosurfWindowInternal);
             SetCommandCenterView = new RelayCommand(o => CurrentView = TweakerVM);
             SetSettingsView = new RelayCommand(o => CurrentView = SettingsVM);
             Extensions.DisposeAndClear();
@@ -63,6 +64,11 @@
         {
             OnPropertyChanged(nameof(AudiosurfStatusMessage));
             OnPropertyChanged(nameof(AudiosurfStatusBackgroundColor));
+        }
+
+        private void ConnectAudiosurfWindowInternal(object param)
+        {
+            new ProcessSelectionWindow().Show();
         }
     }
 }

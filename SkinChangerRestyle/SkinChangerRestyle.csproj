@@ -114,6 +114,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="ProcessSelectionWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Themes\FlatButton.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -173,6 +177,7 @@
     <Compile Include="MVVM\Model\IteractableScreenshot.cs" />
     <Compile Include="MVVM\Model\SkinCard.cs" />
     <Compile Include="MVVM\ViewModel\MainViewModel.cs" />
+    <Compile Include="MVVM\ViewModel\ProcessSelectionViewModel.cs" />
     <Compile Include="MVVM\ViewModel\SettingViewModel.cs" />
     <Compile Include="MVVM\ViewModel\SkinChangerViewModel.cs" />
     <Compile Include="MVVM\ViewModel\TweakerViewModel.cs" />
@@ -184,6 +189,9 @@
     </Compile>
     <Compile Include="MVVM\View\Tweaker.xaml.cs">
       <DependentUpon>Tweaker.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ProcessSelectionWindow.xaml.cs">
+      <DependentUpon>ProcessSelectionWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
