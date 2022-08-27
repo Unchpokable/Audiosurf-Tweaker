@@ -7,7 +7,7 @@
     <ProjectGuid>{2EF50C5A-2850-4A66-B116-FAB3DC199702}</ProjectGuid>
     <OutputType>WinExe</OutputType>
     <RootNamespace>SkinChangerRestyle</RootNamespace>
-    <AssemblyName>tweaker</AssemblyName>
+    <AssemblyName>audiosurftweaker</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
@@ -36,7 +36,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>Tweaker_Icon.ico</ApplicationIcon>
+    <ApplicationIcon>Tweaker_Icon_1.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
@@ -313,6 +313,9 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Tweaker_Icon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="Tweaker_Icon_1.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

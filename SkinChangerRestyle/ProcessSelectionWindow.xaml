@@ -14,45 +14,47 @@
     <Window.DataContext>
         <vm:ProcessSelectionViewModel/>
     </Window.DataContext>
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="30"/>
-            <RowDefinition/>
-        </Grid.RowDefinitions>
-        <Border MouseLeftButtonDown="Border_MouseLeftButtonDown" BorderThickness="0,0,0,0" VerticalAlignment="Top" Height="35" Background="White" AutomationProperties.Name="Header">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition/>
-                    <ColumnDefinition/>
-                </Grid.ColumnDefinitions>
-                <Label Content="Process Selection" VerticalAlignment="Center" FontFamily="Exo 2 Light" FontSize="14"/>
-                <Button  Grid.Column="1" Style="{StaticResource UnderscoredButton}" Width="40" HorizontalAlignment="Right" Content="X" Click="Button_Click"/>
-            </Grid>
-        </Border>
-
-        <Grid Grid.Row="1">
+    <Border BorderThickness="1" BorderBrush="#FFA5A5A5">
+        <Grid>
             <Grid.RowDefinitions>
+                <RowDefinition Height="30"/>
                 <RowDefinition/>
-                <RowDefinition Height=".1*"/>
             </Grid.RowDefinitions>
+            <Border MouseLeftButtonDown="Border_MouseLeftButtonDown" BorderThickness="0,0,0,0" VerticalAlignment="Top" Height="35" Background="White" AutomationProperties.Name="Header">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <Label Content="Process Selection" VerticalAlignment="Center" FontFamily="Exo 2 Light" FontSize="14"/>
+                    <Button  Grid.Column="1" Style="{StaticResource UnderscoredButton}" Width="40" HorizontalAlignment="Right" Content="X" Click="Button_Click"/>
+                </Grid>
+            </Border>
 
-            <StackPanel Orientation="Horizontal" Grid.Row="1">
-                <Label Content="Mask:" FontFamily="Exo 2 Light" FontSize="16" Foreground="#FF888888" VerticalAlignment="Center"/>
-                <TextBox Height="30" VerticalAlignment="Center" Width="430" Margin="10 0 10 0"
+            <Grid Grid.Row="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition Height=".1*"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Orientation="Horizontal" Grid.Row="1">
+                    <Label Content="Mask:" FontFamily="Exo 2 Light" FontSize="16" Foreground="#FF888888" VerticalAlignment="Center"/>
+                    <TextBox Height="30" VerticalAlignment="Center" Width="430" Margin="10 0 10 0"
                          Text="{Binding SearchMask, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          VerticalContentAlignment="Center" FontSize="16"
                          FontFamily="Exo 2 light"/>
-                <!--<Button Style="{StaticResource FlatButton}" Content="Apply" Width="100" Height="50" VerticalAlignment="Center"/>-->
-            </StackPanel>
+                    <!--<Button Style="{StaticResource FlatButton}" Content="Apply" Width="100" Height="50" VerticalAlignment="Center"/>-->
+                </StackPanel>
 
-            <DataGrid x:Name="_processList" ItemsSource="{Binding Processes}" IsReadOnly="True">
-                <DataGrid.InputBindings>
-                    <MouseBinding Gesture="LeftDoubleClick"
+                <DataGrid x:Name="_processList" ItemsSource="{Binding Processes}" IsReadOnly="True" BorderThickness="0">
+                    <DataGrid.InputBindings>
+                        <MouseBinding Gesture="LeftDoubleClick"
                                   Command="{Binding SetHandleToSelectedProcess}"
                                   CommandParameter="{Binding ElementName=_processList, Path=SelectedItem}"/>
-                </DataGrid.InputBindings>
-            </DataGrid>
-            
+                    </DataGrid.InputBindings>
+                </DataGrid>
+
+            </Grid>
         </Grid>
-    </Grid>
+    </Border>
 </Window>

@@ -76,7 +76,11 @@
                             <Label x:Name="ConnectionStatusLabel" Content="{Binding AudiosurfStatusMessage}" HorizontalAlignment="Left" Margin="0,0,0,0" VerticalAlignment="Center" Grid.Column="1" FontFamily="Exo 2 Light" FontSize="18" Foreground="#FF717171"/>
                         </Grid>
 
-                        <Button Command="{Binding ConnectAudiosurfWindow}" Content="Find running Audiosurf" Style="{StaticResource FlatButton}" Foreground="#FFE0E0E0" BorderBrush="{x:Null}" FontSize="16" FontFamily="Exo 2 Light" Height="50" VerticalAlignment="Center" Grid.Row="1"/>
+                        <Button Command="{Binding ConnectAudiosurfWindow}" Content="Find running Audiosurf" Style="{StaticResource FlatButton}" Foreground="#FFE0E0E0" BorderBrush="{x:Null}" FontSize="16" FontFamily="Exo 2 Light" Height="50" VerticalAlignment="Center" Grid.Row="1">
+                            <Button.ToolTip>
+                                Select game process manually if Tweaker hangs on "Wait for approve" when game running
+                            </Button.ToolTip>
+                        </Button>
 
                     </Grid>
                 </Border>

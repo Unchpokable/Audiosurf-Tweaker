@@ -1,7 +1,7 @@
 ﻿namespace SkinChangerRestyle.MVVM.ViewModel
 {
     using System;
-    using System.Windows.Forms;
+    using System.Windows;
     using SkinChangerRestyle;
     using SkinChangerRestyle.Core;
     using SkinChangerRestyle.MVVM.Model;
@@ -40,7 +40,7 @@
             {
                 await System.Threading.Tasks.Task.Run(() =>
                 {
-                    MessageBox.Show($"{e.Message}\nPlease, check your settings tab", "Default Configuration initialization fault", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show($"{e.Message}\nPlease, check your settings tab", "Default Configuration initialization fault", MessageBoxButton.OK, MessageBoxImage.Warning);
                 });
             };
 
@@ -68,7 +68,14 @@
 
         private void ConnectAudiosurfWindowInternal(object param)
         {
-            new ProcessSelectionWindow().Show();
+            try
+            {
+                new ProcessSelectionWindow().Show();
+            }
+            catch
+            {
+                MessageBox.Show("Error occurred during opening process browser. Try again", "Windows process browser error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }
