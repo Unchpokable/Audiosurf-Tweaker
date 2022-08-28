@@ -118,6 +118,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private void SetHandleToSelectedProcessInternal(object param)
         {
             var process = (ShortProcessDescriptor)param;
+            _asHandle.StopAutoHandling();
             _asHandle.SetHandle(Process.GetProcessById(process.GetProcessID()));
             GC.Collect();
             GC.WaitForPendingFinalizers();

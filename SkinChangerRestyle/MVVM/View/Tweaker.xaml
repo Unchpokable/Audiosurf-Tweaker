@@ -92,8 +92,8 @@
 
                     <StackPanel Margin="10">
                         <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="setwindowalwaysontop" Height="30" Style="{StaticResource UnderscoredButton}" Content="Set Audiosurf Always on top" Margin="0 0 0 5" FontSize="14"/>
-                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="setwindowalwaysontopnoborder" Height="30" Style="{StaticResource UnderscoredButton}" Content="Always on top without border" Margin="0 0 0 5" FontSize="14"/>
-                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="runwithoutfocus" Height="30" Style="{StaticResource UnderscoredButton}" Content="Run Audiosurf without focus" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="setwindowalwaysontopnoborder" Height="30" Style="{StaticResource UnderscoredButton}" Content="Set Audiosurf always on top without border" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="runwithoutfocus" Height="30" Style="{StaticResource UnderscoredButton}" Content="Force Audiosurf to run wihtout focus" Margin="0 0 0 5" FontSize="14"/>
                         <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="closeaudiosurf" Height="30" Style="{StaticResource UnderscoredButton}" Content="Close Audiosurf" Margin="0 0 0 5" FontSize="14"/>
                     </StackPanel>
 

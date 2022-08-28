@@ -70,6 +70,23 @@ namespace SkinChangerRestyle.MVVM.Model
             }
         }
 
+        public async void PauseAutoHandling(int secTimeout)
+        {
+            _timer.Stop();
+            await Task.Delay(secTimeout * 1000);
+            _timer.Start();
+        }
+
+        public void StopAutoHandling()
+        {
+            _timer.Stop();
+        }
+
+        public void StartAutoHandling()
+        {
+            _timer.Start();
+        }
+
         public bool TryConnect()
         {
             lock (_lockObject)
@@ -109,9 +126,12 @@ namespace SkinChangerRestyle.MVVM.Model
                     {
                         if (cds.lpData.Contains("successfullyregistered"))
                         {
+                            //Handle = message.WParam;
+                            //_wndProcMessageService.Handle(message.WParam);
                             _currentState = ASHandleState.Connected;
                             StateChanged?.Invoke(this, EventArgs.Empty);
                             OnRegistered();
+                            StartAutoHandling();
                         }
                         MessageResieved?.Invoke(this, cds.lpData);
                     }
@@ -145,7 +165,12 @@ namespace SkinChangerRestyle.MVVM.Model
 
         private bool SetHandle(IntPtr handle)
         {
-            if (handle == IntPtr.Zero) return false;
+            if (handle == IntPtr.Zero)
+            {
+                _currentState = ASHandleState.NotConnected;
+                StateChanged?.Invoke(this, EventArgs.Empty);
+                return false;
+            }
             Handle = handle;
             _currentState = ASHandleState.Awaiting;
             StateChanged?.Invoke(this, EventArgs.Empty);

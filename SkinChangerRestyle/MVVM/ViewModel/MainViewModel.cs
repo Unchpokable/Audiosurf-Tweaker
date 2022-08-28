@@ -13,6 +13,7 @@
         public RelayCommand SetChangerView { get; set; }
         public RelayCommand ConnectAudiosurfWindow { get; set; }
         public RelayCommand SetSettingsView { get; set; }
+        public RelayCommand EnableAutoHandling { get; set; }
 
         public SkinChangerViewModel SkinsGridVM { get; set; }
         public TweakerViewModel TweakerVM { get; set; }
@@ -56,6 +57,7 @@
             ConnectAudiosurfWindow = new RelayCommand(ConnectAudiosurfWindowInternal);
             SetCommandCenterView = new RelayCommand(o => CurrentView = TweakerVM);
             SetSettingsView = new RelayCommand(o => CurrentView = SettingsVM);
+            EnableAutoHandling = new RelayCommand(o => _asHandle.StartAutoHandling());
             Extensions.DisposeAndClear();
             
         }
