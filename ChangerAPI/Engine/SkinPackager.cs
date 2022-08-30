@@ -18,7 +18,6 @@
         private static AudiosurfSkinExtended temporalSkin;
         private static string[] texturesNames;
         private static string[] masks;
-        private static Dictionary<string, ImageGroup> skintypeFieldsAssocialtionTable;
 
         private readonly static string defaultOutput = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
@@ -41,8 +40,6 @@
                 Env.RingsImageMask,
                 Env.SkysphereImagesMask
             };
-
-            InitializeSkintypeFieldsAssociation();
         }
 
 
@@ -57,7 +54,7 @@
                 }
                 return true;
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 return false;
             }
@@ -74,7 +71,7 @@
                 }
                 return true;
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 return false;
             }
@@ -91,7 +88,7 @@
                 }
                 return true;
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 return false;
             }
@@ -114,12 +111,12 @@
                 return result.Clone();
             }
 
-            catch (IOException e)
+            catch (IOException)
             {
                 return null;
             }
 
-            catch (Exception e)
+            catch (Exception)
             {
                 return null;
             }
@@ -177,18 +174,6 @@
             }
 
             return group;
-        }
-
-        private static void InitializeSkintypeFieldsAssociation()
-        {
-            skintypeFieldsAssocialtionTable = new Dictionary<string, ImageGroup>()
-            {
-                { Env.CliffImagesMask, temporalSkin.Cliffs },
-                { Env.HitImageMask, temporalSkin.Hits },
-                { Env.ParticlesImageMask, temporalSkin.Particles},
-                { Env.RingsImageMask, temporalSkin.Rings },
-                { Env.SkysphereImagesMask, temporalSkin.SkySpheres },
-            };
         }
     }
 }

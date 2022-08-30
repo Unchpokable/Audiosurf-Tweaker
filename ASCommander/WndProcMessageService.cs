@@ -56,7 +56,7 @@ namespace ASCommander
                 lpData = msgContent
             };
 
-            WinAPI.SendMessage(targetWindowHandle, msgType, IntPtr.Zero, ref cds);
+            WinAPI.SendMessage(targetWindowHandle, msgType, SpongeHandle, ref cds);
         }
 
         public void Invalidate()

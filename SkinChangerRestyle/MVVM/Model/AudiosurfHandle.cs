@@ -26,18 +26,23 @@ namespace SkinChangerRestyle.MVVM.Model
             _timer.Interval = 1000;
             _timer.Tick += (s, e) =>
             {
-                if (_currentState == ASHandleState.Awaiting)
+                if (_autoHandling)
                 {
-                    TryConnect();
-                    return;
-                }
+                    if (_currentState == ASHandleState.Awaiting)
+                    {
+                        TryConnect();
+                        return;
+                    }
 
-                if (Handle == IntPtr.Zero)
-                {
-                    TryConnect();
-                    return;
+                    if (Handle == IntPtr.Zero)
+                    {
+                        TryConnect();
+                        return;
+                    }
+                    ValidateHandle();
                 }
-                ValidateHandle();
+                else 
+                    ValidateHandle();
             };
 
             _timer.Start();
@@ -56,6 +61,7 @@ namespace SkinChangerRestyle.MVVM.Model
         private Queue<string> _queuedCommands;
         private WndProcMessageService _wndProcMessageService;
         private object _lockObject = new object();
+        private bool _autoHandling;
 
         private ASHandleState _currentState;
         private static AudiosurfHandle _instance;
@@ -126,12 +132,11 @@ namespace SkinChangerRestyle.MVVM.Model
                     {
                         if (cds.lpData.Contains("successfullyregistered"))
                         {
-                            //Handle = message.WParam;
-                            //_wndProcMessageService.Handle(message.WParam);
                             _currentState = ASHandleState.Connected;
                             StateChanged?.Invoke(this, EventArgs.Empty);
                             OnRegistered();
                             StartAutoHandling();
+                            _autoHandling = false;
                         }
                         MessageResieved?.Invoke(this, cds.lpData);
                     }
@@ -148,6 +153,7 @@ namespace SkinChangerRestyle.MVVM.Model
                 _wndProcMessageService.Invalidate();
                 IsValid = false;
                 StateChanged?.Invoke(this, EventArgs.Empty);
+                _autoHandling = true;
                 return false;
             }
             return true;

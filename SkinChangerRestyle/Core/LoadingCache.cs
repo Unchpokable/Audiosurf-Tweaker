@@ -33,7 +33,7 @@ namespace SkinChangerRestyle.Core
                     return true;
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 return false;
             }

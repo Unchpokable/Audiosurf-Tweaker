@@ -108,7 +108,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                         catch { }
 
                     }
-                    catch (Win32Exception e) { }
+                    catch (Win32Exception) { }
                     catch { }
                 }
             });

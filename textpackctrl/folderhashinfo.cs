@@ -83,6 +83,12 @@ namespace FolderChecker
 
         public static bool TryFind(string path, string specificExtension, out FolderHashInfo folderInfo)
         {
+            if (!Directory.Exists(path))
+            {
+                folderInfo = null;
+                return false;
+            }
+
             var containedFiles = Directory.EnumerateFiles(path);
             foreach (var file in containedFiles)
             {
@@ -114,6 +120,10 @@ namespace FolderChecker
 
         public static FolderHashInfo Find(string path, string specificExtension)
         {
+            if (!Directory.Exists(path))
+            {
+                return null;
+            }
             var containedFiles = Directory.EnumerateFiles(path);
             foreach (var file in containedFiles)
             {
