@@ -16,31 +16,31 @@
         {
             try
             {
-                Configuration cfg = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+                Configuration cfg = ConfigurationManager.OpenExeConfiguration(AppDomain.CurrentDomain.FriendlyName);
 
-                if (cfg == null)
+                if (cfg.AppSettings == null)
                 {
-                    InitializationFaultCallback?.Invoke(new Exception("Null configuration\n"));
+                    InitializationFaultCallback?.Invoke(new Exception("Null configuration section"));
                     return;
                 }
+                var SurfRegistryPath = @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 12900";
 
                 if (!bool.Parse(cfg.AppSettings.Settings["FirstRun"].Value))
                     return;
+                
+                cfg.AppSettings.Settings["FirstRun"].Value = false.ToString();
 
-                var pathToAudiosurfTextures = Environment.Is64BitOperatingSystem
-                                              ? Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Valve\Steam", "InstallPath", null).ToString()
-                                              : Registry.GetValue(@"HKEY_LOCAL_MACHINE\SOFTWARE\Valve\Steam", "InstallPath", null).ToString();
+                var gameInstallPath = Registry.GetValue(SurfRegistryPath, "InstallLocation", null)?.ToString();
+                var texturesPath = $@"{gameInstallPath}\engine\textures";
 
-                if (string.IsNullOrEmpty(pathToAudiosurfTextures)
-                    || string.IsNullOrWhiteSpace(pathToAudiosurfTextures)
-                    || !Directory.Exists(pathToAudiosurfTextures + @"\steamapps\common\Audiosurf"))
+                if (string.IsNullOrEmpty(gameInstallPath)
+                    || !Directory.Exists(texturesPath))
                 {
-                    InitializationFaultCallback?.Invoke(new Exception("Couldn't find Audiosurf pathes or registry access denied by operating system"));
+                    InitializationFaultCallback?.Invoke(new Exception("Can not detect audiosurf installation"));
                     return;
                 }
 
-                cfg.AppSettings.Settings["TexturesPath"].Value = pathToAudiosurfTextures + @"\steamapps\common\Audiosurf\engine\textures";
-                cfg.AppSettings.Settings["FirstRun"].Value = false.ToString();
+                cfg.AppSettings.Settings["TexturesPath"].Value = texturesPath;
                 cfg.Save();
                 ConfigurationManager.RefreshSection("appSettings");
             }
@@ -71,7 +71,7 @@
         {
             try
             {
-                Configuration cfg = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+                Configuration cfg = ConfigurationManager.OpenExeConfiguration(AppDomain.CurrentDomain.FriendlyName);
                 cfg.AppSettings.Settings["TexturesPath"].Value = Settings.GameTexturesPath;
                 cfg.AppSettings.Settings["AddSkinsPath"].Value = Settings.SkinsFolderPath;
                 cfg.AppSettings.Settings["HotReload"].Value = Settings.HotReload.ToString();
