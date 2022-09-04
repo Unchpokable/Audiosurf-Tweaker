@@ -148,7 +148,7 @@ namespace FolderChecker
 
         public static FolderHashInfo Create(string path)
         {
-            return Create(path, "defaul");
+            return Create(path, "default");
         }
 
         public static FolderHashInfo Create(string path, string stateName)
