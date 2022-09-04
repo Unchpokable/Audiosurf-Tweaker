@@ -27,8 +27,9 @@
 
                 if (!bool.Parse(cfg.AppSettings.Settings["FirstRun"].Value))
                     return;
-                
-                cfg.AppSettings.Settings["FirstRun"].Value = false.ToString();
+
+                cfg.AppSettings.Settings["FirstRun"].Value = bool.FalseString;
+                cfg.Save();
 
                 var gameInstallPath = Registry.GetValue(SurfRegistryPath, "InstallLocation", null)?.ToString();
                 var texturesPath = $@"{gameInstallPath}\engine\textures";
