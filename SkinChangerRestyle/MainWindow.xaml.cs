@@ -13,12 +13,15 @@
     /// </summary>
     public partial class MainWindow : Window
     {
+        private Logger _logger;
+
         public static Dispatcher WindowDispatcher => Application.Current.Dispatcher;
 
         public MainWindow()
         {
             AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
             InitializeComponent();
+            _logger = new Logger();
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -62,7 +65,7 @@
             var exception = e.ExceptionObject as Exception;
             var formattedMessage = $"Ooops! An unhandled exception occurred!\n{exception.Message}\nStack Trace: {exception.StackTrace}\n";
             MessageBox.Show(formattedMessage, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            Log("Initialization fault", formattedMessage);
+            _logger.Log("Initialization fault", formattedMessage);
         }
 
         private void OnFirstChanceUnhandledException(object sender, FirstChanceExceptionEventArgs e)
@@ -70,12 +73,6 @@
             var exception = e.Exception;
             var formattedMessage = $"Ooops! An unhandled exception occurred!\n{exception.Message}\nStack Trace: {exception.StackTrace}\n";
             MessageBox.Show(formattedMessage, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-
-        private void Log(string title, string message)
-        {
-            var logger = new Logger();
-            logger.Log(title, message);
         }
     }
 }
