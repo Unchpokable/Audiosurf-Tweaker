@@ -325,13 +325,20 @@
             });
         }
 
-        private void InstallSelected(object clearInstall)
+        private async void InstallSelected(object clearInstall)
         {
             if (!bool.TryParse(clearInstall.ToString(), out bool isClear))
                 return;
 
             if (_selectedItem == null)
                 return;
+
+            if (!File.Exists(_selectedItem.PathToOrigin))
+            {
+                MessageBox.Show("A Cache read-write error occured. Skins will be reloaded", "Cache corruption warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                await Task.Run(() => LoadSkinsFull());
+                return;
+            }
 
             InstallSkin(_selectedItem.PathToOrigin, SettingsProvider.GameTexturesPath, clearInstall: isClear);
         }
