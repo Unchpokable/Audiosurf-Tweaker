@@ -17,7 +17,6 @@
 
         private static AudiosurfSkinExtended temporalSkin;
         private static string[] texturesNames;
-        private static string[] masks;
 
         private readonly static string defaultOutput = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
@@ -30,15 +29,6 @@
                 "particles1.png", "particles2.png", "particles3.png", "ring1A.png", "ring1B.png", "ring2A.jpg", "ring2B",
                 "Skyshpere_Black.png", "Skysphere_Grey.png", "Skyshphere_White.png",
                 "tileflyup.png", "tiles.png"
-            };
-
-            masks = new[]
-            {
-                Env.CliffImagesMask,
-                Env.HitImageMask,
-                Env.ParticlesImageMask,
-                Env.RingsImageMask,
-                Env.SkysphereImagesMask
             };
         }
 
@@ -142,7 +132,7 @@
             if (Directory.Exists(path + @"\Screenshots"))
             {
                 result.Previews = GetAllImagesByNameMask("Screenshots", "screenshot", path + @"\Screenshots");
-                result.Cover = temporalSkin.Previews?.Group?.FirstOrDefault();
+                result.Cover = result.Previews?.Group?.FirstOrDefault();
             }
 
             if (tiles.Group.Count > 1 || tileflyup.Group.Count > 1)
