@@ -1,26 +1,21 @@
-﻿namespace SkinChangerRestyle.MVVM.ViewModel
-{
-    using System;
-    using System.Collections.Generic;
-    using System.Collections.ObjectModel;
-    using System.Drawing;
-    using System.IO;
-    using System.Linq;
-    using System.Text;
-    using System.Threading.Tasks;
-    using System.Windows.Media;
-    using ChangerAPI.Engine;
-    using SkinChangerRestyle;
-    using SkinChangerRestyle.Core;
-    using SkinChangerRestyle.Core.Extensions;
-    using SkinChangerRestyle.MVVM.Model;
-    using System.Windows.Data;
-    using FolderChecker;
-    using System.Windows.Forms;
-    using System.Collections.Concurrent;
-    using System.Threading;
-    using System.Reflection;
+﻿using System;
+using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Windows.Media;
+using ChangerAPI.Engine;
+using SkinChangerRestyle.Core;
+using SkinChangerRestyle.Core.Extensions;
+using SkinChangerRestyle.MVVM.Model;
+using System.Windows.Data;
+using FolderChecker;
+using System.Windows.Forms;
+using System.Reflection;
+using ASCommander;
 
+namespace SkinChangerRestyle.MVVM.ViewModel
+{
     class SkinChangerViewModel : ObservableObject
     {
         protected SkinChangerViewModel()

@@ -2,10 +2,11 @@
 {
     using System;
     using System.Windows;
+    using ASCommander;
     using SkinChangerRestyle;
     using SkinChangerRestyle.Core;
-    using SkinChangerRestyle.MVVM.Model;
     using SkinChangerRestyle.Core.Extensions;
+    using System.Windows.Media;
 
     class MainViewModel : ObservableObject
     {
@@ -18,8 +19,8 @@
         public SkinChangerViewModel SkinsGridVM { get; set; }
         public TweakerViewModel TweakerVM { get; set; }
         public SettingViewModel SettingsVM { get; set; }
-        public object AudiosurfStatusMessage => _asHandle?.StateMessage;
-        public object AudiosurfStatusBackgroundColor => _asHandle?.StateColor;
+        public string AudiosurfStatusMessage => _asHandle?.StateMessage;
+        public SolidColorBrush AudiosurfStatusBackgroundColor => (SolidColorBrush)new BrushConverter().ConvertFromString(_asHandle?.StateColor);
 
         private object _currentView;
         private AudiosurfHandle _asHandle;

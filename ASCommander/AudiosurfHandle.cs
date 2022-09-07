@@ -2,18 +2,15 @@
 using ASCommander;
 using ASCommander.PInvoke;
 using System.Collections.Generic;
-using System.Windows;
 using System.Windows.Forms;
-using System.Windows.Media;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Diagnostics;
 
-namespace SkinChangerRestyle.MVVM.Model
+namespace ASCommander
 {
-    internal delegate void MessageEventHandler(object sender, string messageContent);
+    public delegate void MessageEventHandler(object sender, string messageContent);
 
-    class AudiosurfHandle
+    public class AudiosurfHandle
     {
         private AudiosurfHandle()
         {
@@ -22,7 +19,7 @@ namespace SkinChangerRestyle.MVVM.Model
             StateChanged?.Invoke(this, EventArgs.Empty);
             _wndProcMessageService.MessageRecieved += OnMessageRecieved;
 
-            _timer = new System.Windows.Forms.Timer();
+            _timer = new Timer();
             _timer.Interval = 1000;
             _timer.Tick += (s, e) =>
             {
@@ -55,9 +52,9 @@ namespace SkinChangerRestyle.MVVM.Model
         public bool IsValid { get; private set; }
         public IntPtr Handle { get; private set; }
         public string StateMessage => _currentState.Message;
-        public SolidColorBrush StateColor => _currentState.ColorInterpretation;
+        public string StateColor => _currentState.ColorInterpretation;
 
-        private System.Windows.Forms.Timer _timer;
+        private Timer _timer;
         private Queue<string> _queuedCommands;
         private WndProcMessageService _wndProcMessageService;
         private object _lockObject = new object();
@@ -195,8 +192,8 @@ namespace SkinChangerRestyle.MVVM.Model
 
         public class ASHandleState
         {
-            public string Message { get; set; }
-            public SolidColorBrush ColorInterpretation { get; set; }
+            public string Message { get; private set; }
+            public string ColorInterpretation { get; private set; }
 
             private static string asNotConnectedStatusColor = "#ff0000";
             private static string asConnectedStatusColor = "#11ff00";
@@ -209,7 +206,7 @@ namespace SkinChangerRestyle.MVVM.Model
             private ASHandleState(string message, string hexColor)
             {
                 Message = message;
-                ColorInterpretation = (SolidColorBrush)new BrushConverter().ConvertFromString(hexColor);
+                ColorInterpretation = hexColor;
             }
 
             public static ASHandleState Connected

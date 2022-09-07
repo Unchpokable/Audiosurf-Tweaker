@@ -1,13 +1,7 @@
 ﻿using SkinChangerRestyle.Core;
 using SkinChangerRestyle.Core.Extensions;
-using SkinChangerRestyle.MVVM.Model;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Media;
+using ASCommander;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {

@@ -93,7 +93,6 @@
       <DependentUpon>ImageViewWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Core\LoadingCache.cs" />
-    <Compile Include="MVVM\Model\AudiosurfHandle.cs" />
     <Page Include="EditOnDiskLockWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
