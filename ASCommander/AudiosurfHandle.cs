@@ -1,5 +1,4 @@
 ﻿using System;
-using ASCommander;
 using ASCommander.PInvoke;
 using System.Collections.Generic;
 using System.Windows.Forms;
@@ -19,8 +18,11 @@ namespace ASCommander
             StateChanged?.Invoke(this, EventArgs.Empty);
             _wndProcMessageService.MessageRecieved += OnMessageRecieved;
 
-            _timer = new Timer();
-            _timer.Interval = 1000;
+            _timer = new Timer
+            {
+                Interval = 1000
+            };
+
             _timer.Tick += (s, e) =>
             {
                 if (_autoHandling)

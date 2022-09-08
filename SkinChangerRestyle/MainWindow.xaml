@@ -11,15 +11,17 @@
         MinHeight="700"
         MinWidth="1200"
         Background="White"
-        AllowsTransparency="True"
-        WindowStyle="None"
-        Title="Audiosurf Tweaker"
-        ResizeMode="CanResizeWithGrip">
+        Title="Audiosurf Tweaker">
 
     <Window.DataContext>
         <viewModel:MainViewModel/>
     </Window.DataContext>
-    <Border BorderBrush="#FF757575" BorderThickness="1">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0" ResizeBorderThickness="0"/>
+    </WindowChrome.WindowChrome>
+    
+        <Border BorderBrush="#FF757575" BorderThickness="0">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="35"/>
