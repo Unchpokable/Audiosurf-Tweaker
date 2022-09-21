@@ -40,9 +40,10 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             ReloadSkins = new RelayCommand((param) =>
             {
+                ChangerStatus = "Loading...";
                 ReloadButtonUnlocked = false;
                 Skins.Clear();
-                Task.Factory.StartNew(() => LoadSkinsFull());
+                LoadSkins(rebuildCache: true);
             });
 
             LoadSkins();
@@ -62,6 +63,14 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 if (_instance == null) _instance = new SkinChangerViewModel();
                 return _instance;
             }
+        }
+
+        private string _changerStatus;
+
+        public string ChangerStatus
+        {
+            get { return _changerStatus; }
+            set { _changerStatus = value; OnPropertyChanged(); }
         }
 
 
@@ -218,6 +227,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         public async void InstallSkin(string pathToOrigin, string target, bool forced = false, bool unpackScreenshots = false, bool clearInstall = false, bool saveState = true)
         {
+            ChangerStatus = "Working...";
             if (target.Equals(SettingsProvider.GameTexturesPath, StringComparison.InvariantCultureIgnoreCase))
             {
                 if (SettingsProvider.SafeInstall)
@@ -247,10 +257,12 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             if (SettingsProvider.HotReload)
                 AudiosurfHandle.Instance.Command("ascommand reloadtextures");
+            ChangerStatus = "Ready";
         }
 
         public async void RemoveSkin(SkinCard target)
         {
+            ChangerStatus = "Working...";
             if (!Skins.Contains(target))
                 return;
 
@@ -267,6 +279,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                         cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
                         Extensions.DisposeAndClear(cache);
                     }
+                    ChangerStatus = "Ready";
                 });
             }
         }
@@ -368,8 +381,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
         }
 
-        private void LoadSkins()
+        private void LoadSkins(bool rebuildCache = false)
         {
+            ChangerStatus = "Loading...";
             LoadingProgressbarVisible = System.Windows.Visibility.Visible;
 
             Task.Factory.StartNew(() =>
@@ -384,12 +398,15 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     files.AddRange(Directory.EnumerateFiles(SettingsProvider.SkinsFolderPath));
 
                 if (LoadingCache.TryFind(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), out LoadingCache cache)
-                && files.UnorderedSequenceEquals(cache.Data.Select(x => x.PathToOriginFile).ToList()))
+                && files.UnorderedSequenceEquals(cache.Data.Select(x => x.PathToOriginFile).ToList()) && !rebuildCache)
                 {
                     LoadSkinsFromCache(cache);
-                    return;
                 }
-                LoadSkinsFull();
+                else
+                {
+                    LoadSkinsFull();
+                }
+                ChangerStatus = "Ready";
             });
         }
 

@@ -14,10 +14,11 @@
                 <RowDefinition Height="2*"/>
                 <RowDefinition Height=".2*"/>
                 <RowDefinition/>
+                <RowDefinition Height="22"/>
             </Grid.RowDefinitions>
 
             <ListView Background="Transparent"
-                      BorderThickness="0 1 0 1"
+                      BorderThickness="0 0 0 0"
                       SelectedItem="{Binding SelectedItem}"
                       ItemsSource="{Binding Skins}"
                       ItemContainerStyle="{StaticResource LvItemSkinViewport}" 
@@ -139,7 +140,11 @@
                     
                 </ListView>
             </Grid>
-
+            <StatusBar Grid.Row="3" Background="#FF8536ef">
+                <StatusBarItem>
+                    <TextBlock Foreground="#FFE6E6E6" FontFamily="Exo 2 Light" Text="{Binding ChangerStatus}" FontSize="14"/>
+                </StatusBarItem>
+            </StatusBar>
         </Grid>
     </Border>
 </UserControl>

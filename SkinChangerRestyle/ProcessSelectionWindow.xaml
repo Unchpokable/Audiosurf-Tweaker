@@ -6,12 +6,10 @@
         xmlns:local="clr-namespace:SkinChangerRestyle"
         xmlns:vm="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
         mc:Ignorable="d"
-        Title="ProcessSelectionWindow" Height="450" Width="500">
+        Title="ProcessSelectionWindow" Height="450" Width="500"
+        WindowStyle="None"
+        AllowsTransparency="True">
 
-    <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="0"/>
-    </WindowChrome.WindowChrome>
-    
     <Window.DataContext>
         <vm:ProcessSelectionViewModel/>
     </Window.DataContext>

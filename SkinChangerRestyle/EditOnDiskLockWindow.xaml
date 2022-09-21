@@ -5,11 +5,10 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:SkinChangerRestyle"
         mc:Ignorable="d"
-        Title="EditOnDiskLockWindow" Height="200" Width="250">
-    <WindowChrome.WindowChrome>
-        <WindowChrome CaptionHeight="0"/>
-    </WindowChrome.WindowChrome>
-    
+        Title="EditOnDiskLockWindow" Height="200" Width="250"
+        WindowStyle="None"
+        AllowsTransparency="True">
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height=".6*"/>
