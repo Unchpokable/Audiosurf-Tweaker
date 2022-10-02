@@ -61,7 +61,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ASHandleState.cs" />
     <Compile Include="AudiosurfHandle.cs" />
+    <Compile Include="CommandInfo.cs" />
     <Compile Include="WinAPIServiceBase.cs" />
     <Compile Include="PInvoke\copydatastruct.cs" />
     <Compile Include="PInvoke\WinAPI.cs" />

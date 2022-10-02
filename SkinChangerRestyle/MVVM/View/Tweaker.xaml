@@ -12,9 +12,9 @@
     <Border Background="White">
         <Grid Margin="0 18 0 0">
             <Grid.RowDefinitions>
-                <RowDefinition Height=".7*"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition/>
+                <RowDefinition Height=".65*"/>
+                <RowDefinition Height=".8*"/>
+                <RowDefinition Height=".8*"/>
             </Grid.RowDefinitions>
             <Grid>
                 <Grid.RowDefinitions>
@@ -91,17 +91,19 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Margin="10">
-                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="setwindowalwaysontop" Height="30" Style="{StaticResource UnderscoredButton}" Content="Set Audiosurf Always on top" Margin="0 0 0 5" FontSize="14"/>
-                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="setwindowalwaysontopnoborder" Height="30" Style="{StaticResource UnderscoredButton}" Content="Set Audiosurf always on top without border" Margin="0 0 0 5" FontSize="14"/>
-                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="runwithoutfocus" Height="30" Style="{StaticResource UnderscoredButton}" Content="Force Audiosurf to run wihtout focus" Margin="0 0 0 5" FontSize="14"/>
-                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="closeaudiosurf" Height="30" Style="{StaticResource UnderscoredButton}" Content="Close Audiosurf" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="setwindowalwaysontop" Height="25" Style="{StaticResource UnderscoredButton}" Content="Set Audiosurf Always on top" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="setwindowalwaysontopnoborder" Height="25" Style="{StaticResource UnderscoredButton}" Content="Set Audiosurf always on top without border" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="runwithoutfocus" Height="25" Style="{StaticResource UnderscoredButton}" Content="Force Audiosurf to run wihtout focus" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="closeaudiosurf" Height="25" Style="{StaticResource UnderscoredButton}" Content="Close Audiosurf" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="reloadtextures" Height="25" Style="{StaticResource UnderscoredButton}" Content="Reload Textures" Margin="0 0 0 5" FontSize="14"/>
                     </StackPanel>
 
                     <StackPanel Margin="10" Grid.Column="1">
-                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="gotocharacterscreen" Height="30" Style="{StaticResource UnderscoredButton}" Content="To characters screen" Margin="0 0 0 5" FontSize="14"/>
-                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="maximize" Height="30" Style="{StaticResource UnderscoredButton}" Content="Maximize Audiosurf" Margin="0 0 0 5" FontSize="14"/>
-                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="gofullscreen" Height="30" Style="{StaticResource UnderscoredButton}" Content="Go Audiosurf in Fullscreen mode" Margin="0 0 0 5" FontSize="14"/>
-                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="restorenormalwindowstyle" Height="30" Style="{StaticResource UnderscoredButton}" Content="Restore Audiosurf window config" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="gotocharacterscreen" Height="25" Style="{StaticResource UnderscoredButton}" Content="To characters screen" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="maximize" Height="25" Style="{StaticResource UnderscoredButton}" Content="Maximize Audiosurf" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="gofullscreen" Height="25" Style="{StaticResource UnderscoredButton}" Content="Go Audiosurf in Fullscreen mode" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="restorenormalwindowstyle" Height="25" Style="{StaticResource UnderscoredButton}" Content="Restore Audiosurf window config" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="reloadsounds" Height="25" Style="{StaticResource UnderscoredButton}" Content="Reload Sounds" Margin="0 0 0 5" FontSize="14"/>
                     </StackPanel>
 
                 </Grid>
@@ -117,22 +119,31 @@
                         BorderThickness="0 0 0 2"
                         Width="400"
                         HorizontalAlignment="Left">
-                    <Label Content="Cat" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                    <Label Content="Logs" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
                 </Border>
 
-                <Grid Grid.Row="1">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition/>
-                        <ColumnDefinition/>
-                        <ColumnDefinition/>
-                    </Grid.ColumnDefinitions>
+                <Grid Margin="0 0 0 5" Grid.RowSpan="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="4*"/>
+                    </Grid.RowDefinitions>
 
-                    <Image Source="{Binding Cat}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0 0 0 5"/>
-                    <Image Source="{Binding Cat}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0 0 0 5" Grid.Column="1"/>
-                    <Image Source="{Binding Cat}" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0 0 0 5" Grid.Column="2"/>
+                    <TextBox Grid.Row="1"
+                             IsReadOnly="True"
+                             Text="{Binding ConsoleContent, Mode=OneWay}"
+                             VerticalAlignment="Stretch" HorizontalAlignment="Stretch"
+                             TextAlignment="Left"
+                             VerticalContentAlignment="Top"
+                             HorizontalContentAlignment="Left"
+                             Margin="10 5 10 5"
+                             VerticalScrollBarVisibility="Visible"
+                             Background="#FFF3F3F3"
+                             BorderThickness="0"
+                             TextChanged="TextBox_TextChanged"
+                             x:Name="ConsoleOutput">
+                    </TextBox>
                 </Grid>
             </Grid>
-
         </Grid>
     </Border>
 </UserControl>

@@ -2,6 +2,8 @@
 using SkinChangerRestyle.Core.Extensions;
 using System.Windows.Media;
 using ASCommander;
+using System.Text;
+using System;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -11,10 +13,18 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         {
             _audiosurfHandle = AudiosurfHandle.Instance;
             _audiosurfHandle.StateChanged += (sender, e) => IsAudiosurfConnected = _audiosurfHandle.IsValid;
+            _console = new TweakerConsole();
+            _console.ContentUpdated += (s, e) => OnPropertyChanged(nameof(ConsoleContent));
 
             SendCommand = new RelayCommand(param =>
             {
                 _audiosurfHandle.Command($"ascommand {param}");
+            });
+
+            FlushConsole = new RelayCommand(param =>
+            {
+                _console.Flush();
+                OnPropertyChanged(nameof(ConsoleContent));
             });
         }
 
@@ -119,11 +129,15 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
         }
 
+        public string ConsoleContent
+        {
+            get => _console.ToString();
+        }
+
         public RelayCommand EnableTweak { get; private set; }
         public RelayCommand DisableTweak { get; private set; }
         public RelayCommand SendCommand { get; private set; }
-
-        public ImageSource Cat => Properties.Resources.Cat.ToImageSource();
+        public RelayCommand FlushConsole { get; private set; }
 
         private AudiosurfHandle _audiosurfHandle;
         private bool _isAudiosurfConnected;
@@ -136,5 +150,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private bool _freerideNoBlocksTweakActive;
         private bool _freerideBlocksCaterpillarsTweakActive;
         private bool _freerideAutoAdvanceDisableTweakActive;
+
+        private TweakerConsole _console;
     }
 }

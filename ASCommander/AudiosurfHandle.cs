@@ -51,6 +51,8 @@ namespace ASCommander
         public event EventHandler StateChanged;
         public event EventHandler Registered;
         public event MessageEventHandler MessageResieved;
+        public event EventHandler<CommandInfo> CommandSent;
+
         public bool IsValid { get; private set; }
         public IntPtr Handle { get; private set; }
         public string StateMessage => _currentState.Message;
@@ -114,10 +116,12 @@ namespace ASCommander
             if (_wndProcMessageService.Valid == false)
             {
                 _queuedCommands.Enqueue(message);
+                CommandSent?.Invoke(this, new CommandInfo(message, CommandInfo.CommandStatus.Enqueued));
                 return;
             }
 
             _wndProcMessageService.Command(WinAPI.WM_COPYDATA, message);
+            CommandSent?.Invoke(this, new CommandInfo(message, CommandInfo.CommandStatus.Sent));
         }
 
         public void OnMessageRecieved(object sender, Message message)
@@ -165,6 +169,7 @@ namespace ASCommander
             {
                 var command = _queuedCommands.Dequeue();
                 _wndProcMessageService.Command(WinAPI.WM_COPYDATA, command);
+                CommandSent?.Invoke(this, new CommandInfo(command, CommandInfo.CommandStatus.Sent));
             }
         }
 
@@ -190,56 +195,6 @@ namespace ASCommander
             var processes = Process.GetProcessesByName("QuestViewer");
             if (processes.Length == 0) return IntPtr.Zero;
             return processes[0].MainWindowHandle;
-        }
-
-        public class ASHandleState
-        {
-            public string Message { get; private set; }
-            public string ColorInterpretation { get; private set; }
-
-            private static string asNotConnectedStatusColor = "#ff0000";
-            private static string asConnectedStatusColor = "#11ff00";
-            private static string asWaitForRegistratingColor = "#ffff00";
-
-            private static ASHandleState connectedState;
-            private static ASHandleState authorizationAwaitingState;
-            private static ASHandleState notConnectedState;
-
-            private ASHandleState(string message, string hexColor)
-            {
-                Message = message;
-                ColorInterpretation = hexColor;
-            }
-
-            public static ASHandleState Connected
-            {
-                get
-                {
-                    if (connectedState != null) return connectedState;
-                    connectedState = new ASHandleState("Audiosurf connected", asConnectedStatusColor);
-                    return connectedState;
-                }
-            }
-
-            public static ASHandleState Awaiting
-            {
-                get
-                {
-                    if (authorizationAwaitingState != null) return authorizationAwaitingState;
-                    authorizationAwaitingState = new ASHandleState("Handled. Wait for AS approve", asWaitForRegistratingColor);
-                    return authorizationAwaitingState;
-                }
-            }
-
-            public static ASHandleState NotConnected
-            {
-                get
-                {
-                    if (notConnectedState != null) return notConnectedState;
-                    notConnectedState = new ASHandleState("Audiosurf not connected", asNotConnectedStatusColor);
-                    return notConnectedState;
-                }
-            }
         }
     }
 }
