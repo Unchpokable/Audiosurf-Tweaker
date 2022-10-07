@@ -115,6 +115,7 @@ namespace ASCommander
         {
             if (_wndProcMessageService.Valid == false)
             {
+                if (message.Contains("reloadtextures")) return; //No need to enqueue reloadtextures command
                 _queuedCommands.Enqueue(message);
                 CommandSent?.Invoke(this, new CommandInfo(message, CommandInfo.CommandStatus.Enqueued));
                 return;
