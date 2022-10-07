@@ -12,18 +12,16 @@
 
     public static class SkinPackager
     {
-        public static readonly string skinExtension = @".askin2";
+        public static readonly string SkinExtension = @".tasp";
         public static string OutputPath { get; set; }
 
-        private static AudiosurfSkinExtended temporalSkin;
-        private static string[] texturesNames;
+        private static string[] _texturesNames;
 
-        private readonly static string defaultOutput = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        private readonly static string _defaultOutput = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
         static SkinPackager()
         {
-            temporalSkin = new AudiosurfSkinExtended();
-            texturesNames = new[]
+            _texturesNames = new[]
             {
                 "cliff-1.png", "cliff-2.png", "cliff2-1.png", "cliff2-1.png", "hit1.png", "hit2.png",
                 "particles1.png", "particles2.png", "particles3.png", "ring1A.png", "ring1B.png", "ring2A.jpg", "ring2B",
@@ -38,7 +36,7 @@
             try
             {
                 IFormatter formatter = new BinaryFormatter();
-                using (Stream filestream = new FileStream((OutputPath ?? defaultOutput) + @"\\" + skin.Name + skinExtension, FileMode.OpenOrCreate))
+                using (Stream filestream = new FileStream((OutputPath ?? _defaultOutput) + @"\\" + skin.Name + SkinExtension, FileMode.OpenOrCreate))
                 {
                     formatter.Serialize(filestream, skin);
                 }
@@ -50,12 +48,17 @@
             }
         }
 
-        public static bool CompileTo(AudiosurfSkinExtended skin, string path)
+        public static bool CompileToPath(AudiosurfSkinExtended skin, string path)
+        {
+            return CompileToFile(skin, path + @"\\" + skin.Name + SkinExtension);
+        }
+
+        public static bool CompileToFile(AudiosurfSkinExtended skin, string file)
         {
             try
             {
                 IFormatter formatter = new BinaryFormatter();
-                using (Stream filestream = new FileStream(path + @"\\" + skin.Name + skinExtension, FileMode.OpenOrCreate))
+                using (Stream filestream = new FileStream(file, FileMode.OpenOrCreate))
                 {
                     formatter.Serialize(filestream, skin);
                 }
@@ -118,7 +121,7 @@
             var result = new AudiosurfSkinExtended();
             
             string[] AllPictures = Directory.GetFiles(path);
-            if (!AllPictures.Any(fileName => texturesNames.Contains(Path.GetFileName(fileName))))
+            if (!AllPictures.Any(fileName => _texturesNames.Contains(Path.GetFileName(fileName))))
                 return null;
 
             result.Cliffs = GetAllImagesByNameMask("cliffs", Env.CliffImagesMask, path);

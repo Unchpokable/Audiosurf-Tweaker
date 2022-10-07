@@ -6,7 +6,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type TextBox}">
-                        <Border x:Name="Background"
+                        <Border x:Name="TextBoxBackground"
                                 Background="#FFEDEDED"
                                 CornerRadius="3" BorderThickness="2" BorderBrush="#FFB1B1B1">
                             <Grid>
@@ -25,10 +25,16 @@
                                 </TextBox>
                             </Grid>
                         </Border>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="TextBoxBackground" Property="Background" Value="Gray"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
-        </Style.Setters>        
+        </Style.Setters>
     </Style>
 
     <Style x:Key="RenameTextInput" TargetType="{x:Type TextBox}" BasedOn="{StaticResource {x:Type TextBox}}">

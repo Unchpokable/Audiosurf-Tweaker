@@ -284,6 +284,20 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
         }
 
+        public void OnFileDrop(object sender, EventArgs rawEvent)
+        {
+            if (!(rawEvent is System.Windows.DragEventArgs e))
+                return;
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                var files = ((string[])e.Data.GetData(DataFormats.FileDrop)).Where(f => new[] { ".askin2", ".tasp" }.Any(ext => ext == Path.GetExtension(f)));
+                foreach (var file in files)
+                {
+                    AddNewSkinAsync(file);
+                }
+            }
+        }
+
         private Task InstallSkinInternal(string pathToOrigin, string target,
                                          bool forced = false,
                                          bool unpackScreenshots = false,
@@ -360,25 +374,39 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             if (path.ShowDialog() == DialogResult.OK)
             {
-                var skin = SkinPackager.Decompile(path.FileName);
+                AddNewSkinAsync(path.FileName);
+            }
+        }
+
+        private async void AddNewSkinAsync(string path)
+        {
+            await Task.Run(() =>
+            {
+                var skin = SkinPackager.Decompile(path);
                 if (skin == null)
                 {
                     MessageBox.Show("Selected file isn't Audiosurf Tweaker package", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
-                var newPath = $@"Skins\{Path.GetFileName(path.FileName)}";
-                File.Move(path.FileName, newPath);
+                var newPath = $@"Skins\{Path.GetFileName(path)}";
+                File.Move(path, newPath);
 
-                var card = new SkinCard(skin, newPath, this);
-                Skins.Add(card);
-                SelectedItem = card;
-                if (LoadingCache.TryFind(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), out LoadingCache cache))
+                lock (_lockObject)
                 {
-                    cache.Data.Add(new LoadedSkinData(skin, newPath));
-                    cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
+                    MainWindow.WindowDispatcher.Invoke(() =>
+                    {
+                        var card = new SkinCard(skin, newPath, this);
+                        Skins.Add(card);
+                        SelectedItem = card;
+                    });
+                    if (LoadingCache.TryFind(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), out LoadingCache cache))
+                    {
+                        cache.Data.Add(new LoadedSkinData(skin, newPath));
+                        cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
+                    }
+                    Extensions.DisposeAndClear(cache, skin);
                 }
-                Extensions.DisposeAndClear(cache, skin);
-            }
+            });
         }
 
         private void LoadSkins(bool rebuildCache = false)
@@ -407,6 +435,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     LoadSkinsFull();
                 }
                 ChangerStatus = "Ready";
+                ReloadButtonUnlocked = true;
             });
         }
 
@@ -471,7 +500,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         {
             var skin = SkinPackager.CreateSkinFromFolder(SettingsProvider.GameTexturesPath);
             skin.Name = "New exported skin";
-            skin.Source = $@"Skins\{skin.Name}.askin2";
+            skin.Source = $@"Skins\{skin.Name}{SkinPackager.SkinExtension}";
             var card = new SkinCard(skin, skin.Source, this);
             if (!Skins.Any(c => c.PathToOrigin.Equals(card.PathToOrigin, StringComparison.OrdinalIgnoreCase)))
                 Skins.Add(card);
@@ -483,7 +512,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             card.EnableRename.Execute(new object());
             await Task.Run(() => 
             { 
-                SkinPackager.CompileTo(skin, "Skins"); 
+                SkinPackager.CompileToPath(skin, "Skins"); 
                 Extensions.DisposeAndClear(skin); 
             });
 

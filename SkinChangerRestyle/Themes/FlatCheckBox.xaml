@@ -53,6 +53,11 @@
                         <Trigger Property="IsChecked" Value="False">
                             <Setter TargetName="MarkCheck" Property="Background" Value="Transparent"/>
                         </Trigger>
+
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="MarkCheck" Property="Background" Value="Gray"/>
+                            <Setter TargetName="Text" Property="Foreground" Value="LightGray"/>
+                        </Trigger>
                     </ControlTemplate.Triggers>
 
                 </ControlTemplate>

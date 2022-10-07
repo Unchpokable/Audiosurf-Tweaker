@@ -176,6 +176,7 @@
   <ItemGroup>
     <Compile Include="MVVM\Model\IteractableScreenshot.cs" />
     <Compile Include="MVVM\Model\SkinCard.cs" />
+    <Compile Include="MVVM\Model\TexturesWatcher.cs" />
     <Compile Include="MVVM\ViewModel\MainViewModel.cs" />
     <Compile Include="MVVM\ViewModel\ProcessSelectionViewModel.cs" />
     <Compile Include="MVVM\ViewModel\SettingViewModel.cs" />

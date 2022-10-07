@@ -60,6 +60,10 @@
                 Settings.ControlSystemActive = bool.Parse(ConfigurationManager.AppSettings.Get("DCSActive"));
                 Settings.HotReload = bool.Parse(ConfigurationManager.AppSettings.Get("HotReload"));
                 Settings.SafeInstall = bool.Parse(ConfigurationManager.AppSettings.Get("SafeInstall"));
+                Settings.WatcherTempFile = ConfigurationManager.AppSettings.Get("WatcherTempFile");
+                Settings.WatcherShouldStoreTextures = bool.Parse(ConfigurationManager.AppSettings.Get("WatcherShouldStoreTextures"));
+                Settings.WatcherTempFileOverrided = bool.Parse(ConfigurationManager.AppSettings.Get("WatcherTempFileOverrided"));
+                Settings.WatcherEnabled = bool.Parse(ConfigurationManager.AppSettings.Get("WatcherEnabled"));
             }
             catch (Exception e)
             {
@@ -78,6 +82,10 @@
                 cfg.AppSettings.Settings["HotReload"].Value = Settings.HotReload.ToString();
                 cfg.AppSettings.Settings["DCSActive"].Value = Settings.ControlSystemActive.ToString();
                 cfg.AppSettings.Settings["SafeInstall"].Value = Settings.SafeInstall.ToString();
+                cfg.AppSettings.Settings["WatcherTempFile"].Value = Settings.WatcherTempFile;
+                cfg.AppSettings.Settings["WatcherShouldStoreTextures"].Value = Settings.WatcherShouldStoreTextures.ToString();
+                cfg.AppSettings.Settings["WatcherTempFileOverrided"].Value = Settings.WatcherTempFileOverrided.ToString();
+                cfg.AppSettings.Settings["WatcherEnabled"].Value = Settings.WatcherEnabled.ToString();
                 cfg.Save();
             }
             catch (Exception e)

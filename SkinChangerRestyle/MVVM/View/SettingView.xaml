@@ -131,7 +131,7 @@
 
             </Grid>
 
-            <!--<Grid Grid.Row="2">
+            <Grid Grid.Row="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="50"/>
                     <RowDefinition/>
@@ -141,14 +141,61 @@
                         BorderThickness="0 0 0 2"
                         Width="400"
                         HorizontalAlignment="Left">
-                    <Label Content="Command and Control settings" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                    <Label Content="Textures Watcher settings" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
                 </Border>
 
                 <StackPanel Grid.Row="1">
+                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Enabled" FontSize="16" Margin="30 0 0 10"
+                              ToolTip="Enable File System Watcher to track game' textures folder and notify game about textures changes in real time"
+                              ToolTipService.ShowDuration="10000"
+                              IsChecked="{Binding IsWatcherActive, Mode=TwoWay}"/>
+                    
+                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Store textures in temp file" FontSize="16" Margin="30 0 0 10"
+                              ToolTip="Store any change in textures folder in temporal skin file"
+                              ToolTipService.ShowDuration="10000"
+                              IsEnabled="{Binding IsWatcherActive}"
+                              IsChecked="{Binding IsShouldStoreTextures}"/>
+                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Override temp file:" FontSize="16" Margin="30 0 0 10"
+                              ToolTip="Use selected temp file instead of default \store\temp.tasp"
+                              ToolTipService.ShowDuration="10000"
+                              IsChecked="{Binding IsTempFileOverrided, Mode=TwoWay}"
+                              IsEnabled="{Binding IsWatcherActive}"/>
+                    <Grid Height="30"
+                          Margin="30 0 30 0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="6*"/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+
+                        <TextBox Style="{StaticResource StylishTextInput}"
+                                 FontSize="18"
+                                 IsEnabled="{Binding IsTempFileOverrided}"
+                                 Text="{Binding WatcherTempFile, UpdateSourceTrigger=PropertyChanged}"/>
+                        <Button Grid.Column="1"
+                                Style="{StaticResource FlatButton}"
+                                Height="50"
+                                VerticalAlignment="Center"
+                                Content="View"
+                                FontSize="16"
+                                Width="100"
+                                IsEnabled="{Binding IsTempFileOverrided}"
+                                Command="{Binding SelectTempFile}"/>
+                        <Button Style="{StaticResource FlatButton}"
+                                Grid.Column="2"
+                                Content="Duplicate"
+                                Height="50"
+                                Width="100"
+                                HorizontalAlignment="Left"
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                IsEnabled="{Binding IsTempFileOverrided}"
+                                Command="{Binding DuplicateTempFile}"/>
+                    </Grid>
 
                 </StackPanel>
 
-            </Grid>-->
+            </Grid>
 
         </Grid>
     </Border>

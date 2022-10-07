@@ -5,6 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
              xmlns:vm="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
+             xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
              mc:Ignorable="d" 
              d:DesignHeight="665" d:DesignWidth="800">
 
@@ -24,11 +25,20 @@
                       ItemContainerStyle="{StaticResource LvItemSkinViewport}" 
                       BorderBrush="#FFC3C3C3"
                       SelectionChanged="ListView_SelectionChanged"
-                      Margin="0 0 0 10">
+                      Margin="0 0 0 10"
+                      AllowDrop="True"
+                      x:Name="listView">
                 <ListView.InputBindings>
                     <KeyBinding Command="{Binding RemoveSelected}" Key="Delete"/>
                 </ListView.InputBindings>
+
+                <i:Interaction.Triggers>
+                    <i:EventTrigger EventName="Drop">
+                        <i:CallMethodAction MethodName="OnFileDrop" TargetObject="{Binding Path=DataContext, ElementName=listView}"/>
+                    </i:EventTrigger>
+                </i:Interaction.Triggers>
             </ListView>
+            
             <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition/>

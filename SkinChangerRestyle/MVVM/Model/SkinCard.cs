@@ -172,7 +172,7 @@ namespace SkinChangerRestyle.MVVM.Model
             IsRenameFocused = false;
             await Task.Run(() =>
             {
-                SkinPackager.CompileTo(skinObject, "Skins");
+                SkinPackager.CompileToPath(skinObject, "Skins");
                 File.Delete(oldFile);
 
                 if (LoadingCache.TryFind(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), out LoadingCache cache))
@@ -234,7 +234,7 @@ namespace SkinChangerRestyle.MVVM.Model
                     if (output.ShowDialog() == DialogResult.OK)
                     {
                         var skin = SkinPackager.Decompile(_pathToOriginFile);
-                        SkinPackager.CompileTo(skin, output.SelectedPath);
+                        SkinPackager.CompileToPath(skin, output.SelectedPath);
                         Extensions.DisposeAndClear(skin);
                     }
             }

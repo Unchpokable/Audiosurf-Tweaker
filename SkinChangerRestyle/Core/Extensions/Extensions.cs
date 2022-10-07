@@ -3,6 +3,7 @@
     using ChangerAPI.Engine;
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics;
     using System.Drawing;
     using System.Linq;
     using System.Runtime.InteropServices;
@@ -76,6 +77,20 @@
                 GC.WaitForPendingFinalizers();
                 GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, false, true);
             });
+        }
+
+        public static void Cmd(string command)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c {command}",
+                    WindowStyle = ProcessWindowStyle.Hidden,
+                });
+            } 
+            catch { }
         }
     }
 }
