@@ -40,7 +40,8 @@
                             Background="White"
                             x:Name="Body"
                             ToolTipService.InitialShowDelay="1000"
-                            ToolTipService.BetweenShowDelay="500">
+                            ToolTipService.BetweenShowDelay="500"
+                            ToolTipService.IsEnabled="{Binding UseFastPreview}">
                         <Border.ToolTip>
                             <Image Source="{Binding Cover}" Width="640" Height="360" Stretch="Uniform"/>
                         </Border.ToolTip>

@@ -117,7 +117,11 @@
                               ToolTip="Force game to reload textures after skin installation. No need to restart track in-game to see changes"
                               ToolTipService.ShowDuration="10000"
                               IsChecked="{Binding IsHotReload, Mode=TwoWay}"/>
-
+                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Fast Preview" Margin="30 0 0 10" FontSize="16"
+                              ToolTip="Allow Tweaker to hold downscaled screenshots in your RAM to show you a skin preview tooltip and load it' screenshots without delay"
+                              ToolTipService.ShowDuration="10000"
+                              IsChecked="{Binding IsFastPreview}"/>
+                    
                     <CheckBox Style="{StaticResource FlatCheckBox}" Content="Control game' textures folder content" Margin="30 0 0 10" FontSize="16"
                               ToolTip="Compare checksums of all files in game's textures folder when program start to prevent unintentional overwriting your not saved textures"
                               ToolTipService.ShowDuration="10000"
@@ -127,6 +131,7 @@
                               ToolTipService.ShowDuration="10000"
                               IsChecked="{Binding IsShouldUseSafetyInstallation}"
                               IsEnabled="{Binding IsShouldCheckTextures}"/>
+                    
                 </StackPanel>
 
             </Grid>

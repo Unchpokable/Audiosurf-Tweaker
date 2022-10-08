@@ -144,7 +144,7 @@
                           Background="Transparent"
                           BorderBrush="Transparent"
                           BorderThickness="0"
-                          ItemsSource="{Binding SelectedItem.Screenshots}"
+                          ItemsSource="{Binding SelectedItemScreenshots}"
                           ItemContainerStyle="{StaticResource ImageListViewItem}" Grid.ColumnSpan="2"
                           ScrollViewer.CanContentScroll="False">
                     

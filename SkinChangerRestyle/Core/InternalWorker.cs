@@ -64,6 +64,7 @@
                 Settings.WatcherShouldStoreTextures = bool.Parse(ConfigurationManager.AppSettings.Get("WatcherShouldStoreTextures"));
                 Settings.WatcherTempFileOverrided = bool.Parse(ConfigurationManager.AppSettings.Get("WatcherTempFileOverrided"));
                 Settings.WatcherEnabled = bool.Parse(ConfigurationManager.AppSettings.Get("WatcherEnabled"));
+                Settings.UseFastPreview = bool.Parse(ConfigurationManager.AppSettings.Get("UseFastPreview"));
             }
             catch (Exception e)
             {
@@ -86,6 +87,7 @@
                 cfg.AppSettings.Settings["WatcherShouldStoreTextures"].Value = Settings.WatcherShouldStoreTextures.ToString();
                 cfg.AppSettings.Settings["WatcherTempFileOverrided"].Value = Settings.WatcherTempFileOverrided.ToString();
                 cfg.AppSettings.Settings["WatcherEnabled"].Value = Settings.WatcherEnabled.ToString();
+                cfg.AppSettings.Settings["UseFastPreview"].Value = Settings.UseFastPreview.ToString();
                 cfg.Save();
             }
             catch (Exception e)

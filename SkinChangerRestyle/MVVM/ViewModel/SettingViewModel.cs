@@ -62,6 +62,22 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
         }
 
+        public bool IsFastPreview
+        {
+            get => SettingsProvider.UseFastPreview;
+            set
+            {
+                var isRestart = MessageBox.Show("Turning this parameter needs to restart applicaton. Would you like to continue?", "Module parameter changed", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (isRestart == DialogResult.Yes)
+                {
+                    SettingsProvider.UseFastPreview = value;
+                    ApplySettings();
+                    Extensions.Cmd($"taskkill /f /im \"{AppDomain.CurrentDomain.FriendlyName}\" && timeout /t 1 && {AppDomain.CurrentDomain.FriendlyName}");
+                }
+                else
+                    return;
+            }
+        }
         public string TexturesFolderPath
         {
             get => _texturesPath;
@@ -210,7 +226,6 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         public RelayCommand SetConfigurationValue { get; set; }
         public RelayCommand SelectTempFile { get; set; }
         public RelayCommand DuplicateTempFile { get; set; }
-
         public TexturesWatcher Watcher { get; private set; }
 
         private string _texturesPath;
@@ -255,6 +270,8 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         {
             var saveFileDialog = new SaveFileDialog();
             saveFileDialog.Title = "Select new temp file";
+            saveFileDialog.InitialDirectory = Path.GetDirectoryName(Path.GetFullPath(WatcherTempFile));
+
             if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
                 WatcherTempFile = saveFileDialog.FileName;
@@ -267,6 +284,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         {
             var saveFileDialog = new SaveFileDialog();
             saveFileDialog.Title = "Select duplicate output";
+            saveFileDialog.InitialDirectory = Path.GetDirectoryName(Path.GetFullPath(WatcherTempFile));
 
             if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {

@@ -86,8 +86,19 @@ namespace SkinChangerRestyle.MVVM.Model
                 OnPropertyChanged();
             }
         }
+        public ObservableCollection<InteractableScreenshot> Screenshots
+        {
+            get => _screenshots;
+            set
+            {
+                _screenshots = value;
+                OnPropertyChanged();
+            }
+        }
 
-        public ImageSource Cover => Screenshots.FirstOrDefault()?.Image;
+        public bool UseFastPreview => SettingsProvider.UseFastPreview;
+
+        public ImageSource Cover => Screenshots?.FirstOrDefault()?.Image;
 
         public string InstallTooltip => "Clear Installation";
         public string ExportCopyTooltip => "Export copy of this skin";
@@ -109,15 +120,6 @@ namespace SkinChangerRestyle.MVVM.Model
         public RelayCommand EnableRename { get; set; }
         public RelayCommand ApplyRename { get; set; }
 
-        public ObservableCollection<InteractableScreenshot> Screenshots
-        {
-            get => _screenshots;
-            set
-            {
-                _screenshots = value;
-                OnPropertyChanged();
-            }
-        }
 
         private string _pathToOriginFile;
         private string _name;
@@ -133,7 +135,8 @@ namespace SkinChangerRestyle.MVVM.Model
 
             _pathToOriginFile = pathToOrigin;
             Name = $"{skin.Name}";
-            Screenshots = new ObservableCollection<InteractableScreenshot>(skin.Previews.Group.Select(screenshot => new InteractableScreenshot(((Bitmap)screenshot).Rescale(860, 440).ToImageSource())));
+            if (UseFastPreview)
+                Screenshots = new ObservableCollection<InteractableScreenshot>(skin.Previews.Group.Select(screenshot => new InteractableScreenshot(((Bitmap)screenshot).Rescale(860, 440).ToImageSource())));
         }
 
         private void AssignSkin(LoadedSkinData skin)
@@ -141,7 +144,8 @@ namespace SkinChangerRestyle.MVVM.Model
             if (skin == null) return;
             _pathToOriginFile = skin.PathToOriginFile;
             Name = skin.Name;
-            Screenshots = new ObservableCollection<InteractableScreenshot>(skin.Screenshots.Select(x => new InteractableScreenshot(x.ToImageSource())));
+            if (UseFastPreview)
+                Screenshots = new ObservableCollection<InteractableScreenshot>(skin.Screenshots.Select(x => new InteractableScreenshot(x.ToImageSource())));
         }
 
         private void Install(object frameworkRequieredParameter)

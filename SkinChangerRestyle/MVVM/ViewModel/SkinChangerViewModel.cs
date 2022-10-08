@@ -13,6 +13,7 @@ using FolderChecker;
 using System.Windows.Forms;
 using System.Reflection;
 using ASCommander;
+using System.Drawing;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -108,7 +109,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         }
 
 
-        private bool _reloadButtonLocked;
+        
         public bool ReloadButtonUnlocked
         {
             get => _reloadButtonLocked;
@@ -126,6 +127,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 _selectedItem = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(SelectedItemScreenshots));
             }
         }
 
@@ -200,6 +202,24 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
         }
 
+        public ObservableCollection<InteractableScreenshot> SelectedItemScreenshots
+        {
+            get
+            {
+                if (SelectedItem == null) return null;
+                if (SettingsProvider.UseFastPreview)
+                    return SelectedItem.Screenshots;
+
+                Extensions.DisposeAndClear();
+
+                using (var skin = SkinPackager.Decompile(SelectedItem.PathToOrigin))
+                {
+                    return new ObservableCollection<InteractableScreenshot>(
+                        skin.Previews.Group.Select(screenshot => new InteractableScreenshot(((Bitmap)screenshot).Rescale(860, 440).ToImageSource())));
+                }
+            }
+        }
+
         public ImageSource AddNewIcon { get; set; }
         public ImageSource ExportMyTexturesIcon { get; set; }
         public ImageSource RefreshIcon { get; set; }
@@ -216,6 +236,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private bool _shouldInstallParticles;
         private bool _shouldInstallRings;
         private bool _shouldInstallHits;
+        private bool _reloadButtonLocked;
 
         private ObservableCollection<SkinCard> _skins;
         private SkinCard _selectedItem;
@@ -224,7 +245,6 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private object _lockObject = new object();
         private int _currentLoadStep;
         private int _totalSkinsCount;
-
         public async void InstallSkin(string pathToOrigin, string target, bool forced = false, bool unpackScreenshots = false, bool clearInstall = false, bool saveState = true)
         {
             ChangerStatus = "Working...";

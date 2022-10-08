@@ -11,6 +11,7 @@
         internal static bool ControlSystemActive { get; set; }
         internal static bool HotReload { get; set; }
         internal static bool SafeInstall { get; set; }
+        internal static bool UseFastPreview { get; set; }
         internal static bool WatcherEnabled { get; set; }
         internal static string WatcherTempFile { get; set; }
         internal static bool WatcherShouldStoreTextures { get; set; }
