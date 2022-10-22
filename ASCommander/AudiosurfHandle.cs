@@ -113,6 +113,26 @@ namespace ASCommander
             }
         }
 
+        private bool SetHandle(IntPtr handle)
+        {
+            if (handle == IntPtr.Zero)
+            {
+                _currentState = ASHandleState.NotConnected;
+                StateChanged?.Invoke(this, EventArgs.Empty);
+                return false;
+            }
+
+            Handle = handle;
+            _currentState = ASHandleState.Awaiting;
+            StateChanged?.Invoke(this, EventArgs.Empty);
+            _wndProcMessageService.Handle(handle);
+            _wndProcMessageService.Command(WinAPI.WM_COPYDATA, $"ascommand registerlistenerwindow {WinApiServiceBase.ListenerWindowCaption}");
+            CommandSent?.Invoke(this, new CommandInfo($"ascommand registerlistenerwindow {WinApiServiceBase.ListenerWindowCaption} to hwnd {handle}", 
+                                CommandInfo.CommandStatus.Sent));
+            IsValid = true;
+            return true;
+        }
+
         public void Command(string message)
         {
             if (_wndProcMessageService.Valid == false)
@@ -176,25 +196,6 @@ namespace ASCommander
             }
         }
 
-        private bool SetHandle(IntPtr handle)
-        {
-            if (handle == IntPtr.Zero)
-            {
-                _currentState = ASHandleState.NotConnected;
-                StateChanged?.Invoke(this, EventArgs.Empty);
-                return false;
-            }
-
-            Handle = handle;
-            _currentState = ASHandleState.Awaiting;
-            StateChanged?.Invoke(this, EventArgs.Empty);
-            _wndProcMessageService.Handle(handle);
-            _wndProcMessageService.Command(WinAPI.WM_COPYDATA, $"ascommand registerlistenerwindow {WinApiServiceBase.ListenerWindowCaption}");
-            CommandSent?.Invoke(this, new CommandInfo($"ascommand registerlistenerwindow {WinApiServiceBase.ListenerWindowCaption} to hwnd {handle}", 
-                                CommandInfo.CommandStatus.Sent));
-            IsValid = true;
-            return true;
-        }
 
         private IntPtr GetAudiosurfMainwindowHandle()
         {
