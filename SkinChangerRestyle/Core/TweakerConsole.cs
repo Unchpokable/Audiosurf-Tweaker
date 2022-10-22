@@ -14,6 +14,7 @@ namespace SkinChangerRestyle.Core
             _content = new StringBuilder();
             _asHandleInstance = AudiosurfHandle.Instance;
             _asHandleInstance.CommandSent += AppendInfo;
+            _asHandleInstance.MessageResieved += AppendIncomingMessage;
         }
 
         public event EventHandler ContentUpdated;
@@ -46,7 +47,18 @@ namespace SkinChangerRestyle.Core
 
             _content.Append($"[{DateTime.Now} :: INFO] Command {info.Status} - \"{info.CommandText}\"\n");
             ContentUpdated?.Invoke(this, EventArgs.Empty);
-            AttachedAction?.Invoke();
+        }
+
+        private void AppendIncomingMessage(object sender, string text)
+        {
+            if (string.IsNullOrEmpty(text)) return;
+
+            if (_content.Length >= (int)short.MaxValue)
+                Flush();
+
+            _content.Append($"[{DateTime.Now}] :: INCOMING WNDPROC MSG] Message Recieved: \"{text}\"\n");
+
+            ContentUpdated?.Invoke(this, EventArgs.Empty);
         }
 
         private StringBuilder _content;

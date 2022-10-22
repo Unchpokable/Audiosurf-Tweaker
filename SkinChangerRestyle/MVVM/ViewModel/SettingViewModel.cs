@@ -2,13 +2,8 @@
 using SkinChangerRestyle.Core;
 using SkinChangerRestyle.Core.Extensions;
 using SkinChangerRestyle.MVVM.Model;
-using SkinChangerRestyle.Properties;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
@@ -35,8 +30,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             if (_isWatcherEnabled)
             {
-                Watcher = new TexturesWatcher();
-                Watcher.TargetPath = SettingsProvider.GameTexturesPath;
+                Watcher = new TexturesWatcher
+                {
+                    TargetPath = SettingsProvider.GameTexturesPath
+                };
+
                 IsShouldStoreTextures = SettingsProvider.WatcherShouldStoreTextures;
                 IsTempFileOverrided = SettingsProvider.WatcherTempFileOverrided;
 

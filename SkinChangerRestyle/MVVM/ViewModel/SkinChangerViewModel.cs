@@ -206,11 +206,10 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         {
             get
             {
+                Extensions.DisposeAndClear();
                 if (SelectedItem == null) return null;
                 if (SettingsProvider.UseFastPreview)
                     return SelectedItem.Screenshots;
-
-                Extensions.DisposeAndClear();
 
                 using (var skin = SkinPackager.Decompile(SelectedItem.PathToOrigin))
                 {
@@ -245,6 +244,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private object _lockObject = new object();
         private int _currentLoadStep;
         private int _totalSkinsCount;
+
         public async void InstallSkin(string pathToOrigin, string target, bool forced = false, bool unpackScreenshots = false, bool clearInstall = false, bool saveState = true)
         {
             ChangerStatus = "Working...";

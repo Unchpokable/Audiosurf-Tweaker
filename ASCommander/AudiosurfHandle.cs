@@ -29,12 +29,14 @@ namespace ASCommander
                 {
                     if (_currentState == ASHandleState.Awaiting)
                     {
+                        _timer.Interval = 5000;
                         TryConnect();
                         return;
                     }
 
                     if (Handle == IntPtr.Zero)
                     {
+                        _timer.Interval = 1000;
                         TryConnect();
                         return;
                     }
@@ -182,11 +184,14 @@ namespace ASCommander
                 StateChanged?.Invoke(this, EventArgs.Empty);
                 return false;
             }
+
             Handle = handle;
             _currentState = ASHandleState.Awaiting;
             StateChanged?.Invoke(this, EventArgs.Empty);
             _wndProcMessageService.Handle(handle);
-            _wndProcMessageService.Command(WinAPI.WM_COPYDATA, "ascommand registerlistenerwindow AsMsgHandler");
+            _wndProcMessageService.Command(WinAPI.WM_COPYDATA, $"ascommand registerlistenerwindow {WinApiServiceBase.ListenerWindowCaption}");
+            CommandSent?.Invoke(this, new CommandInfo($"ascommand registerlistenerwindow {WinApiServiceBase.ListenerWindowCaption} to hwnd {handle}", 
+                                CommandInfo.CommandStatus.Sent));
             IsValid = true;
             return true;
         }

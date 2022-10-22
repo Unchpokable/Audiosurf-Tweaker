@@ -1,18 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace ASCommander
 {
     public abstract class WinApiServiceBase : IDisposable
     {
-        protected static string nwCaption = "AsMsgHandler";
+        public readonly static string ListenerWindowCaption = "AsMsgHandler";
 
-        private static readonly SpongeWindow Sponge;
         protected static readonly IntPtr SpongeHandle;
+        private static readonly SpongeWindow Sponge;
 
         static WinApiServiceBase()
         {
@@ -47,7 +43,7 @@ namespace ASCommander
             public SpongeWindow()
             {
                 windowParams = new CreateParams();
-                windowParams.Caption = nwCaption;
+                windowParams.Caption = ListenerWindowCaption;
                 CreateHandle(windowParams);
             }
 

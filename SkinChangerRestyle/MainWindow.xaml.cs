@@ -21,6 +21,7 @@
         {
             AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
             InitializeComponent();
+            Focus();
             _logger = new Logger();
         }
 
