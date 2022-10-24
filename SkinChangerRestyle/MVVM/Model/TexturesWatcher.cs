@@ -1,10 +1,7 @@
 ﻿using ChangerAPI.Engine;
 using SkinChangerRestyle.Core;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace SkinChangerRestyle.MVVM.Model

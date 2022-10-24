@@ -1,10 +1,11 @@
-﻿namespace ChangerAPI.Utilities
+﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Linq;
+using ChangerAPI.Engine;
+
+namespace ChangerAPI.Utilities
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Drawing;
-    using System.Linq;
-    using ChangerAPI.Engine;
 
     [Serializable]
     public class ImageGroup : IDisposable

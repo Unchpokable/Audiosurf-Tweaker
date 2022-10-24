@@ -1,11 +1,11 @@
-﻿namespace ChangerAPI.Engine
+﻿using System.Drawing;
+using System;
+using System.Linq;
+using System.Drawing.Imaging;
+using ChangerAPI.Utilities;
+
+namespace ChangerAPI.Engine
 {
-    using System.Drawing;
-    using System;
-    using System.Linq;
-    using System.Drawing.Imaging;
-    using ChangerAPI.Utilities;
-    using System.Collections.Generic;
 
     [Serializable]
     public class NamedBitmap : IDisposable

@@ -1,7 +1,8 @@
-﻿namespace ASCommander.PInvoke
+﻿using System;
+using System.Runtime.InteropServices;
+
+namespace ASCommander.PInvoke
 {
-    using System;
-    using System.Runtime.InteropServices;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct COPYDATASTRUCT

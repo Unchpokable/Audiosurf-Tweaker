@@ -6,6 +6,7 @@ using System;
 using System.IO;
 using System.Windows.Forms;
 
+
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
     public enum SettingsFields

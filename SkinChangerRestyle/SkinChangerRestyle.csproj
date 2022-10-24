@@ -86,7 +86,7 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Core\LoadedSkinData.cs" />
-    <Compile Include="Core\TweakerConsole.cs" />
+    <Compile Include="MVVM\Model\TweakerConsole.cs" />
     <Compile Include="EditOnDiskLockWindow.xaml.cs">
       <DependentUpon>EditOnDiskLockWindow.xaml</DependentUpon>
     </Compile>

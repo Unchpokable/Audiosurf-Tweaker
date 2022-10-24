@@ -1,16 +1,16 @@
-﻿#pragma warning disable CS0168
+﻿using System;
+using System.Security.Cryptography;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
+using System.IO;
+using FolderChecker.Exceptions;
+
+#pragma warning disable CS0168
 
 namespace FolderChecker
 {
-    using System;
-    using System.Security.Cryptography;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Runtime.Serialization.Formatters.Binary;
-    using System.Text;
-    using System.IO;
-    using FolderChecker.Exceptions;
-
     [Serializable]
     public class FolderHashInfo : IEquatable<FolderHashInfo>
     {

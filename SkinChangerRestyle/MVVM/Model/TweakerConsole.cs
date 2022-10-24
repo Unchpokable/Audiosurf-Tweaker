@@ -1,11 +1,9 @@
 ﻿using ASCommander;
+using SkinChangerRestyle.Core.Extensions;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
-namespace SkinChangerRestyle.Core
+namespace SkinChangerRestyle.MVVM.Model
 {
     internal class TweakerConsole
     {
@@ -26,7 +24,7 @@ namespace SkinChangerRestyle.Core
             _content.Clear();
             ContentUpdated?.Invoke(this, EventArgs.Empty);
             _content = new StringBuilder();
-            Extensions.Extensions.DisposeAndClear();
+            Extensions.DisposeAndClear();
 
         }
 

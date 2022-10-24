@@ -1,9 +1,5 @@
 ﻿namespace FolderChecker
 {
-    using System.Runtime.Serialization.Formatters.Binary;
-    using System.Runtime.Serialization;
-    using System.IO;
-
     public class EnvironmentChecker
     {
         public static bool CheckEnvironment(FolderHashInfo info)

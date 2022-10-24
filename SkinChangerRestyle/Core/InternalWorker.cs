@@ -1,10 +1,12 @@
-﻿namespace SkinChangerRestyle.Core
+﻿using System;
+using System.Configuration;
+using Microsoft.Win32;
+using System.IO;
+using Settings = SkinChangerRestyle.Core.SettingsProvider;
+
+
+namespace SkinChangerRestyle.Core
 {
-    using System;
-    using System.Configuration;
-    using Microsoft.Win32;
-    using System.IO;
-    using Settings = SkinChangerRestyle.Core.SettingsProvider;
 
     internal delegate void ExternExceptionHandler(Exception innerException);
 

@@ -1,5 +1,4 @@
 ﻿using ChangerAPI.Engine;
-using FolderChecker;
 using SkinChangerRestyle.Core;
 using SkinChangerRestyle.Core.Extensions;
 using SkinChangerRestyle.MVVM.ViewModel;
@@ -10,14 +9,10 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
-using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace SkinChangerRestyle.MVVM.Model
 {

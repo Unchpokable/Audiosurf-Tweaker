@@ -1,13 +1,13 @@
-﻿namespace ChangerAPI.Engine
+﻿using ChangerAPI.Utilities;
+using System;
+using System.Drawing;
+using System.IO;
+using System.Linq;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
+
+namespace ChangerAPI.Engine
 {
-    using ChangerAPI.Utilities;
-    using System;
-    using System.Collections.Generic;
-    using System.Drawing;
-    using System.IO;
-    using System.Linq;
-    using System.Runtime.Serialization;
-    using System.Runtime.Serialization.Formatters.Binary;
     using Env = EnvironmentalVeriables;
 
     public static class SkinPackager

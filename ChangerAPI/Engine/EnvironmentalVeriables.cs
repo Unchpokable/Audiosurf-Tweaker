@@ -1,7 +1,5 @@
 ﻿namespace ChangerAPI
 {
-    using System.Collections.Generic;
-    using ChangerAPI.Utilities;
 
     public static class EnvironmentalVeriables
     {

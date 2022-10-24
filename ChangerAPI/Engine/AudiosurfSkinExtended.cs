@@ -1,10 +1,10 @@
-﻿namespace ChangerAPI.Engine
+﻿using System;
+using System.IO;
+using System.Runtime.Serialization;
+using System.Runtime.Serialization.Formatters.Binary;
+
+namespace ChangerAPI.Engine
 {
-    using System;
-    using System.IO;
-    using ChangerAPI.Utilities;
-    using System.Runtime.Serialization;
-    using System.Runtime.Serialization.Formatters.Binary;
 
     [Serializable]
     public class AudiosurfSkinExtended : AudiosurfSkin, IDisposable

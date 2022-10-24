@@ -1,9 +1,6 @@
 ﻿using SkinChangerRestyle.Core;
-using SkinChangerRestyle.Core.Extensions;
-using System.Windows.Media;
 using ASCommander;
-using System.Text;
-using System;
+using SkinChangerRestyle.MVVM.Model;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {

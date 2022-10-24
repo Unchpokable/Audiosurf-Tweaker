@@ -1,7 +1,8 @@
-﻿namespace SkinChangerRestyle.Core
+﻿using System.ComponentModel;
+using System.Runtime.CompilerServices;
+
+namespace SkinChangerRestyle.Core
 {
-    using System.ComponentModel;
-    using System.Runtime.CompilerServices;
 
     class ObservableObject : INotifyPropertyChanged
     {

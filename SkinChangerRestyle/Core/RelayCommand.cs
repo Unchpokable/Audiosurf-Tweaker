@@ -1,7 +1,9 @@
-﻿namespace SkinChangerRestyle.Core
+﻿using System;
+using System.Windows.Input;
+
+
+namespace SkinChangerRestyle.Core
 {
-    using System;
-    using System.Windows.Input;
 
     internal class RelayCommand : ICommand
     {

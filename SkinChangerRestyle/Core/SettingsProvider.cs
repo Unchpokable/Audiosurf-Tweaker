@@ -1,8 +1,7 @@
-﻿namespace SkinChangerRestyle.Core
+﻿using System.IO;
+
+namespace SkinChangerRestyle.Core
 {
-    using ChangerAPI.Engine;
-    using System.Collections.Generic;
-    using System.IO;
 
     internal static class SettingsProvider
     {

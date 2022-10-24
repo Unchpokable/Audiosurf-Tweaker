@@ -1,12 +1,12 @@
-﻿namespace SkinChangerRestyle.MVVM.ViewModel
+﻿using System;
+using System.Windows;
+using ASCommander;
+using SkinChangerRestyle.Core;
+using SkinChangerRestyle.Core.Extensions;
+using System.Windows.Media;
+
+namespace SkinChangerRestyle.MVVM.ViewModel
 {
-    using System;
-    using System.Windows;
-    using ASCommander;
-    using SkinChangerRestyle;
-    using SkinChangerRestyle.Core;
-    using SkinChangerRestyle.Core.Extensions;
-    using System.Windows.Media;
 
     class MainViewModel : ObservableObject
     {
