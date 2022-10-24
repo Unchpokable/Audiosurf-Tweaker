@@ -168,7 +168,7 @@ namespace SkinChangerRestyle.MVVM.Model
             var skinObject = SkinPackager.Decompile(_pathToOriginFile);
             skinObject.Name = newName;
             Name = newName;
-            var newFile = $@"Skins\{newName}.askin2";
+            var newFile = $@"Skins\{newName}.{ChangerAPI.EnvironmentalVeriables.ActualSkinExtention}";
             var oldFile = $"{_pathToOriginFile}";
             _pathToOriginFile = newFile;
             RenameActive = false;
