@@ -15,6 +15,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         public RelayCommand ConnectAudiosurfWindow { get; set; }
         public RelayCommand SetSettingsView { get; set; }
         public RelayCommand EnableAutoHandling { get; set; }
+        public RelayCommand ResetWndProcService { get; set; }
 
         public SkinChangerViewModel SkinsGridVM { get; set; }
         public TweakerViewModel TweakerVM { get; set; }
@@ -59,6 +60,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             SetCommandCenterView = new RelayCommand(o => CurrentView = TweakerVM);
             SetSettingsView = new RelayCommand(o => CurrentView = SettingsVM);
             EnableAutoHandling = new RelayCommand(o => _asHandle.StartAutoHandling());
+            ResetWndProcService = new RelayCommand(o => _asHandle.ReinitializeWndProcMessageService());
             Extensions.DisposeAndClear();
             
         }

@@ -78,15 +78,21 @@
                             </Grid>
                             <Grid Grid.Row="1">
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="3*"/>
+                                    <ColumnDefinition/>
+                                    <ColumnDefinition/>
                                     <ColumnDefinition/>
                                 </Grid.ColumnDefinitions>
-                                <Button Command="{Binding ConnectAudiosurfWindow}" Content="Find running Audiosurf" Style="{StaticResource FlatButton}" Foreground="#FFE0E0E0" BorderBrush="{x:Null}" FontSize="16" FontFamily="Exo 2 Light" Height="50" Width="auto" VerticalAlignment="Center">
+                                <Button Command="{Binding ConnectAudiosurfWindow}" Content="Find" Style="{StaticResource FlatButton}" Foreground="#FFE0E0E0" BorderBrush="{x:Null}" FontSize="16" FontFamily="Exo 2 Light" Height="50" Width="auto" VerticalAlignment="Center">
                                     <Button.ToolTip>
                                         Select game process manually if Tweaker hangs on "Wait for approve" when game running
                                     </Button.ToolTip>
                                 </Button>
-                                <Button Margin="-10 0 0 0" Grid.Column="1" Command="{Binding EnableAutoHandling}" Content="Auto" Style="{StaticResource FlatButton}" Width="80" FontSize="16" FontFamily="Exo 2 Light" Height="50">
+                                <Button Command="{Binding ResetWndProcService}" Grid.Column="1" Content="Reset" Style="{StaticResource FlatButton}" Foreground="#FFE0E0E0" BorderBrush="{x:Null}" FontSize="16" FontFamily="Exo 2 Light" Height="50" Width="auto" VerticalAlignment="Center">
+                                    <Button.ToolTip>
+                                       Reinitialize message service and try to register application again 
+                                    </Button.ToolTip>
+                                </Button>
+                                <Button Margin="-10 0 0 0" Grid.Column="2" Command="{Binding EnableAutoHandling}" Content="Auto" Style="{StaticResource FlatButton}" Width="80" FontSize="16" FontFamily="Exo 2 Light" Height="50">
                                     <Button.ToolTip>
                                         Enable auto-handling (Enabled by default)
                                     </Button.ToolTip>

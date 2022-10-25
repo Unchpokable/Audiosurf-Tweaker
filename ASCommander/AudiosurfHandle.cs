@@ -79,6 +79,22 @@ namespace ASCommander
             }
         }
 
+        public bool ReinitializeWndProcMessageService()
+        {
+            try
+            {
+                Handle = IntPtr.Zero;
+                _timer.Interval = 1000;
+                _currentState = ASHandleState.NotConnected;
+                StateChanged?.Invoke(this, EventArgs.Empty);
+                _autoHandling = true;
+                _wndProcMessageService = new WndProcMessageService();
+                _wndProcMessageService.MessageRecieved += OnMessageRecieved;
+                return true;
+            }
+            catch { return false; }
+        }
+
         public async void PauseAutoHandling(int secTimeout)
         {
             _timer.Stop();

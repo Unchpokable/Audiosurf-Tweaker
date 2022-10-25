@@ -1,7 +1,6 @@
 ﻿using ASCommander.PInvoke;
 using System;
 using System.Windows.Forms;
-using System.Runtime.InteropServices;
 
 namespace ASCommander
 {
@@ -14,13 +13,13 @@ namespace ASCommander
         private IntPtr targetWindowHandle;
         private bool isValid;
 
-        public WndProcMessageService()
+        public WndProcMessageService() : base()
         {
             targetWindowHandle = IntPtr.Zero;
             isValid = false;
         }
 
-        public WndProcMessageService(IntPtr wHandle)
+        public WndProcMessageService(IntPtr wHandle) : base()
         {
             targetWindowHandle = wHandle;
             isValid = true;

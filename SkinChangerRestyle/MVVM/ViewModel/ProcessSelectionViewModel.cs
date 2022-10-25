@@ -101,7 +101,6 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                                 Processes.Add(shortproc);
                         }
                         catch { }
-
                     }
                     catch (Win32Exception) { }
                     catch { }
@@ -113,6 +112,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private void SetHandleToSelectedProcessInternal(object param)
         {
             var process = (ShortProcessDescriptor)param;
+            _asHandle.ReinitializeWndProcMessageService();
             _asHandle.StopAutoHandling();
             _asHandle.SetHandle(Process.GetProcessById(process.GetProcessID()));
             GC.Collect();

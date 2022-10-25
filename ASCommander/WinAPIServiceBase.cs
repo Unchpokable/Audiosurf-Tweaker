@@ -5,19 +5,17 @@ namespace ASCommander
 {
     public abstract class WinApiServiceBase : IDisposable
     {
-        public readonly static string ListenerWindowCaption = "AsMsgHandler";
+        public static string ListenerWindowCaption { get; protected set; }
 
-        protected static readonly IntPtr SpongeHandle;
-        private static readonly SpongeWindow Sponge;
-
-        static WinApiServiceBase()
-        {
-            Sponge = new SpongeWindow();
-            SpongeHandle = Sponge.Handle;
-        }
+        protected readonly IntPtr SpongeHandle;
+        private readonly SpongeWindow Sponge;
+        private static string _baseListenerWindowCaptionTitle = "AsMsgHandler";
 
         protected WinApiServiceBase()
         {
+            ListenerWindowCaption = _baseListenerWindowCaptionTitle + "_" + Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Substring(0, 5);
+            Sponge = new SpongeWindow();
+            SpongeHandle = Sponge.Handle;
             Sponge.WndProced += LocalWndProced;
         }
 

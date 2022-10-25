@@ -206,11 +206,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         {
             get
             {
-                Extensions.DisposeAndClear();
                 if (SelectedItem == null) return null;
                 if (SettingsProvider.UseFastPreview)
                     return SelectedItem.Screenshots;
 
+                Extensions.DisposeAndClear();
                 using (var skin = SkinPackager.Decompile(SelectedItem.PathToOrigin))
                 {
                     return new ObservableCollection<InteractableScreenshot>(
