@@ -33,33 +33,20 @@ namespace SkinChangerRestyle.MVVM.Model
                 OnPropertyChanged();
             }
         }
-
-        public ushort IgnoreTriggerCount
-        {
-            get => _ignoreTriggerCount;
-            set
-            {
-                _ignoreTriggerCount = value;
-                OnPropertyChanged();
-            }
-        }
-
         public void OnWatcherTriggered(object sender, FileSystemEventArgs e)
         {
-            _ignoredTriggers++;
-            if (_ignoredTriggers > _ignoreTriggerCount)
+            if ((DateTime.Now - _lastTrigger).TotalMilliseconds > 200 ) //Avoid massive command spam when some skin installs
             {
+                _lastTrigger = DateTime.Now;
                 Triggered?.Invoke(sender, e);
-                _ignoredTriggers = 0;
             }
         }
 
         public string TempFilePath { get; set; }
         private string _targetPath;
         private FileSystemWatcher _watcher;
-        private ushort _ignoreTriggerCount;
-        private ushort _ignoredTriggers;
         private object _lockRoot = new object();
+        private DateTime _lastTrigger;
 
         public async void InitializeTempFile(string path)
         {
