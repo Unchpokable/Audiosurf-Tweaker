@@ -29,14 +29,13 @@ namespace ASCommander
                 {
                     if (_currentState == ASHandleState.Awaiting)
                     {
-                        _timer.Interval = 5000;
-                        TryConnect();
+                        if ((DateTime.Now - _lastConnectionRequestSended).TotalSeconds > 30)
+                            TryConnect();
                         return;
                     }
 
                     if (Handle == IntPtr.Zero)
                     {
-                        _timer.Interval = 1000;
                         TryConnect();
                         return;
                     }
@@ -65,9 +64,9 @@ namespace ASCommander
         private WndProcMessageService _wndProcMessageService;
         private object _lockObject = new object();
         private bool _autoHandling;
-
         private ASHandleState _currentState;
         private static AudiosurfHandle _instance;
+        private DateTime _lastConnectionRequestSended;
 
         public static AudiosurfHandle Instance
         {
@@ -116,6 +115,7 @@ namespace ASCommander
         {
             lock (_lockObject)
             {
+                _lastConnectionRequestSended = DateTime.Now;
                 var handle = GetAudiosurfMainwindowHandle();
                 return SetHandle(handle);
             }
@@ -141,6 +141,7 @@ namespace ASCommander
             Handle = handle;
             _currentState = ASHandleState.Awaiting;
             StateChanged?.Invoke(this, EventArgs.Empty);
+            _timer.Interval = 5000;
             _wndProcMessageService.Handle(handle);
             _wndProcMessageService.Command(WinAPI.WM_COPYDATA, $"ascommand registerlistenerwindow {WinApiServiceBase.ListenerWindowCaption}");
             CommandSent?.Invoke(this, new CommandInfo($"ascommand registerlistenerwindow {WinApiServiceBase.ListenerWindowCaption} to hwnd {handle}", 
@@ -196,6 +197,7 @@ namespace ASCommander
                 IsValid = false;
                 StateChanged?.Invoke(this, EventArgs.Empty);
                 _autoHandling = true;
+                _timer.Interval = 1000;
                 return false;
             }
             return true;

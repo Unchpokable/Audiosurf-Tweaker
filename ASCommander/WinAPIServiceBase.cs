@@ -29,6 +29,7 @@ namespace ASCommander
 
         public virtual void Dispose()
         {
+            
             Sponge.WndProced -= LocalWndProced;
         }
 
