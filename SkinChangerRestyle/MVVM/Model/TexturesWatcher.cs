@@ -33,6 +33,7 @@ namespace SkinChangerRestyle.MVVM.Model
                 OnPropertyChanged();
             }
         }
+
         public void OnWatcherTriggered(object sender, FileSystemEventArgs e)
         {
             if ((DateTime.Now - _lastTrigger).TotalMilliseconds > 200 ) //Avoid massive command spam when some skin installs

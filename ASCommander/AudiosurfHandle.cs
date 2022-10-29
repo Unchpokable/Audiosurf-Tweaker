@@ -29,7 +29,7 @@ namespace ASCommander
                 {
                     if (_currentState == ASHandleState.Awaiting)
                     {
-                        if ((DateTime.Now - _lastConnectionRequestSended).TotalSeconds > 30)
+                        if ((DateTime.Now - _lastConnectionRequestSended).TotalSeconds > _connectionTimeout)
                             TryConnect();
                         return;
                     }
@@ -67,6 +67,7 @@ namespace ASCommander
         private ASHandleState _currentState;
         private static AudiosurfHandle _instance;
         private DateTime _lastConnectionRequestSended;
+        private double _connectionTimeout = 30f;
 
         public static AudiosurfHandle Instance
         {
