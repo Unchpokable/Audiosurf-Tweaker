@@ -1,0 +1,33 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Style x:Key="ImageListViewItem" TargetType="ListViewItem">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListViewItem">
+                    <Border Width="auto" Height="140"
+                            Background="Transparent"
+                            x:Name="Body"
+                            Margin="0 0 0 5"
+                            ToolTip="Double left click to view in separate window">
+                        <Image Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center" Source="{Binding Image}"/>
+                        <Border.InputBindings>
+                            <MouseBinding Gesture="LeftDoubleClick" Command="{Binding ShowBigPicture}"/>
+                        </Border.InputBindings>
+                    </Border>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Body" Property="Background" Value="#FFA2D7FF"/>
+                            <Setter Property="Cursor" Value="Hand"/>
+                        </Trigger>
+
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Body" Property="Background" Value="#FFA7B8FF"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

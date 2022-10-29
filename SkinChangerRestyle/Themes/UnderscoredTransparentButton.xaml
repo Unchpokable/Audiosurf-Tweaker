@@ -1,0 +1,65 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    
+    <Style x:Key="UnderscoredButton" TargetType="{x:Type Button}" BasedOn="{StaticResource {x:Type Button}}">
+        
+        <Style.Resources>
+            <SolidColorBrush x:Key="IdleUnderscore" Color="#FF9D5BF5"/>
+            <SolidColorBrush x:Key="MouseOverUnderscore" Color="#FF8A32FF"/>
+            <SolidColorBrush x:Key="MouseOverBackground" Color="#d1f7ff"/>
+            <SolidColorBrush x:Key="ClickedBackground" Color="#FFA7B8FF"/>
+            <SolidColorBrush x:Key="DisabledBackground" Color="LightGray"/>
+        </Style.Resources>
+        
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type Button}">
+                    <Border x:Name="Background" 
+                            Height="{TemplateBinding Height}"
+                            Width="{TemplateBinding Width}"
+                            Background="Transparent">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition/>
+                                <RowDefinition Height=".1*"/>
+                            </Grid.RowDefinitions>
+
+                            <Border x:Name="Underscore"
+                                Grid.Row="1"
+                                Background="{DynamicResource IdleUnderscore}"
+                                Margin="10 0 10 0">
+                            </Border>
+
+                            <TextBlock Text="{TemplateBinding Property=Content}"
+                                    FontFamily="Exo 2 Light"
+                                    FontSize="{TemplateBinding Property=FontSize}"
+                                    VerticalAlignment="Center"
+                                    HorizontalAlignment="Center"
+                                    Foreground="#FF000000"
+                                    x:Name="TextLabel"
+                                   Grid.Row="0">
+                            </TextBlock>
+
+                        </Grid>
+                    </Border>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Background" Property="Background" Value="{DynamicResource ResourceKey=MouseOverBackground}"/>
+                            <Setter TargetName="Underscore" Property="Margin" Value="0"/>
+                        </Trigger>
+
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Background" Property="Background" Value="{DynamicResource ResourceKey=ClickedBackground}"/>
+                        </Trigger>
+
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Background" Property="Background" Value="{DynamicResource ResourceKey=DisabledBackground}"/>
+                            <Setter TargetName="Underscore" Property="Margin" Value="0"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

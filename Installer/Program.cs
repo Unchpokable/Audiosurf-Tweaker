@@ -3,7 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Diagnostics;
-using IWshRuntimeLibrary;
 using System.Runtime.InteropServices.ComTypes;
 
 namespace Installer

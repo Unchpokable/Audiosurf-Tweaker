@@ -1,16 +1,16 @@
-﻿#pragma warning disable CS0168
+﻿using System;
+using System.Security.Cryptography;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
+using System.IO;
+using FolderChecker.Exceptions;
+
+#pragma warning disable CS0168
 
 namespace FolderChecker
 {
-    using System;
-    using System.Security.Cryptography;
-    using System.Collections.Generic;
-    using System.Linq;
-    using System.Runtime.Serialization.Formatters.Binary;
-    using System.Text;
-    using System.IO;
-    using FolderChecker.Exceptions;
-
     [Serializable]
     public class FolderHashInfo : IEquatable<FolderHashInfo>
     {
@@ -83,6 +83,12 @@ namespace FolderChecker
 
         public static bool TryFind(string path, string specificExtension, out FolderHashInfo folderInfo)
         {
+            if (!Directory.Exists(path))
+            {
+                folderInfo = null;
+                return false;
+            }
+
             var containedFiles = Directory.EnumerateFiles(path);
             foreach (var file in containedFiles)
             {
@@ -114,6 +120,10 @@ namespace FolderChecker
 
         public static FolderHashInfo Find(string path, string specificExtension)
         {
+            if (!Directory.Exists(path))
+            {
+                return null;
+            }
             var containedFiles = Directory.EnumerateFiles(path);
             foreach (var file in containedFiles)
             {
@@ -138,7 +148,7 @@ namespace FolderChecker
 
         public static FolderHashInfo Create(string path)
         {
-            return Create(path, "defaul");
+            return Create(path, "default");
         }
 
         public static FolderHashInfo Create(string path, string stateName)

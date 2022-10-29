@@ -1,7 +1,8 @@
-﻿namespace FolderChecker.Exceptions
+﻿using System;
+using System.Runtime.Serialization;
+
+namespace FolderChecker.Exceptions
 {
-    using System;
-    using System.Runtime.Serialization;
 
     class BadFileFormatException : Exception
     {

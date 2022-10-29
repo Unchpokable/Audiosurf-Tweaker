@@ -1,0 +1,37 @@
+﻿<Application x:Class="SkinChangerRestyle.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:SkinChangerRestyle"
+             xmlns:viewModel="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
+             xmlns:view="clr-namespace:SkinChangerRestyle.MVVM.View"
+             StartupUri="MainWindow.xaml">
+    <!--xmlns:view="clr-namespace:SkinChangerRestyle.MVVM.View" -->
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/StylishTextInput.xaml"/>
+                <ResourceDictionary Source="Themes/SimpleLeftMenuRadioButton.xaml"/>
+                <ResourceDictionary Source="Themes/FlatButton.xaml"/>
+                <ResourceDictionary Source="Themes/FlatCheckBox.xaml"/>
+                <ResourceDictionary Source="Themes/lvItemSkin.xaml"/>
+                <ResourceDictionary Source="Themes/PinkScrollBar.xaml"/>
+                <ResourceDictionary Source="Themes/ImageListViewItem.xaml"/>
+                <ResourceDictionary Source="Themes/UnderscoredTransparentButton.xaml"/>
+                <ResourceDictionary Source="Themes/StylishProgressBar.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <DataTemplate x:Shared="true" DataType="{x:Type viewModel:SkinChangerViewModel}">
+                <view:SkinChanger/>
+            </DataTemplate>
+
+            <DataTemplate x:Shared="true"  DataType="{x:Type viewModel:TweakerViewModel}">
+                <view:Tweaker/>
+            </DataTemplate>
+
+            <DataTemplate x:Shared="true" DataType="{x:Type viewModel:SettingViewModel}">
+                <view:SettingView/>
+            </DataTemplate>
+            
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

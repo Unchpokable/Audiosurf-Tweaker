@@ -1,0 +1,149 @@
+﻿<UserControl x:Class="SkinChangerRestyle.MVVM.View.Tweaker"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
+             xmlns:viewmodel="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
+             xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+             mc:Ignorable="d" 
+             d:DesignHeight="665" d:DesignWidth="800">
+
+    <Border Background="White">
+        <Grid Margin="0 18 0 0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height=".65*"/>
+                <RowDefinition Height=".8*"/>
+                <RowDefinition Height=".8*"/>
+            </Grid.RowDefinitions>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="50"/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+
+                <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
+                        BorderThickness="0 0 0 2"
+                        Width="400"
+                        HorizontalAlignment="Left">
+                    <Label Content="Tweaks" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                </Border>
+
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Row="0" Grid.Column="0" Margin="10">
+                        <CheckBox Style="{StaticResource FlatCheckBox}" Content="Sidewinder camera" Margin="0 0 0 5" FontSize="14"
+                                  IsChecked="{Binding SidewinderCameraTweakActive}">
+                        </CheckBox>
+                        
+                        <CheckBox Style="{StaticResource FlatCheckBox}" Content="Banking camera" Margin="0 0 0 5" FontSize="14"
+                                  IsChecked="{Binding BankingCameraTweakActive}">
+                        </CheckBox>
+                        
+                        <CheckBox Style="{StaticResource FlatCheckBox}" Content="Invisible road" Margin="0 0 0 5" FontSize="14"
+                                  IsChecked="{Binding InvisibleRoadTweakActive}">
+
+                        </CheckBox>
+                        
+                        <CheckBox Style="{StaticResource FlatCheckBox}" Content="Hidden song title" Margin="0 0 0 5" FontSize="14"
+                                  IsChecked="{Binding HiddenSongTweakActive}">
+                        </CheckBox>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Margin="10">
+                        <CheckBox Style="{StaticResource FlatCheckBox}" Content="Disable freeride blocks" Margin="0 0 0 5" FontSize="14" Background="White"
+                                  IsChecked="{Binding FreerideNoBlocksTweakActive}">
+                        </CheckBox>
+                        
+                        <CheckBox Style="{StaticResource FlatCheckBox}" Content="Freeride block caterpillars" Margin="0 0 0 5" FontSize="14"
+                                  IsChecked="{Binding FreerideBlocksCaterpillarsTweakActive}">
+                        </CheckBox>
+
+                        <CheckBox Style="{StaticResource FlatCheckBox}" Content="Disable Freeride Auto Advance" Margin="0 0 0 5" FontSize="14"
+                                  IsChecked="{Binding FreerideAutoAdvanceDisableTweakActive}">
+                        </CheckBox>
+                    </StackPanel>
+
+                </Grid>
+            </Grid>
+
+            <Grid Grid.Row="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="50"/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+
+                <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
+                        BorderThickness="0 0 0 2"
+                        Width="400"
+                        HorizontalAlignment="Left">
+                    <Label Content="Commands" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                </Border>
+
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Margin="10">
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="setwindowalwaysontop" Height="25" Style="{StaticResource UnderscoredButton}" Content="Set Audiosurf Always on top" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="setwindowalwaysontopnoborder" Height="25" Style="{StaticResource UnderscoredButton}" Content="Set Audiosurf always on top without border" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="runwithoutfocus" Height="25" Style="{StaticResource UnderscoredButton}" Content="Force Audiosurf to run wihtout focus" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="closeaudiosurf" Height="25" Style="{StaticResource UnderscoredButton}" Content="Close Audiosurf" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="reloadtextures" Height="25" Style="{StaticResource UnderscoredButton}" Content="Reload Textures" Margin="0 0 0 5" FontSize="14"/>
+                    </StackPanel>
+
+                    <StackPanel Margin="10" Grid.Column="1">
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="gotocharacterscreen" Height="25" Style="{StaticResource UnderscoredButton}" Content="To characters screen" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="maximize" Height="25" Style="{StaticResource UnderscoredButton}" Content="Maximize Audiosurf" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="gofullscreen" Height="25" Style="{StaticResource UnderscoredButton}" Content="Go Audiosurf in Fullscreen mode" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="restorenormalwindowstyle" Height="25" Style="{StaticResource UnderscoredButton}" Content="Restore Audiosurf window config" Margin="0 0 0 5" FontSize="14"/>
+                        <Button IsEnabled="{Binding IsAudiosurfConnected}" Command="{Binding SendCommand}" CommandParameter="reloadsounds" Height="25" Style="{StaticResource UnderscoredButton}" Content="Reload Sounds" Margin="0 0 0 5" FontSize="14"/>
+                    </StackPanel>
+
+                </Grid>
+            </Grid>
+
+            <Grid Grid.Row="3">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="50"/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+
+                <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
+                        BorderThickness="0 0 0 2"
+                        Width="400"
+                        HorizontalAlignment="Left">
+                    <Label Content="Logs" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                </Border>
+
+                <Grid Margin="0 0 0 5" Grid.RowSpan="2">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="1*"/>
+                        <RowDefinition Height="4*"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBox Grid.Row="1"
+                             IsReadOnly="True"
+                             Text="{Binding ConsoleContent, Mode=OneWay}"
+                             VerticalAlignment="Stretch" HorizontalAlignment="Stretch"
+                             TextAlignment="Left"
+                             VerticalContentAlignment="Top"
+                             HorizontalContentAlignment="Left"
+                             Margin="10 5 10 5"
+                             VerticalScrollBarVisibility="Visible"
+                             Background="#FFF3F3F3"
+                             BorderThickness="0"
+                             TextChanged="TextBox_TextChanged"
+                             x:Name="ConsoleOutput">
+                    </TextBox>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>
