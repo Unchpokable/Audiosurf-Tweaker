@@ -106,7 +106,10 @@ namespace SkinChangerRestyle.Core
             {
                 while (!file.EndOfStream)
                 {
-                    var line = file.ReadLine().Split(':').Select(x => x.Trim()).ToArray();
+                    var rawLine = file.ReadLine();
+                    if (string.IsNullOrEmpty(rawLine))
+                        continue;
+                    var line = rawLine.Split(':').Select(x => x.Trim()).ToArray();
                     _configurations[line[0]] = float.Parse(line[1], CultureInfo.InvariantCulture);
                 }
             }
