@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Windows.Forms;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using System.ComponentModel;
 
 namespace ASCommander
 {
@@ -117,8 +118,8 @@ namespace ASCommander
             lock (_lockObject)
             {
                 _lastConnectionRequestSended = DateTime.Now;
-                var handle = GetAudiosurfMainwindowHandle();
-                return SetHandle(handle);
+                var handle = GetAudiosurfMainwindowHandle(out bool shouldUseQuickRegister);
+                return SetHandle(handle, shouldUseQuickRegister);
             }
         }
 
@@ -130,7 +131,7 @@ namespace ASCommander
             }
         }
 
-        private bool SetHandle(IntPtr handle)
+        private bool SetHandle(IntPtr handle, bool sendQuickRegisterCommand = false)
         {
             if (handle == IntPtr.Zero)
             {
@@ -139,13 +140,15 @@ namespace ASCommander
                 return false;
             }
 
+            var registrationString = sendQuickRegisterCommand ? "quickstartregisterwindow" : "registerlistenerwindow";
+
             Handle = handle;
             _currentState = ASHandleState.Awaiting;
             StateChanged?.Invoke(this, EventArgs.Empty);
             _timer.Interval = 5000;
             _wndProcMessageService.Handle(handle);
-            _wndProcMessageService.Command(WinAPI.WM_COPYDATA, $"ascommand registerlistenerwindow {WinApiServiceBase.ListenerWindowCaption}");
-            CommandSent?.Invoke(this, new CommandInfo($"ascommand registerlistenerwindow {WinApiServiceBase.ListenerWindowCaption} to hwnd {handle}", 
+            _wndProcMessageService.Command(WinAPI.WM_COPYDATA, $"ascommand {registrationString} {WinApiServiceBase.ListenerWindowCaption}");
+            CommandSent?.Invoke(this, new CommandInfo($"ascommand {registrationString} {WinApiServiceBase.ListenerWindowCaption} to hwnd {handle}", 
                                 CommandInfo.CommandStatus.Sent));
             IsValid = true;
             return true;
@@ -174,7 +177,7 @@ namespace ASCommander
                     var cds = (COPYDATASTRUCT)message.GetLParam(typeof(COPYDATASTRUCT));
                     if (cds.cbData > 0)
                     {
-                        if (cds.lpData.Contains("successfullyregistered"))
+                        if (cds.lpData.Contains("successfullyregistered") || cds.lpData.Contains("successfullyquickstartregistered"))
                         {
                             _currentState = ASHandleState.Connected;
                             StateChanged?.Invoke(this, EventArgs.Empty);
@@ -215,10 +218,29 @@ namespace ASCommander
             }
         }
 
-
-        private IntPtr GetAudiosurfMainwindowHandle()
+        private IntPtr GetAudiosurfMainwindowHandle(out bool shouldUseQuickRegister)
         {
             var processes = Process.GetProcessesByName("QuestViewer");
+            TimeSpan runtime;
+
+            if (processes.Length > 0)
+                try
+                {
+                    runtime = DateTime.Now - processes[0].StartTime;
+                }
+                catch (Win32Exception ex)
+                {
+                    if (ex.NativeErrorCode != 5)
+                        throw;
+                    runtime = TimeSpan.FromHours(10000f);
+                }
+            else
+                runtime = TimeSpan.FromHours(1000000f); // Just big timespan to set "quickstart" flag to false
+
+            if (runtime.TotalSeconds < 30)
+                shouldUseQuickRegister = true;
+            else
+                shouldUseQuickRegister = false;
             if (processes.Length == 0) return IntPtr.Zero;
             return processes[0].MainWindowHandle;
         }
