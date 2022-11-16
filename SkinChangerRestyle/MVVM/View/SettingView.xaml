@@ -26,7 +26,7 @@
                         BorderThickness="0 0 0 2"
                         Width="400"
                         HorizontalAlignment="Left">
-                    <Label Content="Pathes" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                    <Label Content="Pathes" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
                 </Border>
 
                 <StackPanel Grid.Row="1">
@@ -43,7 +43,7 @@
                             </Grid.ColumnDefinitions>
                             
                             <Label Content="Path to Audiosurf textures"
-                                   FontFamily="Exo 2 Light" FontSize="16"
+                                   FontFamily="ExoSoft ☞" FontSize="16"
                                    Margin="30 0 0 0" Foreground="#FF888888"/>
                             <TextBox Grid.Row="2" Height="35" VerticalAlignment="Center" HorizontalAlignment="Stretch"
                                      Margin="30 0 30 0"
@@ -76,7 +76,7 @@
                             </Grid.ColumnDefinitions>
 
                             <Label Content="Additional skins folder path"
-                                   FontFamily="Exo 2 Light" FontSize="16"
+                                   FontFamily="ExoSoft ☞" FontSize="16"
                                    Margin="30 0 0 0" Foreground="#FF888888"/>
                             <TextBox Grid.Row="2" Height="35" VerticalAlignment="Center" HorizontalAlignment="Stretch"
                                      Margin="30 0 30 0"
@@ -109,14 +109,14 @@
                         BorderThickness="0 0 0 2"
                         Width="400"
                         HorizontalAlignment="Left">
-                    <Label Content="Skin Changer settings" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                    <Label Content="Skin Changer settings" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
                 </Border>
 
                 <StackPanel Grid.Row="1">
                     <CheckBox Style="{StaticResource FlatCheckBox}" Content="Hot reload" FontSize="16" Margin="30 0 0 10"
                               ToolTip="Force game to reload textures after skin installation. No need to restart track in-game to see changes"
                               ToolTipService.ShowDuration="10000"
-                              IsChecked="{Binding IsHotReload, Mode=TwoWay}"/>
+                              IsChecked="{Binding IsHotReload, Mode=TwoWay}" FontFamily="ExoSoft ☞"/>
                     <CheckBox Style="{StaticResource FlatCheckBox}" Content="Fast Preview" Margin="30 0 0 10" FontSize="16"
                               ToolTip="Allow Tweaker to hold downscaled screenshots in your RAM to show you a skin preview tooltip and load it' screenshots without delay"
                               ToolTipService.ShowDuration="10000"
@@ -146,7 +146,7 @@
                         BorderThickness="0 0 0 2"
                         Width="400"
                         HorizontalAlignment="Left">
-                    <Label Content="Textures Watcher settings" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                    <Label Content="Textures Watcher settings" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
                 </Border>
 
                 <StackPanel Grid.Row="1">
