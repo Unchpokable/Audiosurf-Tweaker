@@ -31,11 +31,11 @@
                             </Border>
 
                             <TextBlock Text="{TemplateBinding Property=Content}"
-                                    FontFamily="Exo 2 Light"
+                                    FontFamily="ExoSoft-Regular ☞"
                                     FontSize="{TemplateBinding Property=FontSize}"
                                     VerticalAlignment="Center"
                                     HorizontalAlignment="Center"
-                                    Foreground="#FF000000"
+                                    Foreground="{TemplateBinding Foreground}"
                                     x:Name="TextLabel"
                                    Grid.Row="0">
                             </TextBlock>

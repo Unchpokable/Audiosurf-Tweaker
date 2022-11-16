@@ -9,6 +9,8 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/PaletteItem.xaml"/>
+                <ResourceDictionary Source="Themes/ColoredRadioButton.xaml"/>
                 <ResourceDictionary Source="Themes/StylishTextInput.xaml"/>
                 <ResourceDictionary Source="Themes/SimpleLeftMenuRadioButton.xaml"/>
                 <ResourceDictionary Source="Themes/FlatButton.xaml"/>
@@ -18,6 +20,8 @@
                 <ResourceDictionary Source="Themes/ImageListViewItem.xaml"/>
                 <ResourceDictionary Source="Themes/UnderscoredTransparentButton.xaml"/>
                 <ResourceDictionary Source="Themes/StylishProgressBar.xaml"/>
+                
+                <ResourceDictionary Source="pack://application:,,,/ColorPicker;component/Styles/DefaultColorPickerStyle.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <DataTemplate x:Shared="true" DataType="{x:Type viewModel:SkinChangerViewModel}">
@@ -30,6 +34,10 @@
 
             <DataTemplate x:Shared="true" DataType="{x:Type viewModel:SettingViewModel}">
                 <view:SettingView/>
+            </DataTemplate>
+
+            <DataTemplate x:Shared="true" DataType="{x:Type viewModel:ColorsConfiguratorViewModel}">
+                <view:ColorConfiguratorView/>
             </DataTemplate>
             
         </ResourceDictionary>

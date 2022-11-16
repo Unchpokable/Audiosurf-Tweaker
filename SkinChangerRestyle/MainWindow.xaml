@@ -36,7 +36,7 @@
                         <Button Style="{StaticResource UnderscoredButton}" Grid.Column="1" Content="_" HorizontalAlignment="Left" Margin="0,0,0,0" VerticalAlignment="Center" Height="35" Width="35" Background="{x:Null}" BorderBrush="{x:Null}" Padding="1,-3,1,1" Click="MinimizeButton_Click"/>
                         <Button Style="{StaticResource UnderscoredButton}" Grid.Column="1" Content="╳" HorizontalAlignment="Right" Margin="0,0,0,0" VerticalAlignment="Center" Height="35" Width="35" Padding="0,-4,1,1" Background="{x:Null}" BorderBrush="{x:Null}" Click="CloseButton_Click" HorizontalContentAlignment="Center"/>
                     </StackPanel>
-               
+
                 </Grid>
             </Border>
             <Grid Grid.Row="1">
@@ -47,20 +47,26 @@
                 <Border BorderThickness="0" Background="#FFEDEDED"/>
 
                 <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="91*"/>
+                        <ColumnDefinition Width="59*"/>
+                    </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="70"/>
+                        <RowDefinition Height="55"/>
                         <RowDefinition Height="55"/>
                         <RowDefinition Height="55"/>
                         <RowDefinition Height="55"/>
                         <RowDefinition/>
                         <RowDefinition Height="100"/>
                     </Grid.RowDefinitions>
-                    <Label BorderThickness="0 0 0 2" Content="Menu" FontFamily="Exo 2 Medium" FontSize="22" BorderBrush="#FFC3C3C3" RenderTransformOrigin="0.518,1.065" Foreground="#FF5D5D5D" VerticalAlignment="Top" HorizontalAlignment="Center" Width="280" Height="50" Margin="0,8,0,0"/>
-                    <RadioButton Command="{Binding SetChangerView}" Grid.Row="1" IsChecked="True" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Skin Changer" HorizontalAlignment="Center" Margin="0,5,5,5" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" FontFamily="Exo 2 Light" Height="55" Width="300" Padding="0,0,0,0"/>
-                    <RadioButton Command ="{Binding SetCommandCenterView}" Grid.Row="2" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Command and Control" HorizontalAlignment="Center" Margin="0,5,5,5" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" Height="55" Width="300"/>
-                    <RadioButton Command="{Binding SetSettingsView}" Grid.Row="3" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Settings" HorizontalAlignment="Center" Margin="0,5,5,5" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" Height="55" Width="300"/>
+                    <Label BorderThickness="0 0 0 2" Content="Menu" FontFamily="ExoSoft-Regular ☞" FontSize="22" BorderBrush="#FFC3C3C3" RenderTransformOrigin="0.518,1.065" Foreground="#FF5D5D5D" VerticalAlignment="Top" HorizontalAlignment="Left" Width="280" Height="50" Margin="10,8,0,0" Grid.ColumnSpan="2"/>
+                    <RadioButton Command="{Binding SetChangerView}" Grid.Row="1" IsChecked="True" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Skin Changer" HorizontalAlignment="Left" Margin="-2,5,0,0" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" FontFamily="ExoSoft ☞" Height="55" Width="300" Padding="0,0,0,0" Grid.ColumnSpan="2" Grid.RowSpan="2"/>
+                    <RadioButton Command="{Binding SetColorsView}" Grid.Row="2" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Colors Configurator" HorizontalAlignment="Left" Margin="-2,5,0,0" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" Height="55" Width="300" FontFamily="ExoSoft ☞" Grid.ColumnSpan="2" Grid.RowSpan="2"/>
+                    <RadioButton Command ="{Binding SetCommandCenterView}" Grid.Row="3" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Command and Control" HorizontalAlignment="Left" Margin="-2,5,0,0" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" Height="55" Width="300" FontFamily="ExoSoft ☞" Grid.ColumnSpan="2" Grid.RowSpan="2"/>
+                    <RadioButton Command="{Binding SetSettingsView}" Grid.Row="4" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Settings" HorizontalAlignment="Left" Margin="-2,5,0,0" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" Height="55" Width="300" FontFamily="ExoSoft ☞" Grid.ColumnSpan="2" Grid.RowSpan="2"/>
 
-                    <Border Grid.Row="5" BorderThickness="0 2 0 0" BorderBrush="#FFC3C3C3" Margin="10,0,10,0">
+                    <Border Grid.Row="6" BorderThickness="0 2 0 0" BorderBrush="#FFC3C3C3" Margin="10,0,10,0" Grid.ColumnSpan="2">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition/>
@@ -89,7 +95,7 @@
                                 </Button>
                                 <Button Command="{Binding ResetWndProcService}" Grid.Column="1" Content="Reset" Style="{StaticResource FlatButton}" Foreground="#FFE0E0E0" BorderBrush="{x:Null}" FontSize="16" FontFamily="Exo 2 Light" Height="50" Width="auto" VerticalAlignment="Center">
                                     <Button.ToolTip>
-                                       Reinitialize message service and try to register application again 
+                                        Reinitialize message service and try to register application again
                                     </Button.ToolTip>
                                 </Button>
                                 <Button Margin="-10 0 0 0" Grid.Column="2" Command="{Binding EnableAutoHandling}" Content="Auto" Style="{StaticResource FlatButton}" Width="80" FontSize="16" FontFamily="Exo 2 Light" Height="50">

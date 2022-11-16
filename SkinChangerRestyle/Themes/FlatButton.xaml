@@ -8,10 +8,10 @@
                              Background="#FF9D5BF5"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="15"
+                            CornerRadius="10"
                             Margin="10">
                         <TextBlock Text="{TemplateBinding Property=Content}"
-                                           FontFamily="Exo 2 Light"
+                                           FontFamily="ExoSoft-Regular ☞"
                                            FontSize="{TemplateBinding Property=FontSize}"
                                            VerticalAlignment="Center"
                                            HorizontalAlignment="Center"

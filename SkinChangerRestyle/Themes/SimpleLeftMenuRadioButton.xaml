@@ -23,13 +23,13 @@
                                 <Border x:Name="TextBorder"
                                         Background="Transparent">
                                     <TextBlock Text="{TemplateBinding Property=Content}"
-                                           FontFamily="Exo 2 Light"
+                                           FontFamily="{TemplateBinding FontFamily}"
                                            FontSize="{TemplateBinding Property=FontSize}"
                                            VerticalAlignment="Center"
                                            HorizontalAlignment="Left"
                                            Foreground="{TemplateBinding Property=Foreground}"
                                            x:Name="Text"
-                                           Margin="20 0 0 0">
+                                           Margin="10 0 0 0">
 
                                     </TextBlock>
                                 </Border>

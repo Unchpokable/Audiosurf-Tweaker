@@ -18,10 +18,10 @@
                                          VerticalAlignment="Stretch"
                                          HorizontalAlignment="Stretch"
                                          x:Name="TextInput"
-                                         FontFamily="Exo 2 Light"
+                                         FontFamily="ExoSoft ☞"
                                          FontSize="{TemplateBinding FontSize}"
                                          TextWrapping="Wrap" CaretBrush="#FF616161" SelectionBrush="#FF6BACE0" Foreground="#FF616161"
-                                         Text="{TemplateBinding Text}">
+                                         Text="{Binding RelativeSource={RelativeSource TemplatedParent}, Path=Text, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}">
                                 </TextBox>
                             </Grid>
                         </Border>

@@ -37,15 +37,16 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel Orientation="Horizontal" Grid.Row="1">
-                    <Label Content="Mask:" FontFamily="Exo 2 Light" FontSize="16" Foreground="#FF888888" VerticalAlignment="Center"/>
+                    <Label Content="Mask:" FontFamily="ExoSoft-Regular ☞" FontSize="16" Foreground="#FF888888" VerticalAlignment="Center"/>
                     <TextBox Height="30" VerticalAlignment="Center" Width="430" Margin="10 0 10 0"
+                             Style="{StaticResource StylishTextInput}"
                          Text="{Binding SearchMask, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          VerticalContentAlignment="Center" FontSize="16"
                          FontFamily="Exo 2 light"/>
                     <!--<Button Style="{StaticResource FlatButton}" Content="Apply" Width="100" Height="50" VerticalAlignment="Center"/>-->
                 </StackPanel>
 
-                <DataGrid x:Name="_processList" ItemsSource="{Binding Processes}" IsReadOnly="True" BorderThickness="0">
+                <DataGrid x:Name="_processList" ItemsSource="{Binding Processes}" IsReadOnly="True" BorderThickness="0" FontFamily="ExoSoft-Regular ☞">
                     <DataGrid.InputBindings>
                         <MouseBinding Gesture="LeftDoubleClick"
                                   Command="{Binding SetHandleToSelectedProcess}"
