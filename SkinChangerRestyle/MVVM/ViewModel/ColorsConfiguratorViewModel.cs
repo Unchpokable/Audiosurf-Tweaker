@@ -37,7 +37,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             PaletteDynamicLoadContainer.Save(existsPalettes, PaletteContainerFilename);
             SelectedPalette = Palettes.FirstOrDefault();
             RemoveSelectedPalette = new RelayCommand(RemoveSelectedPaletteInternal);
-            DiscardChanges = new RelayCommand((o) => { SelectedPalette = new ColorPalette(_originPalette); OnPropertyChanged(nameof(SelectedPalette)); });
+            DiscardChanges = new RelayCommand((o) => { SelectedPalette = new ColorPalette(EditedPalette); OnPropertyChanged(nameof(SelectedPalette)); });
             ApplyChanges = new RelayCommand(ApplyChangesInternal);
             SaveAsNew = new RelayCommand(SaveAsNewInternal);
             WritePalette = new RelayCommand(WriteGameINI);
@@ -67,6 +67,17 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         public RelayCommand ApplyChanges { get; set; }
         public RelayCommand SaveAsNew { get; set; }
 
+        public ColorPalette EditedPalette
+        {
+            get => _originPalette;
+            set
+            {
+                _originPalette = value;
+                SelectedPalette = new ColorPalette(value);
+                OnPropertyChanged();
+            }
+        }
+
         public ColorPalette SelectedPalette
         {
             get => _selectedPalette;
@@ -74,7 +85,6 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 if (value == null) return;
 
-                _originPalette = new ColorPalette(value);
                 _selectedPalette = value;
                 CurrentlyEditedColor = ASColors.Purple;
                 OnPropertyChanged();
@@ -191,6 +201,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private ColorPalette _originPalette;
         private ASColors _currentlyEditedColor;
         private static ColorsConfiguratorViewModel _instance;
+
         private async void ApplyChangesInternal(object o)
         {
 

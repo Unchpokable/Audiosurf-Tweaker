@@ -93,7 +93,7 @@
                 </Border>
 
                 <ListView ItemsSource="{Binding Palettes}"
-                          SelectedItem="{Binding SelectedPalette}"
+                          SelectedItem="{Binding EditedPalette}"
                           ItemContainerStyle="{StaticResource PaletteItem}"
                           SelectionChanged="ListView_SelectionChanged"
                           Background="{x:Null}" 
