@@ -13,21 +13,6 @@ namespace SkinChangerRestyle.MVVM.View
             InitializeComponent();
         }
 
-        private void MenuItem_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                var menuItemSender = (MenuItem)sender;
-                var rootMenu = (ContextMenu)menuItemSender.Parent;
-                var rootObject = (Border)rootMenu.PlacementTarget;
-                Clipboard.SetText($"#{rootObject.Background.ToString().Substring(3)}");
-            }
-            catch
-            {
-                MessageBox.Show("Something went wrong... Unable to copy this color to clipboard", "Oops!", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-        }
-
         private void ListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             if (e.AddedItems.Count == 0) return;
