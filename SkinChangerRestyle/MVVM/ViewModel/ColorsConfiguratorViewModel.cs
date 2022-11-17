@@ -15,7 +15,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 {
     internal class ColorsConfiguratorViewModel : ObservableObject
     {
-        public ColorsConfiguratorViewModel()
+        protected ColorsConfiguratorViewModel()
         {
             var existsPalettes = PaletteDynamicLoadContainer.Load(PaletteContainerFilename);
 
@@ -33,9 +33,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     Red = Colors.Red 
                 });
 
-            Palettes = new ObservableCollection<ColorPalette>(existsPalettes.ColorPalettes.Select(print => new ColorPalette(print)));
+            Palettes = new ObservableCollection<ColorPalette>(existsPalettes.ColorPalettes.Select(print => new ColorPalette(print)).OrderBy(x => x.Name));
             PaletteDynamicLoadContainer.Save(existsPalettes, PaletteContainerFilename);
-
+            SelectedPalette = Palettes.FirstOrDefault();
             RemoveSelectedPalette = new RelayCommand(RemoveSelectedPaletteInternal);
             DiscardChanges = new RelayCommand((o) => { SelectedPalette = new ColorPalette(_originPalette); OnPropertyChanged(nameof(SelectedPalette)); });
             ApplyChanges = new RelayCommand(ApplyChangesInternal);
@@ -44,6 +44,16 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             ExportCurrentGameColorPalette = new RelayCommand(ExportGamePalette);
             ExportPalette = new RelayCommand(ExportPaletteInternal);
             ImportPalette = new RelayCommand(ImportPaletteInternal);
+        }
+
+        public static ColorsConfiguratorViewModel Instance
+        {
+            get
+            {
+                if (_instance == null)
+                    _instance = new ColorsConfiguratorViewModel();
+                return _instance;
+            }
         }
 
         public static readonly string PaletteContainerFilename = "palettes";
@@ -64,8 +74,8 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 if (value == null) return;
 
-                _originPalette = value;
-                _selectedPalette = new ColorPalette(value);
+                _originPalette = new ColorPalette(value);
+                _selectedPalette = value;
                 CurrentlyEditedColor = ASColors.Purple;
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(SelectedColor));
@@ -180,7 +190,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private ColorPalette _selectedPalette;
         private ColorPalette _originPalette;
         private ASColors _currentlyEditedColor;
-
+        private static ColorsConfiguratorViewModel _instance;
         private async void ApplyChangesInternal(object o)
         {
 
