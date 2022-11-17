@@ -56,7 +56,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             SkinsGridVM = SkinChangerViewModel.Instance;
             TweakerVM = new TweakerViewModel();
             SettingsVM = new SettingViewModel();
-            ColorsVM = new ColorsConfiguratorViewModel();
+            ColorsVM = ColorsConfiguratorViewModel.Instance;
 
             CurrentView = SkinsGridVM;
             SetChangerView = new RelayCommand(o => CurrentView = SkinsGridVM);
