@@ -98,7 +98,8 @@
                           SelectionChanged="ListView_SelectionChanged"
                           Background="{x:Null}" 
                           BorderBrush="{x:Null}"
-                          Grid.Row="1">
+                          Grid.Row="1"
+                          x:Name="palettesList">
                     <ListView.InputBindings>
                         <KeyBinding Command="{Binding RemoveSelectedPalette}" Key="Delete"/>
                     </ListView.InputBindings>
