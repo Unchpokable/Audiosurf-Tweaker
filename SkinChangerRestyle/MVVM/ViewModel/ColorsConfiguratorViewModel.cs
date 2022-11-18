@@ -20,7 +20,10 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             var existsPalettes = PaletteDynamicLoadContainer.Load(PaletteContainerFilename);
 
             if (existsPalettes == null)
+            {
+                MessageBox.Show("Palettes storage file was not found or corrupted and has been rewrited by new empty storage. Its OK if you running Audiosurf Tweaker for the first time", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
                 existsPalettes = new PaletteDynamicLoadContainer();
+            }
 
             if (existsPalettes.ColorPalettes.Count == 0)
                 existsPalettes.Add(new ColorPalette() 
@@ -224,7 +227,10 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             Palettes.Add(newPalette);
             await Task.Run(() =>
             {
-                PaletteDynamicLoadContainer.Add(newPalette, PaletteContainerFilename);
+                if (!PaletteDynamicLoadContainer.Add(newPalette, PaletteContainerFilename))
+                {
+                    MessageBox.Show("Error while writing cached palette storage. Changes will not be saved", "Cache error", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
             });
         }
 
@@ -236,7 +242,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             if (!Palettes.Contains(SelectedPalette))
                 return;
 
-            PaletteDynamicLoadContainer.Remove(SelectedPalette, PaletteContainerFilename);
+            if (!PaletteDynamicLoadContainer.Remove(SelectedPalette, PaletteContainerFilename))
+            {
+                MessageBox.Show("Error while writing cached palette storage. Changes will not be saved", "Cache error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
             Palettes.Remove(SelectedPalette);
         }
 
@@ -253,11 +263,20 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     await WaitForGameStopWorking("QuestViewer");
                 }
             }
+
             var pathToIni = Directory.GetParent(SettingsProvider.GameTexturesPath).FullName + "\\options.ini";
             var ini = new AudiosurfConfigurationPresenter();
-            ini.ProcessConfigFile(pathToIni);
-            ini.ApplyPalette(_selectedPalette);
-            ini.SaveChanges();
+
+            try
+            {
+                ini.ProcessConfigFile(pathToIni);
+                ini.ApplyPalette(_selectedPalette);
+                ini.SaveChanges();
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show($"Error while writing game configuration file: {e.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
 
             if (isGameKilled)
             {
@@ -276,9 +295,10 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 ini.ProcessConfigFile(pathToIni);
             }
-            catch
+            catch (Exception e)
             {
-
+                MessageBox.Show($"Error while reading/writing game configuration: {e.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
             }
 
             var palette = ini.ExportPalette();
@@ -302,7 +322,13 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             var sfDialog = new System.Windows.Forms.FolderBrowserDialog();
             if (sfDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                await Task.Run(() => { ColorPalette.Save(SelectedPalette, sfDialog.SelectedPath); });
+                await Task.Run(() => 
+                { 
+                    if (!ColorPalette.Save(SelectedPalette, sfDialog.SelectedPath))
+                    {
+                        MessageBox.Show("Error while exporting palette", "Export error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    } 
+                });
             }
         }
 
