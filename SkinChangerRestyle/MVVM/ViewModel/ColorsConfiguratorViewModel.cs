@@ -35,7 +35,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             Palettes = new ObservableCollection<ColorPalette>(existsPalettes.ColorPalettes.Select(print => new ColorPalette(print)).OrderBy(x => x.Name));
             PaletteDynamicLoadContainer.Save(existsPalettes, PaletteContainerFilename);
-            SelectedPalette = Palettes.FirstOrDefault();
+            EditedPalette = Palettes.FirstOrDefault();
             RemoveSelectedPalette = new RelayCommand(RemoveSelectedPaletteInternal);
             DiscardChanges = new RelayCommand((o) => { SelectedPalette = new ColorPalette(EditedPalette); OnPropertyChanged(nameof(SelectedPalette)); });
             ApplyChanges = new RelayCommand(ApplyChangesInternal);
