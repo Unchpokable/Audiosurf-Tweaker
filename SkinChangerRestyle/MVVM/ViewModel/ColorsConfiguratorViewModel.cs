@@ -280,8 +280,10 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             if (isGameKilled)
             {
-
-                Core.Extensions.Extensions.Cmd($"cd /d \"{Directory.GetParent(SettingsProvider.GameTexturesPath).Parent.FullName}\" && timeout /t 1 && Audiosurf.exe");
+                await Task.Run(() => 
+                {
+                    Core.Extensions.Extensions.Cmd($"cd /d \"{Directory.GetParent(SettingsProvider.GameTexturesPath).Parent.FullName}\" && timeout /t 1 && Audiosurf.exe");
+                });
             }
 
             MessageBox.Show("Done!", "Operation complete", MessageBoxButton.OK, MessageBoxImage.Information);
