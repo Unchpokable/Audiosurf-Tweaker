@@ -330,6 +330,10 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     {
                         MessageBox.Show("Error while exporting palette", "Export error", MessageBoxButton.OK, MessageBoxImage.Error);
                     } 
+                    else
+                    {
+                        MessageBox.Show("Operation Completed", "Done", MessageBoxButton.OK, MessageBoxImage.Information);
+                    }
                 });
             }
         }
@@ -346,6 +350,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 {
                     Palettes.Add(palette);
                     PaletteDynamicLoadContainer.Add(palette, PaletteContainerFilename);
+                    MessageBox.Show("Operation complete!", "Done", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
         }
