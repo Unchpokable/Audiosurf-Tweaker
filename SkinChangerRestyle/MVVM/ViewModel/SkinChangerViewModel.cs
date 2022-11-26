@@ -247,6 +247,17 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         public async void InstallSkin(string pathToOrigin, string target, bool forced = false, bool unpackScreenshots = false, bool clearInstall = false, bool saveState = true)
         {
+            if (!Directory.Exists(target))
+            {
+                MessageBox.Show($"Given Directory does not exists: {target}\n Check that 'Path to game textures' setting is valid", "Installation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            if (!File.Exists(pathToOrigin))
+            {
+                MessageBox.Show($"Given path does not exists: {pathToOrigin}\n It may be caused by corrupted skins cache. Please, rebuild skins cache and try again", "Installation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
             ChangerStatus = "Working...";
             if (target.Equals(SettingsProvider.GameTexturesPath, StringComparison.InvariantCultureIgnoreCase))
             {
