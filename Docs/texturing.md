@@ -42,10 +42,5 @@
 ## Problems that you can face with ##
 * Sometimes texture "tileflyup.png" saved by Adobe Photoshop, even with right parameters (.png with transparent background), can turn into colored rectangle in game. Idk why this happening, and i guess even Dylan (game developer) dont know too. Simplest way to fix that problem - resave this image using any other graphics editor. 
 
-## Using Audiosurf Skin Changer ##
-* When you draw your texture pack, you can save it in Audiosurf Skin Changer for share it with other ASC users or just for yourself, if you had some different texture sets and want to easily swap it
-* For export your texture set into ASC .askin file, you can use "Export my textures as .askin" or "Add new skin from folder" (see screenshot)
-   * ![ASC](https://github.com/Unchpokable/Audiosurf-SkinChanger/blob/master/Docs/images/Audiosurf_SkinChanger_pFkao6HAUO.png "ASC")
-   * "Export my textures as .askin" will export textures from your game' texture folder
-   * "Add new skin from folder" will try to pack into AS skin conent of specified folder 
-   * For more details about using ASC check userguide that placed in main repository page
+## Using Audiosurf Tweaker ##
+* When you draw your texture pack, you can save it in Audiosurf Tweaker for share it with other Tweaker' users or just for yourself, if you had some different texture sets and want to easily swap it. You can download Audiosurf Tweaker from [Releases Page](https://github.com/Unchpokable/Audiosurf-Tweaker/releases)
