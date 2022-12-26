@@ -28,7 +28,7 @@
     * As previous, .png textures used for white background, .jpg - for black and grey. Also as previous, .png textures should have transparent background, .jpg - absolute black (hex #000000)
     * Theoretically, Rings "A" should have a half resolution of "B" rings. By default, its 128x128 for "A" rings and 256x256 for "B" rings. But, now is 2022 year and any graphics card can play audiosurf on ultra high graphics with FPS that allows your monitor refresh rate, so "A" rings can be just copy of "B" rings for the game can load it without any problems.
     * As previous textures, you can upscale this texture as you want and color it, but i recommend to color rings only if you play with grey background everytime. In this case, game will not color rings by theyself and you'll see rings as colored as you want
-    * If you playing with Black or White background, i recommend to use white and grey colors for drawing rings. If you understand what you do, or you're a graphics designer and can forsee, how some of color will be overlayed, you can use half-transparency with color what you want to get a new interesting look for your rings in the game
+    * If you playing with Black or White background, i recommend to use white and grey colors for drawing rings. If you understand what you do, or you can forsee, how some of color will be overlayed, you can use half-transparency with color what you want to get a new interesting look for your rings in the game
 * Fifth goup is a tiles (tiles.png, tileflyup.png)
     * ![Tiles Textures](https://github.com/Unchpokable/Audiosurf-SkinChanger/blob/master/Docs/images/tiles.png "tiles")
     * This is a combined texture, that used by game to texturing blocks on your board. For the next explanation, we need to this scheme:
