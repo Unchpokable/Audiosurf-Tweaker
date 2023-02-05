@@ -64,6 +64,12 @@
     <Compile Include="ASHandleState.cs" />
     <Compile Include="AudiosurfHandle.cs" />
     <Compile Include="CommandInfo.cs" />
+    <Compile Include="DllInject\DllInjector.cs" />
+    <Compile Include="DllInject\Exceptions\GenericInjectionException.cs" />
+    <Compile Include="DllInject\Exceptions\MemoryAllocationException.cs" />
+    <Compile Include="DllInject\Exceptions\ProcessAcessDeniedException.cs" />
+    <Compile Include="DllInject\InjectNatives.cs" />
+    <Compile Include="DllInject\Exceptions\ProcessNotFoundException.cs" />
     <Compile Include="WinAPIServiceBase.cs" />
     <Compile Include="PInvoke\copydatastruct.cs" />
     <Compile Include="PInvoke\WinAPI.cs" />
