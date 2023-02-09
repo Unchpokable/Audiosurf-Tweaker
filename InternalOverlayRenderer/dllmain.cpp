@@ -1,15 +1,12 @@
 ﻿// dllmain.cpp : Определяет точку входа для приложения DLL.
-#include "pch.h"
-
 #include <d3d9.h>
 #include <d3dx9.h>
-#include "detours.h"
 #include <iostream>
+#include "detours.h"
 
 #pragma comment(lib, "d3d9.lib")
 #pragma comment(lib, "d3dx9.lib")
 #pragma comment(lib, "detours.lib")
-
 //#pragma region WndProc
 //#include <Windows.h>
 //
@@ -36,26 +33,34 @@
 
 HINSTANCE DllHandle;
 
-typedef HRESULT(__stdcall* endScene)(IDirect3DDevice9* pDevice);
+typedef HRESULT(__stdcall* endScene)(LPDIRECT3DDEVICE9 pDevice);
 endScene pEndScene;
 
 LPD3DXFONT font;
 
+bool OverlayVisible = true;
 
-HRESULT __stdcall hookedEndScene(IDirect3DDevice9* pDevice) 
+HRESULT __stdcall hookedEndScene(LPDIRECT3DDEVICE9 pDevice)
 {
-    std::cout << "Run hooked EndScene\n";
+    if (!OverlayVisible)
+        return pEndScene(pDevice);
+
+    auto padding = 2;
+    auto rectx1 = 100, rectx2 = 500, recty1 = 50, recty2 = 100;
+
+
+    D3DRECT rectangle = { rectx1, recty1, rectx2, recty2 };
+    //pDevice->Clear(1, &rectangle, D3DCLEAR_TARGET, D3DCOLOR_ARGB(255, 0, 0, 0), 0.0f, 0); // this draws a rectangle
 
     if (!font)
-        D3DXCreateFont(pDevice, 20, 0, FW_BOLD, 1, 0, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, L"Tahoma", &font);
-    auto padding = 2;
-    auto rectx1 = 100, rectx2 = 400, recty = 50, recty2 = 100;
+        D3DXCreateFont(pDevice, 20, 0, FW_BOLD, 1, 0, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Tahoma", &font);
+    
 
     RECT textRectangle;
 
-    SetRect(&textRectangle, rectx1 + padding, recty + padding, rectx2 - padding, recty2 - padding);
+    SetRect(&textRectangle, rectx1 + padding, recty1 + padding, rectx2 - padding, recty2 - padding);
 
-    font->DrawTextA(NULL, "Press Ctrl+End to exit overlay", -1, &textRectangle, DT_NOCLIP | DT_LEFT, D3DCOLOR_ARGB(255,153,255,153));
+    font->DrawTextA(NULL, "Press Ctrl+End to Exit overlay\nInsert to change visibility", -1, &textRectangle, DT_NOCLIP | DT_LEFT, D3DCOLOR_ARGB(255,153,255,153));
     return pEndScene(pDevice);
 }
 
@@ -91,11 +96,19 @@ void HookEndScene()
 
     std::cout << "Hooking EndScene function...\n";
 
-    pEndScene = (endScene)DetourAttach((PVOID*)vTable[42], (PVOID)hookedEndScene);
+    DisableThreadLibraryCalls(DllHandle);
+    DetourTransactionBegin();
+    DetourUpdateThread(GetCurrentThread());
+    pEndScene = (endScene)vTable[42];
+    DetourAttach(&(PVOID&)pEndScene, (PVOID)hookedEndScene);
+    DetourTransactionCommit();
+
+    std::cout << "Original EndScene at " << &(PVOID&)vTable[42] << " detoured";
 
     pDevice->Release();
     pD3D->Release();
 }
+
 
 DWORD __stdcall EjectThread(LPVOID lpParam) 
 {
@@ -111,17 +124,21 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
 
     freopen_s(&fp, "CONOUT$", "w", stdout);
 
-    std::cout << "Overlay initialized. At least it loaded\n";
+    std::cout << "We are in " << GetCurrentProcessId() << "\nOverlay initialization...\n";
 
     HookEndScene();
 
     while (true)
     {
-        Sleep(50);
+        Sleep(150);
         if (GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_END)) 
         {
-            DetourDetach((PVOID*)pEndScene, (PVOID)hookedEndScene);
             break;
+        }
+
+        if (GetAsyncKeyState(VK_INSERT))
+        {
+            OverlayVisible = !OverlayVisible;
         }
     }
     
@@ -144,6 +161,10 @@ BOOL APIENTRY DllMain(HMODULE hModule,
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
     case DLL_PROCESS_DETACH:
+        DetourTransactionBegin();
+        DetourUpdateThread(GetCurrentThread());
+        DetourDetach(&(PVOID&)pEndScene, (PVOID)hookedEndScene);
+        DetourTransactionCommit();
         break;
     }
     return TRUE;
