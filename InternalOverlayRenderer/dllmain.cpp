@@ -7,6 +7,9 @@
 #pragma comment(lib, "d3d9.lib")
 #pragma comment(lib, "d3dx9.lib")
 #pragma comment(lib, "detours.lib")
+
+#define D3DX_CREATE_DEFAULT_OVERLAY_FONT(pDevice, font) D3DXCreateFont(pDevice, 15, 0, FW_BOLD, 1, 0, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Tahoma", &font);
+
 //#pragma region WndProc
 //#include <Windows.h>
 //
@@ -31,14 +34,44 @@
 //#pragma endregion
 
 
-HINSTANCE DllHandle;
 
-typedef HRESULT(__stdcall* endScene)(LPDIRECT3DDEVICE9 pDevice);
+typedef void** PPVOID;
+typedef HRESULT(__stdcall* endScene)(LPDIRECT3DDEVICE9);
+typedef HRESULT(__stdcall* reset)(LPDIRECT3DDEVICE9, D3DPRESENT_PARAMETERS*);
+
 endScene pEndScene;
+reset pReset;
 
 LPD3DXFONT font;
+HINSTANCE DllHandle;
+PPVOID D3DVTable;
 
 bool OverlayVisible = true;
+
+HRESULT __forceinline DetourAttachHook(PVOID* ppPointer, PVOID pDetour)
+{
+    DetourTransactionBegin();
+    DetourUpdateThread(GetCurrentThread());
+    auto result = DetourAttach(ppPointer, pDetour);
+    DetourTransactionCommit();
+    return result;
+}
+
+HRESULT __forceinline DetourDetachHook(PVOID* ppPointer, PVOID pDetour)
+{
+    DetourTransactionBegin();
+    DetourUpdateThread(GetCurrentThread());
+    auto result = DetourDetach(ppPointer, pDetour);
+    DetourTransactionCommit();
+    return result;
+}
+
+HRESULT __stdcall hookedReset(LPDIRECT3DDEVICE9 pDevice, D3DPRESENT_PARAMETERS* presentParameters)
+{
+    std::cout << "hooked Reset called";
+    D3DX_CREATE_DEFAULT_OVERLAY_FONT(pDevice, font);
+    return pReset(pDevice, presentParameters);
+}
 
 HRESULT __stdcall hookedEndScene(LPDIRECT3DDEVICE9 pDevice)
 {
@@ -46,21 +79,20 @@ HRESULT __stdcall hookedEndScene(LPDIRECT3DDEVICE9 pDevice)
         return pEndScene(pDevice);
 
     auto padding = 2;
-    auto rectx1 = 100, rectx2 = 500, recty1 = 50, recty2 = 100;
+    auto rectx1 = 50, rectx2 = 500, recty1 = 50, recty2 = 100;
 
 
     D3DRECT rectangle = { rectx1, recty1, rectx2, recty2 };
     //pDevice->Clear(1, &rectangle, D3DCLEAR_TARGET, D3DCOLOR_ARGB(255, 0, 0, 0), 0.0f, 0); // this draws a rectangle
 
     if (!font)
-        D3DXCreateFont(pDevice, 20, 0, FW_BOLD, 1, 0, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Tahoma", &font);
+        D3DX_CREATE_DEFAULT_OVERLAY_FONT(pDevice, font);
     
-
     RECT textRectangle;
 
     SetRect(&textRectangle, rectx1 + padding, recty1 + padding, rectx2 - padding, recty2 - padding);
 
-    font->DrawTextA(NULL, "Press Ctrl+End to Exit overlay\nInsert to change visibility", -1, &textRectangle, DT_NOCLIP | DT_LEFT, D3DCOLOR_ARGB(255,153,255,153));
+    font->DrawTextA(NULL, "Audiosurf Tweaker overlay v0.1\nPress Ctrl+End to Exit overlay\nInsert to change visibility", -1, &textRectangle, DT_NOCLIP | DT_LEFT, D3DCOLOR_ARGB(255,153,255,153));
     return pEndScene(pDevice);
 }
 
@@ -94,14 +126,12 @@ void HookEndScene()
 
     void** vTable = *reinterpret_cast<void***>(pDevice);
 
+    D3DVTable = vTable;
+
     std::cout << "Hooking EndScene function...\n";
 
-    DisableThreadLibraryCalls(DllHandle);
-    DetourTransactionBegin();
-    DetourUpdateThread(GetCurrentThread());
     pEndScene = (endScene)vTable[42];
-    DetourAttach(&(PVOID&)pEndScene, (PVOID)hookedEndScene);
-    DetourTransactionCommit();
+    DetourAttachHook(&(PVOID&)pEndScene, (PVOID)hookedEndScene);
 
     std::cout << "Original EndScene at " << &(PVOID&)vTable[42] << " detoured";
 
@@ -133,6 +163,10 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
         Sleep(150);
         if (GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_END)) 
         {
+            DetourDetachHook(&(PVOID&)pEndScene, (PVOID)hookedEndScene);
+            fclose(fp);
+            FreeConsole();
+            CreateThread(0, 0, EjectThread, 0, 0, 0);
             break;
         }
 
@@ -141,11 +175,6 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
             OverlayVisible = !OverlayVisible;
         }
     }
-    
-    Sleep(1000);
-    fclose(fp);
-    FreeConsole();
-    CreateThread(0, 0, EjectThread, 0, 0, 0);
     return 0;
 }
 
@@ -157,6 +186,7 @@ BOOL APIENTRY DllMain(HMODULE hModule,
     {
     case DLL_PROCESS_ATTACH:
         DllHandle = hModule;
+        DisableThreadLibraryCalls(DllHandle);
         CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)BuildOverlay, NULL, 0, NULL);
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
