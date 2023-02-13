@@ -1,54 +1,30 @@
 ﻿// dllmain.cpp : Определяет точку входа для приложения DLL.
-#include <d3d9.h>
-#include <d3dx9.h>
-#include <iostream>
-#include "detours.h"
-
-#pragma comment(lib, "d3d9.lib")
-#pragma comment(lib, "d3dx9.lib")
-#pragma comment(lib, "detours.lib")
-
-#define D3DX_CREATE_DEFAULT_OVERLAY_FONT(pDevice, font) D3DXCreateFont(pDevice, 15, 0, FW_BOLD, 1, 0, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Tahoma", &font);
-
-//#pragma region WndProc
-//#include <Windows.h>
-//
-//constexpr LPCSTR WndProcHandlerWindowTitle = "TWD3DOVRLTITLE_TweakerOverlay";
-//
-//LPSTR overlayMessage;
-//
-//LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) 
-//{
-//    LPSTR cdsText;
-//
-//    switch (msg) 
-//    {
-//    case WM_COPYDATA:
-//        LPSTR cdsText = (LPSTR)((COPYDATASTRUCT*)lParam)->lpData; //Command text sended by host application
-//
-//    default:
-//        return DefWindowProc(hwnd, msg, wParam, lParam);
-//    }
-//}
-//
-//#pragma endregion
-
-
-
-typedef void** PPVOID;
-typedef HRESULT(__stdcall* endScene)(LPDIRECT3DDEVICE9);
-typedef HRESULT(__stdcall* reset)(LPDIRECT3DDEVICE9, D3DPRESENT_PARAMETERS*);
+#include "dllmain.h"
 
 endScene pEndScene;
 reset pReset;
 
-LPD3DXFONT font;
-HINSTANCE DllHandle;
-PPVOID D3DVTable;
+LPDIRECT3DDEVICE9 ActualD3DDevice = nullptr;
+LPD3DXFONT font = nullptr;
+HINSTANCE DllHandle = nullptr;
+PPVOID D3DVTable = nullptr;
+D3DDEVICE_CREATION_PARAMETERS ViewportParams;
 
 bool OverlayVisible = true;
 
-HRESULT __forceinline DetourAttachHook(PVOID* ppPointer, PVOID pDetour)
+#pragma region Overlay Rectange Parameters
+
+int ovlRectLX = 50;
+int ovlRectLY = 50;
+
+int ovlRectWidth = 450;
+int ovlRectHeight = 50;
+
+int padding = 2;
+
+#pragma endregion
+
+HRESULT __stdcall DetourAttachHook(PVOID* ppPointer, PVOID pDetour)
 {
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
@@ -57,7 +33,7 @@ HRESULT __forceinline DetourAttachHook(PVOID* ppPointer, PVOID pDetour)
     return result;
 }
 
-HRESULT __forceinline DetourDetachHook(PVOID* ppPointer, PVOID pDetour)
+HRESULT __stdcall DetourDetachHook(PVOID* ppPointer, PVOID pDetour)
 {
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
@@ -66,20 +42,29 @@ HRESULT __forceinline DetourDetachHook(PVOID* ppPointer, PVOID pDetour)
     return result;
 }
 
-HRESULT __stdcall hookedReset(LPDIRECT3DDEVICE9 pDevice, D3DPRESENT_PARAMETERS* presentParameters)
+HRESULT __stdcall HookedReset(LPDIRECT3DDEVICE9 pDevice, D3DPRESENT_PARAMETERS* presentParameters)
 {
-    std::cout << "hooked Reset called";
+    pDevice->GetCreationParameters(&ViewportParams);
+
+    RECT rect;
+    GetWindowRect(ViewportParams.hFocusWindow, &rect);
+
+    ovlRectLY = rect.bottom - 100;
+
+    ActualD3DDevice = pDevice;
     D3DX_CREATE_DEFAULT_OVERLAY_FONT(pDevice, font);
     return pReset(pDevice, presentParameters);
 }
 
-HRESULT __stdcall hookedEndScene(LPDIRECT3DDEVICE9 pDevice)
+HRESULT __stdcall  HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
 {
+    if (ActualD3DDevice == nullptr)
+        ActualD3DDevice = pDevice;
+
     if (!OverlayVisible)
         return pEndScene(pDevice);
 
-    auto padding = 2;
-    auto rectx1 = 50, rectx2 = 500, recty1 = 50, recty2 = 100;
+    auto rectx1 = ovlRectLX, rectx2 = ovlRectLX + ovlRectWidth, recty1 = ovlRectLY, recty2 = ovlRectLY + ovlRectHeight;
 
 
     D3DRECT rectangle = { rectx1, recty1, rectx2, recty2 };
@@ -96,7 +81,7 @@ HRESULT __stdcall hookedEndScene(LPDIRECT3DDEVICE9 pDevice)
     return pEndScene(pDevice);
 }
 
-void HookEndScene()
+void InitD3D9()
 {
     std::cout << "Hooking D3D EndScene...\n";
 
@@ -112,29 +97,31 @@ void HookEndScene()
     d3dparams.hDeviceWindow = GetForegroundWindow();
     d3dparams.Windowed = true;
 
-    IDirect3DDevice9* pDevice = nullptr;
+    LPDIRECT3DDEVICE9 pDevice = nullptr;
 
     HRESULT result = pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, d3dparams.hDeviceWindow,
         D3DCREATE_SOFTWARE_VERTEXPROCESSING, &d3dparams, &pDevice);
 
     if (FAILED(result) || !pDevice)
     {
-        std::cout << "Error during creating D3DDevice. Exiting process";
+        std::cout << "Error during creating D3DDevice. Exiting process\n";
         pD3D->Release();
         return;
     }
 
-    void** vTable = *reinterpret_cast<void***>(pDevice);
+    PPVOID vTable = *reinterpret_cast<void***>(pDevice);
 
     D3DVTable = vTable;
 
-    std::cout << "Hooking EndScene function...\n";
+    std::cout << "Hooking Direct3D VTable function...\n";
 
     pEndScene = (endScene)vTable[42];
-    DetourAttachHook(&(PVOID&)pEndScene, (PVOID)hookedEndScene);
+    pReset = (reset)vTable[16];
+    DetourAttachHook(&(PVOID&)pReset, (PVOID)HookedReset);
+    DetourAttachHook(&(PVOID&)pEndScene, (PVOID)HookedEndScene);
 
-    std::cout << "Original EndScene at " << &(PVOID&)vTable[42] << " detoured";
-
+    std::cout << "Original EndScene at " << vTable[42] << " detoured\n";
+    std::cout << "Original Reset at " << vTable[16] << " detoured\n";
     pDevice->Release();
     pD3D->Release();
 }
@@ -154,16 +141,23 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
 
     freopen_s(&fp, "CONOUT$", "w", stdout);
 
+    if (fp == nullptr)
+    {
+        std::cout << "Error allocating console\n";
+        CreateThread(0, 0, EjectThread, 0, 0, 0);
+    }
+
     std::cout << "We are in " << GetCurrentProcessId() << "\nOverlay initialization...\n";
 
-    HookEndScene();
+    InitD3D9();
 
     while (true)
     {
         Sleep(150);
         if (GetAsyncKeyState(VK_CONTROL) && GetAsyncKeyState(VK_END)) 
         {
-            DetourDetachHook(&(PVOID&)pEndScene, (PVOID)hookedEndScene);
+            DetourDetachHook(&(PVOID&)pEndScene, (PVOID)HookedEndScene);
+            DetourDetachHook(&(PVOID&)pReset, (PVOID)HookedReset);
             fclose(fp);
             FreeConsole();
             CreateThread(0, 0, EjectThread, 0, 0, 0);
@@ -191,10 +185,6 @@ BOOL APIENTRY DllMain(HMODULE hModule,
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
     case DLL_PROCESS_DETACH:
-        DetourTransactionBegin();
-        DetourUpdateThread(GetCurrentThread());
-        DetourDetach(&(PVOID&)pEndScene, (PVOID)hookedEndScene);
-        DetourTransactionCommit();
         break;
     }
     return TRUE;
