@@ -192,7 +192,7 @@ namespace SkinChangerRestyle.MVVM.Model
             string tempDirectory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
             Directory.CreateDirectory(tempDirectory);
             _rootVM.InstallSkin(_pathToOriginFile, tempDirectory, forced: true, unpackScreenshots: true, saveState: false);
-            var dirproc = Process.Start(tempDirectory);
+            var dirproc = System.Diagnostics.Process.Start(tempDirectory);
             new EditOnDiskLockWindow().ShowDialog();
             var redactedSkin = SkinPackager.CreateSkinFromFolder(tempDirectory);
 
