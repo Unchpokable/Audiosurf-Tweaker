@@ -51,11 +51,14 @@ namespace SkinChangerRestyle.MVVM.Model
 
         public async void InitializeTempFile(string path)
         {
-            if (File.Exists(path))
+            if (!File.Exists(path))
             {
-                TempFilePath = path;
-                await OverwriteTempFile();
+                Directory.CreateDirectory(Path.GetDirectoryName(path));
+                File.Create(path);
             }
+            
+            TempFilePath = path;
+            await OverwriteTempFile();
         }
 
         public Task OverwriteTempFile()

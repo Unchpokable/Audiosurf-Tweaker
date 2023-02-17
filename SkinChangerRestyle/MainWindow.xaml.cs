@@ -19,7 +19,7 @@
 
         public MainWindow()
         {
-            AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
+            //AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
             InitializeComponent();
             Focus();
             _logger = new Logger();
@@ -60,20 +60,21 @@
         {
            Process.Start(SettingsProvider.GameTexturesPath ?? @"C:/");
         }
+#if !DEBUG
+        //private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
+        //{
+        //    var exception = e.ExceptionObject as Exception;
+        //    var formattedMessage = $"Ooops! An unhandled exception occurred!\n{exception.Message}\nStack Trace: {exception.StackTrace}\n";
+        //    MessageBox.Show(formattedMessage, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        //    _logger.Log("Initialization fault", formattedMessage);
+        //}
 
-        private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
-        {
-            var exception = e.ExceptionObject as Exception;
-            var formattedMessage = $"Ooops! An unhandled exception occurred!\n{exception.Message}\nStack Trace: {exception.StackTrace}\n";
-            MessageBox.Show(formattedMessage, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            _logger.Log("Initialization fault", formattedMessage);
-        }
-
-        private void OnFirstChanceUnhandledException(object sender, FirstChanceExceptionEventArgs e)
-        {
-            var exception = e.Exception;
-            var formattedMessage = $"Ooops! An unhandled exception occurred!\n{exception.Message}\nStack Trace: {exception.StackTrace}\n";
-            MessageBox.Show(formattedMessage, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        //private void OnFirstChanceUnhandledException(object sender, FirstChanceExceptionEventArgs e)
+        //{
+        //    var exception = e.Exception;
+        //    var formattedMessage = $"Ooops! An unhandled exception occurred!\n{exception.Message}\nStack Trace: {exception.StackTrace}\n";
+        //    MessageBox.Show(formattedMessage, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+        //}
+#endif
     }
 }
