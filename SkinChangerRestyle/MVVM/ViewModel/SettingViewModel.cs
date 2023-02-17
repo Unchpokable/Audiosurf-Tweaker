@@ -19,6 +19,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
     {
         public SettingViewModel()
         {
+            ScrollAllowed = true;
             SetConfigurationValue = new RelayCommand(AskAndSetConfigValue);
             SelectTempFile = new RelayCommand(SelectTempFileInternal);
             DuplicateTempFile = new RelayCommand(DuplicateTempFileInternal);
@@ -28,6 +29,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             IsShouldCheckTextures = SettingsProvider.ControlSystemActive;
             WatcherTempFile = SettingsProvider.WatcherTempFile;
             _isWatcherEnabled = SettingsProvider.WatcherEnabled;
+
+            IsUWPNotificationsAllowed = SettingsProvider.IsUWPNotificationsAllowed;
+            IsUWPNotificationSilent = SettingsProvider.IsUWPNotificationSilent;
 
             if (_isWatcherEnabled)
             {
@@ -41,7 +45,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
                 if (IsShouldStoreTextures)
                 {
-                    Watcher.InitializeTempFile(IsTempFileOverrided ? WatcherTempFile : @"store\temp.tasp");
+                    Watcher.InitializeTempFile(IsTempFileOverrided ? WatcherTempFile : SettingsProvider.WatcherDefaultTemp);
                 }
 
                 Watcher.DiskOperationCompleted += (s, e) =>
@@ -156,7 +160,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         public string WatcherTempFile
         {
-            get => IsTempFileOverrided ? _watcherTempFile : @"store\temp.tasp";
+            get => IsTempFileOverrided ? _watcherTempFile : SettingsProvider.WatcherDefaultTemp;
             set
             {
                 _watcherTempFile = value;
@@ -221,6 +225,34 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
         }
 
+        public bool IsUWPNotificationsAllowed
+        {
+            get => _uwpNotificationAllwed;
+            set
+            {
+                _uwpNotificationAllwed = value;
+                OnPropertyChanged();
+                SettingsProvider.IsUWPNotificationsAllowed = value;
+                var notifyMessage = value
+                    ? "Windows notification enabled"
+                    : "Windows notification disabled. That was the last time";
+
+                Extensions.SendNotification("UWP Notification settings", notifyMessage);
+                ApplySettings();
+            }
+        }
+
+        public bool IsUWPNotificationSilent
+        {
+            get => _uwpNotificationSilent;
+            set
+            {
+                _uwpNotificationSilent = value;
+                OnPropertyChanged();
+                SettingsProvider.IsUWPNotificationSilent = value;
+                ApplySettings();
+            }
+        }
 
         public RelayCommand SetConfigurationValue { get; set; }
         public RelayCommand SelectTempFile { get; set; }
@@ -237,6 +269,8 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private bool _isSafeInstall;
         private bool _isTempFileOverrided;
         private bool _isGuiActive;
+        private bool _uwpNotificationAllwed;
+        private bool _uwpNotificationSilent;
 
         private void AskAndSetConfigValue(object parameter)
         {

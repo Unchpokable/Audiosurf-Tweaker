@@ -15,7 +15,11 @@ namespace SkinChangerRestyle.Core
         internal static string WatcherTempFile { get; set; }
         internal static bool WatcherShouldStoreTextures { get; set; }
         internal static bool WatcherTempFileOverrided { get; set; }
+
+        internal static bool IsUWPNotificationsAllowed { get; set; }
+        internal static bool IsUWPNotificationSilent { get; set; }
+
         internal static string DefaultSkinsPath => Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\\Skins";
-        internal static string WatcherDefaultTemp => @"store\temp.tasp";
+        internal static string WatcherDefaultTemp => @"storage\temp.tasp";
     }
 }

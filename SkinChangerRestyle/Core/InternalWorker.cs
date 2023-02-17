@@ -67,6 +67,8 @@ namespace SkinChangerRestyle.Core
                 Settings.WatcherTempFileOverrided = bool.Parse(ConfigurationManager.AppSettings.Get("WatcherTempFileOverrided"));
                 Settings.WatcherEnabled = bool.Parse(ConfigurationManager.AppSettings.Get("WatcherEnabled"));
                 Settings.UseFastPreview = bool.Parse(ConfigurationManager.AppSettings.Get("UseFastPreview"));
+                Settings.IsUWPNotificationsAllowed = bool.Parse(ConfigurationManager.AppSettings.Get("UWPNotificationsAllowed"));
+                Settings.IsUWPNotificationSilent = bool.Parse(ConfigurationManager.AppSettings.Get("UWPNotificationSilent"));
             }
             catch (Exception e)
             {
@@ -90,6 +92,8 @@ namespace SkinChangerRestyle.Core
                 cfg.AppSettings.Settings["WatcherTempFileOverrided"].Value = Settings.WatcherTempFileOverrided.ToString();
                 cfg.AppSettings.Settings["WatcherEnabled"].Value = Settings.WatcherEnabled.ToString();
                 cfg.AppSettings.Settings["UseFastPreview"].Value = Settings.UseFastPreview.ToString();
+                cfg.AppSettings.Settings["UWPNotificationsAllowed"].Value = Settings.IsUWPNotificationsAllowed.ToString();
+                cfg.AppSettings.Settings["UWPNotificationSilent"].Value = Settings.IsUWPNotificationSilent.ToString();
                 cfg.Save();
             }
             catch (Exception e)

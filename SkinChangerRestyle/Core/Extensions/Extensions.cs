@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Toolkit.Uwp.Notifications;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
@@ -55,6 +56,20 @@ namespace SkinChangerRestyle.Core.Extensions
             return new Bitmap(source, (int)(source.Width * scaleX), (int)(source.Height * scaleY));
         }
 
+        public static System.Windows.Size ScaleWidth(this System.Windows.Size origin, float scaleFactor)
+        {
+            return new System.Windows.Size(origin.Width * scaleFactor, origin.Height);
+        }
+
+        public static System.Windows.Size ScaleHeight(this System.Windows.Size origin, float scaleFactor)
+        {
+            return new System.Windows.Size(origin.Width, origin.Height * scaleFactor);
+        }
+
+        public static System.Windows.Size Scale(this System.Windows.Size origin, float scaleFactor)
+        {
+            return new System.Windows.Size(origin.Width * scaleFactor, origin.Height * scaleFactor);
+        }
 
         public static bool UnorderedSequenceEquals<TElem>(this IList<TElem> origin, IList<TElem> compareWith)
         {
@@ -82,7 +97,7 @@ namespace SkinChangerRestyle.Core.Extensions
         {
             try
             {
-                Process.Start(new ProcessStartInfo
+                System.Diagnostics.Process.Start(new ProcessStartInfo
                 {
                     FileName = "cmd.exe",
                     Arguments = $"/c {command}",
@@ -90,6 +105,17 @@ namespace SkinChangerRestyle.Core.Extensions
                 });
             } 
             catch { }
+        }
+
+        public static void SendNotification(string caption, string message)
+        {
+            var toast = new ToastContentBuilder()
+                .AddText(caption)
+                .AddText(message);
+
+            if (SettingsProvider.IsUWPNotificationSilent)
+                toast.AddAudio(new ToastAudio() { Silent = true });
+            toast.Show();
         }
     }
 }

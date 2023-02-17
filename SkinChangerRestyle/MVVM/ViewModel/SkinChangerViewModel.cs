@@ -14,6 +14,7 @@ using System.Windows.Forms;
 using System.Reflection;
 using ASCommander;
 using System.Drawing;
+using Microsoft.Toolkit.Uwp.Notifications;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -284,10 +285,15 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 Clean(target);
                 AudiosurfHandle.Instance.Command("ascommand reloadtextures");
             }
-            await InstallSkinInternal(pathToOrigin, target, forced: forced, unpackScreenshots: unpackScreenshots, saveState: saveState);
+            
+            var skinName = await InstallSkinInternal(pathToOrigin, target, forced: forced, unpackScreenshots: unpackScreenshots, saveState: saveState);
 
             if (SettingsProvider.HotReload)
                 AudiosurfHandle.Instance.Command("ascommand reloadtextures");
+
+            if (SettingsProvider.IsUWPNotificationsAllowed)
+                Extensions.SendNotification("Operation completed", $"Skin \"{skinName}\" sucessfully installed. Enjoy! ^_^");
+
             ChangerStatus = "Ready";
         }
 
@@ -329,7 +335,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
         }
 
-        private Task InstallSkinInternal(string pathToOrigin, string target,
+        private Task<string> InstallSkinInternal(string pathToOrigin, string target, 
                                          bool forced = false,
                                          bool unpackScreenshots = false,
                                          bool saveState = false)
@@ -338,7 +344,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 var skin = SkinPackager.Decompile(pathToOrigin);
                 if (skin == null)
-                    return;
+                    return null;
 
                 if (ShouldInstallSkyspheres || forced)
                     skin.SkySpheres?.Apply(x => x?.Save(target));
@@ -373,8 +379,18 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
                 if (SettingsProvider.HotReload)
                     AudiosurfHandle.Instance.Command("ascommand reloadtextures");
+
+                string installedSkinName;
+                unsafe
+                {
+                    fixed (char* pName = skin.Name)
+                        installedSkinName = new string(pName);
+                }
+
                 skin.Dispose();
                 GC.Collect();
+
+                return installedSkinName;
             });
         }
 
