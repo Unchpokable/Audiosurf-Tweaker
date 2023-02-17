@@ -4,6 +4,8 @@ using ASCommander;
 using SkinChangerRestyle.Core;
 using SkinChangerRestyle.Core.Extensions;
 using System.Windows.Media;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -35,6 +37,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 _currentView = value;
                 OnPropertyChanged();
+                OnPropertyChanged("CurrentView.ScrollAllowed");
             }
         }
 
@@ -43,10 +46,12 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         {
             InternalWorker.InitializationFaultCallback += async (e) =>
             {
-                await System.Threading.Tasks.Task.Run(() =>
+#if ASD
+                await Task.Run(() =>
                 {
                     MessageBox.Show($"{e.Message}\nPlease, check your settings tab", "Default Configuration initialization fault", MessageBoxButton.OK, MessageBoxImage.Warning);
                 });
+#endif
             };
 
             InternalWorker.SetUpDefaultSettings();
@@ -67,7 +72,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             EnableAutoHandling = new RelayCommand(o => _asHandle.StartAutoHandling());
             ResetWndProcService = new RelayCommand(o => _asHandle.ReinitializeWndProcMessageService());
             Extensions.DisposeAndClear();
-            
+            _asHandle.Registered += InitializeOverlay;
+        }
+
+        private void InitializeOverlay(object sender, EventArgs e)
+        {
         }
 
         private void OnASHandleStateChanged(object sender, EventArgs e)
