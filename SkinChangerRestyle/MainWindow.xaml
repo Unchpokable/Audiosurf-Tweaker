@@ -13,8 +13,7 @@
         Background="White"
         Title="Audiosurf Tweaker"
         WindowStyle="None"
-        AllowsTransparency="True"
-        ResizeMode="NoResize">
+        AllowsTransparency="True">
 
     <Window.DataContext>
         <viewModel:MainViewModel/>
@@ -110,15 +109,7 @@
 
                 </Grid>
 
-                <ContentControl Grid.Column="1">
-                    <ScrollViewer Content="{Binding CurrentView}"
-                                  HorizontalContentAlignment="Left"
-                                  VerticalContentAlignment="Top"
-                                  VerticalScrollBarVisibility="Auto"
-                                  CanContentScroll="{Binding CurrentView.ScrollAllowed}">
-                        
-                    </ScrollViewer>
-                </ContentControl>
+                <ContentControl Grid.Column="1" Content="{Binding CurrentView}"/>
             </Grid>
         </Grid>
     </Border>

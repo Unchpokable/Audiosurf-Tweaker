@@ -253,7 +253,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private async void WriteGameINI(object o)
         {
             var isGameKilled = false;
-            var gamePid = System.Diagnostics.Process.GetProcessesByName("QuestViewer");
+            var gamePid = Process.GetProcessesByName("QuestViewer");
             if (gamePid.Length > 0)
             {
                 if (MessageBox.Show("Audiosurf Tweaker detected running game instance. Color settings can't be overwrited while game is running. Shutdown game to rewrite settings? This action will start your game back when operation complete", "Game is running", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
@@ -312,7 +312,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         private async Task WaitForGameStopWorking(string procName)
         {
-            while (System.Diagnostics.Process.GetProcessesByName(procName).Length != 0)
+            while (Process.GetProcessesByName(procName).Length != 0)
                 await Task.Delay(100);
         }
 
