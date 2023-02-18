@@ -237,7 +237,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     ? "Windows notification enabled"
                     : "Windows notification disabled. That was the last time";
 
-                Extensions.SendNotification("UWP Notification settings", notifyMessage);
+                Extensions.ShowUWPNotification("UWP Notification settings", notifyMessage);
                 ApplySettings();
             }
         }

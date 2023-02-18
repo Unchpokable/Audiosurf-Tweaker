@@ -107,10 +107,12 @@ namespace SkinChangerRestyle.Core.Extensions
             catch { }
         }
 
-        public static void SendNotification(string caption, string message)
+        public static void ShowUWPNotification(string caption, string message)
         {
             var toast = new ToastContentBuilder()
                 .AddText(caption)
+                .AddHeader("0", "Tweaker notification", new ToastArguments())
+                .SetToastDuration(ToastDuration.Short)
                 .AddText(message);
 
             if (SettingsProvider.IsUWPNotificationSilent)

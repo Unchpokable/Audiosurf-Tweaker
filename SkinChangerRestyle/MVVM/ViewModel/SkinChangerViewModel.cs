@@ -292,7 +292,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 AudiosurfHandle.Instance.Command("ascommand reloadtextures");
 
             if (SettingsProvider.IsUWPNotificationsAllowed)
-                Extensions.SendNotification("Operation completed", $"Skin \"{skinName}\" sucessfully installed. Enjoy! ^_^");
+                Extensions.ShowUWPNotification("Operation completed", $"Skin \"{skinName}\" sucessfully installed. Enjoy! ^_^");
 
             ChangerStatus = "Ready";
         }
