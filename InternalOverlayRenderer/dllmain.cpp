@@ -16,7 +16,6 @@ bool OverlayVisible = true;
 bool ImguiToolboxVisible = false;
 bool ImguiInitialized = false;
 
-
 #pragma region Overlay Rectange Parameters
 
 int ovlRectLX = 50;
@@ -32,6 +31,7 @@ int padding = 2;
 #pragma region ImGui UI globals
 
 int ListboxSelect(0);
+std::vector<const char*> ActualSkinsList{};
 
 #pragma endregion
 
@@ -127,8 +127,12 @@ void __forceinline DrawMenu()
     ImGui::Spacing();
 
     //debug things u know
-    const char* items[] = {"Nano", "Fractal", "Point Disarray"};
-    ImGui::ListBox("", &ListboxSelect, items, (int)ARRSIZE(items), -1);
+    ActualSkinsList.clear();
+
+    ActualSkinsList.push_back("Nano");
+    ActualSkinsList.push_back("Point Disarray");
+    
+    ImGui::ListBox("", &ListboxSelect, ActualSkinsList.data(), ActualSkinsList.size(), -1);
 
     if (ImGui::Button("Install Now"))
     {
@@ -212,6 +216,35 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
     if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
         return true;
 
+    if (msg == WM_COPYDATA) {
+        auto cds = (COPYDATASTRUCT*)lParam;
+
+        if (cds->cbData > 0 && cds->dwData > 0)
+        {
+            auto msg = std::string((LPCSTR)cds->lpData);
+            if (msg.find("tw-update-listener") != std::string::npos) // catch ovl-update-listener command from host application, that has a signature of "tw-update-listener AsMsgHandler_<unique_symbol_sequence>
+            {
+                auto HandlerUniqueID = msg.substr(std::string("tw-update-listener").length()+1);
+
+                HWND hostWndProcHandler = FindWindowA(NULL, HandlerUniqueID.c_str());
+                if (hostWndProcHandler)
+                    HostApplicationHandle = hostWndProcHandler;
+            }
+
+            if (msg.find("tw-update-skin-list") != std::string::npos)
+            {
+                auto list = msg.substr(std::string("tw-update-skin-list").length());
+                LTrim(list);
+
+                for (auto& item : Split(list, "; "))
+                {
+                    ActualSkinsList.clear();
+                    ActualSkinsList.push_back(item.c_str());
+                }
+            }
+        }
+    }
+
     return CallWindowProc(g_WndProc_o, hWnd, msg, wParam, lParam);
 }
 
@@ -267,6 +300,46 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
     }
     return 0;
 }
+
+#pragma region string things
+
+//Looks a lot more like C++ code instead on C-like other stuff 
+inline void LTrim(std::string& str)
+{
+    str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](unsigned char ch) {
+            return !std::isspace(ch);
+        }));
+}
+
+inline void RTrim(std::string& str)
+{
+    str.erase(std::find_if(str.rbegin(), str.rend(), [](unsigned char ch) {
+            return !std::isspace(ch);
+        }).base(), str.end());
+}
+
+inline void Trim(std::string& str)
+{
+    RTrim(str);
+    LTrim(str);
+}
+
+inline std::vector<std::string> Split(std::string src, std::string delimeter)
+{
+    std::vector<std::string> outputContainer{};
+
+    std::size_t pos = 0;
+
+    while ((pos = src.find(delimeter)) != std::string::npos)
+    {
+        outputContainer.push_back(src.substr(0, pos));
+        src.erase(0, pos + delimeter.length());
+    }
+
+    return outputContainer;
+}
+
+#pragma endregion
 
 BOOL APIENTRY DllMain(HMODULE hModule,
                        DWORD  ul_reason_for_call,

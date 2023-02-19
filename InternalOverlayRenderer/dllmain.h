@@ -5,6 +5,12 @@
 #include <d3dx9.h>
 #include <iostream>
 #include "detours.h"
+#include <string>
+#include <algorithm>
+#include <cctype>
+#include <functional>
+#include <locale>
+#include <vector>
 
 #include "imgui/imgui.h"
 #include "imgui/backends/imgui_impl_dx9.h"
@@ -42,6 +48,14 @@ DWORD WINAPI BuildOverlay(HINSTANCE);
 
 void InitD3D9();
 void __forceinline DrawMenu();
+
+inline void LTrim(std::string&);
+inline void RTrim(std::string&);
+
+inline void Trim(std::string&);
+
+inline std::vector<std::string> Split(std::string, std::string);
+
 
 #endif // !D3DTYPES_H
 
