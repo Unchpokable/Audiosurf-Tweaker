@@ -15,18 +15,12 @@ int main(int argc, char** argv)
 	auto procID = std::atoi(argv[1]);
 
 	LPSTR dllPath(argv[2]);
-	
-	std::ofstream out("output.txt");
-	std::cout.rdbuf(out.rdbuf());
 
-	std::cout << "[Call args] pID: " << procID << "\nDll Path: " << dllPath << "\n";
 
 	if (!Inject(procID, dllPath)) 
 	{
-		std::cout << "Injection failed\n";
+		return -1;
 	}
-	else 
-		std::cout << "Injection success\n";
 	return 0;
 }
 
