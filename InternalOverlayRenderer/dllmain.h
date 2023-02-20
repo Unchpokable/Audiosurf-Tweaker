@@ -1,5 +1,5 @@
-#ifndef D3DTYPES_H
-#define D3DTYPES_H
+#ifndef DLLMAIN_H
+#define DLLMAIN_H
 
 #include <d3d9.h>
 #include <d3dx9.h>
@@ -11,6 +11,7 @@
 #include <functional>
 #include <locale>
 #include <vector>
+#include <mutex>
 
 #include "imgui/imgui.h"
 #include "imgui/backends/imgui_impl_dx9.h"
@@ -20,7 +21,7 @@
 #pragma comment(lib, "d3dx9.lib")
 #pragma comment(lib, "detours.lib")
 
-#define D3DX_CREATE_DEFAULT_OVERLAY_FONT(pDevice, font) D3DXCreateFont(pDevice, 15, 0, FW_BOLD, 1, 0, DEFAULT_CHARSET, OUT_DEFAULT_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Tahoma", &font)
+#define D3DX_CREATE_DEFAULT_OVERLAY_FONT(pDevice, font) D3DXCreateFont(pDevice, 24, 0, FW_BOLD, 1, 0, DEFAULT_CHARSET, OUT_TT_ONLY_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Tahoma", &font)
 
 #define ARRSIZE(arr) sizeof(arr)/sizeof(arr[0])
 
@@ -56,6 +57,5 @@ inline void Trim(std::string&);
 
 inline std::vector<std::string> Split(std::string, std::string);
 
-
-#endif // !D3DTYPES_H
+#endif // !DLLMAIN_H
 

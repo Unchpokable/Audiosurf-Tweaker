@@ -10,11 +10,8 @@ PPVOID D3DVTable = nullptr;
 D3DDEVICE_CREATION_PARAMETERS ViewportParams;
 HWND HostApplicationHandle;
 HWND GameHandle;
-WNDPROC g_WndProc_o;
+WNDPROC WndProcOriginal;
 
-bool OverlayVisible = true;
-bool ImguiToolboxVisible = false;
-bool ImguiInitialized = false;
 
 #pragma region Overlay Rectange Parameters
 
@@ -28,10 +25,15 @@ int padding = 2;
 
 #pragma endregion
 
-#pragma region ImGui UI globals
+#pragma region UI globals
 
+bool OverlayVisible = true;
+bool ImguiToolboxVisible = false;
+bool ImguiInitialized = false;
 int ListboxSelect(0);
+
 std::vector<const char*> ActualSkinsList{};
+std::string DisplayInfo{};
 
 #pragma endregion
 
@@ -99,7 +101,7 @@ HRESULT __stdcall HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
 
     if (!font)
         D3DX_CREATE_DEFAULT_OVERLAY_FONT(pDevice, font);
-    
+
     RECT textRectangle;
 
     SetRect(&textRectangle, rectx1 + padding, recty1 + padding, rectx2 - padding, recty2 - padding);
@@ -136,7 +138,11 @@ void __forceinline DrawMenu()
 
     if (ImGui::Button("Install Now"))
     {
-        std::cout << "Call Install-package command\n";
+        SendCommandToHostApplication(const_cast<char*>(
+            ( std::string(IntallPackageCommandHeader) 
+            + std::string(" ") 
+            + std::string(ActualSkinsList[ListboxSelect]))
+            .c_str()));
     }
 
     ImGui::Spacing();
@@ -208,7 +214,7 @@ void InitD3D9()
     pD3D->Release();
 
     GameHandle = FindWindowA(NULL, "Audiosurf");
-    g_WndProc_o = (WNDPROC)SetWindowLongA(GameHandle, GWL_WNDPROC, (LRESULT)WndProc);
+    WndProcOriginal = (WNDPROC)SetWindowLongA(GameHandle, GWL_WNDPROC, (LRESULT)WndProc);
 }
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -242,10 +248,23 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                     ActualSkinsList.push_back(item.c_str());
                 }
             }
+
+            if (msg.find("tw-update-ovl-info") != std::string::npos)
+            {
+                auto newInfo = msg.substr(std::string("tw-update-ovl-info").length());
+                DisplayInfo.clear();
+                DisplayInfo.append(newInfo);
+            }
+
+            if (msg.find("tw-pulse") != std::string::npos)
+            {
+                if (HostApplicationHandle != nullptr)
+                    SendCommandToHostApplication(const_cast<char*>("tw-responce ok"));
+            }
         }
     }
 
-    return CallWindowProc(g_WndProc_o, hWnd, msg, wParam, lParam);
+    return CallWindowProc(WndProcOriginal, hWnd, msg, wParam, lParam);
 }
 
 DWORD __stdcall EjectThread(LPVOID lpParam) 
@@ -279,7 +298,7 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
         {
             DetourDetachHook(&(PVOID&)pEndScene, (PVOID)HookedEndScene);
             DetourDetachHook(&(PVOID&)pReset, (PVOID)HookedReset);
-            SetWindowLongA(GameHandle, GWL_WNDPROC, (LONG_PTR)g_WndProc_o);
+            SetWindowLongA(GameHandle, GWL_WNDPROC, (LONG_PTR)WndProcOriginal);
             fclose(fp);
             FreeConsole();
             CreateThread(0, 0, EjectThread, 0, 0, 0);
@@ -295,15 +314,12 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
         {
             ImguiToolboxVisible = !ImguiToolboxVisible;
         }
-
-
     }
     return 0;
 }
 
 #pragma region string things
 
-//Looks a lot more like C++ code instead on C-like other stuff 
 inline void LTrim(std::string& str)
 {
     str.erase(str.begin(), std::find_if(str.begin(), str.end(), [](unsigned char ch) {
