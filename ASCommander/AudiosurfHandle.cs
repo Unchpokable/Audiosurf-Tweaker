@@ -54,9 +54,14 @@ namespace ASCommander
         public event EventHandler Registered;
         public event MessageEventHandler MessageResieved;
         public event EventHandler<CommandInfo> CommandSent;
+        public event EventHandler MessageServiceInitialized;
 
         public bool IsValid { get; private set; }
         public IntPtr Handle { get; private set; }
+        public int GamePID { get; private set; }
+
+        public string ListenerWindowCaption => WinApiServiceBase.ListenerWindowCaption;
+
         public string StateMessage => _currentState.Message;
         public string StateColor => _currentState.ColorInterpretation;
 
@@ -91,6 +96,7 @@ namespace ASCommander
                 _autoHandling = true;
                 _wndProcMessageService = new WndProcMessageService();
                 _wndProcMessageService.MessageRecieved += OnMessageRecieved;
+                MessageServiceInitialized?.Invoke(this, EventArgs.Empty);
                 return true;
             }
             catch { return false; }
@@ -156,16 +162,19 @@ namespace ASCommander
 
         public void Command(string message)
         {
-            if (_wndProcMessageService.Valid == false)
+            lock (_lockObject)
             {
-                if (message.Contains("reloadtextures")) return; //No need to enqueue reloadtextures command
-                _queuedCommands.Enqueue(message);
-                CommandSent?.Invoke(this, new CommandInfo(message, CommandInfo.CommandStatus.Enqueued));
-                return;
-            }
+                if (_wndProcMessageService.Valid == false)
+                {
+                    if (message.Contains("reloadtextures")) return; //No need to enqueue reloadtextures command
+                    _queuedCommands.Enqueue(message);
+                    CommandSent?.Invoke(this, new CommandInfo(message, CommandInfo.CommandStatus.Enqueued));
+                    return;
+                }
 
-            _wndProcMessageService.Command(WinAPI.WM_COPYDATA, message);
-            CommandSent?.Invoke(this, new CommandInfo(message, CommandInfo.CommandStatus.Sent));
+                _wndProcMessageService.Command(WinAPI.WM_COPYDATA, message);
+                CommandSent?.Invoke(this, new CommandInfo(message, CommandInfo.CommandStatus.Sent));
+            }
         }
 
         public void OnMessageRecieved(object sender, Message message)
@@ -241,7 +250,10 @@ namespace ASCommander
                 shouldUseQuickRegister = true;
             else
                 shouldUseQuickRegister = false;
+
             if (processes.Length == 0) return IntPtr.Zero;
+
+            GamePID = processes[0].Id;
             return processes[0].MainWindowHandle;
         }
     }
