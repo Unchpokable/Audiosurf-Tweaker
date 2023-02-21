@@ -63,8 +63,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Audiosurf\SongTags.cs" />
+    <Compile Include="Audiosurf\TagWriter.cs" />
     <Compile Include="GenericTagsContainer.cs" />
     <Compile Include="MetadataParsers\MetadataReader.cs" />
+    <Compile Include="PackedPresenters\Codec.cs" />
     <Compile Include="PackedPresenters\SamplingParams.cs" />
     <Compile Include="PackedPresenters\StandardBitDepth.cs" />
     <Compile Include="PackedPresenters\StandardSamplingRates.cs" />

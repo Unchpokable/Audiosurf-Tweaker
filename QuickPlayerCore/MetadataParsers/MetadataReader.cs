@@ -3,12 +3,11 @@ using System;
 using System.Linq;
 using TagLib;
 
-
 namespace QuickPlayerCore.MetadataParsers
 {
     public class MetadataReader
     {
-        public virtual GenericTagsContainer ReadData(string pathToFile)
+        public static GenericTagsContainer ReadData(string pathToFile)
         {
             if (!System.IO.File.Exists(pathToFile))
                 throw new ArgumentException($"Path does not exists: {pathToFile}");
@@ -29,6 +28,10 @@ namespace QuickPlayerCore.MetadataParsers
             if (new[] { ".flac", ".m4a", ".wav", ".wave" }.Any(x => System.IO.Path.GetExtension(pathToFile) == x))
                 tagsContainer.IsLossless = true;
 
+            if (Enum.TryParse(System.IO.Path.GetExtension(pathToFile), out Codec codec))
+                tagsContainer.SamplingParams.Codec = codec;
+            else
+                tagsContainer.SamplingParams.Codec = Codec.Unsupported;
             return tagsContainer;
         }
     }
