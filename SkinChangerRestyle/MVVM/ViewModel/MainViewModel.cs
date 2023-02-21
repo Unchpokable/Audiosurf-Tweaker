@@ -44,7 +44,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         public MainViewModel()
         {
-            InternalWorker.InitializationFaultCallback += async (e) =>
+            ConfigurationManager.InitializationFaultCallback += async (e) =>
             {
 #if ASD
                 await Task.Run(() =>
@@ -54,8 +54,8 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 #endif
             };
 
-            InternalWorker.SetUpDefaultSettings();
-            InternalWorker.InitializeEnvironment();
+            ConfigurationManager.SetUpDefaultSettings();
+            ConfigurationManager.InitializeEnvironment();
             _asHandle = AudiosurfHandle.Instance;
             _asHandle.StateChanged += OnASHandleStateChanged;
             SkinsGridVM = SkinChangerViewModel.Instance;
@@ -72,11 +72,6 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             EnableAutoHandling = new RelayCommand(o => _asHandle.StartAutoHandling());
             ResetWndProcService = new RelayCommand(o => _asHandle.ReinitializeWndProcMessageService());
             Extensions.DisposeAndClear();
-            _asHandle.Registered += InitializeOverlay;
-        }
-
-        private void InitializeOverlay(object sender, EventArgs e)
-        {
         }
 
         private void OnASHandleStateChanged(object sender, EventArgs e)
