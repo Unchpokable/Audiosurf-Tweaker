@@ -89,6 +89,7 @@
     <Compile Include="Core\AudiosurfConfigurationPresenter.cs" />
     <Compile Include="Core\EnumBooleanConverter.cs" />
     <Compile Include="Core\LoadedSkinData.cs" />
+    <Compile Include="Core\OverlayHelper.cs" />
     <Compile Include="MVVM\Model\ColorPalette.cs" />
     <Compile Include="MVVM\Model\ASColors.cs" />
     <Compile Include="MVVM\Model\ColorPalettePrint.cs" />
@@ -147,7 +148,7 @@
     </Compile>
     <Compile Include="Core\SettingsProvider.cs" />
     <Compile Include="Core\Extensions\Extensions.cs" />
-    <Compile Include="Core\InternalWorker.cs" />
+    <Compile Include="Core\ConfigurationManager.cs" />
     <Compile Include="Core\Logger.cs" />
     <Compile Include="Core\ObservableObject.cs" />
     <Compile Include="Core\RelayCommand.cs" />
