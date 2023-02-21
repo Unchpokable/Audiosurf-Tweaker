@@ -18,7 +18,7 @@ namespace SkinChangerRestyle.Core
 
         internal static bool IsUWPNotificationsAllowed { get; set; }
         internal static bool IsUWPNotificationSilent { get; set; }
-
+        internal static bool IsOverlayEnabled { get; set; }
         internal static bool IsOverlayInstanceAlive { get; set; } = false; // false by default. No one can call overlay while this flag set to false
 
         internal static string DefaultSkinsPath => Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\\Skins";
