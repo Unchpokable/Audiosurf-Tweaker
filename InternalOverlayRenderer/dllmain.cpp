@@ -32,7 +32,7 @@ bool ImguiToolboxVisible = false;
 bool ImguiInitialized = false;
 int ListboxSelect(0);
 
-std::vector<const char*> ActualSkinsList{};
+std::vector<std::string> ActualSkinsList{};
 std::string DisplayInfo{};
 
 #pragma endregion
@@ -105,8 +105,9 @@ HRESULT __stdcall HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
     RECT textRectangle;
 
     SetRect(&textRectangle, rectx1 + padding, recty1 + padding, rectx2 - padding, recty2 - padding);
-
-    font->DrawTextA(NULL, "Audiosurf Tweaker overlay v0.1\nPress Shift+Esc to Exit overlay\nInsert to change visibility\nShift+End toggle menu", 
+    if (DisplayInfo.empty())
+        DisplayInfo.append("Tweaker overlay v0.1...\nWaiting for connection with host application...");
+    font->DrawTextA(NULL, DisplayInfo.c_str(),
         -1, &textRectangle, DT_NOCLIP | DT_LEFT, D3DCOLOR_ARGB(255,153,255,153));
     
     if (ImguiToolboxVisible)
@@ -128,21 +129,28 @@ void __forceinline DrawMenu()
     ImGui::Text("Viable Tweaker' texture packages:\n");
     ImGui::Spacing();
 
-    //debug things u know
-    ActualSkinsList.clear();
+    std::vector<const char*> localSkinList{};
 
-    ActualSkinsList.push_back("Nano");
-    ActualSkinsList.push_back("Point Disarray");
-    
-    ImGui::ListBox("", &ListboxSelect, ActualSkinsList.data(), ActualSkinsList.size(), -1);
+    for (auto& item : ActualSkinsList)
+    {
+        localSkinList.push_back(item.c_str());
+    }
+
+    ImGui::ListBox("", &ListboxSelect, localSkinList.data(), localSkinList.size(), -1);
 
     if (ImGui::Button("Install Now"))
     {
+        if (ActualSkinsList.size() == 0)
+        {
+            std::cout << "Debug## Skins list empty, can not send command\n";
+            return;
+        }
+
         SendCommandToHostApplication(const_cast<char*>(
             ( std::string(IntallPackageCommandHeader) 
             + std::string(" ") 
             + std::string(ActualSkinsList[ListboxSelect]))
-            .c_str()));
+            .c_str()));// tw-Install-package <skin_name>
     }
 
     ImGui::Spacing();
@@ -165,7 +173,7 @@ LRESULT __stdcall SendCommandToHostApplication(LPSTR commandText)
     cds.cbData = sizeof(char) * (strlen(commandText) + 1);
     cds.lpData = commandText;
 
-    auto msgSendResult = SendMessage(HostApplicationHandle, WM_COPYDATA, (WPARAM)GetForegroundWindow(), (LPARAM)(LPVOID)&cds);
+    auto msgSendResult = SendMessage(HostApplicationHandle, WM_COPYDATA, NULL, (LPARAM)(LPVOID)&cds);
     return msgSendResult;
 }
 
@@ -219,18 +227,21 @@ void InitD3D9()
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
-        return true;
+    auto imgui_wndproc_result = ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam);
 
     if (msg == WM_COPYDATA) {
         auto cds = (COPYDATASTRUCT*)lParam;
-
-        if (cds->cbData > 0 && cds->dwData > 0)
+        if (cds->cbData > 0)
         {
             auto msg = std::string((LPCSTR)cds->lpData);
+
+            if (msg.find("ascommand") != std::string::npos)
+                std::cout << "generic audiosurf command handled\n";
+
             if (msg.find("tw-update-listener") != std::string::npos) // catch ovl-update-listener command from host application, that has a signature of "tw-update-listener AsMsgHandler_<unique_symbol_sequence>
             {
                 auto HandlerUniqueID = msg.substr(std::string("tw-update-listener").length()+1);
+                std::cout << "tw-update-listener handled with arguments " << HandlerUniqueID << "\n";
 
                 HWND hostWndProcHandler = FindWindowA(NULL, HandlerUniqueID.c_str());
                 if (hostWndProcHandler)
@@ -240,12 +251,16 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             if (msg.find("tw-update-skin-list") != std::string::npos)
             {
                 auto list = msg.substr(std::string("tw-update-skin-list").length());
+
+                std::cout << "tw-update-skin-list handled with arguments " << list << "\n";
+
                 LTrim(list);
+                ActualSkinsList.clear();
 
                 for (auto& item : Split(list, "; "))
                 {
-                    ActualSkinsList.clear();
-                    ActualSkinsList.push_back(item.c_str());
+                    std::cout << "appending item " << item<< "\n";
+                    ActualSkinsList.push_back(item);
                 }
             }
 
@@ -263,6 +278,9 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             }
         }
     }
+
+    if (imgui_wndproc_result)
+        return true;
 
     return CallWindowProc(WndProcOriginal, hWnd, msg, wParam, lParam);
 }

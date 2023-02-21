@@ -21,7 +21,7 @@
 #pragma comment(lib, "d3dx9.lib")
 #pragma comment(lib, "detours.lib")
 
-#define D3DX_CREATE_DEFAULT_OVERLAY_FONT(pDevice, font) D3DXCreateFont(pDevice, 24, 0, FW_BOLD, 1, 0, DEFAULT_CHARSET, OUT_TT_ONLY_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Tahoma", &font)
+#define D3DX_CREATE_DEFAULT_OVERLAY_FONT(pDevice, font) D3DXCreateFont(pDevice, 20, 0, FW_SEMIBOLD, 1, 0, DEFAULT_CHARSET, OUT_TT_ONLY_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Tahoma", &font)
 
 #define ARRSIZE(arr) sizeof(arr)/sizeof(arr[0])
 
