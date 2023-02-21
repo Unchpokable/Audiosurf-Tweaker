@@ -140,7 +140,8 @@
                              Background="#FFF3F3F3"
                              BorderThickness="0"
                              TextChanged="TextBox_TextChanged"
-                             x:Name="ConsoleOutput">
+                             x:Name="ConsoleOutput"
+                             Height="200">
                     </TextBox>
                 </Grid>
             </Grid>

@@ -253,6 +253,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private int _currentLoadStep;
         private int _totalSkinsCount;
         private OverlayHelper _overlayHelper;
+
+        private DateTime _lastOverlayInstallCall;
+
         public async void InstallSkin(string pathToOrigin, string target, bool forced = false, bool unpackScreenshots = false, bool clearInstall = false, bool saveState = true)
         {
             if (!Directory.Exists(target))
@@ -300,6 +303,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             if (SettingsProvider.IsUWPNotificationsAllowed)
                 Extensions.ShowUWPNotification("Operation completed", $"Skin \"{skinName}\" sucessfully installed. Enjoy! ^_^");
+
+            if (SettingsProvider.IsOverlayEnabled)
+            {
+                AudiosurfHandle.Instance.Command($"tw-update-ovl-info Audiosurf Tweaker Overlay v0.1\n Currently Installed skin: {CurrentInstalledSkin}");
+            }
 
             ChangerStatus = "Ready";
         }
@@ -602,6 +610,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private void OnOverlayInjected(object sender, EventArgs e)
         {
             UpdateOverlaySkinsList();
+            AudiosurfHandle.Instance.Command($"tw-update-ovl-info Audiosurf Tweaker Overlay v0.1\n Currently Installed skin: {CurrentInstalledSkin}");
             AudiosurfHandle.Instance.MessageResieved += OnMessageRecieved;
             _overlayHelper.OverlayInjected -= OnOverlayInjected;
         }
@@ -615,6 +624,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         private void OnMessageRecieved(object sender, string content)
         {
+            if (DateTime.Now.Subtract(_lastOverlayInstallCall) < TimeSpan.FromSeconds(1))
+                return; // Kinda fixes multiple command processing
+
             if (content.Contains("tw-Install-package"))
             {
                 var skinToInstall = content.Substring("tw-Install-package".Length).Trim();
@@ -623,7 +635,18 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 if (skin != null)
                 {
                     InstallSkin(skin.PathToOrigin, SettingsProvider.GameTexturesPath, true, false, true, true);
+                    _lastOverlayInstallCall = DateTime.Now;
                 }
+            }
+
+            if (content.Contains("nowplaying"))
+            {
+                AudiosurfHandle.Instance.Command($"tw-update-ovl-info Audiosurf Tweaker Overlay v0.1\n Currently Installed skin: {CurrentInstalledSkin}");
+            }
+
+            if (content.Contains("songcomplete") || content.Contains("oncharacterscreen"))
+            {
+                AudiosurfHandle.Instance.Command($"tw-update-ovl-info ");
             }
         }
     }

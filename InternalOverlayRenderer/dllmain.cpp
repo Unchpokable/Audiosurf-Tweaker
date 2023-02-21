@@ -105,8 +105,10 @@ HRESULT __stdcall HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
     RECT textRectangle;
 
     SetRect(&textRectangle, rectx1 + padding, recty1 + padding, rectx2 - padding, recty2 - padding);
+    
     if (DisplayInfo.empty())
         DisplayInfo.append("Tweaker overlay v0.1...\nWaiting for connection with host application...");
+
     font->DrawTextA(NULL, DisplayInfo.c_str(),
         -1, &textRectangle, DT_NOCLIP | DT_LEFT, D3DCOLOR_ARGB(255,153,255,153));
     
@@ -154,7 +156,7 @@ void __forceinline DrawMenu()
     }
 
     ImGui::Spacing();
-    ImGui::Text("Shift+End to toggle this menu");
+    ImGui::Text("Press insert to toggle this menu");
 
     ImGui::End();
 
@@ -325,13 +327,13 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
 
         if (GetAsyncKeyState(VK_INSERT))
         {
-            OverlayVisible = !OverlayVisible;
-        }
-
-        if (GetAsyncKeyState(VK_SHIFT) && GetAsyncKeyState(VK_END))
-        {
+            //OverlayVisible = !OverlayVisible;
             ImguiToolboxVisible = !ImguiToolboxVisible;
         }
+
+        /*if (GetAsyncKeyState(VK_SHIFT) && GetAsyncKeyState(VK_END))
+        {
+        }*/
     }
     return 0;
 }
