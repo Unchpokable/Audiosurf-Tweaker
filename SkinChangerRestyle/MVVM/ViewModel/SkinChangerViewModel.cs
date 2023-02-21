@@ -39,6 +39,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             RefreshIcon = Properties.Resources.refreshing.ToImageSource();
 
             Skins = new ObservableCollection<SkinCard>();
+            _overlayHelper = OverlayHelper.Instance;
 
             ReloadSkins = new RelayCommand((param) =>
             {
@@ -49,6 +50,12 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             });
 
             LoadSkins();
+
+            if (SettingsProvider.IsOverlayEnabled)
+            {
+                AudiosurfHandle.Instance.Registered += (s, e) => InjectOverlayPlugin();
+            }
+
 
             if (EnvironmentChecker.CheckEnvironment(SettingsProvider.GameTexturesPath, out FolderHashInfo state))
                 CurrentInstalledSkin = state.StateName;
@@ -245,7 +252,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private object _lockObject = new object();
         private int _currentLoadStep;
         private int _totalSkinsCount;
-
+        private OverlayHelper _overlayHelper;
         public async void InstallSkin(string pathToOrigin, string target, bool forced = false, bool unpackScreenshots = false, bool clearInstall = false, bool saveState = true)
         {
             if (!Directory.Exists(target))
@@ -584,6 +591,39 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     });
                 }
                 catch { }
+            }
+        }
+
+        private void InjectOverlayPlugin()
+        {
+            _overlayHelper.OverlayInjected += OnOverlayInjected;
+            _overlayHelper.InjectOverlayPlugin();
+        }
+        private void OnOverlayInjected(object sender, EventArgs e)
+        {
+            UpdateOverlaySkinsList();
+            AudiosurfHandle.Instance.MessageResieved += OnMessageRecieved;
+            _overlayHelper.OverlayInjected -= OnOverlayInjected;
+        }
+
+        private void UpdateOverlaySkinsList()
+        {
+            var skinsList = string.Join("; ", Skins.Select(skin => skin.Name));
+
+            AudiosurfHandle.Instance.Command($"tw-update-skin-list {skinsList}"); // Overlay should handle this message cause it works underneath Audiosurf main window and listen its WindowProcedure calls
+        }
+
+        private void OnMessageRecieved(object sender, string content)
+        {
+            if (content.Contains("tw-Install-package"))
+            {
+                var skinToInstall = content.Substring("tw-Install-package".Length).Trim();
+                var skin = Skins.FirstOrDefault(x => x.Name.ToLower() == skinToInstall.ToLower());
+
+                if (skin != null)
+                {
+                    InstallSkin(skin.PathToOrigin, SettingsProvider.GameTexturesPath, true, false, true, true);
+                }
             }
         }
     }

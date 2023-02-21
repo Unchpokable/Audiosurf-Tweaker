@@ -32,6 +32,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             IsUWPNotificationsAllowed = SettingsProvider.IsUWPNotificationsAllowed;
             IsUWPNotificationSilent = SettingsProvider.IsUWPNotificationSilent;
+            _overlayEnabled = SettingsProvider.IsOverlayEnabled;
 
             if (_isWatcherEnabled)
             {
@@ -81,6 +82,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     return;
             }
         }
+
         public string TexturesFolderPath
         {
             get => _texturesPath;
@@ -92,6 +94,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 OnPropertyChanged();
             }
         }
+
         public string AdditionalSkinsFolderPath
         {
             get => _additionalSkinsPath;
@@ -254,6 +257,28 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
         }
 
+        public bool IsOverlayEnabled
+        {
+            get => _overlayEnabled;
+            set
+            {
+                if (value) // turn on overlay
+                {
+                    var isRestart = MessageBox.Show("Turning this parameter needs to restart applicaton. Would you like to continue?", "Module parameter changed", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                    if (isRestart == DialogResult.Yes)
+                    {
+                        _overlayEnabled = value;
+                        SettingsProvider.IsOverlayEnabled = value;
+                        ApplySettings();
+                        Extensions.Cmd($"taskkill /f /im \"{AppDomain.CurrentDomain.FriendlyName}\" && timeout /t 1 && {AppDomain.CurrentDomain.FriendlyName}");
+                    }
+                    else
+                        return;
+                }
+            }
+        }
+
+
         public RelayCommand SetConfigurationValue { get; set; }
         public RelayCommand SelectTempFile { get; set; }
         public RelayCommand DuplicateTempFile { get; set; }
@@ -271,7 +296,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private bool _isGuiActive;
         private bool _uwpNotificationAllwed;
         private bool _uwpNotificationSilent;
-
+        private bool _overlayEnabled;
         private void AskAndSetConfigValue(object parameter)
         {
             var field = (SettingsFields)parameter;
@@ -296,7 +321,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         private void ApplySettings()
         {
-            InternalWorker.RewriteSettings();
+            ConfigurationManager.RewriteSettings();
         }
 
         private void SelectTempFileInternal(object o)
