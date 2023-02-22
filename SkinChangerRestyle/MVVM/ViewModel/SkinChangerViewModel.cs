@@ -304,11 +304,6 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             if (SettingsProvider.IsUWPNotificationsAllowed)
                 Extensions.ShowUWPNotification("Operation completed", $"Skin \"{skinName}\" sucessfully installed. Enjoy! ^_^");
 
-            if (SettingsProvider.IsOverlayEnabled)
-            {
-                AudiosurfHandle.Instance.Command($"tw-update-ovl-info Audiosurf Tweaker Overlay v0.1\n Currently Installed skin: {CurrentInstalledSkin}");
-            }
-
             ChangerStatus = "Ready";
         }
 
@@ -641,12 +636,12 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             if (content.Contains("nowplaying"))
             {
-                AudiosurfHandle.Instance.Command($"tw-update-ovl-info Audiosurf Tweaker Overlay v0.1\n Currently Installed skin: {CurrentInstalledSkin}");
+                AudiosurfHandle.Instance.Command($"tw-update-ovl-info Audiosurf Tweaker Overlay v0.1\n Skin: {CurrentInstalledSkin}");
             }
 
             if (content.Contains("songcomplete") || content.Contains("oncharacterscreen"))
             {
-                AudiosurfHandle.Instance.Command($"tw-update-ovl-info ");
+                AudiosurfHandle.Instance.Command($"tw-update-ovl-info "); // sets overlay info to NULL
             }
         }
     }
