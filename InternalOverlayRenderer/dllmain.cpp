@@ -183,7 +183,7 @@ void InitD3D9()
 {
     std::cout << "Hooking D3D EndScene...\n";
 
-    IDirect3D9* pD3D = Direct3DCreate9(D3D_SDK_VERSION); 
+    IDirect3D9* pD3D = Direct3DCreate9(D3D_SDK_VERSION);
 
     if (!pD3D)
         return;
@@ -240,9 +240,9 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             if (msg.find("ascommand") != std::string::npos)
                 std::cout << "generic audiosurf command handled\n";
 
-            if (msg.find("tw-update-listener") != std::string::npos) // catch ovl-update-listener command from host application, that has a signature of "tw-update-listener AsMsgHandler_<unique_symbol_sequence>
+            else if (msg.find("tw-update-listener") != std::string::npos) // catch ovl-update-listener command from host application, that has a signature of "tw-update-listener AsMsgHandler_<unique_symbol_sequence>
             {
-                auto HandlerUniqueID = msg.substr(std::string("tw-update-listener").length()+1);
+                auto HandlerUniqueID = msg.substr(std::string("tw-update-listener").length() + 1);
                 std::cout << "tw-update-listener handled with arguments " << HandlerUniqueID << "\n";
 
                 HWND hostWndProcHandler = FindWindowA(NULL, HandlerUniqueID.c_str());
@@ -250,7 +250,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                     HostApplicationHandle = hostWndProcHandler;
             }
 
-            if (msg.find("tw-update-skin-list") != std::string::npos)
+            else if (msg.find("tw-update-skin-list") != std::string::npos)
             {
                 auto list = msg.substr(std::string("tw-update-skin-list").length());
 
@@ -261,22 +261,28 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
                 for (auto& item : Split(list, "; "))
                 {
-                    std::cout << "appending item " << item<< "\n";
+                    std::cout << "appending item " << item << "\n";
                     ActualSkinsList.push_back(item);
                 }
             }
 
-            if (msg.find("tw-update-ovl-info") != std::string::npos)
+            else if (msg.find("tw-update-ovl-info") != std::string::npos)
             {
                 auto newInfo = msg.substr(std::string("tw-update-ovl-info").length());
                 DisplayInfo.clear();
                 DisplayInfo.append(newInfo);
             }
 
-            if (msg.find("tw-pulse") != std::string::npos)
+            else if (msg.find("tw-pulse") != std::string::npos)
             {
                 if (HostApplicationHandle != nullptr)
                     SendCommandToHostApplication(const_cast<char*>("tw-responce ok"));
+            }
+
+            else if (msg.find("tw-append-ovl-info") != std::string::npos)
+            {
+                auto infoToAppend = msg.substr(std::string("tw-append-ovl-info").length());
+                DisplayInfo.append(std::string("\n") + infoToAppend);
             }
         }
     }
