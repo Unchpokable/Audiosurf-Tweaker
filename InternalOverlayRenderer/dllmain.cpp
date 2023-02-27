@@ -195,11 +195,11 @@ void __forceinline DrawMenu(LPDIRECT3DDEVICE9 pDevice)
         if (ImGui::Button("Apply settings"))
         {
             std::stringstream ss{};
-            //tw-Apply-configuration InfopanelFontColor 255 255 255; InfopanelFontSize 35; InfopanelXOffset 0; InfopanelYOffset 0
-            ss << "tw-Apply-configuration" << " " << "InfopanelFontColor " << FontColor->r << " " << FontColor->g << " " << FontColor->b << "; " 
-                << "InfopanelFontSize " << *FontSize << "; "
-                << "InfopanelXOffset " << *OvlXOffset << "; "
-                << "InfopanelYOffset " << *OvlYOffset;
+            //tw-Apply-configuration InfopanelFontColor 255 255 255 255; InfopanelFontSize 35; InfopanelXOffset 0; InfopanelYOffset 0
+            ss << "tw-Apply-configuration" << " " << "InfopanelFontColor:"<< FontColor->alpha << " " << FontColor->r << " " << FontColor->g << " " << FontColor->b << "; "
+                << "InfopanelFontSize:" << *FontSize << "; "
+                << "InfopanelXOffset:" << *OvlXOffset << "; "
+                << "InfopanelYOffset:" << *OvlYOffset;
             SendCommandToHostApplication(const_cast<char*>(ss.str().c_str()));
         }
     }
@@ -429,22 +429,46 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
 
 inline void ProcessConfigurationCommand(std::string& cfgStr)
 {
-    if (cfgStr.find("font-color") != std::string::npos)
+    try
     {
-        auto values = Split(cfgStr.substr(std::string("font-color").length()), std::string(" "));
-        if (values.size() != 3)
-            return;
+        if (cfgStr.find("font-color") != std::string::npos)
+        {
+            auto values = Split(cfgStr.substr(std::string("font-color").length()), std::string(" "));
+            if (values.size() != 4) // We need ARGB parameter
+                return;
+            FontColor->alpha = std::stoi(values[0]);
+            FontColor->r = std::stoi(values[1]);
+            FontColor->g = std::stoi(values[2]);
+            FontColor->b = std::stoi(values[3]);
+        }
 
-        FontColor->r = std::stoi(values[0]);
-        FontColor->g = std::stoi(values[1]);
-        FontColor->b = std::stoi(values[2]);
+        else if (cfgStr.find("font-size") != std::string::npos)
+        {
+            auto value = std::stoi(cfgStr.substr(std::string("font-size").length()));
+            *FontSize = value;
+            ConfigureFont(ActualD3DDevice, &font, "Tahoma", *FontSize);
+        }
+
+        // FIXME: Code duplicate. Do something with it later
+        else if (cfgStr.find("infopanel-xoffset") != std::string::npos)
+        {
+            auto value = std::stoi(cfgStr.substr(std::string("infopanel-xoffset").length()));
+            *OvlXOffset = value;
+        }
+
+        else if (cfgStr.find("infopanel-yoffset") != std::string::npos)
+        {
+            auto value = std::stoi(cfgStr.substr(std::string("infopanel-yoffset").length()));
+            *OvlYOffset = value;
+        }
+    } 
+    catch (const std::exception ex)
+    {
+        std::cout << "Exception during settings apply: " << ex.what() << "\n";
     }
-
-    else if (cfgStr.find("font-size") != std::string::npos)
+    catch (...)
     {
-        auto value = std::stoi(cfgStr.substr(std::string("font-size").length()));
-        *FontSize = value;
-        ConfigureFont(ActualD3DDevice, &font, "Tahome", *FontSize);
+        std::cout << "Unknown error during settings apply\n";
     }
 }
 
@@ -473,6 +497,7 @@ inline std::vector<std::string> Split(std::string src, std::string delimeter)
     std::vector<std::string> outputContainer{};
 
     std::size_t pos = 0;
+    Trim(src);
 
     while ((pos = src.find(delimeter)) != std::string::npos)
     {
@@ -480,6 +505,7 @@ inline std::vector<std::string> Split(std::string src, std::string delimeter)
         src.erase(0, pos + delimeter.length());
     }
 
+    outputContainer.push_back(src);
     return outputContainer;
 }
 

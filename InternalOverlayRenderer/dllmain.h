@@ -4,7 +4,6 @@
 #include <d3d9.h>
 #include <d3dx9.h>
 #include <iostream>
-#include "detours.h"
 #include <string>
 #include <algorithm>
 #include <cctype>
@@ -12,8 +11,10 @@
 #include <locale>
 #include <vector>
 #include <mutex>
+#include <string>
 #include <sstream>
 
+#include "detours.h"
 #include "imgui/imgui.h"
 #include "imgui/backends/imgui_impl_dx9.h"
 #include "imgui/backends/imgui_impl_win32.h"
