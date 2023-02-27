@@ -64,6 +64,8 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     }
                 };
             }
+
+            AudiosurfHandle.Instance.MessageResieved += OnMessageRecieved;
         }
 
         public bool IsFastPreview
@@ -347,6 +349,20 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             if (saveFileDialog.ShowDialog() == DialogResult.OK)
             {
                 File.Copy(WatcherTempFile, saveFileDialog.FileName);
+            }
+        }
+
+        private void OnMessageRecieved(object sender, string messageContent)
+        {
+            if (messageContent.Contains("tw-Apply-configuration"))
+            {
+                var config = messageContent.Substring("tw-Apply-configuration".Length).Trim().Split(new[] { "; " }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var cfg in config)
+                {
+                    var keyValuePair = cfg.Split(':');
+                    if (keyValuePair.Length != 2) continue;
+                    ConfigurationManager.UpdateSection(keyValuePair[0], keyValuePair[1]);
+                }
             }
         }
     }

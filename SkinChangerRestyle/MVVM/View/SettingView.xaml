@@ -5,16 +5,18 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:vm="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
+             xmlns:pixicolor="clr-namespace:ColorPicker;assembly=ColorPicker"
              mc:Ignorable="d" 
-             d:DesignHeight="900" d:DesignWidth="800"
+             d:DesignHeight="1200" d:DesignWidth="800"
              Width="800"
-             Height="900">
+             Height="1200">
 
     <Border Background="White"
                 ScrollViewer.CanContentScroll="True"
                 ScrollViewer.VerticalScrollBarVisibility="Visible">
         <Grid Margin="0 18 0 0">
             <Grid.RowDefinitions>
+                <RowDefinition/>
                 <RowDefinition/>
                 <RowDefinition/>
                 <RowDefinition/>
@@ -216,20 +218,37 @@
                             BorderThickness="0 0 0 2"
                             Width="400"
                             HorizontalAlignment="Left">
+                    <Label Content="[Experimental] Overlay settings" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                </Border>
+
+                <StackPanel Grid.Row="1">
+                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Enable in-game overlay" FontSize="16" Margin="30 0 0 10"
+                                  ToolTip="Allow tweaker to hook audiosurf and draw overlay right inside your game"
+                                  ToolTipService.ShowDuration="10000"
+                                  IsChecked="{Binding IsOverlayEnabled, Mode=TwoWay}"/>
+                </StackPanel>
+            </Grid>
+
+            <Grid Grid.Row="4">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="50"/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+
+                <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
+                            BorderThickness="0 0 0 2"
+                            Width="400"
+                            HorizontalAlignment="Left">
                     <Label Content="Misc" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
                 </Border>
 
                 <StackPanel Grid.Row="1">
-                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="[EXPERIMENTAL] Enable in-game overlay" FontSize="16" Margin="30 0 0 10"
-                                  ToolTip="Allow tweaker to hook audiosurf and draw overlay right inside your game"
-                                  ToolTipService.ShowDuration="10000"
-                                  IsChecked="{Binding IsOverlayEnabled, Mode=TwoWay}"/>
                     <CheckBox Style="{StaticResource FlatCheckBox}" Content="Allow UWP Notifications" FontSize="16" Margin="30 0 0 10"
                                   ToolTip="Allow tweaker sent a windows 10\11 notifications after successfully completed action"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsUWPNotificationsAllowed, Mode=TwoWay}"/>
                     <CheckBox Style="{StaticResource FlatCheckBox}" Content="Silent UWP Notifications" FontSize="16" Margin="30 0 0 10"
-                                  ToolTip="Show UWP notifications but supress default system notification audio signal"
+                                  ToolTip="Show UWP notifications but supress system notification audio signal"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsUWPNotificationSilent, Mode=TwoWay}"
                                   IsEnabled="{Binding IsUWPNotificationsAllowed}"/>

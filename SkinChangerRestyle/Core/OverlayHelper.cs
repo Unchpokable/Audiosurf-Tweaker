@@ -65,6 +65,8 @@ namespace SkinChangerRestyle.Core
                 SettingsProvider.IsOverlayInstanceAlive = true; 
                 AudiosurfHandle.Instance.MessageResieved -= OnPulse;
                 OverlayInjected?.Invoke(this, EventArgs.Empty);
+                AudiosurfHandle.Instance.Command(
+ $@"tw-config font-color {SettingsProvider.InfopanelFontColor}; font-size {SettingsProvider.InfopanelFontSize}; infopanel-xoffset {SettingsProvider.InfopanelXOffset}; infopanel-yoffset {SettingsProvider.InfopanelYOffset}");
             }
         }
     }

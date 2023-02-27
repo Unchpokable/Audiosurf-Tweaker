@@ -625,7 +625,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             if (content.Contains("tw-Install-package"))
             {
                 var skinToInstall = content.Substring("tw-Install-package".Length).Trim();
-                var skin = Skins.FirstOrDefault(x => x.Name.ToLower() == skinToInstall.ToLower());
+                var skin = Skins.FirstOrDefault(x => x.Name.Trim().ToLower() == skinToInstall.ToLower());
 
                 if (skin != null)
                 {
@@ -634,7 +634,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 }
             }
 
-            if (content.Contains("nowplaying"))
+            if (content.Contains("nowplayingsongtitle"))
             {
                 AudiosurfHandle.Instance.Command($"tw-update-ovl-info Audiosurf Tweaker Overlay v0.1\n Skin: {CurrentInstalledSkin}");
             }

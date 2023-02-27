@@ -3,7 +3,7 @@ using System.Configuration;
 using Microsoft.Win32;
 using System.IO;
 using Settings = SkinChangerRestyle.Core.SettingsProvider;
-
+using System.Linq;
 
 namespace SkinChangerRestyle.Core
 {
@@ -70,6 +70,10 @@ namespace SkinChangerRestyle.Core
                 Settings.IsUWPNotificationsAllowed = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("UWPNotificationsAllowed"));
                 Settings.IsUWPNotificationSilent = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("UWPNotificationSilent"));
                 Settings.IsOverlayEnabled = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("OverlayEnabled"));
+                Settings.InfopanelFontColor = System.Configuration.ConfigurationManager.AppSettings.Get("InfopanelFontColor");
+                Settings.InfopanelFontSize = System.Configuration.ConfigurationManager.AppSettings.Get("InfopanelFontSize");
+                Settings.InfopanelXOffset = System.Configuration.ConfigurationManager.AppSettings.Get("InfopanelXOffset");
+                Settings.InfopanelYOffset = System.Configuration.ConfigurationManager.AppSettings.Get("InfopanelYOffset");
             }
             catch (Exception e)
             {
@@ -96,12 +100,36 @@ namespace SkinChangerRestyle.Core
                 cfg.AppSettings.Settings["UWPNotificationsAllowed"].Value = Settings.IsUWPNotificationsAllowed.ToString();
                 cfg.AppSettings.Settings["UWPNotificationSilent"].Value = Settings.IsUWPNotificationSilent.ToString();
                 cfg.AppSettings.Settings["OverlayEnabled"].Value = Settings.IsOverlayEnabled.ToString();
+                cfg.AppSettings.Settings["InfopanelFontColor"].Value = Settings.InfopanelFontColor;
+                cfg.AppSettings.Settings["InfopanelFontSize"].Value = Settings.InfopanelFontSize;
+                cfg.AppSettings.Settings["InfopanelXOffset"].Value = Settings.InfopanelXOffset;
+                cfg.AppSettings.Settings["InfopanelYOffset"].Value = Settings.InfopanelYOffset;
                 cfg.Save();
             }
             catch (Exception e)
             {
                 InitializationFaultCallback?.Invoke(e);
                 return;
+            }
+        }
+
+        public static bool UpdateSection(string key, string value)
+        {
+            try
+            {
+                var cfg = System.Configuration.ConfigurationManager.OpenExeConfiguration(AppDomain.CurrentDomain.FriendlyName);
+
+                if (cfg.AppSettings.Settings.AllKeys.Contains(key))
+                {
+                    cfg.AppSettings.Settings[key].Value = value;
+                    cfg.Save();
+                    return true;
+                }
+                return false;
+            }
+            catch
+            {
+                return false;
             }
         }
     }
