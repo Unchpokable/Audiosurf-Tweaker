@@ -18,10 +18,13 @@ WNDPROC WndProcOriginal;
 int ovlRectLX = 50;
 int ovlRectLY = 500; // Default Audiosurf window geometry - 800x600. So we place info overlay at 50px offset by OX and and window height - 100px by OY axis
 
-int ovlRectWidth = 450; //450x50 should be enough to display all info that we need
-int ovlRectHeight = 50;
+int ovlRectWidth = 450; //450x70 should be enough to display all info that we need
+int ovlRectHeight = 70;
 
 int padding = 2;
+
+PINT OvlXOffset;
+PINT OvlYOffset;
 
 #pragma endregion
 
@@ -34,6 +37,11 @@ int ListboxSelect(0);
 
 std::vector<std::string> ActualSkinsList{};
 std::string DisplayInfo{};
+
+PArgb_t FontColor = nullptr;
+PINT FontSize = nullptr;
+PFLOAT MenuFontSize = nullptr;
+LPCSTR FontFamily = "Tahoma";
 
 #pragma endregion
 
@@ -71,7 +79,7 @@ HRESULT __stdcall HookedReset(LPDIRECT3DDEVICE9 pDevice, PD3DPRESENT_PARAMETERS 
     ImGui::GetIO().MouseDrawCursor = true;
 
     ActualD3DDevice = pDevice;
-    D3DX_CREATE_DEFAULT_OVERLAY_FONT(pDevice, font);
+    ConfigureFont(pDevice, &font, FontFamily, *FontSize);
     ImguiInitialized = false;
 
     return result;
@@ -93,14 +101,13 @@ HRESULT __stdcall HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
         ImGui::CreateContext();
         ImGui_ImplWin32_Init(params.hFocusWindow);
         ImGui_ImplDX9_Init(pDevice);
-
         ImguiInitialized = true;
     }
 
-    auto rectx1 = ovlRectLX, rectx2 = ovlRectLX + ovlRectWidth, recty1 = ovlRectLY, recty2 = ovlRectLY + ovlRectHeight;
+    auto rectx1 = ovlRectLX + *OvlXOffset, rectx2 = ovlRectLX + ovlRectWidth + *OvlXOffset, recty1 = ovlRectLY + *OvlYOffset, recty2 = ovlRectLY + ovlRectHeight + *OvlYOffset;
 
     if (!font)
-        D3DX_CREATE_DEFAULT_OVERLAY_FONT(pDevice, font);
+        ConfigureFont(pDevice, &font, FontFamily, *FontSize);
 
     RECT textRectangle;
 
@@ -109,18 +116,21 @@ HRESULT __stdcall HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
     if (DisplayInfo.empty())
         DisplayInfo.append("Tweaker overlay v0.1...\nWaiting for connection with host application...");
 
+    if (FontColor == nullptr)
+        FontColor = new Argb_t{255, 153, 255, 153}; // Default shitty-green color
+
     font->DrawTextA(NULL, DisplayInfo.c_str(),
-        -1, &textRectangle, DT_NOCLIP | DT_LEFT, D3DCOLOR_ARGB(255,153,255,153));
+        -1, &textRectangle, DT_NOCLIP | DT_LEFT, D3DCOLOR_ARGB(FontColor->alpha,FontColor->r,FontColor->g,FontColor->b));
     
     if (ImguiToolboxVisible)
     {
-        DrawMenu();
+        DrawMenu(pDevice);
     }
     
     return pEndScene(pDevice);
 }
 
-void __forceinline DrawMenu()
+void __forceinline DrawMenu(LPDIRECT3DDEVICE9 pDevice)
 {
     ImGui_ImplDX9_NewFrame();
     ImGui_ImplWin32_NewFrame();
@@ -128,34 +138,72 @@ void __forceinline DrawMenu()
 
     ImGui::Begin("Audiosurf Tweaker In-game menu", NULL, ImGuiWindowFlags_AlwaysAutoResize);
     ImGui::Spacing();
-    ImGui::Text("Viable Tweaker' texture packages:\n");
-    ImGui::Spacing();
 
-    std::vector<const char*> localSkinList{};
-
-    for (auto& item : ActualSkinsList)
+    if (ImGui::CollapsingHeader("Skin Changer"))
     {
-        localSkinList.push_back(item.c_str());
-    }
+        ImGui::Text("Aviable Tweaker' texture packages:\n");
+        ImGui::Spacing();
 
-    ImGui::ListBox("", &ListboxSelect, localSkinList.data(), localSkinList.size(), -1);
+        std::vector<const char*> localSkinList{};
 
-    if (ImGui::Button("Install Now"))
-    {
-        if (ActualSkinsList.size() == 0)
+        for (auto& item : ActualSkinsList)
         {
-            std::cout << "Debug## Skins list empty, can not send command\n";
-            return;
+            localSkinList.push_back(item.c_str());
         }
 
-        SendCommandToHostApplication(const_cast<char*>(
-            ( std::string(IntallPackageCommandHeader) 
-            + std::string(" ") 
-            + std::string(ActualSkinsList[ListboxSelect]))
-            .c_str()));// tw-Install-package <skin_name>
+        ImGui::ListBox("", &ListboxSelect, localSkinList.data(), localSkinList.size(), -1);
+
+        if (ImGui::Button("Install Now"))
+        {
+            if (ActualSkinsList.size() == 0)
+            {
+                std::cout << "Debug## Skins list empty, can not send command\n";
+                return;
+            }
+
+            SendCommandToHostApplication(const_cast<char*>(
+                ( std::string(IntallPackageCommandHeader) 
+                + std::string(" ") 
+                + std::string(ActualSkinsList[ListboxSelect]))
+                .c_str()));// tw-Install-package <skin_name>
+        }
+
+        ImGui::Spacing();
     }
 
-    ImGui::Spacing();
+    if (ImGui::CollapsingHeader("Info panel config"))
+    {
+        ImGui::Text("Info panel is a little text block at left bottom screen corner\nIts displays info about current installed skin and etc.");
+
+        ImGui::SliderInt("Transp", &FontColor->alpha, 0, 255);
+        ImGui::SliderInt("R", &FontColor->r, 0, 255);
+        ImGui::SliderInt("G", &FontColor->g, 0, 255);
+        ImGui::SliderInt("B", &FontColor->b, 0, 255);
+
+        if (ImGui::SliderInt("Font Size", FontSize, 14, 72))
+        {
+            ConfigureFont(pDevice, &font, "Tahoma", *FontSize);
+        }
+        
+        ImGui::Spacing();
+
+        ImGui::Text("Info panel position correction");
+
+        ImGui::SliderInt("X axis offset", OvlXOffset, -300, 300);
+        ImGui::SliderInt("Y axis offset", OvlYOffset, -300, 300);
+
+        if (ImGui::Button("Apply settings"))
+        {
+            std::stringstream ss{};
+            //tw-Apply-configuration InfopanelFontColor 255 255 255; InfopanelFontSize 35; InfopanelXOffset 0; InfopanelYOffset 0
+            ss << "tw-Apply-configuration" << " " << "InfopanelFontColor " << FontColor->r << " " << FontColor->g << " " << FontColor->b << "; " 
+                << "InfopanelFontSize " << *FontSize << "; "
+                << "InfopanelXOffset " << *OvlXOffset << "; "
+                << "InfopanelYOffset " << *OvlYOffset;
+            SendCommandToHostApplication(const_cast<char*>(ss.str().c_str()));
+        }
+    }
+
     ImGui::Text("Press insert to toggle this menu");
 
     ImGui::End();
@@ -284,6 +332,16 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 auto infoToAppend = msg.substr(std::string("tw-append-ovl-info").length());
                 DisplayInfo.append(std::string("\n") + infoToAppend);
             }
+
+            else if (msg.find("tw-config") != std::string::npos)
+            {
+                auto configs = Split(msg.substr(std::string("tw-config").length()), std::string("; "));
+
+                for (auto& config : configs) 
+                {
+                    ProcessConfigurationCommand(config);
+                }
+            }
         }
     }
 
@@ -291,6 +349,11 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         return true;
 
     return CallWindowProc(WndProcOriginal, hWnd, msg, wParam, lParam);
+}
+
+HRESULT ConfigureFont(LPDIRECT3DDEVICE9 pDevice, LPD3DXFONT* font, LPCSTR fontFamily, int size)
+{
+    return D3DXCreateFont(pDevice, size, 0, FW_REGULAR, 1, 0, DEFAULT_CHARSET, OUT_TT_ONLY_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, fontFamily, font);
 }
 
 DWORD __stdcall EjectThread(LPVOID lpParam) 
@@ -315,6 +378,19 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
 
     std::cout << "We are in " << GetCurrentProcessId() << "\nOverlay initialization...\n";
 
+    FontColor = new Argb{255, 153, 255, 153};
+    FontSize = new int;
+    *FontSize = 22;
+
+    MenuFontSize = new float;
+    *MenuFontSize = 16;
+
+    OvlXOffset = new int;
+    OvlYOffset = new int;
+
+    *OvlXOffset = 0;
+    *OvlYOffset = 0;
+
     InitD3D9();
 
     while (true)
@@ -327,6 +403,11 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
             SetWindowLongA(GameHandle, GWL_WNDPROC, (LONG_PTR)WndProcOriginal);
             fclose(fp);
             FreeConsole();
+
+            delete FontColor;
+            delete FontSize;
+            delete FontFamily;
+
             CreateThread(0, 0, EjectThread, 0, 0, 0);
             break;
         }
@@ -345,6 +426,27 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
 }
 
 #pragma region string things
+
+inline void ProcessConfigurationCommand(std::string& cfgStr)
+{
+    if (cfgStr.find("font-color") != std::string::npos)
+    {
+        auto values = Split(cfgStr.substr(std::string("font-color").length()), std::string(" "));
+        if (values.size() != 3)
+            return;
+
+        FontColor->r = std::stoi(values[0]);
+        FontColor->g = std::stoi(values[1]);
+        FontColor->b = std::stoi(values[2]);
+    }
+
+    else if (cfgStr.find("font-size") != std::string::npos)
+    {
+        auto value = std::stoi(cfgStr.substr(std::string("font-size").length()));
+        *FontSize = value;
+        ConfigureFont(ActualD3DDevice, &font, "Tahome", *FontSize);
+    }
+}
 
 inline void LTrim(std::string& str)
 {

@@ -12,6 +12,7 @@
 #include <locale>
 #include <vector>
 #include <mutex>
+#include <sstream>
 
 #include "imgui/imgui.h"
 #include "imgui/backends/imgui_impl_dx9.h"
@@ -21,17 +22,26 @@
 #pragma comment(lib, "d3dx9.lib")
 #pragma comment(lib, "detours.lib")
 
-#define D3DX_CREATE_DEFAULT_OVERLAY_FONT(pDevice, font) D3DXCreateFont(pDevice, 20, 0, FW_SEMIBOLD, 1, 0, DEFAULT_CHARSET, OUT_TT_ONLY_PRECIS, ANTIALIASED_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Tahoma", &font)
+#define D3DX_CREATE_DEFAULT_OVERLAY_FONT(pDevice, font) D3DXCreateFont(pDevice, 22, 0, FW_REGULAR, 1, 0, DEFAULT_CHARSET, OUT_TT_ONLY_PRECIS, CLEARTYPE_QUALITY, DEFAULT_PITCH | FF_DONTCARE, "Tahoma", &font)
 
 #define ARRSIZE(arr) sizeof(arr)/sizeof(arr[0])
 
 constexpr LPCSTR IntallPackageCommandHeader = "tw-Install-package";
 
 typedef void** PPVOID;
+typedef int* PINT;
+typedef float* PFLOAT;
 typedef D3DPRESENT_PARAMETERS* PD3DPRESENT_PARAMETERS;
 
 typedef HRESULT(__stdcall* endScene)(LPDIRECT3DDEVICE9);
 typedef HRESULT(__stdcall* reset)(LPDIRECT3DDEVICE9, PD3DPRESENT_PARAMETERS);
+
+typedef struct Argb {
+	int alpha;
+	int r;
+	int g;
+	int b;
+} *PArgb_t, Argb_t;
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND, UINT, WPARAM, LPARAM);
 
@@ -48,8 +58,10 @@ DWORD __stdcall EjectThread(LPVOID);
 DWORD WINAPI BuildOverlay(HINSTANCE);
 
 void InitD3D9();
-void __forceinline DrawMenu();
+void __forceinline DrawMenu(LPDIRECT3DDEVICE9);
+HRESULT ConfigureFont(LPDIRECT3DDEVICE9, LPD3DXFONT*, LPCSTR, int);
 
+inline void ProcessConfigurationCommand(std::string&);
 inline void LTrim(std::string&);
 inline void RTrim(std::string&);
 
