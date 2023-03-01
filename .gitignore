@@ -338,3 +338,20 @@ ASALocalRun/
 
 # BeatPulse healthcheck temp database
 healthchecksdb
+
+InternalOverlayRenderer/imgui/
+/InternalOverlayRenderer/imgui/imgui.cpp
+/InternalOverlayRenderer/imgui/imgui_demo.cpp
+/InternalOverlayRenderer/imgui/imgui_draw.cpp
+/InternalOverlayRenderer/imgui/backends/imgui_impl_dx9.cpp
+/InternalOverlayRenderer/imgui/backends/imgui_impl_win32.cpp
+/InternalOverlayRenderer/imgui/imgui_tables.cpp
+/InternalOverlayRenderer/imgui/imgui_widgets.cpp
+/InternalOverlayRenderer/imgui/imconfig.h
+/InternalOverlayRenderer/imgui/imgui.h
+/InternalOverlayRenderer/imgui/backends/imgui_impl_dx9.h
+/InternalOverlayRenderer/imgui/backends/imgui_impl_win32.h
+/InternalOverlayRenderer/imgui/imgui_internal.h
+/InternalOverlayRenderer/imgui/imstb_rectpack.h
+/InternalOverlayRenderer/imgui/imstb_textedit.h
+/InternalOverlayRenderer/imgui/imstb_truetype.h
