@@ -29,7 +29,7 @@
                             <Border x:Name="TextBorder"
                                         Background="Transparent">
                                 <TextBlock Text="{TemplateBinding Property=Content}"
-                                           FontFamily="Exo 2 Light"
+                                           FontFamily="ExoSoft-Regular ☞"
                                            FontSize="{TemplateBinding Property=FontSize}"
                                            VerticalAlignment="Center"
                                            HorizontalAlignment="Left"

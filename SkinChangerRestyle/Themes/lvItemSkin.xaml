@@ -37,15 +37,20 @@
             <Setter.Value>
                 <ControlTemplate TargetType="ListViewItem">
                     <Border Width="auto" Height="70"
-                            Background="White"
+                            Background="#FFEFEFEF"
+                            Margin="5 0 5 7"
+                            CornerRadius="5"
                             x:Name="Body"
                             ToolTipService.InitialShowDelay="1000"
                             ToolTipService.BetweenShowDelay="500"
                             ToolTipService.IsEnabled="{Binding UseFastPreview}">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#FFE4E4E4"/>
+                        </Border.Effect>
                         <Border.ToolTip>
                             <Image Source="{Binding Cover}" Width="640" Height="360" Stretch="Uniform"/>
                         </Border.ToolTip>
-                        <Border BorderThickness="0 0 0 1" BorderBrush="#FFC3C3C3" Margin="10 0 10 0">
+                        <Border>
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="1*"/>
@@ -61,17 +66,23 @@
                                     Content="{Binding InstallIcon}" Style="{StaticResource RoundIconButton}" HorizontalAlignment="Center" VerticalAlignment="Center"
                                     ToolTip="{Binding InstallTooltip}"/>
 
-                                <TextBlock Grid.Column="1" Text="{Binding Name}" Margin="20 0 0 0" VerticalAlignment="Center" HorizontalAlignment="Left"
-                                       FontFamily="Exo 2 Light" FontSize="20" Foreground="#FF8A8A8A" x:Name="Title"/>
+                                <TextBlock Grid.Column="1" Text="{Binding Name}" 
+                                           Margin="20 0 0 0" 
+                                           VerticalAlignment="Center" 
+                                           HorizontalAlignment="Left"
+                                           FontFamily="ExoSoft-Regular ☞" 
+                                           FontSize="20" 
+                                           Foreground="#FF8A8A8A" 
+                                           x:Name="Title"/>
 
                                 <TextBox Grid.Column="2" 
-                                IsEnabled="{Binding RenameActive, UpdateSourceTrigger=PropertyChanged}"
-                                Visibility="{Binding RenameVisible, UpdateSourceTrigger=PropertyChanged}"
-                                Style="{StaticResource RenameTextInput}"
-                                FontSize="16"
-                                Height="30"
-                                VerticalAlignment="Center"
-                                x:Name="TextInput">
+                                    IsEnabled="{Binding RenameActive, UpdateSourceTrigger=PropertyChanged}"
+                                    Visibility="{Binding RenameVisible, UpdateSourceTrigger=PropertyChanged}"
+                                    Style="{StaticResource RenameTextInput}"
+                                    FontSize="16"
+                                    Height="30"
+                                    VerticalAlignment="Center"
+                                    x:Name="TextInput">
                                 </TextBox>
 
                                 <Button Margin="17" Grid.Column="3" Command="{Binding ExportCopyCommand}" Style="{StaticResource RoundIconButton}"

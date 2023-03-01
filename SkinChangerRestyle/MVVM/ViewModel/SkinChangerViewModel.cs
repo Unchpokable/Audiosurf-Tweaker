@@ -14,6 +14,7 @@ using System.Windows.Forms;
 using System.Reflection;
 using ASCommander;
 using System.Drawing;
+using Microsoft.Toolkit.Uwp.Notifications;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -38,6 +39,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             RefreshIcon = Properties.Resources.refreshing.ToImageSource();
 
             Skins = new ObservableCollection<SkinCard>();
+            _overlayHelper = OverlayHelper.Instance;
 
             ReloadSkins = new RelayCommand((param) =>
             {
@@ -48,6 +50,12 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             });
 
             LoadSkins();
+
+            if (SettingsProvider.IsOverlayEnabled)
+            {
+                AudiosurfHandle.Instance.Registered += (s, e) => InjectOverlayPlugin();
+            }
+
 
             if (EnvironmentChecker.CheckEnvironment(SettingsProvider.GameTexturesPath, out FolderHashInfo state))
                 CurrentInstalledSkin = state.StateName;
@@ -244,9 +252,23 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private object _lockObject = new object();
         private int _currentLoadStep;
         private int _totalSkinsCount;
+        private OverlayHelper _overlayHelper;
+
+        private DateTime _lastOverlayInstallCall;
 
         public async void InstallSkin(string pathToOrigin, string target, bool forced = false, bool unpackScreenshots = false, bool clearInstall = false, bool saveState = true)
         {
+            if (!Directory.Exists(target))
+            {
+                MessageBox.Show($"Given Directory does not exists: {target}\n Check that 'Path to game textures' setting is valid", "Installation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            if (!File.Exists(pathToOrigin))
+            {
+                MessageBox.Show($"Given path does not exists: {pathToOrigin}\n It may be caused by corrupted skins cache. Please, rebuild skins cache and try again", "Installation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
             ChangerStatus = "Working...";
             if (target.Equals(SettingsProvider.GameTexturesPath, StringComparison.InvariantCultureIgnoreCase))
             {
@@ -273,10 +295,15 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 Clean(target);
                 AudiosurfHandle.Instance.Command("ascommand reloadtextures");
             }
-            await InstallSkinInternal(pathToOrigin, target, forced: forced, unpackScreenshots: unpackScreenshots, saveState: saveState);
+            
+            var skinName = await InstallSkinInternal(pathToOrigin, target, forced: forced, unpackScreenshots: unpackScreenshots, saveState: saveState);
 
             if (SettingsProvider.HotReload)
                 AudiosurfHandle.Instance.Command("ascommand reloadtextures");
+
+            if (SettingsProvider.IsUWPNotificationsAllowed)
+                Extensions.ShowUWPNotification("Operation completed", $"Skin \"{skinName}\" sucessfully installed. Enjoy! ^_^");
+
             ChangerStatus = "Ready";
         }
 
@@ -318,7 +345,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
         }
 
-        private Task InstallSkinInternal(string pathToOrigin, string target,
+        private Task<string> InstallSkinInternal(string pathToOrigin, string target, 
                                          bool forced = false,
                                          bool unpackScreenshots = false,
                                          bool saveState = false)
@@ -327,7 +354,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 var skin = SkinPackager.Decompile(pathToOrigin);
                 if (skin == null)
-                    return;
+                    return null;
 
                 if (ShouldInstallSkyspheres || forced)
                     skin.SkySpheres?.Apply(x => x?.Save(target));
@@ -362,8 +389,18 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
                 if (SettingsProvider.HotReload)
                     AudiosurfHandle.Instance.Command("ascommand reloadtextures");
+
+                string installedSkinName;
+                unsafe
+                {
+                    fixed (char* pName = skin.Name)
+                        installedSkinName = new string(pName);
+                }
+
                 skin.Dispose();
                 GC.Collect();
+
+                return installedSkinName;
             });
         }
 
@@ -557,6 +594,54 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     });
                 }
                 catch { }
+            }
+        }
+
+        private void InjectOverlayPlugin()
+        {
+            _overlayHelper.OverlayInjected += OnOverlayInjected;
+            _overlayHelper.InjectOverlayPlugin();
+        }
+        private void OnOverlayInjected(object sender, EventArgs e)
+        {
+            UpdateOverlaySkinsList();
+            AudiosurfHandle.Instance.Command($"tw-update-ovl-info Audiosurf Tweaker Overlay v0.1\n Currently Installed skin: {CurrentInstalledSkin}");
+            AudiosurfHandle.Instance.MessageResieved += OnMessageRecieved;
+            _overlayHelper.OverlayInjected -= OnOverlayInjected;
+        }
+
+        private void UpdateOverlaySkinsList()
+        {
+            var skinsList = string.Join("; ", Skins.Select(skin => skin.Name));
+
+            AudiosurfHandle.Instance.Command($"tw-update-skin-list {skinsList}"); // Overlay should handle this message cause it works underneath Audiosurf main window and listen its WindowProcedure calls
+        }
+
+        private void OnMessageRecieved(object sender, string content)
+        {
+            if (DateTime.Now.Subtract(_lastOverlayInstallCall) < TimeSpan.FromSeconds(1))
+                return; // Kinda fixes multiple command processing
+
+            if (content.Contains("tw-Install-package"))
+            {
+                var skinToInstall = content.Substring("tw-Install-package".Length).Trim();
+                var skin = Skins.FirstOrDefault(x => x.Name.Trim().ToLower() == skinToInstall.ToLower());
+
+                if (skin != null)
+                {
+                    InstallSkin(skin.PathToOrigin, SettingsProvider.GameTexturesPath, true, false, true, true);
+                    _lastOverlayInstallCall = DateTime.Now;
+                }
+            }
+
+            if (content.Contains("nowplayingsongtitle"))
+            {
+                AudiosurfHandle.Instance.Command($"tw-update-ovl-info Audiosurf Tweaker Overlay v0.1\n Skin: {CurrentInstalledSkin}");
+            }
+
+            if (content.Contains("songcomplete") || content.Contains("oncharacterscreen"))
+            {
+                AudiosurfHandle.Instance.Command($"tw-update-ovl-info "); // sets overlay info to NULL
             }
         }
     }

@@ -163,7 +163,7 @@ namespace SkinChangerRestyle.MVVM.Model
             var skinObject = SkinPackager.Decompile(_pathToOriginFile);
             skinObject.Name = newName;
             Name = newName;
-            var newFile = $@"Skins\{newName}.{ChangerAPI.EnvironmentalVeriables.ActualSkinExtention}";
+            var newFile = $@"Skins\{newName}{ChangerAPI.EnvironmentalVeriables.ActualSkinExtention}";
             var oldFile = $"{_pathToOriginFile}";
             _pathToOriginFile = newFile;
             RenameActive = false;
@@ -192,7 +192,7 @@ namespace SkinChangerRestyle.MVVM.Model
             string tempDirectory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
             Directory.CreateDirectory(tempDirectory);
             _rootVM.InstallSkin(_pathToOriginFile, tempDirectory, forced: true, unpackScreenshots: true, saveState: false);
-            var dirproc = Process.Start(tempDirectory);
+            var dirproc = System.Diagnostics.Process.Start(tempDirectory);
             new EditOnDiskLockWindow().ShowDialog();
             var redactedSkin = SkinPackager.CreateSkinFromFolder(tempDirectory);
 
@@ -264,33 +264,6 @@ namespace SkinChangerRestyle.MVVM.Model
             EditOnDiskCommand = new RelayCommand(EditOnDisk);
             ExportCopyCommand = new RelayCommand(ExportCopyInternal);
             RemoveCommand = new RelayCommand(RemoveSkinInternal);
-        }
-    }
-
-    internal class DebugSkinCard
-    {
-        public string Name => _name;
-
-        public string InstallTooltip => "Install this skin fully";
-        public string ExportCopyTooltip => "Export copy of this skin";
-        public string RenameTooltip => "Rename this skin";
-        public string EditOnDiskTooltip => "Turn ASTweaker into EditOnDisk mode";
-
-        public ImageSource InstallIcon => Properties.Resources.install.ToImageSource();
-        public ImageSource ExportCopyIcon => Properties.Resources.export.ToImageSource();
-        public ImageSource RenameIcon => Properties.Resources.edit.ToImageSource();
-        public ImageSource EditOnDiskIcon => Properties.Resources.editondisk.ToImageSource();
-
-        public RelayCommand InstallCommand { get; set; }
-        public RelayCommand ExportCopyCommand { get; set; }
-        public RelayCommand RenameCommand { get; set; }
-        public RelayCommand EditOnDiskCommand { get; set; }
-
-        private string _name;
-
-        public DebugSkinCard(string name)
-        {
-            _name = name;
         }
     }
 }

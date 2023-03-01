@@ -7,9 +7,10 @@
              xmlns:vm="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
              xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
              mc:Ignorable="d" 
-             d:DesignHeight="665" d:DesignWidth="800">
+             d:DesignHeight="661" d:DesignWidth="800">
 
-    <Border Background="White">
+    <Border Background="White"
+            Height="661">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="2*"/>
@@ -38,7 +39,7 @@
                     </i:EventTrigger>
                 </i:Interaction.Triggers>
             </ListView>
-            
+
             <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition/>
@@ -53,21 +54,22 @@
                     <Button Margin="10 0 0 0" IsEnabled="{Binding ReloadButtonUnlocked}" VerticalAlignment="Center" Command="{Binding ReloadSkins}" Height="35" FontSize="14" Width="35" Style="{StaticResource RoundIconButton}" Content="{Binding RefreshIcon}"
                         ToolTip="Forget all loaded skins and load it once again. Sometimes fixes errors when skin source is empty string"/>
                     <ProgressBar Style="{StaticResource ChangerProgressBar}" Width="280" Height="25" Margin="30 0 0 0" Value="{Binding CurrentLoadStep}" Maximum="{Binding TotalSkinsToLoad}"
-                                 Visibility="{Binding LoadingProgressbarVisible}"/>
+                                    Visibility="{Binding LoadingProgressbarVisible}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-                    <Label FontFamily="Exo 2 Light" FontSize="20" 
-                       HorizontalAlignment="Right" 
-                       Content="Currently installed:"
-                       VerticalAlignment="Center" Foreground="#FF7F7F7F"/>
+                    <Label FontFamily="ExoSoft-Regular ☞" FontSize="20" 
+                        HorizontalAlignment="Right" 
+                        Content="Currently installed:"
+                        VerticalAlignment="Center" Foreground="#FF7F7F7F"/>
 
                     <Label FontFamily="Exo 2 Light" FontSize="20" 
-                       HorizontalAlignment="Right" 
-                       Content="{Binding CurrentInstalledSkin}"
-                       VerticalAlignment="Center"
-                       Margin="0 0 10 0" Foreground="#FF7F7F7F"/>
+                        HorizontalAlignment="Right" 
+                        Content="{Binding CurrentInstalledSkin}"
+                        VerticalAlignment="Center"
+                        Margin="0 0 10 0" Foreground="#FF7F7F7F"/>
                 </StackPanel>
             </Grid>
+                
 
             <Grid Grid.Row="2" Background="Transparent">
                 <Grid.ColumnDefinitions>
@@ -86,7 +88,7 @@
                         BorderThickness="0 0 0 1"
                         Grid.ColumnSpan="2"
                         Margin="5 5 0 0" HorizontalAlignment="Left" VerticalAlignment="Top">
-                    <Label Content="Custom Installation" FontFamily="Exo 2 Light" Foreground="#FF8A8A8A" FontSize="18" HorizontalAlignment="Left" VerticalAlignment="Stretch" Margin="0,0,0,0" BorderBrush="#FFC3C3C3"/>
+                    <Label Content="Custom Installation" FontFamily="ExoSoft-Regular ☞" Foreground="#FF8A8A8A" FontSize="18" HorizontalAlignment="Left" VerticalAlignment="Stretch" Margin="0,0,0,0" BorderBrush="#FFC3C3C3"/>
                 </Border>
 
                 <StackPanel Grid.Row="1" Margin="5" Orientation="Vertical" HorizontalAlignment="Left" VerticalAlignment="Top">
@@ -138,7 +140,7 @@
                 <Border BorderBrush="#FFC3C3C3"
                         BorderThickness="0 0 0 1"
                         Margin="5 5 0 0" HorizontalAlignment="Left" VerticalAlignment="Top" Grid.Column="2">
-                    <Label Content="Screenshots" FontFamily="Exo 2 Light" Foreground="#FF8A8A8A" FontSize="18" HorizontalAlignment="Left" VerticalAlignment="Stretch" Margin="0,0,0,0" BorderBrush="#FFC3C3C3"/>
+                    <Label Content="Screenshots" FontFamily="ExoSoft-Regular ☞" Foreground="#FF8A8A8A" FontSize="18" HorizontalAlignment="Left" VerticalAlignment="Stretch" Margin="0,0,0,0" BorderBrush="#FFC3C3C3"/>
                 </Border>
                 <ListView Grid.Column="2" Grid.Row="1"
                           Background="Transparent"
@@ -152,7 +154,7 @@
             </Grid>
             <StatusBar Grid.Row="3" Background="#FF8536ef">
                 <StatusBarItem>
-                    <TextBlock Foreground="#FFE6E6E6" FontFamily="Exo 2 Light" Text="{Binding ChangerStatus}" FontSize="14"/>
+                    <TextBlock Foreground="#FFE6E6E6" FontFamily="ExoSoft-Regular ☞" Text="{Binding ChangerStatus}" FontSize="14"/>
                 </StatusBarItem>
             </StatusBar>
         </Grid>

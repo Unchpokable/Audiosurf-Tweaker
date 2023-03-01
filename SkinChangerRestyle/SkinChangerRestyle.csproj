@@ -47,6 +47,7 @@
     <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
     <Prefer32Bit>true</Prefer32Bit>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|x64'">
     <OutputPath>bin\x64\Release\</OutputPath>
@@ -57,15 +58,15 @@
     <LangVersion>7.3</LangVersion>
     <ErrorReport>prompt</ErrorReport>
     <Prefer32Bit>true</Prefer32Bit>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Microsoft.Xaml.Behaviors, Version=1.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Xaml.Behaviors.Wpf.1.1.31\lib\net45\Microsoft.Xaml.Behaviors.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Runtime.Remoting" />
+    <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="Microsoft.CSharp" />
@@ -85,7 +86,14 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Core\AudiosurfConfigurationPresenter.cs" />
+    <Compile Include="Core\EnumBooleanConverter.cs" />
     <Compile Include="Core\LoadedSkinData.cs" />
+    <Compile Include="Core\OverlayHelper.cs" />
+    <Compile Include="MVVM\Model\ColorPalette.cs" />
+    <Compile Include="MVVM\Model\ASColors.cs" />
+    <Compile Include="MVVM\Model\ColorPalettePrint.cs" />
+    <Compile Include="MVVM\Model\PaletteDynamicLoadContainer.cs" />
     <Compile Include="MVVM\Model\TweakerConsole.cs" />
     <Compile Include="EditOnDiskLockWindow.xaml.cs">
       <DependentUpon>EditOnDiskLockWindow.xaml</DependentUpon>
@@ -99,6 +107,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="ImageViewWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="MVVM\View\ColorConfiguratorView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -118,6 +130,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Themes\ColoredRadioButton.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Themes\FlatButton.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -132,7 +148,7 @@
     </Compile>
     <Compile Include="Core\SettingsProvider.cs" />
     <Compile Include="Core\Extensions\Extensions.cs" />
-    <Compile Include="Core\InternalWorker.cs" />
+    <Compile Include="Core\ConfigurationManager.cs" />
     <Compile Include="Core\Logger.cs" />
     <Compile Include="Core\ObservableObject.cs" />
     <Compile Include="Core\RelayCommand.cs" />
@@ -149,6 +165,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Themes\lvItemSkin.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Themes\PaletteItem.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -177,11 +197,15 @@
     <Compile Include="MVVM\Model\IteractableScreenshot.cs" />
     <Compile Include="MVVM\Model\SkinCard.cs" />
     <Compile Include="MVVM\Model\TexturesWatcher.cs" />
+    <Compile Include="MVVM\ViewModel\ColorsConfiguratorViewModel.cs" />
     <Compile Include="MVVM\ViewModel\MainViewModel.cs" />
     <Compile Include="MVVM\ViewModel\ProcessSelectionViewModel.cs" />
     <Compile Include="MVVM\ViewModel\SettingViewModel.cs" />
     <Compile Include="MVVM\ViewModel\SkinChangerViewModel.cs" />
     <Compile Include="MVVM\ViewModel\TweakerViewModel.cs" />
+    <Compile Include="MVVM\View\ColorConfiguratorView.xaml.cs">
+      <DependentUpon>ColorConfiguratorView.xaml</DependentUpon>
+    </Compile>
     <Compile Include="MVVM\View\SettingView.xaml.cs">
       <DependentUpon>SettingView.xaml</DependentUpon>
     </Compile>
@@ -214,7 +238,8 @@
     </EmbeddedResource>
     <Resource Include="Fonts\AstroSpace-eZ2Bg.ttf" />
     <Resource Include="Fonts\Atmospheric-rg4aL.ttf" />
-    <None Include="packages.config" />
+    <Resource Include="Fonts\ExoSoft-Light.ttf" />
+    <Resource Include="Fonts\ExoSoft-Regular.ttf" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -237,6 +262,10 @@
     <ProjectReference Include="..\ChangerAPI\ChangerAPI.csproj">
       <Project>{81019294-ff0f-4df9-b6b2-8fd4f073c253}</Project>
       <Name>ChangerAPI</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\QuickPlayerCore\QuickPlayerCore.csproj">
+      <Project>{4bb9d821-aa5f-4a3b-8580-770d393e1b2e}</Project>
+      <Name>QuickPlayerCore</Name>
     </ProjectReference>
     <ProjectReference Include="..\textpackctrl\textpackctrl.csproj">
       <Project>{27231428-42a6-43ec-8f0a-9f71726b2934}</Project>
@@ -317,6 +346,20 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Tweaker_Icon_1.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="ini-parser">
+      <Version>2.5.2</Version>
+    </PackageReference>
+    <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications">
+      <Version>7.1.3</Version>
+    </PackageReference>
+    <PackageReference Include="PixiEditor.ColorPicker">
+      <Version>3.3.1</Version>
+    </PackageReference>
+    <PackageReference Include="Process.NET">
+      <Version>1.0.8</Version>
+    </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

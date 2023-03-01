@@ -84,7 +84,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             _searchTask = new Thread(() =>
             {
                 Processes.Clear();
-                foreach (var process in Process.GetProcesses())
+                foreach (var process in System.Diagnostics.Process.GetProcesses())
                 {
                     try
                     {
@@ -114,7 +114,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             var process = (ShortProcessDescriptor)param;
             _asHandle.ReinitializeWndProcMessageService();
             _asHandle.StopAutoHandling();
-            _asHandle.SetHandle(Process.GetProcessById(process.GetProcessID()));
+            _asHandle.SetHandle(System.Diagnostics.Process.GetProcessById(process.GetProcessID()));
             GC.Collect();
             GC.WaitForPendingFinalizers();
             GC.Collect();
@@ -124,7 +124,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
     internal class ShortProcessDescriptor
     {
-        public ShortProcessDescriptor(Process origin)
+        public ShortProcessDescriptor(System.Diagnostics.Process origin)
         {
             Name = origin.ProcessName;
             ExecutablePath = origin.MainModule.FileName;

@@ -15,7 +15,18 @@ namespace SkinChangerRestyle.Core
         internal static string WatcherTempFile { get; set; }
         internal static bool WatcherShouldStoreTextures { get; set; }
         internal static bool WatcherTempFileOverrided { get; set; }
+
+        internal static bool IsUWPNotificationsAllowed { get; set; }
+        internal static bool IsUWPNotificationSilent { get; set; }
+        internal static bool IsOverlayEnabled { get; set; }
+        internal static bool IsOverlayInstanceAlive { get; set; } = false; // false by default. No one can call overlay while this flag set to false
+
+        internal static string InfopanelFontColor { get; set; }
+        internal static string InfopanelFontSize { get; set; }
+        internal static string InfopanelXOffset { get; set; }
+        internal static string InfopanelYOffset { get; set; }
+
         internal static string DefaultSkinsPath => Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\\Skins";
-        internal static string WatcherDefaultTemp => @"store\temp.tasp";
+        internal static string WatcherDefaultTemp => @"storage\temp.tasp";
     }
 }
