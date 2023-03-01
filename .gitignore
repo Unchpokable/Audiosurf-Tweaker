@@ -355,3 +355,5 @@ InternalOverlayRenderer/imgui/
 /InternalOverlayRenderer/imgui/imstb_rectpack.h
 /InternalOverlayRenderer/imgui/imstb_textedit.h
 /InternalOverlayRenderer/imgui/imstb_truetype.h
+/InternalOverlayRenderer/detours.h
+/InternalOverlayRenderer/detours.lib
