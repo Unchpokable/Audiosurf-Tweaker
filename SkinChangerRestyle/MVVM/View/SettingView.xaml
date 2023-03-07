@@ -7,16 +7,15 @@
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
              xmlns:pixicolor="clr-namespace:ColorPicker;assembly=ColorPicker"
              mc:Ignorable="d" 
-             d:DesignHeight="1200" d:DesignWidth="800"
+             d:DesignHeight="1100" d:DesignWidth="800"
              Width="800"
-             Height="1200">
+             Height="1100">
 
     <Border Background="White"
                 ScrollViewer.CanContentScroll="True"
                 ScrollViewer.VerticalScrollBarVisibility="Visible">
         <Grid Margin="0 18 0 0">
             <Grid.RowDefinitions>
-                <RowDefinition/>
                 <RowDefinition/>
                 <RowDefinition/>
                 <RowDefinition/>
@@ -218,31 +217,14 @@
                             BorderThickness="0 0 0 2"
                             Width="400"
                             HorizontalAlignment="Left">
-                    <Label Content="[Experimental] Overlay settings" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                    <Label Content="Other features" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
                 </Border>
 
                 <StackPanel Grid.Row="1">
-                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Enable in-game overlay" FontSize="16" Margin="30 0 0 10"
+                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="[Experimental] Enable in-game overlay" FontSize="16" Margin="30 0 0 10"
                                   ToolTip="Allow tweaker to hook audiosurf and draw overlay right inside your game"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsOverlayEnabled, Mode=TwoWay}"/>
-                </StackPanel>
-            </Grid>
-
-            <Grid Grid.Row="4">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="50"/>
-                    <RowDefinition/>
-                </Grid.RowDefinitions>
-
-                <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
-                            BorderThickness="0 0 0 2"
-                            Width="400"
-                            HorizontalAlignment="Left">
-                    <Label Content="Misc" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
-                </Border>
-
-                <StackPanel Grid.Row="1">
                     <CheckBox Style="{StaticResource FlatCheckBox}" Content="Allow UWP Notifications" FontSize="16" Margin="30 0 0 10"
                                   ToolTip="Allow tweaker sent a windows 10\11 notifications after successfully completed action"
                                   ToolTipService.ShowDuration="10000"

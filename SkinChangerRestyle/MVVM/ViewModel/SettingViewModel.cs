@@ -225,8 +225,8 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             get => _isGuiActive; 
             set 
             { 
-                _isGuiActive = value; 
-                OnPropertyChanged(); 
+                _isGuiActive = value;
+                OnPropertyChanged();
             }
         }
 
@@ -277,9 +277,15 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     else
                         return;
                 }
+
+                else
+                {
+                    SettingsProvider.IsOverlayEnabled = value;
+                    _overlayEnabled = value;
+                    ApplySettings();
+                }
             }
         }
-
 
         public RelayCommand SetConfigurationValue { get; set; }
         public RelayCommand SelectTempFile { get; set; }
