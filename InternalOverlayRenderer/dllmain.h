@@ -27,8 +27,6 @@
 
 #define ARRSIZE(arr) sizeof(arr)/sizeof(arr[0])
 
-constexpr LPCSTR IntallPackageCommandHeader = "tw-Install-package";
-
 typedef void** PPVOID;
 typedef int* PINT;
 typedef float* PFLOAT;
@@ -58,8 +56,11 @@ LRESULT __stdcall CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 DWORD __stdcall EjectThread(LPVOID);
 DWORD WINAPI BuildOverlay(HINSTANCE);
 
-void InitD3D9();
-void __forceinline DrawMenu(LPDIRECT3DDEVICE9);
+void EjectOverlayProcess(FILE*);
+
+HRESULT InitDirect3D();
+HRESULT Init();
+inline void DrawMenu(LPDIRECT3DDEVICE9);
 HRESULT ConfigureFont(LPDIRECT3DDEVICE9, LPD3DXFONT*, LPCSTR, int);
 
 inline void ProcessConfigurationCommand(std::string&);
@@ -68,7 +69,7 @@ inline void RTrim(std::string&);
 
 inline void Trim(std::string&);
 
-inline std::vector<std::string> Split(std::string, std::string);
+std::vector<std::string> Split(std::string, std::string);
 
 #endif // !DLLMAIN_H
 

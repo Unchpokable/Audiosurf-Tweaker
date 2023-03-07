@@ -6,12 +6,12 @@ reset pReset;
 LPDIRECT3DDEVICE9 ActualD3DDevice = nullptr;
 LPD3DXFONT font = nullptr;
 HINSTANCE DllHandle = nullptr;
-PPVOID D3DVTable = nullptr;
 D3DDEVICE_CREATION_PARAMETERS ViewportParams;
 HWND HostApplicationHandle;
 HWND GameHandle;
 WNDPROC WndProcOriginal;
 
+constexpr LPCSTR IntallPackageCommandHeader = "tw-Install-package";
 
 #pragma region Overlay Rectange Parameters
 
@@ -45,7 +45,7 @@ LPCSTR FontFamily = "Tahoma";
 
 #pragma endregion
 
-HRESULT __stdcall DetourAttachHook(PVOID* ppPointer, PVOID pDetour)
+HRESULT __stdcall DetourAttachHook(PPVOID ppPointer, PVOID pDetour)
 {
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
@@ -54,7 +54,7 @@ HRESULT __stdcall DetourAttachHook(PVOID* ppPointer, PVOID pDetour)
     return result;
 }
 
-HRESULT __stdcall DetourDetachHook(PVOID* ppPointer, PVOID pDetour)
+HRESULT __stdcall DetourDetachHook(PPVOID ppPointer, PVOID pDetour)
 {
     DetourTransactionBegin();
     DetourUpdateThread(GetCurrentThread());
@@ -119,7 +119,7 @@ HRESULT __stdcall HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
     if (FontColor == nullptr)
         FontColor = new Argb_t{255, 153, 255, 153}; // Default shitty-green color
 
-    font->DrawTextA(NULL, DisplayInfo.c_str(),
+    font->DrawText(NULL, DisplayInfo.c_str(),
         -1, &textRectangle, DT_NOCLIP | DT_LEFT, D3DCOLOR_ARGB(FontColor->alpha,FontColor->r,FontColor->g,FontColor->b));
     
     if (ImguiToolboxVisible)
@@ -130,7 +130,7 @@ HRESULT __stdcall HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
     return pEndScene(pDevice);
 }
 
-void __forceinline DrawMenu(LPDIRECT3DDEVICE9 pDevice)
+inline void DrawMenu(LPDIRECT3DDEVICE9 pDevice)
 {
     ImGui_ImplDX9_NewFrame();
     ImGui_ImplWin32_NewFrame();
@@ -227,52 +227,96 @@ LRESULT __stdcall SendCommandToHostApplication(LPSTR commandText)
     return msgSendResult;
 }
 
-void InitD3D9()
+HRESULT Init()
 {
-    std::cout << "Hooking D3D EndScene...\n";
+    HRESULT result = InitDirect3D();
+
+    if (FAILED(result))
+    {
+        std::cout << "Error during creating D3DDevice. Exiting process\n";
+        return E_FAIL;
+    }
+
+    GameHandle = FindWindow(NULL, "Audiosurf");
+    WndProcOriginal = (WNDPROC)SetWindowLong(GameHandle, GWL_WNDPROC, (LRESULT)WndProc);
+    return 0;
+}
+
+HRESULT InitDirect3D()
+{
+    std::cout << "Hooking Direct3D application...\n";
 
     IDirect3D9* pD3D = Direct3DCreate9(D3D_SDK_VERSION);
 
     if (!pD3D)
-        return;
+        return E_FAIL;
     std::cout << "Direct3D initialized\n";
-
-    D3DPRESENT_PARAMETERS d3dparams = { 0 };
-
-    d3dparams.SwapEffect = D3DSWAPEFFECT_DISCARD;
-    d3dparams.hDeviceWindow = GetForegroundWindow();
-    d3dparams.Windowed = true;
 
     LPDIRECT3DDEVICE9 pDevice = nullptr;
 
-    HRESULT result = pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, d3dparams.hDeviceWindow,
-        D3DCREATE_SOFTWARE_VERTEXPROCESSING, &d3dparams, &pDevice);
+    WNDCLASSEX windowClass;
+    windowClass.cbSize = sizeof(WNDCLASSEX);
+    windowClass.style = CS_HREDRAW | CS_VREDRAW;
+    windowClass.lpfnWndProc = DefWindowProc;
+    windowClass.cbClsExtra = 0;
+    windowClass.cbWndExtra = 0;
+    windowClass.hInstance = GetModuleHandle(NULL);
+    windowClass.hIcon = NULL;
+    windowClass.hCursor = NULL;
+    windowClass.hbrBackground = NULL;
+    windowClass.lpszMenuName = NULL;
+    windowClass.lpszClassName = "TwOvl";
+    windowClass.hIconSm = NULL;
+
+    std::cout << "Registering dummy window class\n";
+
+    ::RegisterClassEx(&windowClass);
+
+    HWND window = ::CreateWindow(windowClass.lpszClassName, "Tweaker Overlay window dummy", WS_OVERLAPPEDWINDOW, 0, 0, 100, 100, NULL, NULL, windowClass.hInstance, NULL);
+
+    std::cout << "Dummy window created\n";
+
+    D3DPRESENT_PARAMETERS params;
+    params.BackBufferWidth = 0;
+    params.BackBufferHeight = 0;
+    params.BackBufferFormat = D3DFMT_UNKNOWN;
+    params.BackBufferCount = 0;
+    params.MultiSampleType = D3DMULTISAMPLE_NONE;
+    params.MultiSampleQuality = NULL;
+    params.SwapEffect = D3DSWAPEFFECT_DISCARD;
+    params.hDeviceWindow = window;
+    params.Windowed = 1;
+    params.EnableAutoDepthStencil = 0;
+    params.AutoDepthStencilFormat = D3DFMT_UNKNOWN;
+    params.Flags = NULL;
+    params.FullScreen_RefreshRateInHz = 0;
+    params.PresentationInterval = 0;
+
+    auto result = pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_NULLREF, window, D3DCREATE_SOFTWARE_VERTEXPROCESSING | D3DCREATE_DISABLE_DRIVER_MANAGEMENT, &params, &pDevice);
 
     if (FAILED(result) || !pDevice)
     {
-        std::cout << "Error during creating D3DDevice. Exiting process\n";
-        pD3D->Release();
-        return;
+        std::cout << "Device bound to dummy window creation failed\n";
+
+        ::DestroyWindow(window);
+        ::UnregisterClass(windowClass.lpszClassName, windowClass.hInstance);
+        return E_FAIL;
     }
-
+    
+    std::cout << "Device bound to dummy window created successfully\n";
+    
     PPVOID vTable = *reinterpret_cast<void***>(pDevice);
-
-    D3DVTable = vTable;
-
-    std::cout << "Hooking Direct3D VTable function...\n";
 
     pEndScene = (endScene)vTable[42];
     pReset = (reset)vTable[16];
     DetourAttachHook(&(PVOID&)pReset, (PVOID)HookedReset);
     DetourAttachHook(&(PVOID&)pEndScene, (PVOID)HookedEndScene);
-
     std::cout << "Original EndScene at " << vTable[42] << " detoured\n";
     std::cout << "Original Reset at " << vTable[16] << " detoured\n";
-    pDevice->Release();
-    pD3D->Release();
-
-    GameHandle = FindWindowA(NULL, "Audiosurf");
-    WndProcOriginal = (WNDPROC)SetWindowLongA(GameHandle, GWL_WNDPROC, (LRESULT)WndProc);
+    ::DestroyWindow(window);
+    ::UnregisterClass(windowClass.lpszClassName, windowClass.hInstance);
+    
+    return 0;
 }
 
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -293,7 +337,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 auto HandlerUniqueID = msg.substr(std::string("tw-update-listener").length() + 1);
                 std::cout << "tw-update-listener handled with arguments " << HandlerUniqueID << "\n";
 
-                HWND hostWndProcHandler = FindWindowA(NULL, HandlerUniqueID.c_str());
+                HWND hostWndProcHandler = FindWindow(NULL, HandlerUniqueID.c_str());
                 if (hostWndProcHandler)
                     HostApplicationHandle = hostWndProcHandler;
             }
@@ -391,24 +435,24 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
     *OvlXOffset = 0;
     *OvlYOffset = 0;
 
-    InitD3D9();
+    // TODO: Init here default overlay position for 
 
+    auto initResult = Init();
+
+    if (FAILED(initResult))
+    {
+        std::cout << "Overlay initialization failed with error code " << initResult << "\n Exiting process after 5 second...\n" << "Please, restart audiosurf if you see this message for the first time\n"
+            << "If you see this message every time, disable game overlay in Host application settings tab, then restart game and Audiosurf Tweaker. Sorry if this thing doesn't work for you :( ";
+        Sleep(5000);
+        EjectOverlayProcess(fp);
+    }
+    
     while (true)
     {
         Sleep(150);
         if (GetAsyncKeyState(VK_SHIFT) && GetAsyncKeyState(VK_ESCAPE)) 
         {
-            DetourDetachHook(&(PVOID&)pEndScene, (PVOID)HookedEndScene);
-            DetourDetachHook(&(PVOID&)pReset, (PVOID)HookedReset);
-            SetWindowLongA(GameHandle, GWL_WNDPROC, (LONG_PTR)WndProcOriginal);
-            fclose(fp);
-            FreeConsole();
-
-            delete FontColor;
-            delete FontSize;
-            delete FontFamily;
-
-            CreateThread(0, 0, EjectThread, 0, 0, 0);
+            EjectOverlayProcess(fp);
             break;
         }
 
@@ -423,6 +467,21 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
         }*/
     }
     return 0;
+}
+
+void EjectOverlayProcess(FILE* fp)
+{
+    DetourDetachHook(&(PVOID&)pEndScene, (PVOID)HookedEndScene);
+    DetourDetachHook(&(PVOID&)pReset, (PVOID)HookedReset);
+    SetWindowLongA(GameHandle, GWL_WNDPROC, (LONG_PTR)WndProcOriginal);
+    fclose(fp);
+    FreeConsole();
+
+    delete FontColor;
+    delete FontSize;
+    delete FontFamily;
+
+    CreateThread(0, 0, EjectThread, 0, 0, 0);
 }
 
 #pragma region string things
@@ -492,7 +551,7 @@ inline void Trim(std::string& str)
     LTrim(str);
 }
 
-inline std::vector<std::string> Split(std::string src, std::string delimeter)
+std::vector<std::string> Split(std::string src, std::string delimeter)
 {
     std::vector<std::string> outputContainer{};
 
