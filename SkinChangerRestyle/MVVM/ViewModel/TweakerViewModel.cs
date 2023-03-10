@@ -1,6 +1,8 @@
 ﻿using SkinChangerRestyle.Core;
 using ASCommander;
 using SkinChangerRestyle.MVVM.Model;
+using ChangerAPI.Utilities;
+using System;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -15,6 +17,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             SendCommand = new RelayCommand(param =>
             {
+                if (string.Equals(param.ToString(), "closeaudiosurf", StringComparison.OrdinalIgnoreCase))
+                {
+                    KillAudiosurf();
+                    return;
+                }
                 _audiosurfHandle.Command($"ascommand {param}");
             });
 
@@ -149,5 +156,19 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private bool _freerideAutoAdvanceDisableTweakActive;
 
         private TweakerConsole _console;
+
+        private void OnMessageRecieved(object sender, string message)
+        {
+            if (message.Contains("tw-tweak-changed"))
+            {
+                var fieldName = message.Substring("tw-tweak-changed".Length + 1);
+
+            }
+        }
+
+        private void KillAudiosurf()
+        {
+            Core.Extensions.Extensions.Cmd($"taskkill /f /im \"{AppDomain.CurrentDomain.FriendlyName}\"");
+        }
     }
 }
