@@ -3,6 +3,7 @@
 endScene pEndScene;
 reset pReset;
 
+PD3DPRESENT_PARAMETERS D3DPresentParameters = nullptr;
 LPDIRECT3DDEVICE9 ActualD3DDevice = nullptr;
 LPD3DXFONT font = nullptr;
 HINSTANCE DllHandle = nullptr;
@@ -12,6 +13,12 @@ HWND GameHandle;
 WNDPROC WndProcOriginal;
 
 constexpr LPCSTR IntallPackageCommandHeader = "tw-Install-package";
+
+bool DXCritical_SwapchianNullPtr = false;
+bool OverlayInitialized;
+
+int NativeScreenWidth = 0;
+int NativeScreenHeight = 0;
 
 #pragma region Overlay Rectange Parameters
 
@@ -45,6 +52,24 @@ LPCSTR FontFamily = "Tahoma";
 
 #pragma endregion
 
+#pragma region tweaks flags
+
+// freeride configs is scrap so no need no turn them inside in-game menu
+bool tweak_InvisibleRoad = false;
+bool tweak_HiddenSongTitle = false;
+bool tweak_BankingCamera = false;
+bool tweak_SidewinderCamera = false;
+
+#pragma endregion
+
+int win32_excs::ExcFilter(unsigned int code, struct _EXCEPTION_POINTERS* ep)
+{
+    if (code == EXCEPTION_ACCESS_VIOLATION)
+    {
+        return EXCEPTION_EXECUTE_HANDLER;
+    }
+}
+
 HRESULT __stdcall DetourAttachHook(PPVOID ppPointer, PVOID pDetour)
 {
     DetourTransactionBegin();
@@ -66,9 +91,6 @@ HRESULT __stdcall DetourDetachHook(PPVOID ppPointer, PVOID pDetour)
 HRESULT __stdcall HookedReset(LPDIRECT3DDEVICE9 pDevice, PD3DPRESENT_PARAMETERS presentParameters)
 {
     ImGui_ImplDX9_InvalidateDeviceObjects();
-    HRESULT result = pReset(pDevice, presentParameters);
-    ImGui_ImplDX9_CreateDeviceObjects();
-
     pDevice->GetCreationParameters(&ViewportParams);
 
     RECT rect;
@@ -80,8 +102,11 @@ HRESULT __stdcall HookedReset(LPDIRECT3DDEVICE9 pDevice, PD3DPRESENT_PARAMETERS 
 
     ActualD3DDevice = pDevice;
     ConfigureFont(pDevice, &font, FontFamily, *FontSize);
+    D3DPresentParameters = presentParameters;
     ImguiInitialized = false;
 
+    HRESULT result = pReset(pDevice, presentParameters);
+    ImGui_ImplDX9_CreateDeviceObjects();
     return result;
 }
 
@@ -89,7 +114,24 @@ HRESULT __stdcall HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
 {
     if (ActualD3DDevice == nullptr)
         ActualD3DDevice = pDevice;
-    
+
+    /*if (D3DPresentParameters == nullptr && !DXCritical_SwapchianNullPtr)
+    {
+        __try
+        {
+            IDirect3DSwapChain9* swapChain;
+            if (pDevice->GetSwapChain(0, &swapChain) == D3D_OK)
+            {
+                swapChain->GetPresentParameters(D3DPresentParameters);
+            }
+        }
+        __except (win32_excs::ExcFilter(GetExceptionCode(), GetExceptionInformation()))
+        {
+            std::cout << "Failed to get PDevice SwapChain. Fullscreen Fix not avaiable\n";
+            DXCritical_SwapchianNullPtr = true;
+        }
+    }*/
+
     if (!OverlayVisible)
         return pEndScene(pDevice);
 
@@ -106,8 +148,6 @@ HRESULT __stdcall HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
 
     auto rectx1 = ovlRectLX + *OvlXOffset, rectx2 = ovlRectLX + ovlRectWidth + *OvlXOffset, recty1 = ovlRectLY + *OvlYOffset, recty2 = ovlRectLY + ovlRectHeight + *OvlYOffset;
 
-    if (!font)
-        ConfigureFont(pDevice, &font, FontFamily, *FontSize);
 
     RECT textRectangle;
 
@@ -119,6 +159,9 @@ HRESULT __stdcall HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
     if (FontColor == nullptr)
         FontColor = new Argb_t{255, 153, 255, 153}; // Default shitty-green color
 
+    if (!font)
+        ConfigureFont(pDevice, &font, FontFamily, *FontSize);
+    
     font->DrawText(NULL, DisplayInfo.c_str(),
         -1, &textRectangle, DT_NOCLIP | DT_LEFT, D3DCOLOR_ARGB(FontColor->alpha,FontColor->r,FontColor->g,FontColor->b));
     
@@ -157,18 +200,67 @@ inline void DrawMenu(LPDIRECT3DDEVICE9 pDevice)
         {
             if (ActualSkinsList.size() == 0)
             {
-                std::cout << "Debug## Skins list empty, can not send command\n";
                 return;
             }
-
-            SendCommandToHostApplication(const_cast<char*>(
-                ( std::string(IntallPackageCommandHeader) 
-                + std::string(" ") 
-                + std::string(ActualSkinsList[ListboxSelect]))
-                .c_str()));// tw-Install-package <skin_name>
+            std::stringstream cmdText{};
+            cmdText << IntallPackageCommandHeader << " " << ActualSkinsList[ListboxSelect];
+            SendCommandToHostApplication(const_cast<char*>(cmdText.str().c_str()));// tw-Install-package <skin_name>
         }
 
         ImGui::Spacing();
+    }
+
+    if (ImGui::CollapsingHeader("Tweaker")) 
+    {
+        if (GameHandle == nullptr || !IsWindow(GameHandle))
+        {
+            ImGui::Text("Game handle is invalid. Tweaks unavialbe");
+        }
+
+        else
+        {
+            std::stringstream rawCommand{};
+            std::stringstream hostNotifyCommand{};
+
+            hostNotifyCommand << "tw-Notify-Tweak-Changed ";
+            bool shouldNotifyHost = false;
+            rawCommand << "asconfig ";
+
+            if (ImGui::Checkbox("Invisible Road", &tweak_InvisibleRoad))
+            {
+                rawCommand << "roadvisible " << std::boolalpha << !tweak_InvisibleRoad;
+                hostNotifyCommand << "InvisibleRoad " << std::boolalpha << tweak_InvisibleRoad;
+                SendCopyDataMessage(GameHandle, rawCommand.str().c_str());
+                shouldNotifyHost = true;
+            }
+
+            if (ImGui::Checkbox("Hidden song title", &tweak_HiddenSongTitle))
+            {
+                rawCommand << "showsongname " << std::boolalpha << !tweak_HiddenSongTitle;
+                hostNotifyCommand << "HiddenSong " << std::boolalpha << tweak_HiddenSongTitle;
+                SendCopyDataMessage(GameHandle, rawCommand.str().c_str());
+                shouldNotifyHost = true;
+            }
+
+            if (ImGui::Checkbox("Sidewinder Camera", &tweak_SidewinderCamera))
+            {
+                rawCommand << "sidewinder " << std::boolalpha << tweak_SidewinderCamera;
+                hostNotifyCommand << "SidewinderCamera " << std::boolalpha << tweak_SidewinderCamera;
+                SendCopyDataMessage(GameHandle, rawCommand.str().c_str());
+                shouldNotifyHost = true;
+            }
+
+            if (ImGui::Checkbox("Banking camera", &tweak_BankingCamera))
+            {
+                rawCommand << "usebankingcamera " << std::boolalpha << tweak_BankingCamera;
+                hostNotifyCommand << "BankingCamera " << std::boolalpha << tweak_BankingCamera;
+                SendCopyDataMessage(GameHandle, rawCommand.str().c_str());
+                shouldNotifyHost = true;
+            }
+
+            if (shouldNotifyHost)
+                SendCopyDataMessage(HostApplicationHandle, hostNotifyCommand.str().c_str());
+        }
     }
 
     if (ImGui::CollapsingHeader("Info panel config"))
@@ -213,32 +305,51 @@ inline void DrawMenu(LPDIRECT3DDEVICE9 pDevice)
     ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
 }
 
+LRESULT __stdcall SendCopyDataMessage(HWND hWindow, LPCSTR cdsLpData)
+{
+    return SendCopyDataMessage(hWindow, const_cast<LPSTR>(cdsLpData));
+}
+
 LRESULT __stdcall SendCommandToHostApplication(LPSTR commandText)
 {
-    if (HostApplicationHandle == nullptr)
-        return 0;
+    return SendCopyDataMessage(HostApplicationHandle, commandText);
+}
+
+LRESULT __stdcall SendCopyDataMessage(HWND hWindow, LPSTR cdsLpData)
+{
+    if (hWindow == nullptr)
+        return -1;
 
     COPYDATASTRUCT cds{};
     cds.dwData = 0;
-    cds.cbData = sizeof(char) * (strlen(commandText) + 1);
-    cds.lpData = commandText;
+    cds.cbData = sizeof(char) * (strlen(cdsLpData) + 1);
+    cds.lpData = cdsLpData;
 
-    auto msgSendResult = SendMessage(HostApplicationHandle, WM_COPYDATA, NULL, (LPARAM)(LPVOID)&cds);
-    return msgSendResult;
+    return SendMessage(hWindow, WM_COPYDATA, NULL, (LPARAM)(LPVOID)&cds);
 }
 
 HRESULT Init()
 {
-    HRESULT result = InitDirect3D();
+    /*HRESULT result = InitDirect3D();
 
     if (FAILED(result))
     {
         std::cout << "Error during creating D3DDevice. Exiting process\n";
         return E_FAIL;
-    }
+    }*/
 
     GameHandle = FindWindow(NULL, "Audiosurf");
     WndProcOriginal = (WNDPROC)SetWindowLong(GameHandle, GWL_WNDPROC, (LRESULT)WndProc);
+
+    RECT desktop;
+
+    auto hDesktop = GetDesktopWindow();
+
+    GetWindowRect(hDesktop, &desktop);
+
+    NativeScreenHeight = desktop.bottom;
+    NativeScreenWidth = desktop.right;
+
     return 0;
 }
 
@@ -323,76 +434,114 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
     auto imgui_wndproc_result = ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam);
 
-    if (msg == WM_COPYDATA) {
-        auto cds = (COPYDATASTRUCT*)lParam;
-        if (cds->cbData > 0)
+    try 
+    {
+        if (msg == WM_COPYDATA) 
         {
-            auto msg = std::string((LPCSTR)cds->lpData);
-
-            if (msg.find("ascommand") != std::string::npos)
-                std::cout << "generic audiosurf command handled\n";
-
-            else if (msg.find("tw-update-listener") != std::string::npos) // catch ovl-update-listener command from host application, that has a signature of "tw-update-listener AsMsgHandler_<unique_symbol_sequence>
-            {
-                auto HandlerUniqueID = msg.substr(std::string("tw-update-listener").length() + 1);
-                std::cout << "tw-update-listener handled with arguments " << HandlerUniqueID << "\n";
-
-                HWND hostWndProcHandler = FindWindow(NULL, HandlerUniqueID.c_str());
-                if (hostWndProcHandler)
-                    HostApplicationHandle = hostWndProcHandler;
-            }
-
-            else if (msg.find("tw-update-skin-list") != std::string::npos)
-            {
-                auto list = msg.substr(std::string("tw-update-skin-list").length());
-
-                std::cout << "tw-update-skin-list handled with arguments " << list << "\n";
-
-                LTrim(list);
-                ActualSkinsList.clear();
-
-                for (auto& item : Split(list, "; "))
-                {
-                    std::cout << "appending item " << item << "\n";
-                    ActualSkinsList.push_back(item);
-                }
-            }
-
-            else if (msg.find("tw-update-ovl-info") != std::string::npos)
-            {
-                auto newInfo = msg.substr(std::string("tw-update-ovl-info").length());
-                DisplayInfo.clear();
-                DisplayInfo.append(newInfo);
-            }
-
-            else if (msg.find("tw-pulse") != std::string::npos)
-            {
-                if (HostApplicationHandle != nullptr)
-                    SendCommandToHostApplication(const_cast<char*>("tw-responce ok"));
-            }
-
-            else if (msg.find("tw-append-ovl-info") != std::string::npos)
-            {
-                auto infoToAppend = msg.substr(std::string("tw-append-ovl-info").length());
-                DisplayInfo.append(std::string("\n") + infoToAppend);
-            }
-
-            else if (msg.find("tw-config") != std::string::npos)
-            {
-                auto configs = Split(msg.substr(std::string("tw-config").length()), std::string("; "));
-
-                for (auto& config : configs) 
-                {
-                    ProcessConfigurationCommand(config);
-                }
-            }
+            auto cds = (COPYDATASTRUCT*)lParam;
+            HandleCopyDataMessage(cds);
         }
+
+        if (msg == WM_SIZE)
+        {
+            HandleWMSize(wParam, lParam);
+        }
+    }
+
+    catch (std::exception ex) 
+    {
+        std::cout << "Error while WndProc handling " << ex.what() << "\n";
     }
 
     if (imgui_wndproc_result)
         return true;
 
     return CallWindowProc(WndProcOriginal, hWnd, msg, wParam, lParam);
+}
+
+inline void HandleCopyDataMessage(PCOPYDATASTRUCT cds) 
+{
+    if (cds->cbData <= 0)
+        return;
+
+    auto msg = std::string((LPCSTR)cds->lpData);
+
+    if (msg.find("tw-update-listener") != std::string::npos) // catch ovl-update-listener command from host application, that has a signature of "tw-update-listener AsMsgHandler_<unique_symbol_sequence>
+    {
+        auto HandlerUniqueID = msg.substr(std::string("tw-update-listener").length() + 1);
+        std::cout << "tw-update-listener handled with arguments " << HandlerUniqueID << "\n";
+
+        HWND hostWndProcHandler = FindWindow(NULL, HandlerUniqueID.c_str());
+        if (hostWndProcHandler)
+            HostApplicationHandle = hostWndProcHandler;
+    }
+
+    else if (msg.find("tw-update-skin-list") != std::string::npos)
+    {
+        auto list = msg.substr(std::string("tw-update-skin-list").length());
+
+        std::cout << "tw-update-skin-list handled with arguments " << list << "\n";
+
+        LTrim(list);
+        ActualSkinsList.clear();
+
+        for (auto& item : Split(list, "; "))
+        {
+            std::cout << "appending item " << item << "\n";
+            ActualSkinsList.push_back(item);
+        }
+    }
+
+    else if (msg.find("tw-update-ovl-info") != std::string::npos)
+    {
+        auto newInfo = msg.substr(std::string("tw-update-ovl-info").length());
+        DisplayInfo.clear();
+        DisplayInfo.append(newInfo);
+    }
+
+    else if (msg.find("tw-pulse") != std::string::npos)
+    {
+        if (HostApplicationHandle != nullptr)
+            SendCommandToHostApplication(const_cast<char*>("tw-responce ok"));
+    }
+
+    else if (msg.find("tw-append-ovl-info") != std::string::npos)
+    {
+        auto infoToAppend = msg.substr(std::string("tw-append-ovl-info").length());
+        DisplayInfo.append(std::string("\n") + infoToAppend);
+    }
+
+    else if (msg.find("tw-config") != std::string::npos)
+    {
+        auto configs = Split(msg.substr(std::string("tw-config").length()), std::string("; "));
+
+        for (auto& config : configs)
+        {
+            ProcessConfigurationCommand(config);
+        }
+    }
+}
+
+inline void HandleWMSize(WPARAM wParam, LPARAM lParam)
+{
+    UINT width = LOWORD(lParam);
+    UINT height = HIWORD(lParam);
+
+    ovlRectLY = height - 100;
+
+    if (width == NativeScreenWidth && height == NativeScreenHeight)
+    {
+        if (!OverlayInitialized)
+        {
+            auto result = InitDirect3D();
+            if (FAILED(result))
+            {
+                EjectThread(0);
+            }
+            ConfigureFont(ActualD3DDevice, &font, "Tahoma", *FontSize);
+            OverlayInitialized = true;
+        }
+    }
 }
 
 HRESULT ConfigureFont(LPDIRECT3DDEVICE9 pDevice, LPD3DXFONT* font, LPCSTR fontFamily, int size)
@@ -480,6 +629,7 @@ void EjectOverlayProcess(FILE* fp)
     delete FontColor;
     delete FontSize;
     delete FontFamily;
+    delete MenuFontSize;
 
     CreateThread(0, 0, EjectThread, 0, 0, 0);
 }
