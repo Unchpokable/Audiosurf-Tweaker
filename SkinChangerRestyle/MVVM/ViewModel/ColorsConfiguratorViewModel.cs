@@ -5,8 +5,6 @@ using System.Windows.Media;
 using System.Linq;
 using System.Windows;
 using System.IO;
-using IniParser;
-using IniParser.Model;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System;

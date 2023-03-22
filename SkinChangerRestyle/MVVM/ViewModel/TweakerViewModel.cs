@@ -3,6 +3,7 @@ using ASCommander;
 using SkinChangerRestyle.MVVM.Model;
 using ChangerAPI.Utilities;
 using System;
+using System.Collections.Generic;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -30,6 +31,16 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 _console.Flush();
                 OnPropertyChanged(nameof(ConsoleContent));
             });
+
+            _externalTweaksFields = new Dictionary<string, Reference<bool>>()
+            {
+                {"InvisibleRoad", _invisibleRoadTweakActive },
+                {"HiddenSong", _hiddenSongNameTweakActive },
+                {"SidewinderCamera", _sidewinderCameraTweakActive },
+                {"BankingCamera", _bankingCameraTweakActive }
+            };
+
+            _audiosurfHandle.MessageResieved += OnMessageRecieved;
         }
 
         ~TweakerViewModel()
@@ -60,7 +71,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             get => _invisibleRoadTweakActive; 
             set
             {
-                _invisibleRoadTweakActive = value;
+                _invisibleRoadTweakActive.Value = value;
                 _audiosurfHandle.Command($"asconfig roadvisible {(!value).ToString().ToLower()}");
                 OnPropertyChanged();
             }
@@ -71,7 +82,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             get => _hiddenSongNameTweakActive; 
             set 
             { 
-                _hiddenSongNameTweakActive = value;
+                _hiddenSongNameTweakActive.Value = value;
                 _audiosurfHandle.Command($"asconfig showsongname {(!value).ToString().ToLower()}");
                 OnPropertyChanged();
             }
@@ -82,7 +93,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             get => _sidewinderCameraTweakActive;
             set
             {
-                _sidewinderCameraTweakActive = value;
+                _sidewinderCameraTweakActive.Value = value;
                 _audiosurfHandle.Command($"asconfig sidewinder {value.ToString().ToLower()}");
                 OnPropertyChanged();
             }
@@ -93,7 +104,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             get => _bankingCameraTweakActive;
             set
             {
-                _bankingCameraTweakActive = value;
+                _bankingCameraTweakActive.Value = value;
                 _audiosurfHandle.Command($"asconfig usebankingcamera {value.ToString().ToLower()}");
                 OnPropertyChanged();
             }
@@ -146,10 +157,10 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private AudiosurfHandle _audiosurfHandle;
         private bool _isAudiosurfConnected;
 
-        private bool _hiddenSongNameTweakActive;
-        private bool _invisibleRoadTweakActive;
-        private bool _sidewinderCameraTweakActive;
-        private bool _bankingCameraTweakActive;
+        private Reference<bool> _hiddenSongNameTweakActive = new Reference<bool>(false);
+        private Reference<bool> _invisibleRoadTweakActive = new Reference<bool>(false);
+        private Reference<bool> _sidewinderCameraTweakActive = new Reference<bool>(false);
+        private Reference<bool> _bankingCameraTweakActive = new Reference<bool>(false);
 
         private bool _freerideNoBlocksTweakActive;
         private bool _freerideBlocksCaterpillarsTweakActive;
@@ -157,18 +168,38 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         private TweakerConsole _console;
 
+        private Dictionary<string, Reference<bool>> _externalTweaksFields; //TODO: rename it
+
         private void OnMessageRecieved(object sender, string message)
         {
-            if (message.Contains("tw-tweak-changed"))
+            if (message.Contains("tw-Notify-Tweak-Changed"))
             {
-                var fieldName = message.Substring("tw-tweak-changed".Length + 1);
-
+                var propChanged = message.Substring("tw-Notify-Tweak-Changed".Length + 1).Split(' ');
+                if (propChanged.Length != 2)
+                    return;
+                var fieldName = propChanged[0];
+                var targetField = _externalTweaksFields[fieldName];
+                targetField.Value = bool.Parse(propChanged[1]);
+                OnPropertyChanged(fieldName + "TweakActive"); 
             }
         }
 
         private void KillAudiosurf()
         {
             Core.Extensions.Extensions.Cmd($"taskkill /f /im \"{AppDomain.CurrentDomain.FriendlyName}\"");
+        }
+
+        private class Reference<T>
+            where T : struct
+        {
+            public Reference(T value)
+            {
+                Value = value;
+            }
+
+            public T Value { get; set; }
+
+            public static implicit operator T(Reference<T> reference) => reference.Value;
         }
     }
 }
