@@ -180,7 +180,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 var fieldName = propChanged[0];
                 var targetField = _externalTweaksFields[fieldName];
                 targetField.Value = bool.Parse(propChanged[1]);
-                OnPropertyChanged(fieldName + "TweakActive"); 
+                OnPropertyChanged(fieldName + "TweakActive");
             }
         }
 
