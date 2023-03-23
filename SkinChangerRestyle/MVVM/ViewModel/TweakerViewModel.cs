@@ -45,8 +45,6 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         ~TweakerViewModel()
         {
-            // Setters of this fields instantly sends asconfing command to game. So, program turning off must rollback all undefault game's configuration
-            // this desctuctor should be called before AudiosurfHandle destructor cause TweakerViewModel has a reference to AudiosurfHandle so this should work
             InvisibleRoadTweakActive = false;
             HiddenSongTweakActive = false;
             SidewinderCameraTweakActive = false;
