@@ -11,6 +11,8 @@ D3DDEVICE_CREATION_PARAMETERS ViewportParams;
 HWND HostApplicationHandle;
 HWND GameHandle;
 WNDPROC WndProcOriginal;
+FILE* PConsoleOutFile; // Bad to store raw pointers in global memory but i actually dont give a fuck
+
 
 constexpr LPCSTR IntallPackageCommandHeader = "tw-Install-package";
 
@@ -38,6 +40,7 @@ PINT OvlYOffset;
 #pragma region UI globals
 
 bool OverlayVisible = true;
+bool GameRunsFullscreen = false;
 bool ImguiToolboxVisible = false;
 bool ImguiInitialized = false;
 int ListboxSelect(0);
@@ -55,10 +58,24 @@ LPCSTR FontFamily = "Tahoma";
 #pragma region tweaks flags
 
 // freeride configs is scrap so no need no turn them inside in-game menu
-bool tweak_InvisibleRoad = false;
-bool tweak_HiddenSongTitle = false;
-bool tweak_BankingCamera = false;
-bool tweak_SidewinderCamera = false;
+
+namespace Assoc
+{
+    using namespace std;
+
+    auto tweak_InvisibleRoad = new const bool{};
+    auto tweak_HiddenSongTitle = new const bool{};
+    auto tweak_SidewinderCamera = new const bool{};
+    auto tweak_BankingCamera = new const bool{};
+
+    map<string, shared_ptr<bool>> TweaksFlags
+    {
+        {"InvisibleRoad", make_shared<bool>(tweak_InvisibleRoad) },
+        {"HiddenSongTitle", make_shared<bool>(tweak_HiddenSongTitle) },
+        {"BankingCamera", make_shared<bool>(tweak_BankingCamera) },
+        {"SidewinderCamera", make_shared<bool>(tweak_SidewinderCamera) }
+    };
+}
 
 #pragma endregion
 
@@ -91,6 +108,8 @@ HRESULT __stdcall DetourDetachHook(PPVOID ppPointer, PVOID pDetour)
 HRESULT __stdcall HookedReset(LPDIRECT3DDEVICE9 pDevice, PD3DPRESENT_PARAMETERS presentParameters)
 {
     ImGui_ImplDX9_InvalidateDeviceObjects();
+    HRESULT result = pReset(pDevice, presentParameters);
+    
     pDevice->GetCreationParameters(&ViewportParams);
 
     RECT rect;
@@ -98,15 +117,18 @@ HRESULT __stdcall HookedReset(LPDIRECT3DDEVICE9 pDevice, PD3DPRESENT_PARAMETERS 
 
     ovlRectLY = rect.bottom - 100; // Correct info overlay positioning after D3D Viewport Reset
 
-    ImGui::GetIO().MouseDrawCursor = true;
+    if (!GameRunsFullscreen)
+        if (presentParameters->BackBufferWidth == NativeScreenWidth && presentParameters->BackBufferHeight == NativeScreenHeight)
+            GameRunsFullscreen == true;
 
-    ActualD3DDevice = pDevice;
+    if (GameRunsFullscreen)
+        ImGui::GetIO().MouseDrawCursor = true;
+
     ConfigureFont(pDevice, &font, FontFamily, *FontSize);
+    ActualD3DDevice = pDevice;
     D3DPresentParameters = presentParameters;
-    ImguiInitialized = false;
-
-    HRESULT result = pReset(pDevice, presentParameters);
     ImGui_ImplDX9_CreateDeviceObjects();
+    ImguiInitialized = false;
     return result;
 }
 
@@ -114,23 +136,6 @@ HRESULT __stdcall HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
 {
     if (ActualD3DDevice == nullptr)
         ActualD3DDevice = pDevice;
-
-    /*if (D3DPresentParameters == nullptr && !DXCritical_SwapchianNullPtr)
-    {
-        __try
-        {
-            IDirect3DSwapChain9* swapChain;
-            if (pDevice->GetSwapChain(0, &swapChain) == D3D_OK)
-            {
-                swapChain->GetPresentParameters(D3DPresentParameters);
-            }
-        }
-        __except (win32_excs::ExcFilter(GetExceptionCode(), GetExceptionInformation()))
-        {
-            std::cout << "Failed to get PDevice SwapChain. Fullscreen Fix not avaiable\n";
-            DXCritical_SwapchianNullPtr = true;
-        }
-    }*/
 
     if (!OverlayVisible)
         return pEndScene(pDevice);
@@ -210,7 +215,7 @@ inline void DrawMenu(LPDIRECT3DDEVICE9 pDevice)
         ImGui::Spacing();
     }
 
-    if (ImGui::CollapsingHeader("Tweaker")) 
+    if (ImGui::CollapsingHeader("Tweaker"))
     {
         if (GameHandle == nullptr || !IsWindow(GameHandle))
         {
@@ -226,34 +231,38 @@ inline void DrawMenu(LPDIRECT3DDEVICE9 pDevice)
             bool shouldNotifyHost = false;
             rawCommand << "asconfig ";
 
-            if (ImGui::Checkbox("Invisible Road", &tweak_InvisibleRoad))
+            if (ImGui::Checkbox("Invisible Road", Assoc::TweaksFlags["InvisibleRoad"].get()))
             {
-                rawCommand << "roadvisible " << std::boolalpha << !tweak_InvisibleRoad;
-                hostNotifyCommand << "InvisibleRoad " << std::boolalpha << tweak_InvisibleRoad;
+                auto flag = *Assoc::TweaksFlags["InvisibleRoad"].get();
+                rawCommand << "roadvisible " << std::boolalpha << !flag;
+                hostNotifyCommand << "InvisibleRoad " << std::boolalpha << flag;
                 SendCopyDataMessage(GameHandle, rawCommand.str().c_str());
                 shouldNotifyHost = true;
             }
 
-            if (ImGui::Checkbox("Hidden song title", &tweak_HiddenSongTitle))
+            if (ImGui::Checkbox("Hidden song title", Assoc::TweaksFlags["HiddenSongTitle"].get()))
             {
-                rawCommand << "showsongname " << std::boolalpha << !tweak_HiddenSongTitle;
-                hostNotifyCommand << "HiddenSong " << std::boolalpha << tweak_HiddenSongTitle;
+                auto flag = *Assoc::TweaksFlags["HiddenSongTitle"].get();
+                rawCommand << "showsongname " << std::boolalpha << !flag;
+                hostNotifyCommand << "HiddenSong " << std::boolalpha << flag;
                 SendCopyDataMessage(GameHandle, rawCommand.str().c_str());
                 shouldNotifyHost = true;
             }
 
-            if (ImGui::Checkbox("Sidewinder Camera", &tweak_SidewinderCamera))
+            if (ImGui::Checkbox("Sidewinder Camera", Assoc::TweaksFlags["SidewinderCamera"].get()))
             {
-                rawCommand << "sidewinder " << std::boolalpha << tweak_SidewinderCamera;
-                hostNotifyCommand << "SidewinderCamera " << std::boolalpha << tweak_SidewinderCamera;
+                auto flag = *Assoc::TweaksFlags["SidewinderCamera"].get();
+                rawCommand << "sidewinder " << std::boolalpha << flag;
+                hostNotifyCommand << "SidewinderCamera " << std::boolalpha << flag;
                 SendCopyDataMessage(GameHandle, rawCommand.str().c_str());
                 shouldNotifyHost = true;
             }
 
-            if (ImGui::Checkbox("Banking camera", &tweak_BankingCamera))
+            if (ImGui::Checkbox("Banking camera", Assoc::TweaksFlags["BankingCamera"].get()))
             {
-                rawCommand << "usebankingcamera " << std::boolalpha << tweak_BankingCamera;
-                hostNotifyCommand << "BankingCamera " << std::boolalpha << tweak_BankingCamera;
+                auto flag = *Assoc::TweaksFlags["BankingCamera"].get();
+                rawCommand << "usebankingcamera " << std::boolalpha << flag;
+                hostNotifyCommand << "BankingCamera " << std::boolalpha << flag;
                 SendCopyDataMessage(GameHandle, rawCommand.str().c_str());
                 shouldNotifyHost = true;
             }
@@ -330,13 +339,13 @@ LRESULT __stdcall SendCopyDataMessage(HWND hWindow, LPSTR cdsLpData)
 
 HRESULT Init()
 {
-    /*HRESULT result = InitDirect3D();
+    HRESULT result = InitDirect3D();
 
     if (FAILED(result))
     {
         std::cout << "Error during creating D3DDevice. Exiting process\n";
         return E_FAIL;
-    }*/
+    }
 
     GameHandle = FindWindow(NULL, "Audiosurf");
     WndProcOriginal = (WNDPROC)SetWindowLong(GameHandle, GWL_WNDPROC, (LRESULT)WndProc);
@@ -415,7 +424,7 @@ HRESULT InitDirect3D()
     }
     
     std::cout << "Device bound to dummy window created successfully\n";
-    
+
     PPVOID vTable = *reinterpret_cast<void***>(pDevice);
 
     pEndScene = (endScene)vTable[42];
@@ -436,7 +445,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
     try 
     {
-        if (msg == WM_COPYDATA) 
+        if (msg == WM_COPYDATA)
         {
             auto cds = (COPYDATASTRUCT*)lParam;
             HandleCopyDataMessage(cds);
@@ -448,7 +457,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         }
     }
 
-    catch (std::exception ex) 
+    catch (std::exception ex)
     {
         std::cout << "Error while WndProc handling " << ex.what() << "\n";
     }
@@ -531,16 +540,8 @@ inline void HandleWMSize(WPARAM wParam, LPARAM lParam)
 
     if (width == NativeScreenWidth && height == NativeScreenHeight)
     {
-        if (!OverlayInitialized)
-        {
-            auto result = InitDirect3D();
-            if (FAILED(result))
-            {
-                EjectThread(0);
-            }
-            ConfigureFont(ActualD3DDevice, &font, "Tahoma", *FontSize);
-            OverlayInitialized = true;
-        }
+        if (!GameRunsFullscreen)
+            GameRunsFullscreen = true;
     }
 }
 
@@ -560,8 +561,9 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
 {
     AllocConsole();
     FILE* fp;
-
     freopen_s(&fp, "CONOUT$", "w", stdout);
+
+    PConsoleOutFile = fp;
 
     if (fp == nullptr)
     {
@@ -569,7 +571,7 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
         CreateThread(0, 0, EjectThread, 0, 0, 0);
     }
 
-    std::cout << "We are in " << GetCurrentProcessId() << "\nOverlay initialization...\n";
+    std::cout << "Game PID: " << GetCurrentProcessId() << "\nOverlay initialization...\n";
 
     FontColor = new Argb{255, 153, 255, 153};
     FontSize = new int;
@@ -584,7 +586,10 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
     *OvlXOffset = 0;
     *OvlYOffset = 0;
 
-    // TODO: Init here default overlay position for 
+    for (auto const& [key, value] : Assoc::TweaksFlags) 
+    {
+        *Assoc::TweaksFlags[key] = false;
+    }
 
     auto initResult = Init();
 
@@ -622,14 +627,18 @@ void EjectOverlayProcess(FILE* fp)
 {
     DetourDetachHook(&(PVOID&)pEndScene, (PVOID)HookedEndScene);
     DetourDetachHook(&(PVOID&)pReset, (PVOID)HookedReset);
-    SetWindowLongA(GameHandle, GWL_WNDPROC, (LONG_PTR)WndProcOriginal);
-    fclose(fp);
+    SetWindowLong(GameHandle, GWL_WNDPROC, (LONG_PTR)WndProcOriginal);
+
+    if (fp != nullptr)
+        fclose(fp);
+    
     FreeConsole();
 
     delete FontColor;
     delete FontSize;
     delete FontFamily;
     delete MenuFontSize;
+    delete PConsoleOutFile;
 
     CreateThread(0, 0, EjectThread, 0, 0, 0);
 }
@@ -643,7 +652,7 @@ inline void ProcessConfigurationCommand(std::string& cfgStr)
         if (cfgStr.find("font-color") != std::string::npos)
         {
             auto values = Split(cfgStr.substr(std::string("font-color").length()), std::string(" "));
-            if (values.size() != 4) // We need ARGB parameter
+            if (values.size() != 4) // ARGB - 0-255 0-255 0-255 0-255 
                 return;
             FontColor->alpha = std::stoi(values[0]);
             FontColor->r = std::stoi(values[1]);
@@ -658,7 +667,7 @@ inline void ProcessConfigurationCommand(std::string& cfgStr)
             ConfigureFont(ActualD3DDevice, &font, "Tahoma", *FontSize);
         }
 
-        // FIXME: Code duplicate. Do something with it later
+        // FIXME: Code duplicate. Do something with it later. Or not?
         else if (cfgStr.find("infopanel-xoffset") != std::string::npos)
         {
             auto value = std::stoi(cfgStr.substr(std::string("infopanel-xoffset").length()));
@@ -670,7 +679,13 @@ inline void ProcessConfigurationCommand(std::string& cfgStr)
             auto value = std::stoi(cfgStr.substr(std::string("infopanel-yoffset").length()));
             *OvlYOffset = value;
         }
-    } 
+
+        else if (cfgStr.find("tweak-active") != std::string::npos) // tweak-active invisibleroad true
+        {
+            auto value = cfgStr.substr(std::string("tweak-active").length());
+            UpdateTweaksState(value);
+        }
+    }
     catch (const std::exception ex)
     {
         std::cout << "Exception during settings apply: " << ex.what() << "\n";
@@ -678,6 +693,23 @@ inline void ProcessConfigurationCommand(std::string& cfgStr)
     catch (...)
     {
         std::cout << "Unknown error during settings apply\n";
+    }
+}
+
+inline void UpdateTweaksState(std::string parameter)
+{
+    auto values = Split(parameter, " ");
+    if (values.size() == 2)// we need 2 values - property and its new value, like "InvisibleRoad true"
+    {
+        try
+        {
+            *Assoc::TweaksFlags[values[0]] = (values[1] == std::string("true")); // So, if we want to set any value here to false, we can say that new value of, InvisibleRoad for ex, is "puncake" which is not equals to "true". funny
+
+        }
+        catch (...) 
+        {
+            std::cout << "Unable to turn tweak " << values[1] << "\n" << " cause wrong pointer value at " << Assoc::TweaksFlags[values[0]].get() << "\n";
+        }
     }
 }
 

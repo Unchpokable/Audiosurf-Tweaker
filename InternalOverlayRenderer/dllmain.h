@@ -14,6 +14,7 @@
 #include <string>
 #include <sstream>
 #include <excpt.h>
+#include <map>
 
 #include "detours.h"
 #include "imgui/imgui.h"
@@ -75,6 +76,7 @@ HRESULT ConfigureFont(LPDIRECT3DDEVICE9, LPD3DXFONT*, LPCSTR, int);
 inline void HandleCopyDataMessage(PCOPYDATASTRUCT);
 inline void HandleWMSize(WPARAM, LPARAM);
 
+inline void UpdateTweaksState(std::string);
 inline void ProcessConfigurationCommand(std::string&);
 inline void LTrim(std::string&);
 inline void RTrim(std::string&);
