@@ -107,27 +107,25 @@ HRESULT __stdcall DetourDetachHook(PPVOID ppPointer, PVOID pDetour)
 
 HRESULT __stdcall HookedReset(LPDIRECT3DDEVICE9 pDevice, PD3DPRESENT_PARAMETERS presentParameters)
 {
-    ImGui_ImplDX9_InvalidateDeviceObjects();
-    HRESULT result = pReset(pDevice, presentParameters);
-    
-    pDevice->GetCreationParameters(&ViewportParams);
+    if (pDevice == nullptr || presentParameters == nullptr)
+        return pReset(pDevice, presentParameters);
 
+    pDevice->GetCreationParameters(&ViewportParams);
+    
     RECT rect;
     GetWindowRect(ViewportParams.hFocusWindow, &rect);
 
-    ovlRectLY = rect.bottom - 100; // Correct info overlay positioning after D3D Viewport Reset
+    ovlRectLY = rect.bottom - 100; 
 
-    if (!GameRunsFullscreen)
-        if (presentParameters->BackBufferWidth == NativeScreenWidth && presentParameters->BackBufferHeight == NativeScreenHeight)
-            GameRunsFullscreen == true;
-
-    if (GameRunsFullscreen)
+    if (presentParameters->Windowed == FALSE)
         ImGui::GetIO().MouseDrawCursor = true;
 
-    ConfigureFont(pDevice, &font, FontFamily, *FontSize);
-    ActualD3DDevice = pDevice;
-    D3DPresentParameters = presentParameters;
+    auto font_ok = ConfigureFont(pDevice, &font, FontFamily, *FontSize);
+        
+    ImGui_ImplDX9_InvalidateDeviceObjects();
+    HRESULT result = pReset(pDevice, presentParameters);
     ImGui_ImplDX9_CreateDeviceObjects();
+    D3DPresentParameters = presentParameters;
     ImguiInitialized = false;
     return result;
 }
@@ -537,12 +535,6 @@ inline void HandleWMSize(WPARAM wParam, LPARAM lParam)
     UINT height = HIWORD(lParam);
 
     ovlRectLY = height - 100;
-
-    if (width == NativeScreenWidth && height == NativeScreenHeight)
-    {
-        if (!GameRunsFullscreen)
-            GameRunsFullscreen = true;
-    }
 }
 
 HRESULT ConfigureFont(LPDIRECT3DDEVICE9 pDevice, LPD3DXFONT* font, LPCSTR fontFamily, int size)
