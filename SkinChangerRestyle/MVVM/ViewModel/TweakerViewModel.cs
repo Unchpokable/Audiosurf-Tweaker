@@ -71,6 +71,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 _invisibleRoadTweakActive.Value = value;
                 _audiosurfHandle.Command($"asconfig roadvisible {(!value).ToString().ToLower()}");
+                _audiosurfHandle.Command($"tw-config tweak-active InvisibleRoad {value.ToString().ToLower()}");
                 OnPropertyChanged();
             }
         }
@@ -82,6 +83,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             { 
                 _hiddenSongNameTweakActive.Value = value;
                 _audiosurfHandle.Command($"asconfig showsongname {(!value).ToString().ToLower()}");
+                _audiosurfHandle.Command($"tw-config tweak-active HiddenSongTitle {value.ToString().ToLower()}");
                 OnPropertyChanged();
             }
         }
@@ -93,6 +95,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 _sidewinderCameraTweakActive.Value = value;
                 _audiosurfHandle.Command($"asconfig sidewinder {value.ToString().ToLower()}");
+                _audiosurfHandle.Command($"tw-config tweak-active SidewinderCamera {value.ToString().ToLower()}");
                 OnPropertyChanged();
             }
         }
@@ -104,6 +107,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 _bankingCameraTweakActive.Value = value;
                 _audiosurfHandle.Command($"asconfig usebankingcamera {value.ToString().ToLower()}");
+                _audiosurfHandle.Command($"tw-config tweak-active BankingCamera {value.ToString().ToLower()}");
                 OnPropertyChanged();
             }
         }
