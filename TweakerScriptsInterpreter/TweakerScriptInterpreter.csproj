@@ -7,8 +7,8 @@
     <ProjectGuid>{B3E90AD5-B42F-4472-A3BF-98CC8A2FAACE}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>ServerManager</RootNamespace>
-    <AssemblyName>ServerManager</AssemblyName>
+    <RootNamespace>TweakerScriptsInterpreter</RootNamespace>
+    <AssemblyName>TweakerScriptsInterpreter</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
