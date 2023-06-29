@@ -1,0 +1,21 @@
+﻿<SyntaxDefinition xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008">
+  <!-- Определение цветов -->
+  <Color name="Keyword" foreground="Blue" fontWeight="bold"/>
+  <Color name="Argument" foreground="Orange"/>
+  <Color name="Section" foreground="Black"/>
+
+  <!-- Определение правил подсветки -->
+  <RuleSet>
+    <Keywords color="Keyword">
+      <Word>SECTION</Word>
+      <Word>END-SECTION</Word>
+      <Word>PUT</Word>
+      <Word>DELETE</Word>
+      <Word>EXTRACT</Word>
+      <Word>REPLACE</Word>
+      <Word>ROLLBACK</Word>
+      <Word>BACKUP</Word>
+    </Keywords>
+  </RuleSet>
+</SyntaxDefinition>
+
