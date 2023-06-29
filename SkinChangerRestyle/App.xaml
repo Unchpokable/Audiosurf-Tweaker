@@ -20,7 +20,8 @@
                 <ResourceDictionary Source="Themes/ImageListViewItem.xaml"/>
                 <ResourceDictionary Source="Themes/UnderscoredTransparentButton.xaml"/>
                 <ResourceDictionary Source="Themes/StylishProgressBar.xaml"/>
-                
+                <ResourceDictionary Source="Themes/ServerItem.xaml"/>
+
                 <ResourceDictionary Source="pack://application:,,,/ColorPicker;component/Styles/DefaultColorPickerStyle.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
@@ -38,6 +39,10 @@
 
             <DataTemplate x:Shared="true" DataType="{x:Type viewModel:ColorsConfiguratorViewModel}">
                 <view:ColorConfiguratorView/>
+            </DataTemplate>
+
+            <DataTemplate x:Shared="true" DataType="{x:Type viewModel:ServerSwapperViewModel}">
+                <view:ServerSwapper/>
             </DataTemplate>
             
         </ResourceDictionary>
