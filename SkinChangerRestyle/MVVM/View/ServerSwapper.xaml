@@ -1,0 +1,98 @@
+﻿<UserControl x:Class="SkinChangerRestyle.MVVM.View.ServerSwapper"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
+             xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit"
+             mc:Ignorable="d" 
+             d:DesignHeight="665" d:DesignWidth="800">
+    <Border Background="White">
+        <Grid Margin="0 18 0 0">
+            <Grid.RowDefinitions>
+                <RowDefinition/>
+                <RowDefinition Height=".6*"/>
+            </Grid.RowDefinitions>
+
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="50"/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <ColumnDefinition/>
+                </Grid.ColumnDefinitions>
+                
+                <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
+                        BorderThickness="0 0 0 2"
+                        Width="400"
+                        HorizontalAlignment="Left">
+                    <Label Content="My Servers" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                </Border>
+
+                <ListView Grid.Row="1"
+                          x:Name="serversList"
+                          ItemsSource="{Binding AddedServers}"
+                          SelectedItem ="{Binding SelectedServer}"
+                          ItemContainerStyle="{StaticResource ServerItem}"
+                          BorderBrush="Transparent"
+                          BorderThickness="0">
+                    
+                </ListView>
+                
+                <!--Left scripts panel-->
+                <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
+                        BorderThickness="0 0 0 2"
+                        Width="400"
+                        HorizontalAlignment="Left"
+                        Grid.Column="1">
+                    <Label Content="Installer Script" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                </Border>
+
+                <Grid Grid.Column="1"
+                      Grid.Row="1">
+                    <Grid.RowDefinitions>
+                        <RowDefinition/>
+                        <RowDefinition Height=".15*"/>
+                    </Grid.RowDefinitions>
+
+                    <avalonEdit:TextEditor x:Name="ScriptsEditor"
+                                           Margin="10 0 10 10"
+                                           FontFamily="Consolas"
+                                           FontSize="12"
+                                           BorderBrush="LightGray"
+                                           BorderThickness="1"
+                                           >
+                        
+                    </avalonEdit:TextEditor>
+                    
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button Style="{StaticResource FlatButton}" 
+                                Content="Save" Command="{Binding SaveChanges}"
+                                FontSize="18"/>
+
+                        <Button Style="{StaticResource FlatButton}" 
+                                Content="Cancel" Command="{Binding SaveChanges}"
+                                FontSize="18"
+                                Grid.Column="1"/>
+
+                        <Button Style="{StaticResource FlatButton}" 
+                                Content="Save" Command="{Binding SaveChanges}"
+                                FontSize="18"
+                                Grid.Column="2"/>
+                    </Grid>
+                    
+                </Grid>
+
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>
