@@ -89,11 +89,17 @@
     <Compile Include="Core\AudiosurfConfigurationPresenter.cs" />
     <Compile Include="Core\EnumBooleanConverter.cs" />
     <Compile Include="Core\LoadedSkinData.cs" />
+    <Compile Include="Core\NetworkTools\Exceptions\UnresolvedHostnameException.cs" />
+    <Compile Include="Core\NetworkTools\IReadOnlyRemoteServerPingStats.cs" />
+    <Compile Include="Core\NetworkTools\PingHelper.cs" />
+    <Compile Include="Core\NetworkTools\RemoteServerPingStats.cs" />
     <Compile Include="Core\OverlayHelper.cs" />
+    <Compile Include="Core\ServerSwapper\ServerSwapper.cs" />
     <Compile Include="MVVM\Model\ColorPalette.cs" />
     <Compile Include="MVVM\Model\ASColors.cs" />
     <Compile Include="MVVM\Model\ColorPalettePrint.cs" />
     <Compile Include="MVVM\Model\PaletteDynamicLoadContainer.cs" />
+    <Compile Include="MVVM\Model\ServerSwapCard.cs" />
     <Compile Include="MVVM\Model\TweakerConsole.cs" />
     <Compile Include="EditOnDiskLockWindow.xaml.cs">
       <DependentUpon>EditOnDiskLockWindow.xaml</DependentUpon>
@@ -111,6 +117,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="MVVM\View\ColorConfiguratorView.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="MVVM\View\ServerSwapper.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -176,6 +186,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Themes\ServerItem.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Themes\SimpleLeftMenuRadioButton.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -200,11 +214,15 @@
     <Compile Include="MVVM\ViewModel\ColorsConfiguratorViewModel.cs" />
     <Compile Include="MVVM\ViewModel\MainViewModel.cs" />
     <Compile Include="MVVM\ViewModel\ProcessSelectionViewModel.cs" />
+    <Compile Include="MVVM\ViewModel\ServerSwapperViewModel.cs" />
     <Compile Include="MVVM\ViewModel\SettingViewModel.cs" />
     <Compile Include="MVVM\ViewModel\SkinChangerViewModel.cs" />
     <Compile Include="MVVM\ViewModel\TweakerViewModel.cs" />
     <Compile Include="MVVM\View\ColorConfiguratorView.xaml.cs">
       <DependentUpon>ColorConfiguratorView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="MVVM\View\ServerSwapper.xaml.cs">
+      <DependentUpon>ServerSwapper.xaml</DependentUpon>
     </Compile>
     <Compile Include="MVVM\View\SettingView.xaml.cs">
       <DependentUpon>SettingView.xaml</DependentUpon>
@@ -270,6 +288,10 @@
     <ProjectReference Include="..\textpackctrl\textpackctrl.csproj">
       <Project>{27231428-42a6-43ec-8f0a-9f71726b2934}</Project>
       <Name>textpackctrl</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\TweakerScriptsInterpreter\TweakerScriptInterpreter.csproj">
+      <Project>{b3e90ad5-b42f-4472-a3bf-98cc8a2faace}</Project>
+      <Name>TweakerScriptInterpreter</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
@@ -348,12 +370,20 @@
     <Resource Include="Tweaker_Icon_1.ico" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="AvalonEdit">
+      <Version>6.3.0.90</Version>
+    </PackageReference>
     <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications">
       <Version>7.1.3</Version>
     </PackageReference>
     <PackageReference Include="PixiEditor.ColorPicker">
       <Version>3.3.1</Version>
     </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <AdditionalFiles Include="TweakerScriptsSyntax.xshd">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </AdditionalFiles>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
