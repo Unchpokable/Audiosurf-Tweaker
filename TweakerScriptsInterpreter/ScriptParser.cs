@@ -45,10 +45,17 @@ namespace TweakerScripts
             _placeholders = placeholders;
         }
 
+        public Dictionary<string, string> DefinedCharacters { get; }
+
         private Dictionary<string, string> _placeholders = new Dictionary<string, string>();
         private List<string> _undesiredChars = new List<string>() { "\t", "\r" };
         private Dictionary<ActionTokens.Enum, Func<string, Action>> _instructionExecutionMethods;
 
+        public Dictionary<string, Script> ParseScriptFromFile(string scriptFile)
+        {
+            var code = File.ReadAllText(scriptFile);
+            return ParseScript(code);
+        }
 
         public Dictionary<string, Script> ParseScript(string code)
         {
