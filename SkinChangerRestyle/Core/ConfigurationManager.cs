@@ -74,6 +74,7 @@ namespace SkinChangerRestyle.Core
                 Settings.InfopanelFontSize = System.Configuration.ConfigurationManager.AppSettings.Get("InfopanelFontSize");
                 Settings.InfopanelXOffset = System.Configuration.ConfigurationManager.AppSettings.Get("InfopanelXOffset");
                 Settings.InfopanelYOffset = System.Configuration.ConfigurationManager.AppSettings.Get("InfopanelYOffset");
+                Settings.InstalledServerPackageName = System.Configuration.ConfigurationManager.AppSettings.Get("InstalledServerPackageName");
             }
             catch (Exception e)
             {
@@ -104,6 +105,7 @@ namespace SkinChangerRestyle.Core
                 cfg.AppSettings.Settings["InfopanelFontSize"].Value = Settings.InfopanelFontSize;
                 cfg.AppSettings.Settings["InfopanelXOffset"].Value = Settings.InfopanelXOffset;
                 cfg.AppSettings.Settings["InfopanelYOffset"].Value = Settings.InfopanelYOffset;
+                cfg.AppSettings.Settings["InstalledServerPackageName"].Value = Settings.InstalledServerPackageName;
                 cfg.Save();
             }
             catch (Exception e)
