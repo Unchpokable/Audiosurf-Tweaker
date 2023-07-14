@@ -4,7 +4,6 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
-             xmlns:avalonEdit="http://icsharpcode.net/sharpdevelop/avalonedit"
              mc:Ignorable="d" 
              d:DesignHeight="665" d:DesignWidth="800">
     <Border Background="White">
@@ -12,6 +11,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition/>
                 <RowDefinition Height=".6*"/>
+                <RowDefinition Height=".05*"/>
             </Grid.RowDefinitions>
 
             <Grid>
@@ -32,15 +32,39 @@
                     <Label Content="My Servers" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
                 </Border>
 
-                <ListView Grid.Row="1"
-                          x:Name="serversList"
-                          ItemsSource="{Binding AddedServers}"
-                          SelectedItem ="{Binding SelectedServer}"
-                          ItemContainerStyle="{StaticResource ServerItem}"
-                          BorderBrush="Transparent"
-                          BorderThickness="0">
-                    
-                </ListView>
+                <Grid Grid.Row="1"
+                      Margin="10 10 10 0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition/>
+                        <RowDefinition Height=".2*"/>
+                    </Grid.RowDefinitions>
+
+                    <ListView Grid.Row="0"
+                              x:Name="serversList"
+                              ItemsSource="{Binding Servers}"
+                              SelectedItem ="{Binding SelectedServer}"
+                              ItemContainerStyle="{StaticResource ServerItem}"
+                              BorderBrush="Transparent"
+                              BorderThickness="0">
+
+                    </ListView>
+
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+
+                        <Button Style="{StaticResource FlatButton}" 
+                                Content="Install" Command="{Binding InstallSelectedServer}"
+                                FontSize="18"/>
+                        <Button Style="{StaticResource FlatButton}" 
+                                Content="Remove" Command="{Binding RemoveSelectedServer}"
+                                FontSize="18"
+                                Grid.Column="1"/>   
+                    </Grid>
+                </Grid>
+                
                 
                 <!--Left scripts panel-->
                 <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
@@ -52,40 +76,41 @@
                 </Border>
 
                 <Grid Grid.Column="1"
-                      Grid.Row="1">
+                      Grid.Row="1"
+                      Margin="10 10 10 0">
                     <Grid.RowDefinitions>
                         <RowDefinition/>
-                        <RowDefinition Height=".15*"/>
+                        <RowDefinition Height=".2*"/>
                     </Grid.RowDefinitions>
 
-                    <avalonEdit:TextEditor x:Name="ScriptsEditor"
+                    <TextBox x:Name="ScriptsEditor"
                                            Margin="10 0 10 10"
                                            FontFamily="Consolas"
                                            FontSize="12"
+                                           TextWrapping="NoWrap"
+                                           VerticalScrollBarVisibility="Auto"
+                                           AcceptsReturn="True"
+                                           AcceptsTab="True"
                                            BorderBrush="LightGray"
                                            BorderThickness="1"
-                                           >
+                                           Text="{Binding SelectedPackageScript, Mode=TwoWay}">
                         
-                    </avalonEdit:TextEditor>
+                    </TextBox>
                     
                     <Grid Grid.Row="1">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition/>
                             <ColumnDefinition/>
-                            <ColumnDefinition/>
                         </Grid.ColumnDefinitions>
 
-                        <Button Style="{StaticResource FlatButton}" 
-                                Content="Save" Command="{Binding SaveChanges}"
-                                FontSize="18"/>
 
                         <Button Style="{StaticResource FlatButton}" 
-                                Content="Cancel" Command="{Binding SaveChanges}"
+                                Content="Save" Command="{Binding SaveInstallerScript}"
                                 FontSize="18"
-                                Grid.Column="1"/>
+                                Grid.Column="0"/>
 
                         <Button Style="{StaticResource FlatButton}" 
-                                Content="Save" Command="{Binding SaveChanges}"
+                                Content="Discard" Command="{Binding DiscardScriptChanges}"
                                 FontSize="18"
                                 Grid.Column="2"/>
                     </Grid>
@@ -93,6 +118,12 @@
                 </Grid>
 
             </Grid>
+
+            <StatusBar Grid.Row="2" Background="#FF8536ef">
+                <StatusBarItem>
+                    <TextBlock Text="{Binding Status}" Foreground="#FFE6E6E6" FontFamily="ExoSoft-Regular ☞" FontSize="14"/>
+                </StatusBarItem>
+            </StatusBar>
         </Grid>
     </Border>
 </UserControl>
