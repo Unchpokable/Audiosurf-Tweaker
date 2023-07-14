@@ -2,6 +2,7 @@
 using SkinChangerRestyle.Core.NetworkTools;
 using System;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace SkinChangerRestyle.MVVM.Model
 {
@@ -16,18 +17,21 @@ namespace SkinChangerRestyle.MVVM.Model
 
         public string ServerHost
         {
-            get => RemoteStats.Domain;
+            get => !string.IsNullOrEmpty(RemoteStats?.Domain) ? RemoteStats?.Domain : SpecsServerRemote;
             set
             {
-                RemoteStats = PingHelper.Instance.PingHostAsync(value).GetAwaiter().GetResult();
-                NotifyStatisticsChanged();
+                Task.Run(async () =>
+                {
+                    RemoteStats = await PingHelper.Instance.PingHostAsync(value);
+                    NotifyStatisticsChanged();
+                });
             }
         }
 
-        public string ServerPing => RemoteStats.Ping.ToString();
-        
+        public string ServerPing => RemoteStats?.Ping.ToString();
+        public string SpecsServerRemote { get; set; }
 
-        public bool IsAvaliable => RemoteStats.IsAvailable;
+        public bool IsAvailable => RemoteStats?.IsAvailable ?? false;
 
         public IReadOnlyRemoteServerPingStats RemoteStats { get; set; }
 
@@ -44,7 +48,8 @@ namespace SkinChangerRestyle.MVVM.Model
             OnPropertyChanged(nameof(ServerName));
             OnPropertyChanged(nameof(ServerHost));
             OnPropertyChanged(nameof(ServerPing));
-            OnPropertyChanged(nameof(IsAvaliable));
+            OnPropertyChanged(nameof(IsAvailable));
+            OnPropertyChanged(nameof(SpecsServerRemote));
         }
     }
 }
