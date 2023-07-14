@@ -3,12 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.Linq;
-using System.Runtime.Serialization;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Threading;
+using TweakerScriptsInterpreter.ZipExtensions;
 
 /*
  * supposed stategy file syntax:
@@ -45,7 +41,7 @@ namespace TweakerScripts
             _placeholders = placeholders;
         }
 
-        public Dictionary<string, string> DefinedCharacters { get; }
+        public Dictionary<string, string> DefinedCharacters => _placeholders;
 
         private Dictionary<string, string> _placeholders = new Dictionary<string, string>();
         private List<string> _undesiredChars = new List<string>() { "\t", "\r" };
@@ -151,7 +147,10 @@ namespace TweakerScripts
 
             return new Action(() => 
             {
-                ZipFile.ExtractToDirectory(archivePath, destination);
+                using (var zip = ZipFile.Open(archivePath, ZipArchiveMode.Read))
+                {
+                    zip.ExtractForced(destination);
+                }
             });
         }
 
@@ -166,10 +165,10 @@ namespace TweakerScripts
             {
                 foreach (var file in Directory.GetFiles(directory))
                 {
-                    if (Path.GetFileNameWithoutExtension(file) == target)
+                    if (Path.GetFileName(file) == target)
                         File.Delete(file);
-                    return;
                 }
+                return;
             });
         }
 
@@ -200,7 +199,10 @@ namespace TweakerScripts
                 {
                     if (Path.GetFileName(file).Equals(fileName))
                     {
-                        File.Move(file, _placeholders["%BACKUP_PATH%"]);
+                        var fullBackupPath = Path.Combine(_placeholders["%BACKUP_PATH%"], fileName);
+                        if (File.Exists(fullBackupPath))
+                            File.Delete(fullBackupPath);
+                        File.Move(file, Path.Combine(_placeholders["%BACKUP_PATH%"], fileName));
                     }
                 }
             });
@@ -216,7 +218,7 @@ namespace TweakerScripts
             return new Action(() =>
             {
                 var backupFile = Path.GetFileName(backup);
-                var rootDirectoryInfo = new DirectoryInfo(Path.GetDirectoryName(backupFile));
+                var rootDirectoryInfo = new DirectoryInfo(Path.GetDirectoryName(backup));
                 var foundBackups = rootDirectoryInfo.GetFiles(backupFile, SearchOption.AllDirectories);
 
                 if (foundBackups.Length == 0)
@@ -224,7 +226,7 @@ namespace TweakerScripts
 
                 var fullBackupPath = foundBackups[0].FullName;
 
-                File.Copy(destination, fullBackupPath, true);
+                File.Copy(Path.Combine(destination, backupFile), fullBackupPath, true);
 
             });
         }
