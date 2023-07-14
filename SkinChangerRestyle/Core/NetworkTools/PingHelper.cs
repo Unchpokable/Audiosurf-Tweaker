@@ -6,6 +6,7 @@ using System.Net.NetworkInformation;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using System.Net.Sockets;
 
 namespace SkinChangerRestyle.Core.NetworkTools
 {
@@ -29,7 +30,7 @@ namespace SkinChangerRestyle.Core.NetworkTools
 
         public async Task<IReadOnlyRemoteServerPingStats> PingHostAsync(string hostName)
         {
-            return await PingHostAsync(await GetIPAddressOfHost(hostName));
+            return await PingHostAsync(GetIPAddressOfHost(hostName));
         }
 
         public async Task<IReadOnlyRemoteServerPingStats> PingHostAsync(IPAddress address)
@@ -49,7 +50,14 @@ namespace SkinChangerRestyle.Core.NetworkTools
                 {
                     var pingStat = new RemoteServerPingStats();
                     pingStat.IsAvailable = true;
-                    pingStat.Domain = Dns.GetHostEntry(address).HostName;
+                    try
+                    {
+                        pingStat.Domain = Dns.GetHostEntry(address).HostName;
+                    }
+                    catch (SocketException ex)
+                    {
+                        pingStat.Domain = "";
+                    }
                     pingStat.Ping = reply.RoundtripTime;
                     pingStat.IP = address;
                     return pingStat;
@@ -59,9 +67,9 @@ namespace SkinChangerRestyle.Core.NetworkTools
             });
         }
 
-        private async Task<IPAddress> GetIPAddressOfHost(string host)
+        private IPAddress GetIPAddressOfHost(string host)
         {
-            var hostIP = await Dns.GetHostAddressesAsync(host);
+            var hostIP = Dns.GetHostAddresses(host);
             if (hostIP.Length == 0)
                 throw new UnresolvedHostnameException($"DNS Server can not resolve given host {host}");
 
