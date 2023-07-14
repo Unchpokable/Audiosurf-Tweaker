@@ -25,6 +25,8 @@ namespace SkinChangerRestyle.Core
                     InitializationFaultCallback?.Invoke(new Exception("Null configuration section"));
                     return;
                 }
+
+                // TODO: Fix game path detect cause looks like steam or windows changed this path
                 var SurfRegistryPath = @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 12900";
 
                 if (!bool.Parse(cfg.AppSettings.Settings["FirstRun"].Value))
