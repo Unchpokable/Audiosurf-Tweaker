@@ -16,11 +16,11 @@
 
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition/>
+                                <ColumnDefinition Width=".4*"/>
                                 <ColumnDefinition/>
                             </Grid.ColumnDefinitions>
 
-                            <TextBlock Grid.Column="0" Text="{Binding Name}" 
+                            <TextBlock Grid.Column="0" Text="{Binding ServerName, Mode=OneWay}" 
                                            Margin="10 0 0 0" 
                                            VerticalAlignment="Center" 
                                            HorizontalAlignment="Left"
@@ -29,9 +29,47 @@
                                            Foreground="#FF8A8A8A" 
                                            x:Name="Title"/>
 
-                            <Border Grid.Column="1" Margin="10"
-                                    CornerRadius="10">
-                            </Border>
+                            <Grid Grid.Column="1">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                </Grid.RowDefinitions>
+
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center">
+                                    <TextBlock x:Name="Availability"
+                                           Margin="10 0 0 0"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Left"
+                                           FontFamily="ExoSoft-Regular ☞" 
+                                           FontSize="12"
+                                           Foreground="#FF8A8A8A">
+                                        <Run Text="Is Available: "/>
+                                        <Run Text="{Binding IsAvailable, Mode=OneWay}"/>
+                                    </TextBlock>
+                                    
+                                    <TextBlock x:Name="Ping"
+                                           Margin="10 0 0 0"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Left"
+                                           FontFamily="ExoSoft-Regular ☞" 
+                                           FontSize="12"
+                                           Foreground="#FF8A8A8A">
+                                        <Run Text="{Binding ServerPing, Mode=OneWay}"/>
+                                        <Run Text=" ms"/>
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <TextBlock Grid.Row="1" x:Name="DomainName"
+                                           Margin="10 0 0 0"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Center"
+                                           FontFamily="ExoSoft-Regular ☞" 
+                                           FontSize="12"
+                                           Foreground="#FF8A8A8A"
+                                           Text="{Binding ServerHost, Mode=OneWay}"/>
+                            </Grid>
 
                         </Grid>
 
