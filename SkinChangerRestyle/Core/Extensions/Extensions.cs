@@ -78,6 +78,28 @@ namespace SkinChangerRestyle.Core.Extensions
             return origin.Count == compareWith.Count && compareWith.All(hashset.Contains);
         }
 
+        public static Dictionary<TKey,TValue> MergedWith<TKey, TValue>(this Dictionary<TKey, TValue> origin, params KeyValuePair<TKey, TValue>[] extend)
+        {
+            if (extend == null)
+                return origin;
+
+            return origin.MergedWith(extend.ToDictionary(x => x.Key, x => x.Value));
+        }
+
+        public static Dictionary<TKey, TValue> MergedWith<TKey, TValue>(this Dictionary<TKey, TValue> origin, Dictionary<TKey, TValue> extend)
+        {
+            if (extend == null)
+                return origin;
+
+            foreach (var pair in extend)
+            {
+                if (!origin.Contains(pair))
+                    origin.Add(pair.Key, pair.Value);
+            }
+
+            return origin;
+        }
+
         public static async void DisposeAndClear(params IDisposable[] disposable)
         {
             foreach (var d in disposable)
