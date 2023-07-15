@@ -6,7 +6,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Reflection.Emit;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
@@ -44,6 +44,17 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 RemoveSelectedServer = new RelayCommand(RemoveSelectedServerInternal);
                 SaveInstallerScript = new RelayCommand(SaveInstallerScriptInternal);
                 DiscardScriptChanges = new RelayCommand(DiscardScriptChangesInternal);
+                DefineNewName = new RelayCommand(DefineNewNameInternal);
+
+                InterpreterDefines = new ObservableCollection<ScriptInterpreterDefinedCharacter>()
+                {
+                    new ScriptInterpreterDefinedCharacter("%AS%", Path.GetDirectoryName(Path.GetDirectoryName(SettingsProvider.GameTexturesPath)) ), // => AS\engine\textures -> AS\
+                    new ScriptInterpreterDefinedCharacter("%BACKUP_PATH%", Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\Backups"),
+                };
+
+                NameDefinitionProxy = new ScriptInterpreterDefinedCharacter();
+
+                Status = "Ready";
             }
         }
 
@@ -86,7 +97,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         public RelayCommand RemoveSelectedServer { get; set; }
         public RelayCommand SaveInstallerScript { get; set; }
         public RelayCommand DiscardScriptChanges { get; set; }
+        public RelayCommand DefineNewName { get; set; }
 
+        public ScriptInterpreterDefinedCharacter NameDefinitionProxy { get; set; }
+        public ScriptInterpreterDefinedCharacter SelectedDefineItem { get; set; }
+        public ObservableCollection<ScriptInterpreterDefinedCharacter> InterpreterDefines { get; set; }
 
         private string _selectedServerInstallScriptText;
         private ServerSwapCard _selectedServer;
@@ -181,6 +196,12 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 UpdateStatusWithTaskResultAndNotify(tast);
             });
+        }
+
+        private void DefineNewNameInternal(object obj)
+        {
+            var nameDefinitionProxyClone = NameDefinitionProxy.Clone();
+            InterpreterDefines.Add(nameDefinitionProxyClone);
         }
 
         private void UpdateStatusWithTaskResultAndNotify(Task task)
