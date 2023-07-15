@@ -6,7 +6,8 @@
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
              mc:Ignorable="d" 
              d:DesignHeight="665" d:DesignWidth="800">
-    <Border Background="White">
+    <Border Background="White"
+            Height="661">
         <Grid Margin="0 18 0 0">
             <Grid.RowDefinitions>
                 <RowDefinition/>
