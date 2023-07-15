@@ -33,7 +33,7 @@
                 </Border>
 
                 <Grid Grid.Row="1"
-                      Margin="10 10 10 0">
+                      >
                     <Grid.RowDefinitions>
                         <RowDefinition/>
                         <RowDefinition Height=".2*"/>
@@ -49,7 +49,8 @@
 
                     </ListView>
 
-                    <Grid Grid.Row="1">
+                    <Grid Grid.Row="1"
+                          Margin="10 10 10 0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition/>
                             <ColumnDefinition/>
@@ -76,8 +77,7 @@
                 </Border>
 
                 <Grid Grid.Column="1"
-                      Grid.Row="1"
-                      Margin="10 10 10 0">
+                      Grid.Row="1">
                     <Grid.RowDefinitions>
                         <RowDefinition/>
                         <RowDefinition Height=".2*"/>
@@ -97,7 +97,8 @@
                         
                     </TextBox>
                     
-                    <Grid Grid.Row="1">
+                    <Grid Grid.Row="1"
+                          Margin="10 10 10 0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition/>
                             <ColumnDefinition/>
@@ -119,6 +120,86 @@
 
             </Grid>
 
+            <Grid Grid.Row="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="30"/>
+                    <RowDefinition/>
+                    <RowDefinition Height="30"/>
+                    <RowDefinition Height="50"/>
+                </Grid.RowDefinitions>
+
+                <Border 
+                        Margin="10 0 0 0" BorderBrush="#FFC3C3C3"
+                        BorderThickness="0 0 0 2"
+                        Width="400"
+                        HorizontalAlignment="Left">
+                    <Label Content="Defined Script Interpreter characters" FontFamily="Exo 2 Medium" FontSize="18" VerticalAlignment="Center" Foreground="#FF888888"/>
+                </Border>
+                
+                <ListView Margin="0 5 0 0"
+                          Grid.Row="1"
+                          BorderBrush="Transparent"
+                          BorderThickness="0"
+                          ItemsSource="{Binding InterpreterDefines}"
+                          SelectedItem="{Binding SelectedDefineItem}"
+                          ItemContainerStyle="{StaticResource NameDefinitionItem}">
+                    
+                </ListView>
+
+                <Border Grid.Row="2"
+                        Margin="10 0 0 0" BorderBrush="#FFC3C3C3"
+                        BorderThickness="0 0 0 2"
+                        Width="400"
+                        HorizontalAlignment="Left">
+                    <Label Content="Define new character" FontFamily="Exo 2 Medium" FontSize="18" VerticalAlignment="Center" Foreground="#FF888888"/>
+                </Border>
+                
+                <Grid Grid.Row="3">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width=".5*"/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition Width=".5*"/>
+                            <ColumnDefinition Width="2*"/>
+                            <ColumnDefinition Width=".5*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <Label Grid.Column="0"
+                               Content="Name:"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center"
+                               FontFamily="Exo 2 Medium"
+                               FontSize="18"
+                               Foreground="#FF8A8A8A"/>
+
+
+                        <TextBox Grid.Column="1"
+                                 Style="{StaticResource StylishTextInput}"
+                                 Margin="10"
+                                 Text="{Binding NameDefinitionProxy.DefinedName}"/>
+                        <Label Grid.Column="2"
+                               Content="Value:"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center"
+                               FontFamily="Exo 2 Medium"
+                               FontSize="18"
+                               Foreground="#FF8A8A8A"/>
+
+                        <TextBox Grid.Column="3"
+                                 Style="{StaticResource StylishTextInput}"
+                                 Margin="10"
+                                 Text="{Binding NameDefinitionProxy.NameValue}"/>
+
+                        <Button Grid.Column="4"
+                                Style="{StaticResource FlatButton}"
+                                Content="Add"
+                                FontSize="20"
+                                Command="{Binding DefineNewName}"/>
+                    </Grid>
+                </Grid>
+            </Grid>
+
+            
             <StatusBar Grid.Row="2" Background="#FF8536ef">
                 <StatusBarItem>
                     <TextBlock Text="{Binding Status}" Foreground="#FFE6E6E6" FontFamily="ExoSoft-Regular ☞" FontSize="14"/>
