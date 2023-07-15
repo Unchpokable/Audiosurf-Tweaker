@@ -21,6 +21,7 @@
                 <ResourceDictionary Source="Themes/UnderscoredTransparentButton.xaml"/>
                 <ResourceDictionary Source="Themes/StylishProgressBar.xaml"/>
                 <ResourceDictionary Source="Themes/ServerItem.xaml"/>
+                <ResourceDictionary Source="Themes/NameDefinitionItem.xaml"/>
 
                 <ResourceDictionary Source="pack://application:,,,/ColorPicker;component/Styles/DefaultColorPickerStyle.xaml" />
             </ResourceDictionary.MergedDictionaries>
