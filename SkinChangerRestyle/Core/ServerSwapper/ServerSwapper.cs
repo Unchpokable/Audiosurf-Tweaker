@@ -20,6 +20,7 @@ namespace SkinChangerRestyle.Core.ServerSwapper
         }
 
         public event EventHandler<Exception> SwapFailed;
+        public event EventHandler SwapSuccessfull;
 
         private Dictionary<string, string> _globalDefines;
 
@@ -37,7 +38,6 @@ namespace SkinChangerRestyle.Core.ServerSwapper
                 var oldPackageScript = $"{oldPackage}\\{currentlyInstalledServer}-Package.s.tws";
                 RemoveServer(oldPackageScript, new Dictionary<string, string>() { { _packageRootCharacter, oldPackage } });
             }
-
             var packageName = new DirectoryInfo(packagePath).Name;
 
             var newScript = $"{packagePath}\\{packageName}-Package.s.tws";
@@ -57,12 +57,12 @@ namespace SkinChangerRestyle.Core.ServerSwapper
                                      .MergedWith(moreDefines));
         }
 
-        public async void InstallServer(string scriptFile, Dictionary<string, string> moreDefines = null)
+        private async void InstallServer(string scriptFile, Dictionary<string, string> moreDefines = null)
         {
             await ExecuteServerPackageScript(scriptFile, "INSTALL", moreDefines);
         }
 
-        public async void RemoveServer(string scriptFile, Dictionary<string, string> moreDefines = null)
+        private async void RemoveServer(string scriptFile, Dictionary<string, string> moreDefines = null)
         {
             await ExecuteServerPackageScript(scriptFile, "REMOVE", moreDefines);
         }
@@ -86,6 +86,12 @@ namespace SkinChangerRestyle.Core.ServerSwapper
             {
                 SwapFailed?.Invoke(this, e);
             };
+
+            script[section].ScriptExecutionSuccess += (s, e) =>
+            {
+                SwapSuccessfull?.Invoke(this, e);
+            };
+
             return Task.Run(() => { script[section].Execute(); });
         }
     }

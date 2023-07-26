@@ -5,6 +5,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Text.RegularExpressions;
 using TweakerScriptsInterpreter.ZipExtensions;
+using System.Linq;
 
 /*
  * supposed stategy file syntax:
@@ -38,7 +39,7 @@ namespace TweakerScripts
 
         public ScriptParser(Dictionary<string, string> placeholders) : this() 
         {
-            _placeholders = placeholders;
+            _placeholders = new Dictionary<string, string>(placeholders);
         }
 
         public Dictionary<string, string> DefinedCharacters => _placeholders;

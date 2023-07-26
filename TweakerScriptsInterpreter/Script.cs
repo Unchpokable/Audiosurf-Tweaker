@@ -19,6 +19,7 @@ namespace TweakerScripts
         }
 
         public event EventHandler<Exception> ScriptExecutionFault;
+        public event EventHandler ScriptExecutionSuccess;
 
         public IList<Action> Operations { get; private set; }
 
@@ -36,6 +37,8 @@ namespace TweakerScripts
                     return;
                 }
             }
+
+            ScriptExecutionSuccess?.Invoke(this, EventArgs.Empty);
         }
 
         public async void ExecuteAsync()

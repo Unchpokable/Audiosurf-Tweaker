@@ -121,6 +121,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private async void InstallSelectedServerInternal(object o)
         {
             var path = string.Copy(SelectedServer.BasePackagePath);
+            var packageName = string.Copy(SelectedServer.ServerName);
 
             await Task.Run(() =>
             {
@@ -130,6 +131,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 {
                     if (SettingsProvider.IsUWPNotificationsAllowed)
                         Extensions.ShowUWPNotification("Server Swapper", $"Swap Failure: {e.Message}");
+                };
+
+                swapper.SwapSuccessfull += (s, e) =>
+                {
+                    ConfigurationManager.UpdateSection("InstalledServerPackageName", packageName);
                 };
 
                 Status = "Installing Package :: Working...";
@@ -190,11 +196,16 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                         Extensions.ShowUWPNotification("Server Swapper", $"Swap Failure: {e.Message}");
                 };
 
+                swapper.SwapSuccessfull += (s, e) =>
+                {
+                    ConfigurationManager.UpdateSection("InstalledServerPackageName", SettingsProvider.DefaultDylanServerName);
+                };
+
                 swapper.RemoveServerByPackage(path);
             })
-                .ContinueWith((tast) =>
+                .ContinueWith((task) =>
             {
-                UpdateStatusWithTaskResultAndNotify(tast);
+                UpdateStatusWithTaskResultAndNotify(task);
             });
         }
 

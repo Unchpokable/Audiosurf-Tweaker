@@ -28,17 +28,11 @@ namespace SkinChangerRestyle.Core.Extensions
             {
                 return Imaging.CreateBitmapSourceFromHBitmap(handle, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
             }
-            finally { DeleteObject(handle); }
-        }
-
-        public static ImageSource ImageSourceFromUri(string uri)
-        {
-            var bmp = new BitmapImage();
-            bmp.BeginInit();
-            bmp.UriSource = new Uri(uri);
-            bmp.CacheOption = BitmapCacheOption.OnLoad;
-            bmp.EndInit();
-            return bmp;
+            finally 
+            { 
+                DeleteObject(handle);
+                bmp.Dispose();
+            }
         }
 
         public static ImageSource ToImageSource(this Bitmap bitmapSource)
@@ -48,7 +42,9 @@ namespace SkinChangerRestyle.Core.Extensions
 
         public static Bitmap Rescale(this Bitmap source, int newX, int newY)
         {
-            return new Bitmap(source, newX, newY);
+            var newBmp = new Bitmap(source, newX, newY);
+            source.Dispose();
+            return newBmp;
         }
 
         public static Bitmap Rescale(this Bitmap source, float scaleX, float scaleY)
