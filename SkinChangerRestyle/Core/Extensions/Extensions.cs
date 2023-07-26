@@ -31,7 +31,6 @@ namespace SkinChangerRestyle.Core.Extensions
             finally 
             { 
                 DeleteObject(handle);
-                bmp.Dispose();
             }
         }
 
@@ -43,7 +42,6 @@ namespace SkinChangerRestyle.Core.Extensions
         public static Bitmap Rescale(this Bitmap source, int newX, int newY)
         {
             var newBmp = new Bitmap(source, newX, newY);
-            source.Dispose();
             return newBmp;
         }
 
