@@ -217,7 +217,7 @@
                             BorderThickness="0 0 0 2"
                             Width="400"
                             HorizontalAlignment="Left">
-                    <Label Content="Other features" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                    <Label Content="UI" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
                 </Border>
 
                 <StackPanel Grid.Row="1">
@@ -225,11 +225,11 @@
                                   ToolTip="Allow tweaker to hook audiosurf and draw overlay right inside your game"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsOverlayEnabled, Mode=TwoWay}"/>
-                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Allow UWP Notifications" FontSize="16" Margin="30 0 0 10"
-                                  ToolTip="Allow tweaker sent a windows 10\11 notifications after successfully completed action"
+                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Use UWP Notifications" FontSize="16" Margin="30 0 0 10"
+                                  ToolTip="Allow tweaker sent a windows 10\11 notifications after successfully completed action instead of default colored popups"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsUWPNotificationsAllowed, Mode=TwoWay}"/>
-                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Silent UWP Notifications" FontSize="16" Margin="30 0 0 10"
+                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Mute UWP Notifications" FontSize="16" Margin="30 0 0 10"
                                   ToolTip="Show UWP notifications but supress system notification audio signal"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsUWPNotificationSilent, Mode=TwoWay}"
