@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
+             xmlns:notifications="clr-namespace:Notification.Wpf.Controls;assembly=Notification.Wpf" xmlns:notifications1="clr-namespace:Notification.Wpf.Controls;assembly=Notification.Wpf"
              mc:Ignorable="d" 
              d:DesignHeight="665" d:DesignWidth="800">
     <Border Background="White"
@@ -206,6 +207,12 @@
                     <TextBlock Text="{Binding Status}" Foreground="#FFE6E6E6" FontFamily="ExoSoft-Regular ☞" FontSize="14"/>
                 </StatusBarItem>
             </StatusBar>
+
+            <notifications:NotificationArea Grid.Row="1"
+                                            Grid.RowSpan="2"
+                                            x:Name="WindowArea"
+                                            Position="BottomRight"
+                                            MaxItems="3"/>
         </Grid>
     </Border>
 </UserControl>
