@@ -19,6 +19,11 @@ namespace SkinChangerRestyle.Core.ServerSwapper
             };
         }
 
+        public ServerSwapper(Dictionary<string, string> globalDefines)
+        {
+            _globalDefines = new Dictionary<string, string>(globalDefines);
+        }
+
         public event EventHandler<Exception> SwapFailed;
         public event EventHandler SwapSuccessfull;
 
