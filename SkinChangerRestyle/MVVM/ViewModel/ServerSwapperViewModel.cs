@@ -125,17 +125,19 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             await Task.Run(() =>
             {
-                var swapper = new ServerSwapper();
+                var swapper = new ServerSwapper(InterpreterDefines.ToDictionary(
+                                                key => key.DefinedName,
+                                                value => value.NameValue));
 
                 swapper.SwapFailed += (s, e) =>
                 {
-                    if (SettingsProvider.IsUWPNotificationsAllowed)
-                        Extensions.ShowUWPNotification("Server Swapper", $"Swap Failure: {e.Message}");
+                    ApplicationNotificationManager.Manager.ShowError("Fail!!", $"Swap Failure: {e.Message}");
                 };
 
                 swapper.SwapSuccessfull += (s, e) =>
                 {
-                    ConfigurationManager.UpdateSection("InstalledServerPackageName", packageName);
+                    ApplicationNotificationManager.Manager.ShowSuccess("Done!", $"Server pacakge successfully installed");
+                    ConfigurationManager.UpdateSection("InstalledServerPackageName", SettingsProvider.DefaultDylanServerName);
                 };
 
                 Status = "Installing Package :: Working...";
@@ -143,7 +145,8 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             })
                 .ContinueWith((task) =>
             {
-                UpdateStatusWithTaskResultAndNotify(task);
+                if (task.IsFaulted || task.IsCanceled)
+                    ApplicationNotificationManager.Manager.ShowError("Something goes wrong!", $"Unexpected exception thrown during action execution - {task.Exception}");
             });
         }
 
@@ -189,28 +192,36 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             await Task.Run(() =>
             {
-                var swapper = new ServerSwapper();
+                var swapper = new ServerSwapper(InterpreterDefines.ToDictionary(
+                                                key => key.DefinedName,
+                                                value => value.NameValue));
                 swapper.SwapFailed += (s, e) =>
                 {
-                    if (SettingsProvider.IsUWPNotificationsAllowed)
-                        Extensions.ShowUWPNotification("Server Swapper", $"Swap Failure: {e.Message}");
+                    ApplicationNotificationManager.Manager.ShowError("Fail!!", $"Swap Failure: {e.Message}");
                 };
 
                 swapper.SwapSuccessfull += (s, e) =>
                 {
+                    ApplicationNotificationManager.Manager.ShowSuccess("Done!", $"Server pacakge successfully Removed");
                     ConfigurationManager.UpdateSection("InstalledServerPackageName", SettingsProvider.DefaultDylanServerName);
                 };
 
                 swapper.RemoveServerByPackage(path);
             })
-                .ContinueWith((task) =>
+            .ContinueWith((task) =>
             {
-                UpdateStatusWithTaskResultAndNotify(task);
+                if (task.IsFaulted || task.IsCanceled)
+                    ApplicationNotificationManager.Manager.ShowError("Something goes wrong!", $"Unexpected exception thrown during action execution - {task.Exception}");
             });
         }
 
         private void DefineNewNameInternal(object obj)
         {
+            if (NameDefinitionProxy.DefinedName == "%PACKAGE_ROOT%")
+            {
+                ApplicationNotificationManager.Manager.ShowOverWindow("Action Error", "Unable to add name %PACKAGE_ROOT% - reserved name", Notification.Wpf.NotificationType.Error);
+                return;
+            }
             var nameDefinitionProxyClone = NameDefinitionProxy.Clone();
             InterpreterDefines.Add(nameDefinitionProxyClone);
         }
@@ -218,12 +229,14 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private void UpdateStatusWithTaskResultAndNotify(Task task)
         {
             if (task.IsFaulted || task.IsCanceled)
+            {
                 Status = "Operation Failed";
-            else
-                Status = "Operation Completed";
+                ApplicationNotificationManager.Manager.ShowError("Fail!", $"Installation Error - {task.Exception.Message}");
+                return;
+            }
+            Status = "Operation Completed";
 
-            if (SettingsProvider.IsUWPNotificationsAllowed)
-                Extensions.ShowUWPNotification("Server Swapper", Status);
+            ApplicationNotificationManager.Manager.ShowSuccess("Done!", $"Operation Completed");
         }
     }
 }
