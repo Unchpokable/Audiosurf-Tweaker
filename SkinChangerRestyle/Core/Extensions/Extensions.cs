@@ -126,8 +126,7 @@ namespace SkinChangerRestyle.Core.Extensions
         public static void ShowUWPNotification(string caption, string message)
         {
             var toast = new ToastContentBuilder()
-                .AddText(caption)
-                .AddHeader("0", "Tweaker notification", new ToastArguments())
+                .AddHeader("0", caption, new ToastArguments())
                 .SetToastDuration(ToastDuration.Short)
                 .AddText(message);
 
