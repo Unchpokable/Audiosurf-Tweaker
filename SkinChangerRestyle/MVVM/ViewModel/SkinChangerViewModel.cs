@@ -301,8 +301,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             if (SettingsProvider.HotReload)
                 AudiosurfHandle.Instance.Command("ascommand reloadtextures");
 
-            if (SettingsProvider.IsUWPNotificationsAllowed)
-                Extensions.ShowUWPNotification("Operation completed", $"Skin \"{skinName}\" sucessfully installed. Enjoy! ^_^");
+            ApplicationNotificationManager.Manager.ShowSuccess("Done!", $"Skin \"{skinName}\" successfully installed. Enjoy! ^_^");
 
             ChangerStatus = "Ready";
         }
@@ -614,7 +613,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         {
             var skinsList = string.Join("; ", Skins.Select(skin => skin.Name));
 
-            AudiosurfHandle.Instance.Command($"tw-update-skin-list {skinsList}"); // Overlay should handle this message cause it works underneath Audiosurf main window and listen its WindowProcedure calls
+            AudiosurfHandle.Instance.Command($"tw-update-skin-list {skinsList}");
         }
 
         private void OnMessageRecieved(object sender, string content)
