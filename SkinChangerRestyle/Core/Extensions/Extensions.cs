@@ -94,6 +94,17 @@ namespace SkinChangerRestyle.Core.Extensions
             return origin;
         }
 
+        public static bool SameWith<TItem>(this TItem item, params TItem[] matches)
+            where TItem : IComparable<TItem>, IComparable
+        {
+            return matches.Any(match => match.Equals(item));
+        }
+
+        public static System.Windows.Media.Color ToMediaColor(this System.Drawing.Color color)
+        {
+            return new System.Windows.Media.Color() { R = color.R, G = color.G, B = color.B, A = color.A };
+        }
+
         public static async void DisposeAndClear(params IDisposable[] disposable)
         {
             foreach (var d in disposable)
