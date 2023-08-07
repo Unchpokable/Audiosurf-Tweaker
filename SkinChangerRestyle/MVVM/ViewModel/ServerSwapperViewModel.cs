@@ -45,11 +45,12 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 SaveInstallerScript = new RelayCommand(SaveInstallerScriptInternal);
                 DiscardScriptChanges = new RelayCommand(DiscardScriptChangesInternal);
                 DefineNewName = new RelayCommand(DefineNewNameInternal);
+                RemoveSelected = new RelayCommand(RemoveInterpreterDefine);
 
                 InterpreterDefines = new ObservableCollection<ScriptInterpreterDefinedCharacter>()
                 {
-                    new ScriptInterpreterDefinedCharacter("%AS%", Path.GetDirectoryName(Path.GetDirectoryName(SettingsProvider.GameTexturesPath)) ), // => AS\engine\textures -> AS\
-                    new ScriptInterpreterDefinedCharacter("%BACKUP_PATH%", Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\Backups"),
+                    new ScriptInterpreterDefinedCharacter("%AS%", Path.GetDirectoryName(Path.GetDirectoryName(SettingsProvider.GameTexturesPath)) ) { Freezed = true }, // => AS\engine\textures -> AS\
+                    new ScriptInterpreterDefinedCharacter("%BACKUP_PATH%", Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\Backups") { Freezed = true },
                 };
 
                 NameDefinitionProxy = new ScriptInterpreterDefinedCharacter();
@@ -98,6 +99,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         public RelayCommand SaveInstallerScript { get; set; }
         public RelayCommand DiscardScriptChanges { get; set; }
         public RelayCommand DefineNewName { get; set; }
+        public RelayCommand RemoveSelected { get; set; }
 
         public ScriptInterpreterDefinedCharacter NameDefinitionProxy { get; set; }
         public ScriptInterpreterDefinedCharacter SelectedDefineItem { get; set; }
@@ -143,10 +145,10 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 Status = "Installing Package :: Working...";
                 swapper.SwapServer(path);
             })
-                .ContinueWith((task) =>
+            .ContinueWith((task) =>
             {
-                if (task.IsFaulted || task.IsCanceled)
-                    ApplicationNotificationManager.Manager.ShowError("Something goes wrong!", $"Unexpected exception thrown during action execution - {task.Exception}");
+                UpdateStatusWithTaskResultAndNotify(task, false);
+
             });
         }
 
@@ -210,8 +212,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             })
             .ContinueWith((task) =>
             {
-                if (task.IsFaulted || task.IsCanceled)
-                    ApplicationNotificationManager.Manager.ShowError("Something goes wrong!", $"Unexpected exception thrown during action execution - {task.Exception}");
+                UpdateStatusWithTaskResultAndNotify(task, false);
             });
         }
 
@@ -219,24 +220,39 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         {
             if (NameDefinitionProxy.DefinedName == "%PACKAGE_ROOT%")
             {
-                ApplicationNotificationManager.Manager.ShowOverWindow("Action Error", "Unable to add name %PACKAGE_ROOT% - reserved name", Notification.Wpf.NotificationType.Error);
+                ApplicationNotificationManager.Manager.ShowOverWindow("Restricted Action", "Unable to add name %PACKAGE_ROOT% - reserved name", Notification.Wpf.NotificationType.Warning);
                 return;
             }
             var nameDefinitionProxyClone = NameDefinitionProxy.Clone();
             InterpreterDefines.Add(nameDefinitionProxyClone);
         }
 
-        private void UpdateStatusWithTaskResultAndNotify(Task task)
+        private void UpdateStatusWithTaskResultAndNotify(Task task, bool showSuccess = false)
         {
             if (task.IsFaulted || task.IsCanceled)
             {
-                Status = "Operation Failed";
+                Status = "Operation Failed :: Ready";
                 ApplicationNotificationManager.Manager.ShowError("Fail!", $"Installation Error - {task.Exception.Message}");
                 return;
             }
-            Status = "Operation Completed";
+            Status = "Operation Completed :: Ready";
 
-            ApplicationNotificationManager.Manager.ShowSuccess("Done!", $"Operation Completed");
+            if (showSuccess) 
+                ApplicationNotificationManager.Manager.ShowSuccess("Done!", $"Operation Completed");
+        }
+
+        private void RemoveInterpreterDefine(object o)
+        {
+            if (SelectedDefineItem == null)
+                return;
+
+            if (SelectedDefineItem.DefinedName.SameWith("%AS%", "%BACKUP_PATH%", "%PACKAGE_ROOT"))
+            {
+                ApplicationNotificationManager.Manager.ShowOverWindow("Restricted Action", "Requiered Interpreter name, can not remove", Notification.Wpf.NotificationType.Warning);
+                return;
+            }
+
+            InterpreterDefines.Remove(SelectedDefineItem);
         }
     }
 }
