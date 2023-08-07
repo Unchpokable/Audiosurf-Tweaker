@@ -1,6 +1,12 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:colorConverters="clr-namespace:SkinChangerRestyle.Core.Converters">
     <Style x:Key="NameDefinitionItem" TargetType="ListViewItem">
+
+        <Style.Resources>
+            <colorConverters:InversedBooleanToColorConverter x:Key="StatusToColorConverter"/>
+        </Style.Resources>
+        
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListViewItem">
@@ -16,14 +22,25 @@
 
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width=".4*"/>
-                                <ColumnDefinition/>
-                                <ColumnDefinition Width=".4*"/>
-                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="50"/>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="200"/>
+                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="420"/>
                             </Grid.ColumnDefinitions>
 
-
-                            <Label Grid.Column="0"
+                            <Border CornerRadius="5"
+                                    BorderThickness="0">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,.5" EndPoint="1,.5">
+                                        <GradientStop Color="{Binding Freezed, Converter={StaticResource StatusToColorConverter}}" Offset="0"/>
+                                        <GradientStop Color="#FFEFEFEF" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+                            
+                            
+                            <Label Grid.Column="1"
                                Content="Name:"
                                VerticalAlignment="Center"
                                HorizontalAlignment="Center"
@@ -31,12 +48,13 @@
                                FontSize="18"
                                Foreground="#FF8A8A8A"/>
 
-                            <TextBox Grid.Column="1"
+                            <TextBox Grid.Column="2"
                                  Style="{StaticResource StylishTextInput}"
                                  Margin="10"
-                                 Text="{Binding DefinedName, Mode=TwoWay}"/>
+                                 Text="{Binding DefinedName, Mode=TwoWay}"
+                                 IsEnabled="{Binding NameEditable}"/>
                             
-                            <Label  Grid.Column="2"
+                            <Label  Grid.Column="3"
                                     Content="Value:"
                                     VerticalAlignment="Center"
                                     HorizontalAlignment="Center"
@@ -44,10 +62,12 @@
                                     FontSize="18"
                                     Foreground="#FF8A8A8A"/>
 
-                            <TextBox Grid.Column="3"
+                            <TextBox Grid.Column="4"
                                  Style="{StaticResource StylishTextInput}"
                                  Margin="10"
-                                 Text="{Binding NameValue, Mode=TwoWay}"/>
+                                 Text="{Binding NameValue, Mode=TwoWay}"
+                                 IsEnabled="{Binding ValueEditable}"
+                                     TextWrapping="Wrap"/>
 
                         </Grid>
                     </Border>

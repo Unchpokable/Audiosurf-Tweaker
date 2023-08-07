@@ -28,7 +28,7 @@
 
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="TextBoxBackground" Property="Background" Value="Gray"/>
+                                <Setter TargetName="TextBoxBackground" Property="Background" Value="LightGray"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
