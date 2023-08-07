@@ -227,7 +227,7 @@ namespace TweakerScripts
 
                 var fullBackupPath = foundBackups[0].FullName;
 
-                File.Copy(Path.Combine(destination, backupFile), fullBackupPath, true);
+                File.Copy(fullBackupPath, Path.Combine(destination, backupFile), true);
 
             });
         }
@@ -275,7 +275,7 @@ namespace TweakerScripts
         }
 
 
-    private static class ActionTokens
+        private static class ActionTokens
         {
             public const string Put = "PUT";
             public const string Delete = "DELETE";
