@@ -88,7 +88,9 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="Core\AudiosurfConfigurationPresenter.cs" />
+    <Compile Include="Core\Converters\InversedBooleanToColorConverter.cs" />
     <Compile Include="Core\EnumBooleanConverter.cs" />
+    <Compile Include="Core\InterpreterNameDefinitionItemStatus.cs" />
     <Compile Include="Core\LoadedSkinData.cs" />
     <Compile Include="Core\NetworkTools\Exceptions\UnresolvedHostnameException.cs" />
     <Compile Include="Core\NetworkTools\IReadOnlyRemoteServerPingStats.cs" />
@@ -377,9 +379,6 @@
     <Resource Include="Tweaker_Icon_1.ico" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="AvalonEdit">
-      <Version>6.3.0.90</Version>
-    </PackageReference>
     <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications">
       <Version>7.1.3</Version>
     </PackageReference>

@@ -20,7 +20,8 @@
         <viewModel:MainViewModel/>
     </Window.DataContext>
 
-    <Border BorderBrush="#FF757575" BorderThickness="1">
+    <Border BorderBrush="#FF757575" BorderThickness="1"
+            >
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="35"/>
@@ -113,13 +114,15 @@
                 </Grid>
 
                 <ContentControl Grid.Column="1">
-                    <ScrollViewer Content="{Binding CurrentView}"
-                                  HorizontalContentAlignment="Left"
-                                  VerticalContentAlignment="Top"
-                                  VerticalScrollBarVisibility="Auto"
-                                  CanContentScroll="{Binding CurrentView.ScrollAllowed}">
-                        
-                    </ScrollViewer>
+                    <Border>
+                        <ScrollViewer Content="{Binding CurrentView}"
+                                      HorizontalContentAlignment="Left"
+                                      VerticalContentAlignment="Top"
+                                      VerticalScrollBarVisibility="Auto"
+                                      CanContentScroll="{Binding CurrentView.ScrollAllowed}">
+
+                        </ScrollViewer>
+                    </Border>
                 </ContentControl>
             </Grid>
         </Grid>
