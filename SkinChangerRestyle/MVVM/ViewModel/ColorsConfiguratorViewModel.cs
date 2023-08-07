@@ -74,7 +74,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             set
             {
                 _originPalette = value;
-                SelectedPalette = new ColorPalette(value);
+                if (value == null)
+                    SelectedPalette = value;
+                else 
+                    SelectedPalette = new ColorPalette(value);
+
                 OnPropertyChanged();
             }
         }
