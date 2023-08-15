@@ -124,6 +124,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         {
             var path = string.Copy(SelectedServer.BasePackagePath);
             var packageName = string.Copy(SelectedServer.ServerName);
+            var selectedCard = SelectedServer;
 
             await Task.Run(() =>
             {
@@ -139,7 +140,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 swapper.SwapSuccessfull += (s, e) =>
                 {
                     ApplicationNotificationManager.Manager.ShowSuccess("Done!", $"Server pacakge successfully installed");
-                    ConfigurationManager.UpdateSection("InstalledServerPackageName", SettingsProvider.DefaultDylanServerName);
+                    ConfigurationManager.UpdateSection("InstalledServerPackageName", packageName);
+                    SettingsProvider.InstalledServerPackageName = packageName;
+                    selectedCard.Installed = true;
                 };
 
                 Status = "Installing Package :: Working...";
@@ -148,7 +151,6 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             .ContinueWith((task) =>
             {
                 UpdateStatusWithTaskResultAndNotify(task, false);
-
             });
         }
 
@@ -191,6 +193,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         {
             var path = string.Copy(SelectedServer.BasePackagePath);
             var serverName = string.Copy(SelectedServer.ServerName);
+            var selectedCard = SelectedServer;
 
             await Task.Run(() =>
             {
@@ -206,13 +209,15 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 {
                     ApplicationNotificationManager.Manager.ShowSuccess("Done!", $"Server pacakge successfully Removed");
                     ConfigurationManager.UpdateSection("InstalledServerPackageName", SettingsProvider.DefaultDylanServerName);
+                    SettingsProvider.InstalledServerPackageName = SettingsProvider.DefaultDylanServerName;
+                    selectedCard.Installed = false;
                 };
 
                 swapper.RemoveServerByPackage(path);
             })
             .ContinueWith((task) =>
             {
-                UpdateStatusWithTaskResultAndNotify(task, false);
+                    UpdateStatusWithTaskResultAndNotify(task, false);
             });
         }
 

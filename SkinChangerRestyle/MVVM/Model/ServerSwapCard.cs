@@ -13,7 +13,26 @@ namespace SkinChangerRestyle.MVVM.Model
             BasePackagePath = baseDirectory;
         }
 
-        public string ServerName { get; set; }
+        public string ServerName
+        {
+            get => _serverName;
+            set
+            {
+                _serverName = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ServerName));
+            }
+        }
+
+        public bool Installed
+        {
+            get => string.Equals(ServerName, SettingsProvider.InstalledServerPackageName, StringComparison.OrdinalIgnoreCase);
+            set
+            {
+                _installed = value;
+                OnPropertyChanged();
+            }
+        }
 
         public string ServerHost
         {
@@ -36,6 +55,9 @@ namespace SkinChangerRestyle.MVVM.Model
         public IReadOnlyRemoteServerPingStats RemoteStats { get; set; }
 
         public string BasePackagePath { get; private set; }
+
+        private string _serverName;
+        private bool _installed;
 
         public async void ActualizeRemoteStats()
         {
