@@ -1,6 +1,9 @@
 ﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Style x:Key="ServerItem" TargetType="ListViewItem">
+        <Style.Resources>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        </Style.Resources>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListViewItem">
@@ -18,6 +21,7 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width=".4*"/>
                                 <ColumnDefinition/>
+                                <ColumnDefinition Width="30"/>
                             </Grid.ColumnDefinitions>
 
                             <TextBlock Grid.Column="0" Text="{Binding ServerName, Mode=OneWay}" 
@@ -71,6 +75,11 @@
                                            Text="{Binding ServerHost, Mode=OneWay}"/>
                             </Grid>
 
+                            <Ellipse Margin="5"
+                                     Fill="LimeGreen"
+                                     Visibility="{Binding Installed, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                     Grid.Column="2"
+                                     Height="20"/>
                         </Grid>
 
                     </Border>
