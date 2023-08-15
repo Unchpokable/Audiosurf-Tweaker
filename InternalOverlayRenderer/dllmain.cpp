@@ -751,6 +751,12 @@ BOOL APIENTRY DllMain(HMODULE hModule,
     switch (ul_reason_for_call)
     {
     case DLL_PROCESS_ATTACH:
+        auto existingDll = GetModuleHandle("InternalOverlayRenderer.dll");
+        if (existingDll != NULL && existingDll != hModule) // No duplicate 
+        {
+             FreeLibraryAndExitThread(hModule, 0);
+             return;
+        }
         DllHandle = hModule;
         DisableThreadLibraryCalls(DllHandle);
         CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)BuildOverlay, NULL, 0, NULL);
