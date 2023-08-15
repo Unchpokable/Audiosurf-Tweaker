@@ -601,10 +601,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             _overlayHelper.OverlayInjected += OnOverlayInjected;
             _overlayHelper.InjectOverlayPlugin();
         }
+
         private void OnOverlayInjected(object sender, EventArgs e)
         {
             UpdateOverlaySkinsList();
-            AudiosurfHandle.Instance.Command($"tw-update-ovl-info Audiosurf Tweaker Overlay v0.1\n Currently Installed skin: {CurrentInstalledSkin}");
+            AudiosurfHandle.Instance.Command($"tw-update-ovl-info Currently Installed skin: {CurrentInstalledSkin}");
             AudiosurfHandle.Instance.MessageResieved += OnMessageRecieved;
             _overlayHelper.OverlayInjected -= OnOverlayInjected;
         }
