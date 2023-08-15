@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using ASCommander;
@@ -39,11 +41,12 @@ namespace SkinChangerRestyle.Core
             var overlayPluginPath = currentPath + _defaultD3DOverlayPlugin;
             AudiosurfHandle.Instance.MessageResieved += OnPulse;
 
-            Extensions.Extensions.Cmd($"cd /d {currentPath}\\Plugins && InjectHelper.exe {AudiosurfHandle.Instance.GamePID} \"{overlayPluginPath}\"");
+            var overlayAlreadyLoaded = await CheckIfOverlayDllAlreadyLoadedAsync();
+            if (!overlayAlreadyLoaded)
+                Extensions.Extensions.Cmd($"cd /d {currentPath}\\Plugins && InjectHelper.exe {AudiosurfHandle.Instance.GamePID} \"{overlayPluginPath}\"");
 
             await Task.Delay(500);
 
-            await Task.Delay(50);
             AudiosurfHandle.Instance.Command($"tw-update-listener {AudiosurfHandle.Instance.ListenerWindowCaption}");
             await Task.Delay(200);
             AudiosurfHandle.Instance.Command("tw-pulse");
@@ -69,5 +72,46 @@ namespace SkinChangerRestyle.Core
  $@"tw-config font-color {SettingsProvider.InfopanelFontColor}; font-size {SettingsProvider.InfopanelFontSize}; infopanel-xoffset {SettingsProvider.InfopanelXOffset}; infopanel-yoffset {SettingsProvider.InfopanelYOffset}");
             }
         }
+
+        private async Task<bool> CheckIfOverlayDllAlreadyLoadedAsync()
+        {
+            return await Task.Run(() =>
+            {
+                var targetProcessName = "QuestViewer";
+                var processes = Process.GetProcessesByName(targetProcessName);
+
+                if (processes.Length <= 0)
+                    return false;
+
+                foreach (var proc in processes)
+                {
+                    var modules = new IntPtr[1024];
+
+                    if (EnumProcessModules(proc.Handle, modules, (uint)(modules.Length * IntPtr.Size), out uint cbNeeded))
+                    {
+                        for (var i = 0; i < cbNeeded; i++)
+                        {
+                            var builder = new StringBuilder(1024);
+
+                            if (GetModuleFileNameEx(proc.Handle, modules[i], builder, (uint)builder.Capacity) > 0)
+                            {
+                                if (builder.ToString().ToLower().EndsWith(_defaultD3DOverlayPlugin.ToLower()))
+                                {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                return false;
+            });
+        }
+
+        [DllImport("psapi.dll")]
+        public static extern bool EnumProcessModules(IntPtr hProcess, IntPtr[] lphModule, uint cb, out uint lpcbNeeded);
+
+        [DllImport("psapi.dll", CharSet = CharSet.Unicode)]
+        public static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, [Out] StringBuilder lpBaseName, uint nSize);
     }
 }
