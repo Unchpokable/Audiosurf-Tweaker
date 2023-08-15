@@ -192,6 +192,13 @@
                                      Content="Red" 
                                      Background="{Binding RedBrush}" FontSize="16" Grid.Row="1" Grid.Column="1"
                                      IsChecked="{Binding Path=CurrentlyEditedColor, Converter={StaticResource enumBooleanConverter}, ConverterParameter=Red}"/>
+
+                        <Button Grid.Column="1"
+                                Grid.Row="2"
+                                Style="{StaticResource FlatButton}"
+                                Content="Negative"
+                                Command="{Binding MakeNegative}"
+                                Margin="10 0 10 0"/>
                     </Grid>
                 </Grid>
 

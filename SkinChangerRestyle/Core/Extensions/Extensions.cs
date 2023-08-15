@@ -105,6 +105,17 @@ namespace SkinChangerRestyle.Core.Extensions
             return new System.Windows.Media.Color() { R = color.R, G = color.G, B = color.B, A = color.A };
         }
 
+        public static System.Drawing.Color ToNegative(this System.Drawing.Color color)
+        {
+            return System.Drawing.Color.FromArgb(color.A, 255 - color.R, 255 - color.G, 255 - color.B);
+        } 
+        
+        public static System.Windows.Media.Color ToNegative(this System.Windows.Media.Color color)
+        {
+            return System.Windows.Media.Color.FromArgb(color.A, (byte)(255 - color.R), (byte)(255 - color.G), (byte)(255 - color.B));
+        }
+
+        #region not extensions
         public static async void DisposeAndClear(params IDisposable[] disposable)
         {
             foreach (var d in disposable)
@@ -145,5 +156,6 @@ namespace SkinChangerRestyle.Core.Extensions
                 toast.AddAudio(new ToastAudio() { Silent = true });
             toast.Show();
         }
+        #endregion
     }
 }

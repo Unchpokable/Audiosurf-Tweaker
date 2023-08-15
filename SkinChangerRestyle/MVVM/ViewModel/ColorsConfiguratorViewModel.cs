@@ -8,6 +8,7 @@ using System.IO;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System;
+using SkinChangerRestyle.Core.Extensions;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -45,6 +46,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             ExportCurrentGameColorPalette = new RelayCommand(ExportGamePalette);
             ExportPalette = new RelayCommand(ExportPaletteInternal);
             ImportPalette = new RelayCommand(ImportPaletteInternal);
+            MakeNegative = new RelayCommand(ConvertCurrentPaletteToNegative);
         }
 
         public static ColorsConfiguratorViewModel Instance
@@ -67,6 +69,8 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         public RelayCommand DiscardChanges { get; set; }
         public RelayCommand ApplyChanges { get; set; }
         public RelayCommand SaveAsNew { get; set; }
+
+        public RelayCommand MakeNegative { get; set; }
 
         public ColorPalette EditedPalette
         {
@@ -355,6 +359,21 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     MessageBox.Show("Operation complete!", "Done", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
+        }
+
+        private void ConvertCurrentPaletteToNegative(object o)
+        {
+            _selectedPalette.Blue = _selectedPalette.Blue.ToNegative();
+            _selectedPalette.Purple = _selectedPalette.Purple.ToNegative();
+            _selectedPalette.Green = _selectedPalette.Green.ToNegative();
+            _selectedPalette.Yellow = _selectedPalette.Yellow.ToNegative();
+            _selectedPalette.Red = _selectedPalette.Red.ToNegative();
+
+            OnPropertyChanged(nameof(PurpleBrush));
+            OnPropertyChanged(nameof(BlueBrush));
+            OnPropertyChanged(nameof(GreenBrush));
+            OnPropertyChanged(nameof(YellowBrush));
+            OnPropertyChanged(nameof(RedBrush));
         }
     }
 }
