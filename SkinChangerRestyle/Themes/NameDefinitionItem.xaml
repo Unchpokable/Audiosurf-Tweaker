@@ -34,7 +34,7 @@
                                 <Border.Background>
                                     <LinearGradientBrush StartPoint="0,.5" EndPoint="1,.5">
                                         <GradientStop Color="{Binding Freezed, Converter={StaticResource StatusToColorConverter}}" Offset="0"/>
-                                        <GradientStop Color="#FFEFEFEF" Offset="1"/>
+                                        <GradientStop Color="Transparent" Offset="1"/>
                                     </LinearGradientBrush>
                                 </Border.Background>
                             </Border>
