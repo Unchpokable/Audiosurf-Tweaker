@@ -67,7 +67,9 @@
                                  Margin="10"
                                  Text="{Binding NameValue, Mode=TwoWay}"
                                  IsEnabled="{Binding ValueEditable}"
-                                     TextWrapping="Wrap"/>
+                                     TextWrapping="NoWrap"
+                                     ToolTip="{Binding NameValue, Mode=OneWay}"
+                                     ToolTipService.ShowOnDisabled="True"/>
 
                         </Grid>
                     </Border>
