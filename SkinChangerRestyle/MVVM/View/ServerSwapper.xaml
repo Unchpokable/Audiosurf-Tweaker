@@ -61,11 +61,13 @@
 
                         <Button Style="{StaticResource FlatButton}" 
                                 Content="Install" Command="{Binding InstallSelectedServer}"
-                                FontSize="18"/>
+                                FontSize="18"
+                                IsEnabled="{Binding Ready}"/>
                         <Button Style="{StaticResource FlatButton}" 
                                 Content="Remove" Command="{Binding RemoveSelectedServer}"
                                 FontSize="18"
-                                Grid.Column="1"/>
+                                Grid.Column="1"
+                                IsEnabled="{Binding Ready}"/>
                     </Grid>
                 </Grid>
 
