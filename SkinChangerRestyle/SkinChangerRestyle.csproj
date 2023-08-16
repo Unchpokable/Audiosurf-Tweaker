@@ -103,7 +103,7 @@
     <Compile Include="MVVM\Model\ASColors.cs" />
     <Compile Include="MVVM\Model\ColorPalettePrint.cs" />
     <Compile Include="MVVM\Model\PaletteDynamicLoadContainer.cs" />
-    <Compile Include="MVVM\Model\ScriptInterpreterDefinedCharacter.cs" />
+    <Compile Include="MVVM\Model\InterpreterVariable.cs" />
     <Compile Include="MVVM\Model\ServerSwapCard.cs" />
     <Compile Include="MVVM\Model\TweakerConsole.cs" />
     <Compile Include="EditOnDiskLockWindow.xaml.cs">
@@ -191,7 +191,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Themes\NameDefinitionItem.xaml">
+    <Page Include="Themes\VariableDefinitionItem.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </Page>

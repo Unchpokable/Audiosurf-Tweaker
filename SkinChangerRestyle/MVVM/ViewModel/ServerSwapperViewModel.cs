@@ -44,16 +44,16 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 RemoveSelectedServer = new RelayCommand(RemoveSelectedServerInternal);
                 SaveInstallerScript = new RelayCommand(SaveInstallerScriptInternal);
                 DiscardScriptChanges = new RelayCommand(DiscardScriptChangesInternal);
-                DefineNewName = new RelayCommand(DefineNewNameInternal);
+                DefineNewVariable = new RelayCommand(DefineNewNameInternal);
                 RemoveSelected = new RelayCommand(RemoveInterpreterDefine);
 
-                InterpreterDefines = new ObservableCollection<ScriptInterpreterDefinedCharacter>()
+                InterpreterVariables = new ObservableCollection<InterpreterVariable>()
                 {
-                    new ScriptInterpreterDefinedCharacter("%AS%", Path.GetDirectoryName(Path.GetDirectoryName(SettingsProvider.GameTexturesPath)) ) { Freezed = true }, // => AS\engine\textures -> AS\
-                    new ScriptInterpreterDefinedCharacter("%BACKUP_PATH%", Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\Backups") { Freezed = true },
+                    new InterpreterVariable("%AS%", Path.GetDirectoryName(Path.GetDirectoryName(SettingsProvider.GameTexturesPath)) ) { Freezed = true }, // => AS\engine\textures -> AS\
+                    new InterpreterVariable("%BACKUP_PATH%", Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\Backups") { Freezed = true },
                 };
 
-                NameDefinitionProxy = new ScriptInterpreterDefinedCharacter();
+                VariableDefinitionProxy = new InterpreterVariable();
 
                 Status = "Ready";
             }
@@ -98,12 +98,12 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         public RelayCommand RemoveSelectedServer { get; set; }
         public RelayCommand SaveInstallerScript { get; set; }
         public RelayCommand DiscardScriptChanges { get; set; }
-        public RelayCommand DefineNewName { get; set; }
+        public RelayCommand DefineNewVariable { get; set; }
         public RelayCommand RemoveSelected { get; set; }
 
-        public ScriptInterpreterDefinedCharacter NameDefinitionProxy { get; set; }
-        public ScriptInterpreterDefinedCharacter SelectedDefineItem { get; set; }
-        public ObservableCollection<ScriptInterpreterDefinedCharacter> InterpreterDefines { get; set; }
+        public InterpreterVariable VariableDefinitionProxy { get; set; }
+        public InterpreterVariable SelectedVariableItem { get; set; }
+        public ObservableCollection<InterpreterVariable> InterpreterVariables { get; set; }
 
         private string _selectedServerInstallScriptText;
         private ServerSwapCard _selectedServer;
@@ -128,9 +128,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             await Task.Run(() =>
             {
-                var swapper = new ServerSwapper(InterpreterDefines.ToDictionary(
-                                                key => key.DefinedName,
-                                                value => value.NameValue));
+                var swapper = new ServerSwapper(InterpreterVariables.ToDictionary(
+                                                key => key.Name,
+                                                value => value.Value));
 
                 swapper.SwapFailed += (s, e) =>
                 {
@@ -197,9 +197,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             await Task.Run(() =>
             {
-                var swapper = new ServerSwapper(InterpreterDefines.ToDictionary(
-                                                key => key.DefinedName,
-                                                value => value.NameValue));
+                var swapper = new ServerSwapper(InterpreterVariables.ToDictionary(
+                                                key => key.Name,
+                                                value => value.Value));
                 swapper.SwapFailed += (s, e) =>
                 {
                     ApplicationNotificationManager.Manager.ShowError("Fail!!", $"Swap Failure: {e.Message}");
@@ -223,13 +223,13 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         private void DefineNewNameInternal(object obj)
         {
-            if (NameDefinitionProxy.DefinedName == "%PACKAGE_ROOT%")
+            if (VariableDefinitionProxy.Name == "%PACKAGE_ROOT%")
             {
-                ApplicationNotificationManager.Manager.ShowOverWindow("Restricted Action", "Unable to add name %PACKAGE_ROOT% - reserved name", Notification.Wpf.NotificationType.Warning);
+                ApplicationNotificationManager.Manager.ShowOverWindow("Restricted Action", "Unable to add name %PACKAGE_ROOT% - reserved variable name, defined by interpreter itself", Notification.Wpf.NotificationType.Warning);
                 return;
             }
-            var nameDefinitionProxyClone = NameDefinitionProxy.Clone();
-            InterpreterDefines.Add(nameDefinitionProxyClone);
+            var nameDefinitionProxyClone = VariableDefinitionProxy.Clone();
+            InterpreterVariables.Add(nameDefinitionProxyClone);
         }
 
         private void UpdateStatusWithTaskResultAndNotify(Task task, bool showSuccess = false)
@@ -248,16 +248,16 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         private void RemoveInterpreterDefine(object o)
         {
-            if (SelectedDefineItem == null)
+            if (SelectedVariableItem == null)
                 return;
 
-            if (SelectedDefineItem.DefinedName.SameWith("%AS%", "%BACKUP_PATH%", "%PACKAGE_ROOT"))
+            if (SelectedVariableItem.Name.SameWith("%AS%", "%BACKUP_PATH%", "%PACKAGE_ROOT"))
             {
-                ApplicationNotificationManager.Manager.ShowOverWindow("Restricted Action", "Requiered Interpreter name, can not remove", Notification.Wpf.NotificationType.Warning);
+                ApplicationNotificationManager.Manager.ShowOverWindow("Restricted Action", "Requiered Interpreter variable, can not remove", Notification.Wpf.NotificationType.Warning);
                 return;
             }
 
-            InterpreterDefines.Remove(SelectedDefineItem);
+            InterpreterVariables.Remove(SelectedVariableItem);
         }
     }
 }

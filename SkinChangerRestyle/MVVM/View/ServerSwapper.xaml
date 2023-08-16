@@ -136,16 +136,16 @@
                         BorderThickness="0 0 0 2"
                         Width="400"
                         HorizontalAlignment="Left">
-                    <Label Content="Defined Script Interpreter characters" FontFamily="Exo 2 Medium" FontSize="18" VerticalAlignment="Center" Foreground="#FF888888"/>
+                    <Label Content="Defined Script Interpreter variables" FontFamily="Exo 2 Medium" FontSize="18" VerticalAlignment="Center" Foreground="#FF888888"/>
                 </Border>
 
                 <ListView Margin="0 5 0 0"
                           Grid.Row="1"
                           BorderBrush="Transparent"
                           BorderThickness="0"
-                          ItemsSource="{Binding InterpreterDefines}"
-                          SelectedItem="{Binding SelectedDefineItem}"
-                          ItemContainerStyle="{StaticResource NameDefinitionItem}">
+                          ItemsSource="{Binding InterpreterVariables}"
+                          SelectedItem="{Binding SelectedVariableItem}"
+                          ItemContainerStyle="{StaticResource VariableDefinitionItem}">
                     <ListView.InputBindings>
                         <KeyBinding Command="{Binding RemoveSelected}" Key="Delete"/>
                     </ListView.InputBindings>
@@ -156,7 +156,7 @@
                         BorderThickness="0 0 0 2"
                         Width="400"
                         HorizontalAlignment="Left">
-                    <Label Content="Define new character" FontFamily="Exo 2 Medium" FontSize="18" VerticalAlignment="Center" Foreground="#FF888888"/>
+                    <Label Content="Define new variable" FontFamily="Exo 2 Medium" FontSize="18" VerticalAlignment="Center" Foreground="#FF888888"/>
                 </Border>
 
                 <Grid Grid.Row="3">
@@ -181,7 +181,7 @@
                         <TextBox Grid.Column="1"
                                  Style="{StaticResource StylishTextInput}"
                                  Margin="10"
-                                 Text="{Binding NameDefinitionProxy.DefinedName}"/>
+                                 Text="{Binding VariableDefinitionProxy.Name}"/>
                         <Label Grid.Column="2"
                                Content="Value:"
                                VerticalAlignment="Center"
@@ -193,13 +193,13 @@
                         <TextBox Grid.Column="3"
                                  Style="{StaticResource StylishTextInput}"
                                  Margin="10"
-                                 Text="{Binding NameDefinitionProxy.NameValue}"/>
+                                 Text="{Binding VariableDefinitionProxy.Value}"/>
 
                         <Button Grid.Column="4"
                                 Style="{StaticResource FlatButton}"
                                 Content="Add"
                                 FontSize="20"
-                                Command="{Binding DefineNewName}">
+                                Command="{Binding DefineNewVariable}">
                         </Button>
                     </Grid>
                 </Grid>

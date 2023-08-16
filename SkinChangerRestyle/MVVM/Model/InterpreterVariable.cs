@@ -3,23 +3,23 @@ using System;
 
 namespace SkinChangerRestyle.MVVM.Model
 {
-    public class ScriptInterpreterDefinedCharacter : ObservableObject
+    public class InterpreterVariable : ObservableObject
     {
-        public ScriptInterpreterDefinedCharacter() { }
+        public InterpreterVariable() { }
 
-        public ScriptInterpreterDefinedCharacter(string definedName, string nameValue)
+        public InterpreterVariable(string definedName, string nameValue)
         {
             _definedName = definedName;
             _nameValue = nameValue;
         }
 
-        public ScriptInterpreterDefinedCharacter(ScriptInterpreterDefinedCharacter origin)
+        public InterpreterVariable(InterpreterVariable origin)
         {
-            _definedName = origin.DefinedName;
-            _nameValue = origin.NameValue;
+            _definedName = origin.Name;
+            _nameValue = origin.Value;
         }
 
-        public string DefinedName
+        public string Name
         {
             get => _definedName;
             set
@@ -27,11 +27,11 @@ namespace SkinChangerRestyle.MVVM.Model
                 if (!_definedNameEditable)
                     throw new InvalidOperationException("Resctricted operation");
                 _definedName = value;
-                OnPropertyChanged(nameof(DefinedName));
+                OnPropertyChanged(nameof(Name));
             }
         }
 
-        public string NameValue
+        public string Value
         {
             get => _nameValue;
             set
@@ -40,7 +40,7 @@ namespace SkinChangerRestyle.MVVM.Model
                         throw new InvalidOperationException("Resctricted Operation"); 
 
                 _nameValue = value;
-                OnPropertyChanged(nameof(NameValue));
+                OnPropertyChanged(nameof(Value));
             }
         }
 
@@ -81,9 +81,9 @@ namespace SkinChangerRestyle.MVVM.Model
         private bool _definedNameEditable = true;
         private bool _nameValueEditable = true;
 
-        public ScriptInterpreterDefinedCharacter Clone()
+        public InterpreterVariable Clone()
         {
-            return new ScriptInterpreterDefinedCharacter(this);
+            return new InterpreterVariable(this);
         }
 
         public override string ToString()
