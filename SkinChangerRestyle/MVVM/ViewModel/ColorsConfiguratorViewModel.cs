@@ -268,6 +268,10 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     isGameKilled = true;
                     await WaitForGameStopWorking("QuestViewer");
                 }
+                else
+                {
+                    return;
+                }
             }
 
             var pathToIni = Directory.GetParent(SettingsProvider.GameTexturesPath).FullName + "\\options.ini";
