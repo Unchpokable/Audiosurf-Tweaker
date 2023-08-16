@@ -15,6 +15,7 @@ using System.Reflection;
 using ASCommander;
 using System.Drawing;
 using Microsoft.Toolkit.Uwp.Notifications;
+using System.Collections.Generic;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -115,8 +116,6 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 OnPropertyChanged(); 
             }
         }
-
-
         
         public bool ReloadButtonUnlocked
         {
@@ -218,12 +217,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 if (SettingsProvider.UseFastPreview)
                     return SelectedItem.Screenshots;
 
-                Extensions.DisposeAndClear();
-                using (var skin = SkinPackager.Decompile(SelectedItem.PathToOrigin))
-                {
-                    return new ObservableCollection<InteractableScreenshot>(
-                        skin.Previews.Group.Select(screenshot => new InteractableScreenshot(((Bitmap)screenshot).Rescale(860, 440).ToImageSource())));
-                }
+                return new ObservableCollection<InteractableScreenshot>(GetSkinScreenshots(SelectedItem.PathToOrigin).Select(screenshot => new InteractableScreenshot(screenshot.ToImageSource())));
             }
         }
 
@@ -615,6 +609,19 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             var skinsList = string.Join("; ", Skins.Select(skin => skin.Name));
 
             AudiosurfHandle.Instance.Command($"tw-update-skin-list {skinsList}");
+        }
+
+        private List<Bitmap> GetSkinScreenshots(string pathToSkin)
+        {
+            return Task.Run(() =>
+            {
+                using (var skin = SkinPackager.Decompile(pathToSkin))
+                {
+                    return
+                        skin.Previews.Group.Select(screenshot => ((Bitmap)screenshot).Rescale(860, 440))
+                                           .ToList();
+                }
+            }).Result;
         }
 
         private void OnMessageRecieved(object sender, string content)
