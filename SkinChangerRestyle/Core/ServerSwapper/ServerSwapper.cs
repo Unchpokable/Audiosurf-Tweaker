@@ -62,17 +62,17 @@ namespace SkinChangerRestyle.Core.ServerSwapper
                                      .MergedWith(moreDefines));
         }
 
-        private async void InstallServer(string scriptFile, Dictionary<string, string> moreDefines = null)
+        private void InstallServer(string scriptFile, Dictionary<string, string> moreDefines = null)
         {
-            await ExecuteServerPackageScript(scriptFile, "INSTALL", moreDefines);
+            ExecuteServerPackageScript(scriptFile, "INSTALL", moreDefines);
         }
 
-        private async void RemoveServer(string scriptFile, Dictionary<string, string> moreDefines = null)
+        private void RemoveServer(string scriptFile, Dictionary<string, string> moreDefines = null)
         {
-            await ExecuteServerPackageScript(scriptFile, "REMOVE", moreDefines);
+            ExecuteServerPackageScript(scriptFile, "REMOVE", moreDefines);
         }
 
-        private Task ExecuteServerPackageScript(string file, string section, Dictionary<string, string> moreDefines = null)
+        private void ExecuteServerPackageScript(string file, string section, Dictionary<string, string> moreDefines = null)
         {
             var parser = new ScriptParser(_globalDefines);
             if (moreDefines != null)
@@ -97,7 +97,7 @@ namespace SkinChangerRestyle.Core.ServerSwapper
                 SwapSuccessfull?.Invoke(this, e);
             };
 
-            return Task.Run(() => { script[section].Execute(); });
+            script[section].Execute();
         }
     }
 }
