@@ -56,6 +56,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 VariableDefinitionProxy = new InterpreterVariable();
 
                 Status = "Ready";
+                Ready = true;
             }
         }
 
@@ -92,6 +93,16 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
         }
 
+        public bool Ready
+        {
+            get => _ready;
+            set
+            {
+                _ready = value;
+                OnPropertyChanged();
+            }
+        }
+
         public ObservableCollection<ServerSwapCard> Servers { get; }
 
         public RelayCommand InstallSelectedServer { get; set; }
@@ -109,6 +120,8 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private ServerSwapCard _selectedServer;
         private string _statusMessage;
 
+        private bool _ready;
+
         private async void LoadPackageScriptAsync(ServerSwapCard server)
         {
             SelectedPackageScript = await Task.Run(() =>
@@ -122,6 +135,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         
         private async void InstallSelectedServerInternal(object o)
         {
+            if (!_ready) return;
+
+            Ready = false;
             var path = string.Copy(SelectedServer.BasePackagePath);
             var packageName = string.Copy(SelectedServer.ServerName);
             var selectedCard = SelectedServer;
@@ -151,6 +167,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             .ContinueWith((task) =>
             {
                 UpdateStatusWithTaskResultAndNotify(task, false);
+                Ready = true;
             });
         }
 
@@ -191,6 +208,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         private async void RemoveSelectedServerInternal(object obj)
         {
+            if (!_ready)
+                return;
+            Ready = false;
             var path = string.Copy(SelectedServer.BasePackagePath);
             var serverName = string.Copy(SelectedServer.ServerName);
             var selectedCard = SelectedServer;
@@ -217,7 +237,8 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             })
             .ContinueWith((task) =>
             {
-                    UpdateStatusWithTaskResultAndNotify(task, false);
+                UpdateStatusWithTaskResultAndNotify(task, false);
+                Ready = true;
             });
         }
 
