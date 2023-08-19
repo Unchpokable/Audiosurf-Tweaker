@@ -265,26 +265,16 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             get => _overlayEnabled;
             set
             {
-                if (value) // turn on overlay
+                var isRestart = MessageBox.Show("Turning this parameter needs to restart applicaton. Would you like to continue?", "Module parameter changed", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (isRestart == DialogResult.Yes)
                 {
-                    var isRestart = MessageBox.Show("Turning this parameter needs to restart applicaton. Would you like to continue?", "Module parameter changed", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                    if (isRestart == DialogResult.Yes)
-                    {
-                        _overlayEnabled = value;
-                        SettingsProvider.IsOverlayEnabled = value;
-                        ApplySettings();
-                        Extensions.Cmd($"taskkill /f /im \"{AppDomain.CurrentDomain.FriendlyName}\" && timeout /t 1 && {AppDomain.CurrentDomain.FriendlyName}");
-                    }
-                    else
-                        return;
-                }
-
-                else
-                {
-                    SettingsProvider.IsOverlayEnabled = value;
                     _overlayEnabled = value;
+                    SettingsProvider.IsOverlayEnabled = value;
                     ApplySettings();
+                    Extensions.Cmd($"taskkill /f /im \"{AppDomain.CurrentDomain.FriendlyName}\" && timeout /t 1 && {AppDomain.CurrentDomain.FriendlyName}");
                 }
+                else
+                    return;
             }
         }
 
@@ -306,6 +296,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private bool _uwpNotificationAllwed;
         private bool _uwpNotificationSilent;
         private bool _overlayEnabled;
+
         private void AskAndSetConfigValue(object parameter)
         {
             var field = (SettingsFields)parameter;
