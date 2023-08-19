@@ -379,6 +379,12 @@
     <Resource Include="Tweaker_Icon_1.ico" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Gameloop.Vdf">
+      <Version>0.6.2</Version>
+    </PackageReference>
+    <PackageReference Include="Gameloop.Vdf.JsonConverter">
+      <Version>0.2.1</Version>
+    </PackageReference>
     <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications">
       <Version>7.1.3</Version>
     </PackageReference>
