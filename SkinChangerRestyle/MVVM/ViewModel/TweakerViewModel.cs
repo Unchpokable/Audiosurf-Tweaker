@@ -188,7 +188,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         private void KillAudiosurf()
         {
-            Core.Extensions.Extensions.Cmd($"taskkill /f /im \"{AppDomain.CurrentDomain.FriendlyName}\"");
+            Core.Extensions.Extensions.Cmd($"taskkill /f /pid {_audiosurfHandle.GamePID}");
         }
 
         private class Reference<T>
