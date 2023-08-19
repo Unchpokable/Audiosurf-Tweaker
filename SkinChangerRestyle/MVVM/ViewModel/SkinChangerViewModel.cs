@@ -643,7 +643,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             if (content.Contains("nowplayingsongtitle"))
             {
-                AudiosurfHandle.Instance.Command($"tw-update-ovl-info Audiosurf Tweaker Overlay v0.1\n Skin: {CurrentInstalledSkin}");
+                AudiosurfHandle.Instance.Command($"tw-update-ovl-info Skin: {CurrentInstalledSkin}");
             }
 
             if (content.Contains("songcomplete") || content.Contains("oncharacterscreen"))

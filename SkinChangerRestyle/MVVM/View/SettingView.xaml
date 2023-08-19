@@ -124,7 +124,7 @@
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsHotReload, Mode=TwoWay}" FontFamily="ExoSoft ☞"/>
                     <CheckBox Style="{StaticResource FlatCheckBox}" Content="Fast Preview" Margin="30 0 0 10" FontSize="16"
-                                  ToolTip="Allow Tweaker to hold downscaled screenshots in your RAM to show you a skin preview tooltip and load it' screenshots without delay"
+                                  ToolTip="Allow Tweaker to hold downscaled screenshots in your RAM to show you a skin preview tooltip and load it' screenshots without delay. Disabling this option will cause less memory use, but make SkinChanger laggy"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsFastPreview}"/>
 
