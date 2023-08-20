@@ -152,7 +152,19 @@
                             BorderThickness="0 0 0 2"
                             Width="400"
                             HorizontalAlignment="Left">
-                    <Label Content="Textures Watcher settings" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+
+                    <StackPanel Orientation="Horizontal">
+                        <Label Content="Textures Watcher settings" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                        <Label Content="?" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FFD0D0D0"
+                               ToolTipService.ShowDuration="30000">
+                            <Label.ToolTip>
+                                Textures Watcher is a service that will track game textures folder, and notify game about any changes in there in real time.
+                                Also, Textures Watcher can store a current state of game textures folder in temporary skin file
+                                Textures Watcher works only when audiosurf is connected with Tweaker program
+                                
+                            </Label.ToolTip>
+                        </Label>
+                    </StackPanel>
                 </Border>
 
                 <StackPanel Grid.Row="1">
