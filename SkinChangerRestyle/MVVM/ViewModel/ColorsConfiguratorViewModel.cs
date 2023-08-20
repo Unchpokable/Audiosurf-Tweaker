@@ -264,7 +264,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 if (MessageBox.Show("Audiosurf Tweaker detected running game instance. Color settings can't be overwrited while game is running. Shutdown game to rewrite settings? This action will start your game back when operation complete", "Game is running", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
-                    Core.Extensions.Extensions.Cmd($"taskkill /f /im \"{gamePid[0].ProcessName}.exe\"");
+                    Core.Extensions.Extensions.Cmd($"taskkill /f /pid {gamePid[0].Id}");
                     isGameKilled = true;
                     await WaitForGameStopWorking("QuestViewer");
                 }
