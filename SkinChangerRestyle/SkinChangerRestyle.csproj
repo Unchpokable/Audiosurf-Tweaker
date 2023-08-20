@@ -90,7 +90,6 @@
     <Compile Include="Core\AudiosurfConfigurationPresenter.cs" />
     <Compile Include="Core\Converters\InversedBooleanToColorConverter.cs" />
     <Compile Include="Core\EnumBooleanConverter.cs" />
-    <Compile Include="Core\InterpreterNameDefinitionItemStatus.cs" />
     <Compile Include="Core\LoadedSkinData.cs" />
     <Compile Include="Core\NetworkTools\Exceptions\UnresolvedHostnameException.cs" />
     <Compile Include="Core\NetworkTools\IReadOnlyRemoteServerPingStats.cs" />

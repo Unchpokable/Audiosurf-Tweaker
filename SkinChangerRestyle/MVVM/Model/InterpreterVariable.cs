@@ -36,7 +36,7 @@ namespace SkinChangerRestyle.MVVM.Model
             get => _nameValue;
             set
             {
-                if (!_nameValueEditable) 
+                if (!_nameValueEditable)
                         throw new InvalidOperationException("Resctricted Operation"); 
 
                 _nameValue = value;
