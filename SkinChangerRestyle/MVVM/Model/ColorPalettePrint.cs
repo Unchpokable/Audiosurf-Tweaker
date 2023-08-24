@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Media;
 
 namespace SkinChangerRestyle.MVVM.Model
@@ -31,12 +27,13 @@ namespace SkinChangerRestyle.MVVM.Model
 
         public bool Equals(ColorPalettePrint other)
         {
-            return string.Equals(this.Name, other.Name)
-                && Purple == other.Purple
-                && Blue == other.Blue
-                && Green == other.Green
-                && Yellow == other.Yellow
-                && Red == other.Red;
+            return other != null
+                   && string.Equals(this.Name, other.Name)
+                   && Purple == other.Purple
+                   && Blue == other.Blue
+                   && Green == other.Green
+                   && Yellow == other.Yellow
+                   && Red == other.Red;
         }
 
         [Serializable]

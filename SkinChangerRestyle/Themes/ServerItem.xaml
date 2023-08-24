@@ -79,7 +79,8 @@
                                      Fill="LimeGreen"
                                      Visibility="{Binding Installed, Converter={StaticResource BooleanToVisibilityConverter}}"
                                      Grid.Column="2"
-                                     Height="20"/>
+                                     Height="20"
+                                     ToolTip="This Server installed now"/>
                         </Grid>
 
                     </Border>

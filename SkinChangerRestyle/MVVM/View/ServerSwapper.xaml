@@ -6,6 +6,7 @@
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
              xmlns:notifications="clr-namespace:Notification.Wpf.Controls;assembly=Notification.Wpf" xmlns:notifications1="clr-namespace:Notification.Wpf.Controls;assembly=Notification.Wpf"
              xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+             xmlns:static="clr-namespace:SkinChangerRestyle.Properties"
              mc:Ignorable="d" 
              d:DesignHeight="665" d:DesignWidth="800">
     <Border Background="White"
@@ -32,7 +33,19 @@
                         BorderThickness="0 0 0 2"
                         Width="400"
                         HorizontalAlignment="Left">
-                    <Label Content="My Servers" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                    <StackPanel Orientation="Horizontal"
+                                VerticalAlignment="Center"
+                                HorizontalAlignment="Left">
+                        
+                        <Label Content="My Servers" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                        <Button Command="{Binding UpdateServersNetworkState}"
+                                Content="{Binding RefreshIcon}"
+                                Width="30"
+                                Height="30"
+                                Style="{StaticResource RoundIconButton}"
+                                Margin="20 0 0 0"
+                                ToolTip="Ping all servers again"/>
+                    </StackPanel>
                 </Border>
 
                 <Grid Grid.Row="1"
@@ -49,7 +62,6 @@
                               ItemContainerStyle="{StaticResource ServerItem}"
                               BorderBrush="Transparent"
                               BorderThickness="0">
-
                     </ListView>
 
                     <Grid Grid.Row="1"

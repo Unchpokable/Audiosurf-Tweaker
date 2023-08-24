@@ -1,13 +1,17 @@
-﻿using SkinChangerRestyle.Core;
+﻿using ChangerAPI.Utilities;
+using Notification.Wpf;
+using SkinChangerRestyle.Core;
 using SkinChangerRestyle.Core.Extensions;
 using SkinChangerRestyle.Core.ServerSwapper;
 using SkinChangerRestyle.MVVM.Model;
+using SkinChangerRestyle.Properties;
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using System.Windows.Media;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -15,6 +19,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
     {
         public ServerSwapperViewModel()
         {
+            RefreshIcon = Resources.refreshing.ToImageSource();
             Servers = new ObservableCollection<ServerSwapCard>();
             if (!Directory.Exists(SettingsProvider.BaseServerPackagePath))
                 Directory.CreateDirectory(SettingsProvider.BaseServerPackagePath);
@@ -31,7 +36,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 if (specs != null)
                 {
                     var specsList = File.ReadAllLines(specs).Select(x => x.Split('=')).ToDictionary(x => x[0], x => x[1]);
-                    if (specsList != null && specsList.ContainsKey("remote"))
+                    if (specsList.ContainsKey("remote"))
                     {
                         card.ServerHost = specsList["remote"];
                         card.SpecsServerRemote = specsList["remote"];
@@ -46,8 +51,10 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 DiscardScriptChanges = new RelayCommand(DiscardScriptChangesInternal);
                 DefineNewVariable = new RelayCommand(DefineNewNameInternal);
                 RemoveSelected = new RelayCommand(RemoveInterpreterDefine);
+                UpdateServersNetworkState = new RelayCommand(o => Servers.ForEach(x => x.ActualizeRemoteStats()));
 
-                InterpreterVariables = new ObservableCollection<InterpreterVariable>()
+
+                InterpreterVariables = new ObservableCollection<InterpreterVariable>
                 {
                     new InterpreterVariable("%AS%", Path.GetDirectoryName(Path.GetDirectoryName(SettingsProvider.GameTexturesPath)) ) { Freezed = true }, // => AS\engine\textures -> AS\
                     new InterpreterVariable("%BACKUP_PATH%", Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location) + "\\Backups") { Freezed = true },
@@ -69,7 +76,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     throw new ArgumentNullException(nameof(value));
                 _selectedServer = value;
                 LoadPackageScriptAsync(value);
-                OnPropertyChanged(nameof(SelectedServer));
+                OnPropertyChanged();
             }
         }
 
@@ -79,7 +86,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             set
             {
                 _selectedServerInstallScriptText = value;
-                OnPropertyChanged(nameof(SelectedPackageScript));
+                OnPropertyChanged();
             }
         }
 
@@ -89,7 +96,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             set
             {
                 _statusMessage = value;
-                OnPropertyChanged(nameof(Status));
+                OnPropertyChanged();
             }
         }
 
@@ -103,6 +110,8 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
         }
 
+        public ImageSource RefreshIcon { get; set; }
+
         public ObservableCollection<ServerSwapCard> Servers { get; }
 
         public RelayCommand InstallSelectedServer { get; set; }
@@ -111,7 +120,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         public RelayCommand DiscardScriptChanges { get; set; }
         public RelayCommand DefineNewVariable { get; set; }
         public RelayCommand RemoveSelected { get; set; }
-
+        public RelayCommand UpdateServersNetworkState { get; set; }
         public InterpreterVariable VariableDefinitionProxy { get; set; }
         public InterpreterVariable SelectedVariableItem { get; set; }
         public ObservableCollection<InterpreterVariable> InterpreterVariables { get; set; }
@@ -155,7 +164,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
                 swapper.SwapSuccessfull += (s, e) =>
                 {
-                    ApplicationNotificationManager.Manager.ShowSuccess("Done!", $"Server pacakge successfully installed");
+                    ApplicationNotificationManager.Manager.ShowSuccess("Done!", "Server pacakge successfully installed");
                     ConfigurationManager.UpdateSection("InstalledServerPackageName", packageName);
                     SettingsProvider.InstalledServerPackageName = packageName;
                     selectedCard.Installed = true;
@@ -164,9 +173,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 Status = "Installing Package :: Working...";
                 swapper.SwapServer(path);
             })
-            .ContinueWith((task) =>
+            .ContinueWith(task =>
             {
-                UpdateStatusWithTaskResultAndNotify(task, false);
+                UpdateStatusWithTaskResultAndNotify(task);
                 Ready = true;
             });
         }
@@ -183,7 +192,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 var scriptFile = Path.Combine(path, $"{serverName}-Package.s.tws");
                 File.WriteAllText(scriptFile, text);
             })
-                .ContinueWith((task) =>
+                .ContinueWith(task =>
             {
                 UpdateStatusWithTaskResultAndNotify(task);
             });
@@ -200,7 +209,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 var scriptFile = Path.Combine(path, $"{serverName}-Package.s.tws");
                 SelectedPackageScript = File.ReadAllText(scriptFile);
             })
-                .ContinueWith((task) =>
+                .ContinueWith(task =>
             {
                 UpdateStatusWithTaskResultAndNotify(task);
             });
@@ -227,7 +236,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
                 swapper.SwapSuccessfull += (s, e) =>
                 {
-                    ApplicationNotificationManager.Manager.ShowSuccess("Done!", $"Server pacakge successfully Removed");
+                    ApplicationNotificationManager.Manager.ShowSuccess("Done!", "Server pacakge successfully Removed");
                     ConfigurationManager.UpdateSection("InstalledServerPackageName", SettingsProvider.DefaultDylanServerName);
                     SettingsProvider.InstalledServerPackageName = SettingsProvider.DefaultDylanServerName;
                     selectedCard.Installed = false;
@@ -235,9 +244,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
                 swapper.RemoveServerByPackage(path);
             })
-            .ContinueWith((task) =>
+            .ContinueWith(task =>
             {
-                UpdateStatusWithTaskResultAndNotify(task, false);
+                UpdateStatusWithTaskResultAndNotify(task);
                 Ready = true;
             });
         }
@@ -246,7 +255,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         {
             if (VariableDefinitionProxy.Name == "%PACKAGE_ROOT%")
             {
-                ApplicationNotificationManager.Manager.ShowOverWindow("Restricted Action", "Unable to add name %PACKAGE_ROOT% - reserved variable name, defined by interpreter itself", Notification.Wpf.NotificationType.Warning);
+                ApplicationNotificationManager.Manager.ShowOverWindow("Restricted Action", "Unable to add name %PACKAGE_ROOT% - reserved variable name, defined by interpreter itself", NotificationType.Warning);
                 return;
             }
             var nameDefinitionProxyClone = VariableDefinitionProxy.Clone();
@@ -258,13 +267,13 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             if (task.IsFaulted || task.IsCanceled)
             {
                 Status = "Operation Failed :: Ready";
-                ApplicationNotificationManager.Manager.ShowError("Fail!", $"Installation Error - {task.Exception.Message}");
+                ApplicationNotificationManager.Manager.ShowError("Fail!", $"Installation Error - {task.Exception?.Message}");
                 return;
             }
             Status = "Operation Completed :: Ready";
 
             if (showSuccess) 
-                ApplicationNotificationManager.Manager.ShowSuccess("Done!", $"Operation Completed");
+                ApplicationNotificationManager.Manager.ShowSuccess("Done!", "Operation Completed");
         }
 
         private void RemoveInterpreterDefine(object o)
@@ -274,7 +283,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             if (SelectedVariableItem.Name.SameWith("%AS%", "%BACKUP_PATH%", "%PACKAGE_ROOT"))
             {
-                ApplicationNotificationManager.Manager.ShowOverWindow("Restricted Action", "Requiered Interpreter variable, can not remove", Notification.Wpf.NotificationType.Warning);
+                ApplicationNotificationManager.Manager.ShowOverWindow("Restricted Action", "Requiered Interpreter variable, can not remove", NotificationType.Warning);
                 return;
             }
 

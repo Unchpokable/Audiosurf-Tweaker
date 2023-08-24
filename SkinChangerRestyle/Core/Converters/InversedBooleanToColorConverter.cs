@@ -15,7 +15,7 @@ namespace SkinChangerRestyle.Core.Converters
 
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            var val = (bool)value;
+            var val = value != null && (bool)value;
 
             if (val)
                 return _redColor;
@@ -26,12 +26,15 @@ namespace SkinChangerRestyle.Core.Converters
         {
             try
             {
-                var colorValue = (Color)value;
-                if (colorValue == _redColor)
-                    return true;
+                if (value != null)
+                {
+                    var colorValue = (Color)value;
+                    if (colorValue == _redColor)
+                        return true;
 
-                if (colorValue == _greenColor)
-                    return false;
+                    if (colorValue == _greenColor)
+                        return false;
+                }
 
                 return DependencyProperty.UnsetValue;
             }

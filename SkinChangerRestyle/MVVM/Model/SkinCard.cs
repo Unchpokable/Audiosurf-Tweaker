@@ -4,7 +4,6 @@ using SkinChangerRestyle.Core.Extensions;
 using SkinChangerRestyle.MVVM.ViewModel;
 using System;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -32,13 +31,7 @@ namespace SkinChangerRestyle.MVVM.Model
             InitializeFields();
         }
 
-        private bool _isRenameFocused;
-
-        public bool IsRenameFocused
-        {
-            get { return _isRenameFocused; }
-            set { _isRenameFocused = value; }
-        }
+        public bool IsRenameFocused { get; set; }
 
 
         public bool RenameActive
@@ -74,7 +67,7 @@ namespace SkinChangerRestyle.MVVM.Model
 
         public string Name
         {
-            get { return _name; }
+            get => _name;
             set
             {
                 _name = value;

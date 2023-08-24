@@ -6,7 +6,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using ASCommander;
-using SkinChangerRestyle.Core.Extensions;
 
 namespace SkinChangerRestyle.Core
 {

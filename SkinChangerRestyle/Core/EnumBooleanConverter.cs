@@ -12,7 +12,7 @@ namespace SkinChangerRestyle.Core
             if (parameterString == null)
                 return DependencyProperty.UnsetValue;
 
-            if (!Enum.IsDefined(value.GetType(), value))
+            if (value != null && !Enum.IsDefined(value.GetType(), value))
                 return DependencyProperty.UnsetValue;
 
             object parameterValue = Enum.Parse(value.GetType(), parameterString);

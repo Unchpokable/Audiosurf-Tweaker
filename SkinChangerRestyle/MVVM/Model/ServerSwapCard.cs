@@ -1,7 +1,6 @@
 ﻿using SkinChangerRestyle.Core;
 using SkinChangerRestyle.Core.NetworkTools;
 using System;
-using System.IO;
 using System.Threading.Tasks;
 
 namespace SkinChangerRestyle.MVVM.Model
@@ -20,7 +19,6 @@ namespace SkinChangerRestyle.MVVM.Model
             {
                 _serverName = value;
                 OnPropertyChanged();
-                OnPropertyChanged(nameof(ServerName));
             }
         }
 
@@ -61,7 +59,10 @@ namespace SkinChangerRestyle.MVVM.Model
 
         public async void ActualizeRemoteStats()
         {
-            RemoteStats = await PingHelper.Instance.PingHostAsync(RemoteStats.IP);
+            if (RemoteStats != null)
+                RemoteStats = await PingHelper.Instance.PingHostAsync(RemoteStats.IP);
+            else
+                RemoteStats = await PingHelper.Instance.PingHostAsync(SpecsServerRemote);
             NotifyStatisticsChanged();
         }
         

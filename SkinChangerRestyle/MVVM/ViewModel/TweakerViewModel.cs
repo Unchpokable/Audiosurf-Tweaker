@@ -1,7 +1,6 @@
 ﻿using SkinChangerRestyle.Core;
 using ASCommander;
 using SkinChangerRestyle.MVVM.Model;
-using ChangerAPI.Utilities;
 using System;
 using System.Collections.Generic;
 
@@ -146,10 +145,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
         }
 
-        public string ConsoleContent
-        {
-            get => _console.ToString();
-        }
+        public string ConsoleContent => _console.ToString();
 
         public RelayCommand EnableTweak { get; private set; }
         public RelayCommand DisableTweak { get; private set; }

@@ -135,14 +135,17 @@ namespace SkinChangerRestyle.Core.Extensions
         {
             try
             {
-                System.Diagnostics.Process.Start(new ProcessStartInfo
+                Process.Start(new ProcessStartInfo
                 {
                     FileName = "cmd.exe",
                     Arguments = $"/c {command}",
                     WindowStyle = ProcessWindowStyle.Hidden,
                 });
-            } 
-            catch { }
+            }
+            catch
+            {
+                // ignored
+            }
         }
 
         public static void ShowUWPNotification(string caption, string message)

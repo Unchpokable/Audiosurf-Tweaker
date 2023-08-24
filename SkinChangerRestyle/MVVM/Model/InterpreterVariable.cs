@@ -27,7 +27,7 @@ namespace SkinChangerRestyle.MVVM.Model
                 if (!_definedNameEditable)
                     throw new InvalidOperationException("Resctricted operation");
                 _definedName = value;
-                OnPropertyChanged(nameof(Name));
+                OnPropertyChanged();
             }
         }
 
@@ -40,7 +40,7 @@ namespace SkinChangerRestyle.MVVM.Model
                         throw new InvalidOperationException("Resctricted Operation"); 
 
                 _nameValue = value;
-                OnPropertyChanged(nameof(Value));
+                OnPropertyChanged();
             }
         }
 
@@ -50,7 +50,7 @@ namespace SkinChangerRestyle.MVVM.Model
             set
             {
                 _definedNameEditable = value;
-                OnPropertyChanged(nameof(NameEditable));
+                OnPropertyChanged();
             }
         }
 
@@ -71,7 +71,7 @@ namespace SkinChangerRestyle.MVVM.Model
             set
             {
                 _nameValueEditable = value;
-                OnPropertyChanged(nameof(ValueEditable));
+                OnPropertyChanged();
             }
         }
 

@@ -1,6 +1,5 @@
 ﻿using SkinChangerRestyle.Core.NetworkTools.Exceptions;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net.NetworkInformation;
 using System.Net;
@@ -40,16 +39,20 @@ namespace SkinChangerRestyle.Core.NetworkTools
                 var data = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"; // 32 bytes of scrap data
                 var buffer = Encoding.ASCII.GetBytes(data);
                 var pingSender = new Ping();
-                var opt = new PingOptions();
-                opt.DontFragment = true;
+                var opt = new PingOptions
+                {
+                    DontFragment = true
+                };
                 var reply = pingSender.Send(address, _defaultTimeout, buffer, opt);
                 if (reply == null)
                     throw new Exception("Unknown exception: Ping returned null reply");
 
                 if (reply.Status == IPStatus.Success)
                 {
-                    var pingStat = new RemoteServerPingStats();
-                    pingStat.IsAvailable = true;
+                    var pingStat = new RemoteServerPingStats
+                    {
+                        IsAvailable = true
+                    };
                     try
                     {
                         pingStat.Domain = Dns.GetHostEntry(address).HostName;

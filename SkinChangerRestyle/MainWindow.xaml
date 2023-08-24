@@ -119,7 +119,7 @@
                                       HorizontalContentAlignment="Left"
                                       VerticalContentAlignment="Top"
                                       VerticalScrollBarVisibility="Auto"
-                                      CanContentScroll="{Binding CurrentView.ScrollAllowed}">
+                                      CanContentScroll="{Binding CurrentViewScrollAllowed}">
 
                         </ScrollViewer>
                     </Border>

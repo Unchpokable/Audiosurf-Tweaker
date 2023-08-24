@@ -14,7 +14,6 @@ using System.Windows.Forms;
 using System.Reflection;
 using ASCommander;
 using System.Drawing;
-using Microsoft.Toolkit.Uwp.Notifications;
 using System.Collections.Generic;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
@@ -79,7 +78,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         public string ChangerStatus
         {
-            get { return _changerStatus; }
+            get => _changerStatus;
             set { _changerStatus = value; OnPropertyChanged(); }
         }
 
@@ -408,7 +407,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             if (!File.Exists(_selectedItem.PathToOrigin))
             {
                 MessageBox.Show("A Cache read-write error occured. Skins will be reloaded", "Cache corruption warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                await Task.Run(() => LoadSkinsFull());
+                await Task.Run(LoadSkinsFull);
                 return;
             }
 
@@ -503,11 +502,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     return;
                 }
 
-                MainWindow.WindowDispatcher.Invoke(new Action(() =>
+                MainWindow.WindowDispatcher.Invoke(() =>
                 {
                     var card = new SkinCard(cachedSkin, this);
                     Skins.Add(card);
-                }));
+                });
                 CurrentLoadStep++;
             }
             LoadingProgressbarVisible = System.Windows.Visibility.Hidden;
@@ -517,7 +516,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         private void LoadSkinsFull()
         {
-            MainWindow.WindowDispatcher.Invoke(new Action(() => Skins.Clear()));
+            MainWindow.WindowDispatcher.Invoke(() => Skins.Clear());
             var files = Directory.EnumerateFiles(@"Skins").ToList();
             if (Directory.Exists(SettingsProvider.SkinsFolderPath))
                 files.AddRange(Directory.EnumerateFiles(SettingsProvider.SkinsFolderPath));
@@ -531,12 +530,12 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 var skin = SkinPackager.Decompile(file);
                 if (skin == null) continue;
                 cache.Data.Add(new LoadedSkinData(skin, file));
-                MainWindow.WindowDispatcher.Invoke(new Action(() =>
+                MainWindow.WindowDispatcher.Invoke(() =>
                 {
                     var card = new SkinCard(skin, file, this);
                     Skins.Add(card);
                     skin.Dispose();
-                }));
+                });
                 CurrentLoadStep++;
             }
 
@@ -636,7 +635,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
                 if (skin != null)
                 {
-                    InstallSkin(skin.PathToOrigin, SettingsProvider.GameTexturesPath, true, false, true, true);
+                    InstallSkin(skin.PathToOrigin, SettingsProvider.GameTexturesPath, true, false, true);
                     _lastOverlayInstallCall = DateTime.Now;
                 }
             }
@@ -648,7 +647,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             if (content.Contains("songcomplete") || content.Contains("oncharacterscreen"))
             {
-                AudiosurfHandle.Instance.Command($"tw-update-ovl-info "); // sets overlay info to NULL
+                AudiosurfHandle.Instance.Command("tw-update-ovl-info "); // sets overlay info to NULL
             }
         }
     }

@@ -85,6 +85,7 @@ int win32_excs::ExcFilter(unsigned int code, struct _EXCEPTION_POINTERS* ep)
     {
         return EXCEPTION_EXECUTE_HANDLER;
     }
+    return 0;
 }
 
 HRESULT __stdcall DetourAttachHook(PPVOID ppPointer, PVOID pDetour)
@@ -187,11 +188,12 @@ inline void DrawMenu(LPDIRECT3DDEVICE9 pDevice)
 
     if (ImGui::CollapsingHeader("Skin Changer"))
     {
-        ImGui::Text("Aviable Tweaker' texture packages:\n");
+        ImGui::Text("Available Tweaker texture packages:\n");
         ImGui::Spacing();
 
         std::vector<const char*> localSkinList{};
 
+        localSkinList.reserve(ActualSkinsList.size());
         for (auto& item : ActualSkinsList)
         {
             localSkinList.push_back(item.c_str());
@@ -201,7 +203,7 @@ inline void DrawMenu(LPDIRECT3DDEVICE9 pDevice)
 
         if (ImGui::Button("Install Now"))
         {
-            if (ActualSkinsList.size() == 0)
+            if (ActualSkinsList.empty())
             {
                 return;
             }
@@ -217,7 +219,7 @@ inline void DrawMenu(LPDIRECT3DDEVICE9 pDevice)
     {
         if (GameHandle == nullptr || !IsWindow(GameHandle))
         {
-            ImGui::Text("Game handle is invalid. Tweaks unavialbe");
+            ImGui::Text("Game handle is invalid. Tweaks unavailable");
         }
 
         else

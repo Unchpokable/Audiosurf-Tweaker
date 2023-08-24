@@ -1,14 +1,13 @@
-﻿using System;
-using System.Configuration;
-using Microsoft.Win32;
-using System.IO;
-using Settings = SkinChangerRestyle.Core.SettingsProvider;
-using System.Linq;
-using Gameloop.Vdf;
-using System.Collections.Generic;
+﻿using Gameloop.Vdf;
 using Gameloop.Vdf.JsonConverter;
-using Windows.Foundation.Collections;
+using Microsoft.Win32;
 using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.IO;
+using System.Linq;
+using Settings = SkinChangerRestyle.Core.SettingsProvider;
 
 namespace SkinChangerRestyle.Core
 {
@@ -83,7 +82,6 @@ namespace SkinChangerRestyle.Core
             catch (Exception e)
             {
                 InitializationFaultCallback?.Invoke(e);
-                return;
             }
         }
 
@@ -115,7 +113,6 @@ namespace SkinChangerRestyle.Core
             catch (Exception e)
             {
                 InitializationFaultCallback?.Invoke(e);
-                return;
             }
         }
 

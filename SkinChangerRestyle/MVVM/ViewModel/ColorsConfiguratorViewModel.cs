@@ -5,7 +5,6 @@ using System.Windows.Media;
 using System.Linq;
 using System.Windows;
 using System.IO;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using System;
 using SkinChangerRestyle.Core.Extensions;
@@ -131,9 +130,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 }
             }
             set 
-            { 
-                _selectedColor = value;
-
+            {
                 switch (CurrentlyEditedColor)
                 {
                     case ASColors.Purple:
@@ -203,7 +200,6 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
         }
 
-        private Color _selectedColor;
         private string _paletteName;
         private ObservableCollection<ColorPalette> _palettes;
         private ColorPalette _selectedPalette;
@@ -264,7 +260,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 if (MessageBox.Show("Audiosurf Tweaker detected running game instance. Color settings can't be overwrited while game is running. Shutdown game to rewrite settings? This action will start your game back when operation complete", "Game is running", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
-                    Core.Extensions.Extensions.Cmd($"taskkill /f /pid {gamePid[0].Id}");
+                    Extensions.Cmd($"taskkill /f /pid {gamePid[0].Id}");
                     isGameKilled = true;
                     await WaitForGameStopWorking("QuestViewer");
                 }
@@ -274,7 +270,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 }
             }
 
-            var pathToIni = Directory.GetParent(SettingsProvider.GameTexturesPath).FullName + "\\options.ini";
+            var pathToIni = Directory.GetParent(SettingsProvider.GameTexturesPath)?.FullName + "\\options.ini";
             var ini = new AudiosurfConfigurationPresenter();
 
             try
@@ -292,7 +288,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 await Task.Run(() => 
                 {
-                    Core.Extensions.Extensions.Cmd($"cd /d \"{Directory.GetParent(SettingsProvider.GameTexturesPath).Parent.FullName}\" && timeout /t 1 && Audiosurf.exe");
+                    Extensions.Cmd($"cd /d \"{Directory.GetParent(SettingsProvider.GameTexturesPath)?.Parent?.FullName}\" && timeout /t 1 && Audiosurf.exe");
                 });
             }
 
@@ -301,7 +297,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         private void ExportGamePalette(object obj)
         {
-            var pathToIni = Directory.GetParent(SettingsProvider.GameTexturesPath).FullName + "\\options.ini";
+            var pathToIni = Directory.GetParent(SettingsProvider.GameTexturesPath)?.FullName + "\\options.ini";
             var ini = new AudiosurfConfigurationPresenter();
             try
             {
