@@ -34,7 +34,7 @@ namespace ASCommander
         public bool Handle(string wName)
         {
             var tempHwnd = WinAPI.FindWindow(null, wName);
-            if (tempHwnd == null)
+            if (tempHwnd == IntPtr.Zero)
             {
                 isValid = false;
                 return false;
