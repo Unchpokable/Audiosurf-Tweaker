@@ -10,11 +10,11 @@ namespace ChangerAPI.Utilities
     [Serializable]
     public class ImageGroup : IDisposable
     {
-        private bool disposedValue;
-
         public string Name { get; set; }
         public IList<NamedBitmap> Group { get; private set; }
 
+        private bool _disposedValue;
+        
         public ImageGroup()
         {
             Name = "default";
@@ -41,20 +41,24 @@ namespace ChangerAPI.Utilities
         public void AddImage(NamedBitmap image)
         {
             if (image == null)
-                throw new NullReferenceException($"Can't add null to image group. {image}: Object reference not set to an instance of an object");
-            for (int i = 0; i < 0; i++)
-                if (Group[i].Name == image.Name)
+                throw new NullReferenceException($"Can't add null to image group");
+
+            for (int i = 0; i < Group.Count; i++)
+            {
+                if (string.Equals(Group[i].Name, image.Name, StringComparison.OrdinalIgnoreCase))
                 {
                     Group[i] = image;
                     return;
                 }
+            }
+
             Group.Add(image);
         }
 
         public void AddImage(NamedBitmap[] images)
         {
             if (images == null)
-                throw new NullReferenceException($"Can't add null to image group. {images}: Object reference not set to an instance of an object");
+                throw new NullReferenceException($"Can't add null to image group.");
             foreach (var image in images)
                 AddImage(image);
         }
@@ -105,14 +109,14 @@ namespace ChangerAPI.Utilities
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!_disposedValue)
             {
                 if (disposing)
                 {
                     Group.ForEach(x => x.Dispose());
                 }
                 Group = null;
-                disposedValue = true;
+                _disposedValue = true;
             }
         }
 

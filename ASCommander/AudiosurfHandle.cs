@@ -16,7 +16,6 @@ namespace ASCommander
         {
             _wndProcMessageService = new WndProcMessageService();
             _currentState = ASHandleState.NotConnected;
-            StateChanged?.Invoke(this, EventArgs.Empty);
             _wndProcMessageService.MessageRecieved += OnMessageRecieved;
 
             _timer = new Timer
@@ -68,13 +67,14 @@ namespace ASCommander
         private Timer _timer;
         private Queue<string> _queuedCommands;
         private WndProcMessageService _wndProcMessageService;
-        private object _lockObject = new object();
         private bool _autoHandling;
         private ASHandleState _currentState;
         private static AudiosurfHandle _instance;
         private DateTime _lastConnectionRequestSended;
         private double _connectionTimeout = 30f;
 
+        private readonly object _lockObject = new object();
+        
         public static AudiosurfHandle Instance
         {
             get
@@ -101,13 +101,6 @@ namespace ASCommander
                 return true;
             }
             catch { return false; }
-        }
-
-        public async void PauseAutoHandling(int secTimeout)
-        {
-            _timer.Stop();
-            await Task.Delay(secTimeout * 1000);
-            _timer.Start();
         }
 
         public void StopAutoHandling()
