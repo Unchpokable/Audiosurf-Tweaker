@@ -28,17 +28,10 @@ namespace SkinChangerRestyle.Core.Extensions
             {
                 return Imaging.CreateBitmapSourceFromHBitmap(handle, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
             }
-            finally { DeleteObject(handle); }
-        }
-
-        public static ImageSource ImageSourceFromUri(string uri)
-        {
-            var bmp = new BitmapImage();
-            bmp.BeginInit();
-            bmp.UriSource = new Uri(uri);
-            bmp.CacheOption = BitmapCacheOption.OnLoad;
-            bmp.EndInit();
-            return bmp;
+            finally 
+            { 
+                DeleteObject(handle);
+            }
         }
 
         public static ImageSource ToImageSource(this Bitmap bitmapSource)
@@ -48,7 +41,8 @@ namespace SkinChangerRestyle.Core.Extensions
 
         public static Bitmap Rescale(this Bitmap source, int newX, int newY)
         {
-            return new Bitmap(source, newX, newY);
+            var newBmp = new Bitmap(source, newX, newY);
+            return newBmp;
         }
 
         public static Bitmap Rescale(this Bitmap source, float scaleX, float scaleY)
@@ -78,6 +72,50 @@ namespace SkinChangerRestyle.Core.Extensions
             return origin.Count == compareWith.Count && compareWith.All(hashset.Contains);
         }
 
+        public static Dictionary<TKey,TValue> MergedWith<TKey, TValue>(this Dictionary<TKey, TValue> origin, params KeyValuePair<TKey, TValue>[] extend)
+        {
+            if (extend == null)
+                return origin;
+
+            return origin.MergedWith(extend.ToDictionary(x => x.Key, x => x.Value));
+        }
+
+        public static Dictionary<TKey, TValue> MergedWith<TKey, TValue>(this Dictionary<TKey, TValue> origin, Dictionary<TKey, TValue> extend)
+        {
+            if (extend == null)
+                return origin;
+
+            foreach (var pair in extend)
+            {
+                if (!origin.Contains(pair))
+                    origin.Add(pair.Key, pair.Value);
+            }
+
+            return origin;
+        }
+
+        public static bool SameWith<TItem>(this TItem item, params TItem[] matches)
+            where TItem : IComparable<TItem>, IComparable
+        {
+            return matches.Any(match => match.Equals(item));
+        }
+
+        public static System.Windows.Media.Color ToMediaColor(this System.Drawing.Color color)
+        {
+            return new System.Windows.Media.Color() { R = color.R, G = color.G, B = color.B, A = color.A };
+        }
+
+        public static System.Drawing.Color ToNegative(this System.Drawing.Color color)
+        {
+            return System.Drawing.Color.FromArgb(color.A, 255 - color.R, 255 - color.G, 255 - color.B);
+        } 
+        
+        public static System.Windows.Media.Color ToNegative(this System.Windows.Media.Color color)
+        {
+            return System.Windows.Media.Color.FromArgb(color.A, (byte)(255 - color.R), (byte)(255 - color.G), (byte)(255 - color.B));
+        }
+
+        #region not extensions
         public static async void DisposeAndClear(params IDisposable[] disposable)
         {
             foreach (var d in disposable)
@@ -97,21 +135,23 @@ namespace SkinChangerRestyle.Core.Extensions
         {
             try
             {
-                System.Diagnostics.Process.Start(new ProcessStartInfo
+                Process.Start(new ProcessStartInfo
                 {
                     FileName = "cmd.exe",
                     Arguments = $"/c {command}",
                     WindowStyle = ProcessWindowStyle.Hidden,
                 });
-            } 
-            catch { }
+            }
+            catch
+            {
+                // ignored
+            }
         }
 
         public static void ShowUWPNotification(string caption, string message)
         {
             var toast = new ToastContentBuilder()
-                .AddText(caption)
-                .AddHeader("0", "Tweaker notification", new ToastArguments())
+                .AddHeader("0", caption, new ToastArguments())
                 .SetToastDuration(ToastDuration.Short)
                 .AddText(message);
 
@@ -119,5 +159,6 @@ namespace SkinChangerRestyle.Core.Extensions
                 toast.AddAudio(new ToastAudio() { Silent = true });
             toast.Show();
         }
+        #endregion
     }
 }

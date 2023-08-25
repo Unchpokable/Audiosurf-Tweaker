@@ -14,7 +14,7 @@ using System.Windows.Forms;
 using System.Reflection;
 using ASCommander;
 using System.Drawing;
-using Microsoft.Toolkit.Uwp.Notifications;
+using System.Collections.Generic;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -78,7 +78,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         public string ChangerStatus
         {
-            get { return _changerStatus; }
+            get => _changerStatus;
             set { _changerStatus = value; OnPropertyChanged(); }
         }
 
@@ -115,8 +115,6 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 OnPropertyChanged(); 
             }
         }
-
-
         
         public bool ReloadButtonUnlocked
         {
@@ -218,12 +216,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 if (SettingsProvider.UseFastPreview)
                     return SelectedItem.Screenshots;
 
-                Extensions.DisposeAndClear();
-                using (var skin = SkinPackager.Decompile(SelectedItem.PathToOrigin))
-                {
-                    return new ObservableCollection<InteractableScreenshot>(
-                        skin.Previews.Group.Select(screenshot => new InteractableScreenshot(((Bitmap)screenshot).Rescale(860, 440).ToImageSource())));
-                }
+                return new ObservableCollection<InteractableScreenshot>(GetSkinScreenshots(SelectedItem.PathToOrigin).Select(screenshot => new InteractableScreenshot(screenshot.ToImageSource())));
             }
         }
 
@@ -301,8 +294,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             if (SettingsProvider.HotReload)
                 AudiosurfHandle.Instance.Command("ascommand reloadtextures");
 
-            if (SettingsProvider.IsUWPNotificationsAllowed)
-                Extensions.ShowUWPNotification("Operation completed", $"Skin \"{skinName}\" sucessfully installed. Enjoy! ^_^");
+            ApplicationNotificationManager.Manager.ShowSuccess("Done!", $"Skin \"{skinName}\" successfully installed. Enjoy! ^_^");
 
             ChangerStatus = "Ready";
         }
@@ -415,7 +407,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             if (!File.Exists(_selectedItem.PathToOrigin))
             {
                 MessageBox.Show("A Cache read-write error occured. Skins will be reloaded", "Cache corruption warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                await Task.Run(() => LoadSkinsFull());
+                await Task.Run(LoadSkinsFull);
                 return;
             }
 
@@ -510,11 +502,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     return;
                 }
 
-                MainWindow.WindowDispatcher.Invoke(new Action(() =>
+                MainWindow.WindowDispatcher.Invoke(() =>
                 {
                     var card = new SkinCard(cachedSkin, this);
                     Skins.Add(card);
-                }));
+                });
                 CurrentLoadStep++;
             }
             LoadingProgressbarVisible = System.Windows.Visibility.Hidden;
@@ -524,7 +516,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         private void LoadSkinsFull()
         {
-            MainWindow.WindowDispatcher.Invoke(new Action(() => Skins.Clear()));
+            MainWindow.WindowDispatcher.Invoke(() => Skins.Clear());
             var files = Directory.EnumerateFiles(@"Skins").ToList();
             if (Directory.Exists(SettingsProvider.SkinsFolderPath))
                 files.AddRange(Directory.EnumerateFiles(SettingsProvider.SkinsFolderPath));
@@ -538,12 +530,12 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 var skin = SkinPackager.Decompile(file);
                 if (skin == null) continue;
                 cache.Data.Add(new LoadedSkinData(skin, file));
-                MainWindow.WindowDispatcher.Invoke(new Action(() =>
+                MainWindow.WindowDispatcher.Invoke(() =>
                 {
                     var card = new SkinCard(skin, file, this);
                     Skins.Add(card);
                     skin.Dispose();
-                }));
+                });
                 CurrentLoadStep++;
             }
 
@@ -602,10 +594,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             _overlayHelper.OverlayInjected += OnOverlayInjected;
             _overlayHelper.InjectOverlayPlugin();
         }
+
         private void OnOverlayInjected(object sender, EventArgs e)
         {
             UpdateOverlaySkinsList();
-            AudiosurfHandle.Instance.Command($"tw-update-ovl-info Audiosurf Tweaker Overlay v0.1\n Currently Installed skin: {CurrentInstalledSkin}");
+            AudiosurfHandle.Instance.Command($"tw-update-ovl-info Currently Installed skin: {CurrentInstalledSkin}");
             AudiosurfHandle.Instance.MessageResieved += OnMessageRecieved;
             _overlayHelper.OverlayInjected -= OnOverlayInjected;
         }
@@ -614,7 +607,20 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         {
             var skinsList = string.Join("; ", Skins.Select(skin => skin.Name));
 
-            AudiosurfHandle.Instance.Command($"tw-update-skin-list {skinsList}"); // Overlay should handle this message cause it works underneath Audiosurf main window and listen its WindowProcedure calls
+            AudiosurfHandle.Instance.Command($"tw-update-skin-list {skinsList}");
+        }
+
+        private List<Bitmap> GetSkinScreenshots(string pathToSkin)
+        {
+            return Task.Run(() =>
+            {
+                using (var skin = SkinPackager.Decompile(pathToSkin))
+                {
+                    return
+                        skin.Previews.Group.Select(screenshot => ((Bitmap)screenshot).Rescale(860, 440))
+                                           .ToList();
+                }
+            }).Result;
         }
 
         private void OnMessageRecieved(object sender, string content)
@@ -629,19 +635,19 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
                 if (skin != null)
                 {
-                    InstallSkin(skin.PathToOrigin, SettingsProvider.GameTexturesPath, true, false, true, true);
+                    InstallSkin(skin.PathToOrigin, SettingsProvider.GameTexturesPath, true, false, true);
                     _lastOverlayInstallCall = DateTime.Now;
                 }
             }
 
             if (content.Contains("nowplayingsongtitle"))
             {
-                AudiosurfHandle.Instance.Command($"tw-update-ovl-info Audiosurf Tweaker Overlay v0.1\n Skin: {CurrentInstalledSkin}");
+                AudiosurfHandle.Instance.Command($"tw-update-ovl-info Skin: {CurrentInstalledSkin}");
             }
 
             if (content.Contains("songcomplete") || content.Contains("oncharacterscreen"))
             {
-                AudiosurfHandle.Instance.Command($"tw-update-ovl-info "); // sets overlay info to NULL
+                AudiosurfHandle.Instance.Command("tw-update-ovl-info "); // sets overlay info to NULL
             }
         }
     }

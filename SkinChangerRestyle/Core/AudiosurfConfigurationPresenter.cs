@@ -4,20 +4,13 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Media;
 
 namespace SkinChangerRestyle.Core
 {
     internal class AudiosurfConfigurationPresenter
     {
-        public AudiosurfConfigurationPresenter()
-        {
-            _configurations = new Dictionary<string, float>();
-        }
-
-        private Dictionary<string, float> _configurations;
+        private Dictionary<string, float> _configurations = new Dictionary<string, float>();
         private NumberFormatInfo _floatFormatInfo = new NumberFormatInfo() { NumberDecimalSeparator = "." };
         private string _file;
 
@@ -137,13 +130,14 @@ namespace SkinChangerRestyle.Core
 
         public ColorPalette ExportPalette()
         {
-            var palette = new ColorPalette();
-
-            palette.Purple = GetColor(ASColors.Purple);
-            palette.Blue = GetColor(ASColors.Blue);
-            palette.Green = GetColor(ASColors.Green);
-            palette.Yellow = GetColor(ASColors.Yellow);
-            palette.Red = GetColor(ASColors.Red);
+            var palette = new ColorPalette
+            {
+                Purple = GetColor(ASColors.Purple),
+                Blue = GetColor(ASColors.Blue),
+                Green = GetColor(ASColors.Green),
+                Yellow = GetColor(ASColors.Yellow),
+                Red = GetColor(ASColors.Red)
+            };
 
             return palette;
         }

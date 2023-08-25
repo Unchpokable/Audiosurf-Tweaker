@@ -1,12 +1,11 @@
-﻿namespace SkinChangerRestyle
+﻿using SkinChangerRestyle.Core;
+using System.Diagnostics;
+using System.Windows;
+using System.Windows.Input;
+using System.Windows.Threading;
+
+namespace SkinChangerRestyle
 {
-    using System.Windows;
-    using System.Windows.Input;
-    using System.Diagnostics;
-    using SkinChangerRestyle.Core;
-    using System;
-    using System.Windows.Threading;
-    using System.Runtime.ExceptionServices;
 
     /// <summary>
     /// Логика взаимодействия для MainWindow.xaml
@@ -41,14 +40,7 @@
 
         private void MaximizeButton_Click(object sender, RoutedEventArgs e)
         {
-            if (Application.Current.MainWindow.WindowState == WindowState.Normal)
-            {
-                Application.Current.MainWindow.WindowState = WindowState.Maximized;
-            }
-            else
-            {
-                Application.Current.MainWindow.WindowState = WindowState.Normal;
-            }
+            Application.Current.MainWindow.WindowState = Application.Current.MainWindow.WindowState == WindowState.Normal ? WindowState.Maximized : WindowState.Normal;
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)

@@ -1,9 +1,13 @@
-﻿using System;
-using System.Configuration;
+﻿using Gameloop.Vdf;
+using Gameloop.Vdf.JsonConverter;
 using Microsoft.Win32;
+using Newtonsoft.Json;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
 using System.IO;
-using Settings = SkinChangerRestyle.Core.SettingsProvider;
 using System.Linq;
+using Settings = SkinChangerRestyle.Core.SettingsProvider;
 
 namespace SkinChangerRestyle.Core
 {
@@ -25,15 +29,14 @@ namespace SkinChangerRestyle.Core
                     InitializationFaultCallback?.Invoke(new Exception("Null configuration section"));
                     return;
                 }
-                var SurfRegistryPath = @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Steam App 12900";
-
+                
                 if (!bool.Parse(cfg.AppSettings.Settings["FirstRun"].Value))
                     return;
 
                 cfg.AppSettings.Settings["FirstRun"].Value = bool.FalseString;
                 cfg.Save();
 
-                var gameInstallPath = Registry.GetValue(SurfRegistryPath, "InstallLocation", null)?.ToString();
+                var gameInstallPath = GetAudiosurfBaseDirectory();
                 var texturesPath = $@"{gameInstallPath}\engine\textures";
 
                 if (string.IsNullOrEmpty(gameInstallPath)
@@ -74,11 +77,11 @@ namespace SkinChangerRestyle.Core
                 Settings.InfopanelFontSize = System.Configuration.ConfigurationManager.AppSettings.Get("InfopanelFontSize");
                 Settings.InfopanelXOffset = System.Configuration.ConfigurationManager.AppSettings.Get("InfopanelXOffset");
                 Settings.InfopanelYOffset = System.Configuration.ConfigurationManager.AppSettings.Get("InfopanelYOffset");
+                Settings.InstalledServerPackageName = System.Configuration.ConfigurationManager.AppSettings.Get("InstalledServerPackageName");
             }
             catch (Exception e)
             {
                 InitializationFaultCallback?.Invoke(e);
-                return;
             }
         }
 
@@ -104,12 +107,12 @@ namespace SkinChangerRestyle.Core
                 cfg.AppSettings.Settings["InfopanelFontSize"].Value = Settings.InfopanelFontSize;
                 cfg.AppSettings.Settings["InfopanelXOffset"].Value = Settings.InfopanelXOffset;
                 cfg.AppSettings.Settings["InfopanelYOffset"].Value = Settings.InfopanelYOffset;
+                cfg.AppSettings.Settings["InstalledServerPackageName"].Value = Settings.InstalledServerPackageName;
                 cfg.Save();
             }
             catch (Exception e)
             {
                 InitializationFaultCallback?.Invoke(e);
-                return;
             }
         }
 
@@ -131,6 +134,68 @@ namespace SkinChangerRestyle.Core
             {
                 return false;
             }
+        }
+
+        private static string GetSteamInstallPath()
+        {
+            using (var steamKey = Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam"))
+            {
+                if (steamKey != null)
+                {
+                    return steamKey.GetValue("SteamPath") as string;
+                }
+            }
+
+            return null;
+        }
+
+        private static string GetAudiosurfBaseDirectory()
+        {
+            var steamPath = GetSteamInstallPath().Replace("/", "\\");
+            if (steamPath == null)
+            {
+                return null;
+            }
+
+            var libfolders = Path.Combine(steamPath, "steamapps", "libraryfolders.vdf");
+
+            if (!File.Exists(libfolders))
+            {
+                var steamapps = Path.Combine(steamPath, "steamapps\\common");
+
+                foreach (var directory in Directory.EnumerateDirectories(steamapps))
+                {
+                    if (directory.EndsWith("Audiosurf"))
+                        return directory;
+                }
+                return null;
+            }
+            else 
+                return Path.Combine(GetAudiosurfBaseDirectoryFromVDF(libfolders), "steamapps\\common\\Audiosurf");
+        }
+
+        private static string GetAudiosurfBaseDirectoryFromVDF(string libfordersFilePath)
+        {
+            var vdf = VdfConvert.Deserialize(File.ReadAllText(libfordersFilePath));
+            var json = JsonConvert.DeserializeObject<Dictionary<string, LibraryFoldersRecord>>(vdf.ToJson().Value.ToString());
+            foreach (var folder in json.Keys)
+            {
+                if (json[folder].Apps.ContainsKey("12900"))
+                    return json[folder].Path;
+            }
+
+            return null;
+        }
+
+        private class LibraryFoldersRecord
+        {
+            public string Path { get; set; }
+            public string Label { get; set; }
+            public string ContentId { get; set; }
+            public string TotalSize { get; set; }
+            public string UpdateCleanBytesTally { get; set; }
+            public string TimeLastUpdateCorruption { get; set; }
+            public Dictionary<string, string> Apps { get; set; }
         }
     }
 }

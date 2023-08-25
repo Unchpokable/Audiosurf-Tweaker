@@ -5,11 +5,9 @@ using System.Windows.Media;
 using System.Linq;
 using System.Windows;
 using System.IO;
-using IniParser;
-using IniParser.Model;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using System;
+using SkinChangerRestyle.Core.Extensions;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -47,6 +45,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             ExportCurrentGameColorPalette = new RelayCommand(ExportGamePalette);
             ExportPalette = new RelayCommand(ExportPaletteInternal);
             ImportPalette = new RelayCommand(ImportPaletteInternal);
+            MakeNegative = new RelayCommand(ConvertCurrentPaletteToNegative);
         }
 
         public static ColorsConfiguratorViewModel Instance
@@ -70,13 +69,19 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         public RelayCommand ApplyChanges { get; set; }
         public RelayCommand SaveAsNew { get; set; }
 
+        public RelayCommand MakeNegative { get; set; }
+
         public ColorPalette EditedPalette
         {
             get => _originPalette;
             set
             {
                 _originPalette = value;
-                SelectedPalette = new ColorPalette(value);
+                if (value == null)
+                    SelectedPalette = value;
+                else 
+                    SelectedPalette = new ColorPalette(value);
+
                 OnPropertyChanged();
             }
         }
@@ -125,9 +130,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 }
             }
             set 
-            { 
-                _selectedColor = value;
-
+            {
                 switch (CurrentlyEditedColor)
                 {
                     case ASColors.Purple:
@@ -197,7 +200,6 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
         }
 
-        private Color _selectedColor;
         private string _paletteName;
         private ObservableCollection<ColorPalette> _palettes;
         private ColorPalette _selectedPalette;
@@ -258,13 +260,17 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 if (MessageBox.Show("Audiosurf Tweaker detected running game instance. Color settings can't be overwrited while game is running. Shutdown game to rewrite settings? This action will start your game back when operation complete", "Game is running", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
                 {
-                    Core.Extensions.Extensions.Cmd($"taskkill /f /im \"{gamePid[0].ProcessName}.exe\"");
+                    Extensions.Cmd($"taskkill /f /pid {gamePid[0].Id}");
                     isGameKilled = true;
                     await WaitForGameStopWorking("QuestViewer");
                 }
+                else
+                {
+                    return;
+                }
             }
 
-            var pathToIni = Directory.GetParent(SettingsProvider.GameTexturesPath).FullName + "\\options.ini";
+            var pathToIni = Directory.GetParent(SettingsProvider.GameTexturesPath)?.FullName + "\\options.ini";
             var ini = new AudiosurfConfigurationPresenter();
 
             try
@@ -282,7 +288,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 await Task.Run(() => 
                 {
-                    Core.Extensions.Extensions.Cmd($"cd /d \"{Directory.GetParent(SettingsProvider.GameTexturesPath).Parent.FullName}\" && timeout /t 1 && Audiosurf.exe");
+                    Extensions.Cmd($"cd /d \"{Directory.GetParent(SettingsProvider.GameTexturesPath)?.Parent?.FullName}\" && timeout /t 1 && Audiosurf.exe");
                 });
             }
 
@@ -291,7 +297,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         private void ExportGamePalette(object obj)
         {
-            var pathToIni = Directory.GetParent(SettingsProvider.GameTexturesPath).FullName + "\\options.ini";
+            var pathToIni = Directory.GetParent(SettingsProvider.GameTexturesPath)?.FullName + "\\options.ini";
             var ini = new AudiosurfConfigurationPresenter();
             try
             {
@@ -353,6 +359,21 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     MessageBox.Show("Operation complete!", "Done", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
+        }
+
+        private void ConvertCurrentPaletteToNegative(object o)
+        {
+            _selectedPalette.Blue = _selectedPalette.Blue.ToNegative();
+            _selectedPalette.Purple = _selectedPalette.Purple.ToNegative();
+            _selectedPalette.Green = _selectedPalette.Green.ToNegative();
+            _selectedPalette.Yellow = _selectedPalette.Yellow.ToNegative();
+            _selectedPalette.Red = _selectedPalette.Red.ToNegative();
+
+            OnPropertyChanged(nameof(PurpleBrush));
+            OnPropertyChanged(nameof(BlueBrush));
+            OnPropertyChanged(nameof(GreenBrush));
+            OnPropertyChanged(nameof(YellowBrush));
+            OnPropertyChanged(nameof(RedBrush));
         }
     }
 }

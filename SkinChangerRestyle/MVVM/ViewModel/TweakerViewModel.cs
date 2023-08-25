@@ -1,6 +1,8 @@
 ﻿using SkinChangerRestyle.Core;
 using ASCommander;
 using SkinChangerRestyle.MVVM.Model;
+using System;
+using System.Collections.Generic;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -15,6 +17,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             SendCommand = new RelayCommand(param =>
             {
+                if (string.Equals(param.ToString(), "closeaudiosurf", StringComparison.OrdinalIgnoreCase))
+                {
+                    KillAudiosurf();
+                    return;
+                }
                 _audiosurfHandle.Command($"ascommand {param}");
             });
 
@@ -23,12 +30,20 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 _console.Flush();
                 OnPropertyChanged(nameof(ConsoleContent));
             });
+
+            _externalTweaksFields = new Dictionary<string, Reference<bool>>()
+            {
+                {"InvisibleRoad", _invisibleRoadTweakActive },
+                {"HiddenSong", _hiddenSongNameTweakActive },
+                {"SidewinderCamera", _sidewinderCameraTweakActive },
+                {"BankingCamera", _bankingCameraTweakActive }
+            };
+
+            _audiosurfHandle.MessageResieved += OnMessageRecieved;
         }
 
         ~TweakerViewModel()
         {
-            // Setters of this fields instantly sends asconfing command to game. So, program turning off must rollback all undefault game's configuration
-            // this desctuctor should be called before AudiosurfHandle destructor cause TweakerViewModel has a reference to AudiosurfHandle so this should work
             InvisibleRoadTweakActive = false;
             HiddenSongTweakActive = false;
             SidewinderCameraTweakActive = false;
@@ -53,8 +68,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             get => _invisibleRoadTweakActive; 
             set
             {
-                _invisibleRoadTweakActive = value;
+                _invisibleRoadTweakActive.Value = value;
                 _audiosurfHandle.Command($"asconfig roadvisible {(!value).ToString().ToLower()}");
+                _audiosurfHandle.Command($"tw-config tweak-active InvisibleRoad {value.ToString().ToLower()}");
                 OnPropertyChanged();
             }
         }
@@ -64,8 +80,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             get => _hiddenSongNameTweakActive; 
             set 
             { 
-                _hiddenSongNameTweakActive = value;
+                _hiddenSongNameTweakActive.Value = value;
                 _audiosurfHandle.Command($"asconfig showsongname {(!value).ToString().ToLower()}");
+                _audiosurfHandle.Command($"tw-config tweak-active HiddenSongTitle {value.ToString().ToLower()}");
                 OnPropertyChanged();
             }
         }
@@ -75,8 +92,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             get => _sidewinderCameraTweakActive;
             set
             {
-                _sidewinderCameraTweakActive = value;
+                _sidewinderCameraTweakActive.Value = value;
                 _audiosurfHandle.Command($"asconfig sidewinder {value.ToString().ToLower()}");
+                _audiosurfHandle.Command($"tw-config tweak-active SidewinderCamera {value.ToString().ToLower()}");
                 OnPropertyChanged();
             }
         }
@@ -86,8 +104,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             get => _bankingCameraTweakActive;
             set
             {
-                _bankingCameraTweakActive = value;
+                _bankingCameraTweakActive.Value = value;
                 _audiosurfHandle.Command($"asconfig usebankingcamera {value.ToString().ToLower()}");
+                _audiosurfHandle.Command($"tw-config tweak-active BankingCamera {value.ToString().ToLower()}");
                 OnPropertyChanged();
             }
         }
@@ -126,10 +145,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
         }
 
-        public string ConsoleContent
-        {
-            get => _console.ToString();
-        }
+        public string ConsoleContent => _console.ToString();
 
         public RelayCommand EnableTweak { get; private set; }
         public RelayCommand DisableTweak { get; private set; }
@@ -139,15 +155,49 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private AudiosurfHandle _audiosurfHandle;
         private bool _isAudiosurfConnected;
 
-        private bool _hiddenSongNameTweakActive;
-        private bool _invisibleRoadTweakActive;
-        private bool _sidewinderCameraTweakActive;
-        private bool _bankingCameraTweakActive;
+        private Reference<bool> _hiddenSongNameTweakActive = new Reference<bool>(false);
+        private Reference<bool> _invisibleRoadTweakActive = new Reference<bool>(false);
+        private Reference<bool> _sidewinderCameraTweakActive = new Reference<bool>(false);
+        private Reference<bool> _bankingCameraTweakActive = new Reference<bool>(false);
 
         private bool _freerideNoBlocksTweakActive;
         private bool _freerideBlocksCaterpillarsTweakActive;
         private bool _freerideAutoAdvanceDisableTweakActive;
 
         private TweakerConsole _console;
+
+        private Dictionary<string, Reference<bool>> _externalTweaksFields; //TODO: rename it
+
+        private void OnMessageRecieved(object sender, string message)
+        {
+            if (message.Contains("tw-Notify-Tweak-Changed"))
+            {
+                var propChanged = message.Substring("tw-Notify-Tweak-Changed".Length + 1).Split(' ');
+                if (propChanged.Length != 2)
+                    return;
+                var fieldName = propChanged[0];
+                var targetField = _externalTweaksFields[fieldName];
+                targetField.Value = bool.Parse(propChanged[1]);
+                OnPropertyChanged(fieldName + "TweakActive");
+            }
+        }
+
+        private void KillAudiosurf()
+        {
+            Core.Extensions.Extensions.Cmd($"taskkill /f /pid {_audiosurfHandle.GamePID}");
+        }
+
+        private class Reference<T>
+            where T : struct
+        {
+            public Reference(T value)
+            {
+                Value = value;
+            }
+
+            public T Value { get; set; }
+
+            public static implicit operator T(Reference<T> reference) => reference.Value;
+        }
     }
 }

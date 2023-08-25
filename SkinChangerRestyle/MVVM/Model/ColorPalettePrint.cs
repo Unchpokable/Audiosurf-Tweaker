@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Media;
 
 namespace SkinChangerRestyle.MVVM.Model
@@ -31,12 +27,13 @@ namespace SkinChangerRestyle.MVVM.Model
 
         public bool Equals(ColorPalettePrint other)
         {
-            return string.Equals(this.Name, other.Name)
-                && Purple == other.Purple
-                && Blue == other.Blue
-                && Green == other.Green
-                && Yellow == other.Yellow
-                && Red == other.Red;
+            return other != null
+                   && string.Equals(this.Name, other.Name)
+                   && Purple == other.Purple
+                   && Blue == other.Blue
+                   && Green == other.Green
+                   && Yellow == other.Yellow
+                   && Red == other.Red;
         }
 
         [Serializable]
@@ -55,15 +52,15 @@ namespace SkinChangerRestyle.MVVM.Model
                 ScB = origin.ScB;
             }
 
-            public byte A;
-            public byte R;
-            public byte G;
-            public byte B;
+            public byte A { get; set; }
+            public byte R { get; set; }
+            public byte G { get; set; }
+            public byte B { get; set; }
 
-            public float ScA;
-            public float ScR;
-            public float ScG;
-            public float ScB;
+            public float ScA { get; set; }
+            public float ScR { get; set; }
+            public float ScG { get; set; }
+            public float ScB { get; set; }
 
             public static bool operator==(SerializableColor left, SerializableColor right)
             {
@@ -92,6 +89,33 @@ namespace SkinChangerRestyle.MVVM.Model
             public static implicit operator Color(SerializableColor value)
             {
                 return new Color() { A = value.A, R = value.R, G = value.G, B = value.B, ScA = value.ScA, ScR = value.ScR, ScG = value.ScG, ScB = value.ScB };
+            }
+
+            public override bool Equals(object obj)
+            {
+                return obj is SerializableColor color &&
+                       A == color.A &&
+                       R == color.R &&
+                       G == color.G &&
+                       B == color.B &&
+                       ScA == color.ScA &&
+                       ScR == color.ScR &&
+                       ScG == color.ScG &&
+                       ScB == color.ScB;
+            }
+
+            public override int GetHashCode()
+            {
+                int hashCode = 737535892;
+                hashCode = hashCode * -1521134295 + A.GetHashCode();
+                hashCode = hashCode * -1521134295 + R.GetHashCode();
+                hashCode = hashCode * -1521134295 + G.GetHashCode();
+                hashCode = hashCode * -1521134295 + B.GetHashCode();
+                hashCode = hashCode * -1521134295 + ScA.GetHashCode();
+                hashCode = hashCode * -1521134295 + ScR.GetHashCode();
+                hashCode = hashCode * -1521134295 + ScG.GetHashCode();
+                hashCode = hashCode * -1521134295 + ScB.GetHashCode();
+                return hashCode;
             }
         }
     }

@@ -7,16 +7,15 @@
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
              xmlns:pixicolor="clr-namespace:ColorPicker;assembly=ColorPicker"
              mc:Ignorable="d" 
-             d:DesignHeight="1200" d:DesignWidth="800"
+             d:DesignHeight="1100" d:DesignWidth="800"
              Width="800"
-             Height="1200">
+             Height="1100">
 
     <Border Background="White"
                 ScrollViewer.CanContentScroll="True"
                 ScrollViewer.VerticalScrollBarVisibility="Visible">
         <Grid Margin="0 18 0 0">
             <Grid.RowDefinitions>
-                <RowDefinition/>
                 <RowDefinition/>
                 <RowDefinition/>
                 <RowDefinition/>
@@ -125,7 +124,7 @@
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsHotReload, Mode=TwoWay}" FontFamily="ExoSoft ☞"/>
                     <CheckBox Style="{StaticResource FlatCheckBox}" Content="Fast Preview" Margin="30 0 0 10" FontSize="16"
-                                  ToolTip="Allow Tweaker to hold downscaled screenshots in your RAM to show you a skin preview tooltip and load it' screenshots without delay"
+                                  ToolTip="Allow Tweaker to hold downscaled screenshots in your RAM to show you a skin preview tooltip and load it' screenshots without delay. Disabling this option will cause less memory use, but make SkinChanger laggy"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsFastPreview}"/>
 
@@ -153,7 +152,19 @@
                             BorderThickness="0 0 0 2"
                             Width="400"
                             HorizontalAlignment="Left">
-                    <Label Content="Textures Watcher settings" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+
+                    <StackPanel Orientation="Horizontal">
+                        <Label Content="Textures Watcher settings" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                        <Label Content="?" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FFD0D0D0"
+                               ToolTipService.ShowDuration="30000">
+                            <Label.ToolTip>
+                                Textures Watcher is a service that will track game textures folder, and notify game about any changes in there in real time.
+                                Also, Textures Watcher can store a current state of game textures folder in temporary skin file
+                                Textures Watcher works only when audiosurf is connected with Tweaker program
+                                
+                            </Label.ToolTip>
+                        </Label>
+                    </StackPanel>
                 </Border>
 
                 <StackPanel Grid.Row="1">
@@ -218,36 +229,19 @@
                             BorderThickness="0 0 0 2"
                             Width="400"
                             HorizontalAlignment="Left">
-                    <Label Content="[Experimental] Overlay settings" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                    <Label Content="UI" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
                 </Border>
 
                 <StackPanel Grid.Row="1">
-                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Enable in-game overlay" FontSize="16" Margin="30 0 0 10"
+                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="[Experimental] Enable in-game overlay" FontSize="16" Margin="30 0 0 10"
                                   ToolTip="Allow tweaker to hook audiosurf and draw overlay right inside your game"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsOverlayEnabled, Mode=TwoWay}"/>
-                </StackPanel>
-            </Grid>
-
-            <Grid Grid.Row="4">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="50"/>
-                    <RowDefinition/>
-                </Grid.RowDefinitions>
-
-                <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
-                            BorderThickness="0 0 0 2"
-                            Width="400"
-                            HorizontalAlignment="Left">
-                    <Label Content="Misc" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
-                </Border>
-
-                <StackPanel Grid.Row="1">
-                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Allow UWP Notifications" FontSize="16" Margin="30 0 0 10"
-                                  ToolTip="Allow tweaker sent a windows 10\11 notifications after successfully completed action"
+                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Use UWP Notifications" FontSize="16" Margin="30 0 0 10"
+                                  ToolTip="Allow tweaker sent a windows 10\11 notifications after successfully completed action instead of default colored popups"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsUWPNotificationsAllowed, Mode=TwoWay}"/>
-                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Silent UWP Notifications" FontSize="16" Margin="30 0 0 10"
+                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Mute UWP Notifications" FontSize="16" Margin="30 0 0 10"
                                   ToolTip="Show UWP notifications but supress system notification audio signal"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsUWPNotificationSilent, Mode=TwoWay}"

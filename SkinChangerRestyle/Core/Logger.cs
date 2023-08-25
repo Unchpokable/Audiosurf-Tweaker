@@ -13,7 +13,7 @@ namespace SkinChangerRestyle.Core
 
         public Logger()
         {
-            LogFilePath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + $@"\Audiosurf Tweaker Logs\log.txt";
+            LogFilePath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) + @"\Audiosurf Tweaker Logs\log.txt";
         }
 
         public Logger(string path)

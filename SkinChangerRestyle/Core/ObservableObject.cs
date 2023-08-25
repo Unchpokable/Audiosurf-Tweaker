@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 namespace SkinChangerRestyle.Core
 {
 
-    class ObservableObject : INotifyPropertyChanged
+    public class ObservableObject : INotifyPropertyChanged
     {
         public bool ScrollAllowed { get; set; } = false;
         

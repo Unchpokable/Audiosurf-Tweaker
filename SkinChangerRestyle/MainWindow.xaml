@@ -20,7 +20,8 @@
         <viewModel:MainViewModel/>
     </Window.DataContext>
 
-    <Border BorderBrush="#FF757575" BorderThickness="1">
+    <Border BorderBrush="#FF757575" BorderThickness="1"
+            >
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="35"/>
@@ -58,16 +59,18 @@
                         <RowDefinition Height="55"/>
                         <RowDefinition Height="55"/>
                         <RowDefinition Height="55"/>
+                        <RowDefinition Height="55"/>
                         <RowDefinition/>
                         <RowDefinition Height="100"/>
                     </Grid.RowDefinitions>
                     <Label BorderThickness="0 0 0 2" Content="Menu" FontFamily="ExoSoft-Regular ☞" FontSize="22" BorderBrush="#FFC3C3C3" RenderTransformOrigin="0.518,1.065" Foreground="#FF5D5D5D" VerticalAlignment="Top" HorizontalAlignment="Left" Width="280" Height="50" Margin="10,8,0,0" Grid.ColumnSpan="2"/>
                     <RadioButton Command="{Binding SetChangerView}" Grid.Row="1" IsChecked="True" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Skin Changer" HorizontalAlignment="Left" Margin="-2,5,0,0" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" FontFamily="ExoSoft ☞" Height="55" Width="300" Padding="0,0,0,0" Grid.ColumnSpan="2" Grid.RowSpan="2"/>
                     <RadioButton Command="{Binding SetColorsView}" Grid.Row="2" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Colors Configurator" HorizontalAlignment="Left" Margin="-2,5,0,0" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" Height="55" Width="300" FontFamily="ExoSoft ☞" Grid.ColumnSpan="2" Grid.RowSpan="2"/>
-                    <RadioButton Command ="{Binding SetCommandCenterView}" Grid.Row="3" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Command and Control" HorizontalAlignment="Left" Margin="-2,5,0,0" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" Height="55" Width="300" FontFamily="ExoSoft ☞" Grid.ColumnSpan="2" Grid.RowSpan="2"/>
-                    <RadioButton Command="{Binding SetSettingsView}" Grid.Row="4" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Settings" HorizontalAlignment="Left" Margin="-2,5,0,0" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" Height="55" Width="300" FontFamily="ExoSoft ☞" Grid.ColumnSpan="2" Grid.RowSpan="2"/>
-
-                    <Border Grid.Row="6" BorderThickness="0 2 0 0" BorderBrush="#FFC3C3C3" Margin="10,0,10,0" Grid.ColumnSpan="2">
+                    <RadioButton Command="{Binding SetServerSwapperView}" Grid.Row="3" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Server Swapper" HorizontalAlignment="Left" Margin="-2,5,0,0" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" Height="55" Width="300" FontFamily="ExoSoft ☞" Grid.ColumnSpan="2" Grid.RowSpan="2"/>
+                    <RadioButton Command ="{Binding SetCommandCenterView}" Grid.Row="4" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Command and Control" HorizontalAlignment="Left" Margin="-2,5,0,0" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" Height="55" Width="300" FontFamily="ExoSoft ☞" Grid.ColumnSpan="2" Grid.RowSpan="2"/>
+                    <RadioButton Command="{Binding SetSettingsView}" Grid.Row="5" Style="{DynamicResource SimpleLeftMenuRadioButton}" Content="Settings" HorizontalAlignment="Left" Margin="-2,5,0,0" VerticalAlignment="Top" FontSize="20" Foreground="#FFA0A0A0" Height="55" Width="300" FontFamily="ExoSoft ☞" Grid.ColumnSpan="2" Grid.RowSpan="2"/>
+                    
+                    <Border Grid.Row="7" BorderThickness="0 2 0 0" BorderBrush="#FFC3C3C3" Margin="10,0,10,0" Grid.ColumnSpan="2">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition/>
@@ -111,13 +114,15 @@
                 </Grid>
 
                 <ContentControl Grid.Column="1">
-                    <ScrollViewer Content="{Binding CurrentView}"
-                                  HorizontalContentAlignment="Left"
-                                  VerticalContentAlignment="Top"
-                                  VerticalScrollBarVisibility="Auto"
-                                  CanContentScroll="{Binding CurrentView.ScrollAllowed}">
-                        
-                    </ScrollViewer>
+                    <Border>
+                        <ScrollViewer Content="{Binding CurrentView}"
+                                      HorizontalContentAlignment="Left"
+                                      VerticalContentAlignment="Top"
+                                      VerticalScrollBarVisibility="Auto"
+                                      CanContentScroll="{Binding CurrentViewScrollAllowed}">
+
+                        </ScrollViewer>
+                    </Border>
                 </ContentControl>
             </Grid>
         </Grid>

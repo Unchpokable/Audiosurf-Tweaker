@@ -1,0 +1,103 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style x:Key="ServerItem" TargetType="ListViewItem">
+        <Style.Resources>
+            <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+        </Style.Resources>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListViewItem">
+                    <Border Width="auto" Height="40"
+                            Background="#FFEFEFEF"
+                            Margin="5 0 5 7"
+                            CornerRadius="5"
+                            x:Name="Body"
+                            >
+                        <Border.Effect>
+                            <DropShadowEffect Color="#FFE4E4E4"/>
+                        </Border.Effect>
+
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width=".4*"/>
+                                <ColumnDefinition/>
+                                <ColumnDefinition Width="30"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Grid.Column="0" Text="{Binding ServerName, Mode=OneWay}" 
+                                           Margin="10 0 0 0" 
+                                           VerticalAlignment="Center" 
+                                           HorizontalAlignment="Left"
+                                           FontFamily="ExoSoft-Regular ☞" 
+                                           FontSize="20" 
+                                           Foreground="#FF8A8A8A" 
+                                           x:Name="Title"/>
+
+                            <Grid Grid.Column="1">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                </Grid.RowDefinitions>
+
+                                <StackPanel Orientation="Horizontal"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center">
+                                    <TextBlock x:Name="Availability"
+                                           Margin="10 0 0 0"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Left"
+                                           FontFamily="ExoSoft-Regular ☞" 
+                                           FontSize="12"
+                                           Foreground="#FF8A8A8A">
+                                        <Run Text="Is Available: "/>
+                                        <Run Text="{Binding IsAvailable, Mode=OneWay}"/>
+                                    </TextBlock>
+                                    
+                                    <TextBlock x:Name="Ping"
+                                           Margin="10 0 0 0"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Left"
+                                           FontFamily="ExoSoft-Regular ☞" 
+                                           FontSize="12"
+                                           Foreground="#FF8A8A8A">
+                                        <Run Text="{Binding ServerPing, Mode=OneWay}"/>
+                                        <Run Text=" ms"/>
+                                    </TextBlock>
+                                </StackPanel>
+
+                                <TextBlock Grid.Row="1" x:Name="DomainName"
+                                           Margin="10 0 0 0"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Center"
+                                           FontFamily="ExoSoft-Regular ☞" 
+                                           FontSize="12"
+                                           Foreground="#FF8A8A8A"
+                                           Text="{Binding ServerHost, Mode=OneWay}"/>
+                            </Grid>
+
+                            <Ellipse Margin="5"
+                                     Fill="LimeGreen"
+                                     Visibility="{Binding Installed, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                     Grid.Column="2"
+                                     Height="20"
+                                     ToolTip="This Server installed now"/>
+                        </Grid>
+
+                    </Border>
+
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Body" Property="Background" Value="#FFA2D7FF"/>
+                            <Setter Property="Cursor" Value="Hand"/>
+                        </Trigger>
+
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Body" Property="Background" Value="#FFA7B8FF"/>
+                            <Setter TargetName="Title" Property="Foreground" Value="#FF525252"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</ResourceDictionary>

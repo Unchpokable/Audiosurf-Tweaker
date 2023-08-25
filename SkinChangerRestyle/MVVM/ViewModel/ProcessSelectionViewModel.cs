@@ -3,7 +3,6 @@ using SkinChangerRestyle.Core.Extensions;
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Threading;
 using System.Windows.Data;
 using ASCommander;
@@ -35,7 +34,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         public string SearchMask
         {
-            get { return _searchMask; }
+            get => _searchMask;
             set 
             { 
                 _searchMask = value; 
@@ -127,7 +126,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         public ShortProcessDescriptor(System.Diagnostics.Process origin)
         {
             Name = origin.ProcessName;
-            ExecutablePath = origin.MainModule.FileName;
+            if (origin.MainModule != null) ExecutablePath = origin.MainModule.FileName;
             _handle = origin.Id;
             _mwHandle = origin.MainWindowHandle;
         }

@@ -4,6 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
+             xmlns:core="clr-namespace:SkinChangerRestyle.Core"
              xmlns:vm="clr-namespace:SkinChangerRestyle.MVVM.ViewModel"
              xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
              mc:Ignorable="d" 
@@ -19,26 +20,39 @@
                 <RowDefinition Height="22"/>
             </Grid.RowDefinitions>
 
-            <ListView Background="Transparent"
-                      BorderThickness="0 0 0 0"
-                      SelectedItem="{Binding SelectedItem}"
-                      ItemsSource="{Binding Skins}"
-                      ItemContainerStyle="{StaticResource LvItemSkinViewport}" 
-                      BorderBrush="#FFC3C3C3"
-                      SelectionChanged="ListView_SelectionChanged"
-                      Margin="0 0 0 10"
-                      AllowDrop="True"
-                      x:Name="listView">
-                <ListView.InputBindings>
-                    <KeyBinding Command="{Binding RemoveSelected}" Key="Delete"/>
-                </ListView.InputBindings>
+            <Border>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <ListView Background="Transparent"
+                                      BorderThickness="0 0 0 0"
+                                      SelectedItem="{Binding SelectedItem}"
+                                      ItemsSource="{Binding Skins, IsAsync=True}"
+                                      ItemContainerStyle="{StaticResource LvItemSkinViewport}" 
+                                      BorderBrush="#FFC3C3C3"
+                                      SelectionChanged="ListView_SelectionChanged"
+                                      Margin="0 0 0 10"
+                                      AllowDrop="True"
+                                      x:Name="listView"
+                                      Grid.ColumnSpan="2"
+                              Grid.Column="0">
+                        <ListView.InputBindings>
+                            <KeyBinding Command="{Binding RemoveSelected}" Key="Delete"/>
+                        </ListView.InputBindings>
 
-                <i:Interaction.Triggers>
-                    <i:EventTrigger EventName="Drop">
-                        <i:CallMethodAction MethodName="OnFileDrop" TargetObject="{Binding Path=DataContext, ElementName=listView}"/>
-                    </i:EventTrigger>
-                </i:Interaction.Triggers>
-            </ListView>
+                        <i:Interaction.Triggers>
+                            <i:EventTrigger EventName="Drop">
+                                <i:CallMethodAction MethodName="OnFileDrop" TargetObject="{Binding Path=DataContext, ElementName=listView}"/>
+                            </i:EventTrigger>
+                        </i:Interaction.Triggers>
+                    </ListView>
+                </Grid>
+
+            </Border>
+
 
             <Grid Grid.Row="1">
                 <Grid.ColumnDefinitions>
@@ -152,7 +166,7 @@
                     
                 </ListView>
             </Grid>
-            <StatusBar Grid.Row="3" Background="#FF8536ef">
+            <StatusBar Grid.Row="3" Background="#FF8536ef" Margin="0,0,0,-1">
                 <StatusBarItem>
                     <TextBlock Foreground="#FFE6E6E6" FontFamily="ExoSoft-Regular ☞" Text="{Binding ChangerStatus}" FontSize="14"/>
                 </StatusBarItem>

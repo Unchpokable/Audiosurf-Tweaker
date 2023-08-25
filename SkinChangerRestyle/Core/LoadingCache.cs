@@ -17,7 +17,7 @@ namespace SkinChangerRestyle.Core
         public List<LoadedSkinData> Data { get; private set; }
 
         private static string _fileName = "load.cache";
-        private bool disposedValue;
+        private bool _disposedValue;
 
         public bool Serialize(string path)
         {
@@ -68,14 +68,14 @@ namespace SkinChangerRestyle.Core
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!_disposedValue)
             {
                 if (disposing)
                 {
                     Data.ForEach(x => x.Dispose());
                 }
                 Data = null;
-                disposedValue = true;
+                _disposedValue = true;
             }
         }
 

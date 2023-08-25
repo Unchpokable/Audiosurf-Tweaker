@@ -52,7 +52,7 @@ namespace SkinChangerRestyle.MVVM.Model
             set
             {
                 _name = value;
-                OnPropertyChanged(nameof(Name));
+                OnPropertyChanged();
             }
         }
 
@@ -115,12 +115,13 @@ namespace SkinChangerRestyle.MVVM.Model
 
         public bool Equals(ColorPalette other)
         {
-            return string.Equals(this.Name, other.Name)
-                && Purple == other.Purple
-                && Blue == other.Blue
-                && Green == other.Green
-                && Yellow == other.Yellow
-                && Red == other.Red;
+            return other != null
+                   && string.Equals(this.Name, other.Name)
+                   && Purple == other.Purple
+                   && Blue == other.Blue
+                   && Green == other.Green
+                   && Yellow == other.Yellow
+                   && Red == other.Red;
         }
 
         public static bool Save(ColorPalette obj, string path)

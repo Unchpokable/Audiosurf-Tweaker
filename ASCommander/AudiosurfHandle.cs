@@ -89,6 +89,7 @@ namespace ASCommander
         {
             try
             {
+                IsValid = false;
                 Handle = IntPtr.Zero;
                 _timer.Interval = 1000;
                 _currentState = ASHandleState.NotConnected;

@@ -225,8 +225,8 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             get => _isGuiActive; 
             set 
             { 
-                _isGuiActive = value; 
-                OnPropertyChanged(); 
+                _isGuiActive = value;
+                OnPropertyChanged();
             }
         }
 
@@ -242,7 +242,8 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     ? "Windows notification enabled"
                     : "Windows notification disabled. That was the last time";
 
-                Extensions.ShowUWPNotification("UWP Notification settings", notifyMessage);
+                if (value) 
+                    Extensions.ShowUWPNotification("UWP Notification settings", notifyMessage);
                 ApplySettings();
             }
         }
@@ -264,22 +265,18 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             get => _overlayEnabled;
             set
             {
-                if (value) // turn on overlay
+                var isRestart = MessageBox.Show("Turning this parameter needs to restart applicaton. Would you like to continue?", "Module parameter changed", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+                if (isRestart == DialogResult.Yes)
                 {
-                    var isRestart = MessageBox.Show("Turning this parameter needs to restart applicaton. Would you like to continue?", "Module parameter changed", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                    if (isRestart == DialogResult.Yes)
-                    {
-                        _overlayEnabled = value;
-                        SettingsProvider.IsOverlayEnabled = value;
-                        ApplySettings();
-                        Extensions.Cmd($"taskkill /f /im \"{AppDomain.CurrentDomain.FriendlyName}\" && timeout /t 1 && {AppDomain.CurrentDomain.FriendlyName}");
-                    }
-                    else
-                        return;
+                    _overlayEnabled = value;
+                    SettingsProvider.IsOverlayEnabled = value;
+                    ApplySettings();
+                    Extensions.Cmd($"taskkill /f /im \"{AppDomain.CurrentDomain.FriendlyName}\" && timeout /t 1 && {AppDomain.CurrentDomain.FriendlyName}");
                 }
+                else
+                    return;
             }
         }
-
 
         public RelayCommand SetConfigurationValue { get; set; }
         public RelayCommand SelectTempFile { get; set; }
@@ -299,6 +296,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private bool _uwpNotificationAllwed;
         private bool _uwpNotificationSilent;
         private bool _overlayEnabled;
+
         private void AskAndSetConfigValue(object parameter)
         {
             var field = (SettingsFields)parameter;
