@@ -41,7 +41,7 @@ namespace ChangerAPI.Utilities
         public void AddImage(NamedBitmap image)
         {
             if (image == null)
-                throw new NullReferenceException($"Can't add null to image group");
+                throw new ArgumentNullException($"Can't add null to image group");
 
             for (int i = 0; i < Group.Count; i++)
             {
@@ -58,7 +58,7 @@ namespace ChangerAPI.Utilities
         public void AddImage(NamedBitmap[] images)
         {
             if (images == null)
-                throw new NullReferenceException($"Can't add null to image group.");
+                throw new ArgumentNullException($"Can't add null to image group.");
             foreach (var image in images)
                 AddImage(image);
         }
