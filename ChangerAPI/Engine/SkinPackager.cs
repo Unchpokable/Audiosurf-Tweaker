@@ -89,6 +89,9 @@ namespace ChangerAPI.Engine
 
         public static AudiosurfSkinExtended Decompile(string path)
         {
+            if (!File.Exists(path))
+                return null;
+
             if (new[] { Env.LegacySkinExtention, Env.ActualSkinExtention }.All(ext => ext != Path.GetExtension(path)))
                 return null;
 
