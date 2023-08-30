@@ -10,7 +10,7 @@ namespace ASCommander
 {
     public delegate void MessageEventHandler(object sender, string messageContent);
 
-    public class AudiosurfHandle
+    public class AudiosurfHandle : IDisposable
     {
         private AudiosurfHandle()
         {
@@ -249,6 +249,11 @@ namespace ASCommander
 
             GamePID = processes[0].Id;
             return processes[0].MainWindowHandle;
+        }
+
+        public void Dispose()
+        {
+            _wndProcMessageService.Dispose();
         }
     }
 }

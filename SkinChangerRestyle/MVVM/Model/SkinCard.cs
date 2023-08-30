@@ -154,6 +154,7 @@ namespace SkinChangerRestyle.MVVM.Model
             var oldName = Name;
             var newName = NewName;
             var skinObject = SkinPackager.Decompile(_pathToOriginFile);
+            if (skinObject == null) return;
             skinObject.Name = newName;
             Name = newName;
             var newFile = $@"Skins\{newName}{ChangerAPI.EnvironmentalVeriables.ActualSkinExtention}";

@@ -548,6 +548,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private async void ExportCurrentTexturesInternal(object frameworkRequeredParameter)
         {
             var skin = SkinPackager.CreateSkinFromFolder(SettingsProvider.GameTexturesPath);
+            if (skin == null)
+            {
+                ApplicationNotificationManager.Manager.ShowError("Error", "Something went wrong when packing your current texture set. Check application settings and game textures folder");
+                return;
+            }
             skin.Name = "New exported skin";
             skin.Source = $@"Skins\{skin.Name}{SkinPackager.SkinExtension}";
             var card = new SkinCard(skin, skin.Source, this);

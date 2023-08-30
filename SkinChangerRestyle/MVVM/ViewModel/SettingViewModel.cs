@@ -15,7 +15,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         AddSkinsPath
     }
 
-    internal class SettingViewModel : ObservableObject
+    internal class SettingViewModel : ObservableObject, IDisposable
     {
         public SettingViewModel()
         {
@@ -362,6 +362,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     ConfigurationManager.UpdateSection(keyValuePair[0], keyValuePair[1]);
                 }
             }
+        }
+
+        public void Dispose()
+        {
+            Watcher.Dispose();
         }
     }
 }
