@@ -28,7 +28,7 @@ namespace SkinChangerRestyle.Core
                 if (!File.Exists(LogFilePath))
                 {
                     Directory.CreateDirectory(Path.GetDirectoryName(LogFilePath));
-                    File.Create(LogFilePath);
+                    using (var _ = File.Create(LogFilePath)) { }
                 }
 
                 using (var logStream = new FileStream(LogFilePath, FileMode.Append))

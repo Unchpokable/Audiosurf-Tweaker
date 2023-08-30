@@ -54,7 +54,7 @@ namespace SkinChangerRestyle.MVVM.Model
             if (!File.Exists(path))
             {
                 Directory.CreateDirectory(Path.GetDirectoryName(path));
-                File.Create(path);
+                using (var _ = File.Create(path)) { }
             }
             
             TempFilePath = path;

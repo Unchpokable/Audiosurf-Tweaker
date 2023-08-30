@@ -173,9 +173,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 if (!File.Exists(_watcherTempFile))
                 {
                     if (!Directory.Exists(Path.GetDirectoryName(_watcherTempFile)))
-                        Directory.CreateDirectory(Path.GetDirectoryName(_watcherTempFile));
+                        Directory.CreateDirectory(Path.GetDirectoryName(_watcherTempFile) ?? throw new InvalidOperationException());
 
-                    File.Create(_watcherTempFile);
+                    using (var _ = File.Create(_watcherTempFile)) { }
                 }
 
                 SettingsProvider.WatcherTempFile = value;
