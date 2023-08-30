@@ -17,7 +17,7 @@ namespace ChangerAPI.Engine
 
         private static string[] _texturesNames;
 
-        private readonly static string _defaultOutput = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        private static readonly string _defaultOutput = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
 
         static SkinPackager()
         {
@@ -120,8 +120,8 @@ namespace ChangerAPI.Engine
         {
             var result = new AudiosurfSkinExtended();
             
-            string[] AllPictures = Directory.GetFiles(path);
-            if (!AllPictures.Any(fileName => _texturesNames.Contains(Path.GetFileName(fileName))))
+            string[] allPictures = Directory.GetFiles(path);
+            if (!allPictures.Any(fileName => _texturesNames.Contains(Path.GetFileName(fileName))))
                 return null;
 
             result.Cliffs = GetAllImagesByNameMask("cliffs", Env.CliffImagesMask, path);
@@ -152,9 +152,9 @@ namespace ChangerAPI.Engine
         {
             var group = new ImageGroup(groupName);
 
-            string[] AllFiles = Directory.GetFiles(path);
+            string[] allFiles = Directory.GetFiles(path);
 
-            foreach(var file in AllFiles)
+            foreach(var file in allFiles)
             {
                 var origName = Path.GetFileName(file);
                 var fname = origName.ToLower();
