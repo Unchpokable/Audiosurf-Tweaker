@@ -225,9 +225,11 @@ namespace SkinChangerRestyle.MVVM.Model
                 using (var output = new FolderBrowserDialog())
                     if (output.ShowDialog() == DialogResult.OK)
                     {
-                        var skin = SkinPackager.Decompile(_pathToOriginFile);
-                        SkinPackager.CompileToPath(skin, output.SelectedPath);
-                        Extensions.DisposeAndClear(skin);
+                        var targetFile = Path.Combine(output.SelectedPath,
+                            _name + ChangerAPI.EnvironmentalVeriables.ActualSkinExtention); // kinda skin.tasp (skin.askin2)
+
+                        File.Copy(_pathToOriginFile, targetFile);
+                        ApplicationNotificationManager.Manager.ShowSuccess("Done!", "Copy of skin file successfully exported to selected destination");
                     }
             }
             catch
