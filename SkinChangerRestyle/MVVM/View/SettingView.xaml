@@ -51,21 +51,22 @@
                                         <Label Content="Path to Audiosurf textures"
                                        FontFamily="ExoSoft ☞" FontSize="16"
                                        Margin="30 0 0 0" Foreground="#FF888888"/>
-                                        <TextBox Grid.Row="2" Height="35" VerticalAlignment="Center" HorizontalAlignment="Stretch"
-                                         Margin="30 0 30 0"
-                                         Style="{StaticResource StylishTextInput}"
-                                         FontSize="20"
-                                         IsReadOnly="True"
-                                         Text="{Binding TexturesFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Foreground="#FF6D6D6D" BorderBrush="Black">
-
+                                        <TextBox Grid.Row="1" Height="35" VerticalAlignment="Center"
+                                                     Margin="30 0 30 0"
+                                                     Style="{StaticResource StylishTextInput}"
+                                                     IsReadOnly="True"
+                                                     FontSize="16"
+                                                     TextWrapping="NoWrap"
+                                                     Text="{Binding TexturesFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Foreground="#FF6D6D6D" BorderBrush="Black">
+                                                    
                                         </TextBox>
                                         <Button Grid.Row="1" Grid.Column="1" 
-                                        Style="{StaticResource UnderscoredButton}"
-                                        Content="View"
-                                        FontSize="16"
-                                        Margin="0 0 30 0"
-                                        Command="{Binding SetConfigurationValue}"
-                                        CommandParameter="{x:Static vm:SettingsFields.TexturesPath}"/>
+                                                Style="{StaticResource UnderscoredButton}"
+                                                Content="View"
+                                                FontSize="16"
+                                                Margin="0 0 30 0"
+                                                Command="{Binding SetConfigurationValue}"
+                                                CommandParameter="{x:Static vm:SettingsFields.TexturesPath}"/>
                                     </Grid>
                                 </Border>
 
@@ -87,7 +88,7 @@
                                         <TextBox Grid.Row="2" Height="35" VerticalAlignment="Center" HorizontalAlignment="Stretch"
                                          Margin="30 0 30 0"
                                          Style="{StaticResource StylishTextInput}"
-                                         FontSize="20"
+                                         FontSize="16"
                                          IsReadOnly="True"
                                          Text="{Binding AdditionalSkinsFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Foreground="#FF6D6D6D" BorderBrush="Black">
 
