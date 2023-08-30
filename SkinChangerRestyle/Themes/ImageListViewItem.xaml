@@ -5,7 +5,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListViewItem">
-                    <Border Width="auto" Height="140"
+                    <Border Width="auto" Height="{Binding RelativeSource={RelativeSource AncestorType={x:Type ListView}}, Path=ActualHeight}"
                             Background="Transparent"
                             x:Name="Body"
                             Margin="0 0 0 5"

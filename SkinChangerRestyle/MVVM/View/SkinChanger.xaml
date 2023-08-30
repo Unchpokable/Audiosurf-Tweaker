@@ -94,8 +94,8 @@
                 </Grid.ColumnDefinitions>
 
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="1*"/>
-                    <RowDefinition Height="3*"/>
+                    <RowDefinition Height="40"/>
+                    <RowDefinition/>
                 </Grid.RowDefinitions>
 
                 <Border BorderBrush="#FFC3C3C3"
@@ -157,6 +157,7 @@
                     <Label Content="Screenshots" FontFamily="ExoSoft-Regular ☞" Foreground="#FF8A8A8A" FontSize="18" HorizontalAlignment="Left" VerticalAlignment="Stretch" Margin="0,0,0,0" BorderBrush="#FFC3C3C3"/>
                 </Border>
                 <ListView Grid.Column="2" Grid.Row="1"
+                          
                           Background="Transparent"
                           BorderBrush="Transparent"
                           BorderThickness="0"
