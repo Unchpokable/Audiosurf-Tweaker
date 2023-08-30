@@ -8,15 +8,15 @@ namespace ASCommander
         public static string ListenerWindowCaption { get; protected set; }
 
         protected readonly IntPtr SpongeHandle;
-        private readonly SpongeWindow Sponge;
+        private readonly SpongeWindow _sponge;
         private static string _baseListenerWindowCaptionTitle = "AsMsgHandler";
 
         protected WinApiServiceBase()
         {
             ListenerWindowCaption = _baseListenerWindowCaptionTitle + "_" + Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Substring(0, 5);
-            Sponge = new SpongeWindow();
-            SpongeHandle = Sponge.Handle;
-            Sponge.WndProced += LocalWndProced;
+            _sponge = new SpongeWindow();
+            SpongeHandle = _sponge.Handle;
+            _sponge.WndProced += LocalWndProced;
         }
 
         private void LocalWndProced(object sender, Message message)
@@ -30,7 +30,7 @@ namespace ASCommander
         public virtual void Dispose()
         {
             
-            Sponge.WndProced -= LocalWndProced;
+            _sponge.WndProced -= LocalWndProced;
         }
 
         private sealed class SpongeWindow : NativeWindow

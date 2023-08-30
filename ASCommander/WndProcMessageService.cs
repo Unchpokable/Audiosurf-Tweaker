@@ -8,27 +8,27 @@ namespace ASCommander
     {
         public event EventHandler<Message> MessageRecieved;
         public Func<string, bool> MsgContentFilter { get; set; }
-        public bool Valid => isValid;
+        public bool Valid => _isValid;
 
-        private IntPtr targetWindowHandle;
-        private bool isValid;
+        private IntPtr _targetWindowHandle;
+        private bool _isValid;
 
         public WndProcMessageService() : base()
         {
-            targetWindowHandle = IntPtr.Zero;
-            isValid = false;
+            _targetWindowHandle = IntPtr.Zero;
+            _isValid = false;
         }
 
         public WndProcMessageService(IntPtr wHandle) : base()
         {
-            targetWindowHandle = wHandle;
-            isValid = true;
+            _targetWindowHandle = wHandle;
+            _isValid = true;
         }
 
         public void Handle(IntPtr wHandle)
         {
-            targetWindowHandle = wHandle;
-            isValid = true;
+            _targetWindowHandle = wHandle;
+            _isValid = true;
         }
 
         public bool Handle(string wName)
@@ -36,17 +36,17 @@ namespace ASCommander
             var tempHwnd = WinAPI.FindWindow(null, wName);
             if (tempHwnd == IntPtr.Zero)
             {
-                isValid = false;
+                _isValid = false;
                 return false;
             }
-            targetWindowHandle = tempHwnd;
-            isValid = true;
+            _targetWindowHandle = tempHwnd;
+            _isValid = true;
             return true;
         }
 
         public void Command(uint msgType, string msgContent)
         {
-            if (!isValid)
+            if (!_isValid)
                 return;
 
             var cds = new COPYDATASTRUCT()
@@ -55,13 +55,13 @@ namespace ASCommander
                 lpData = msgContent
             };
 
-            WinAPI.SendMessage(targetWindowHandle, msgType, SpongeHandle, ref cds);
+            WinAPI.SendMessage(_targetWindowHandle, msgType, SpongeHandle, ref cds);
         }
 
         public void Invalidate()
         {
-            targetWindowHandle = IntPtr.Zero;
-            isValid = false;
+            _targetWindowHandle = IntPtr.Zero;
+            _isValid = false;
         }
 
         protected override void WndProc(Message message)

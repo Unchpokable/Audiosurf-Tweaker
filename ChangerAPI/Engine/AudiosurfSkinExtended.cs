@@ -10,9 +10,9 @@ namespace ChangerAPI.Engine
     public class AudiosurfSkinExtended : AudiosurfSkin, IDisposable
     {
         public NamedBitmap Cover { get; set; }
-        public string ID => id.ToString();
+        public string ID => _id.ToString();
 
-        private UID id;
+        private UID _id;
 
         public AudiosurfSkinExtended() : base()
         {
@@ -36,7 +36,7 @@ namespace ChangerAPI.Engine
             tempSkin.Previews = source.Previews;
 
             var id = new UID((uint)DateTime.Now.Ticks);
-            tempSkin.id = id;
+            tempSkin._id = id;
 
             return tempSkin;
         }
@@ -67,7 +67,7 @@ namespace ChangerAPI.Engine
                 Rings = this.Rings,
                 Previews = this.Previews,
                 Cover = this.Cover,
-                id = new UID((uint)DateTime.Now.Ticks)
+                _id = new UID((uint)DateTime.Now.Ticks)
             };
         }
     }

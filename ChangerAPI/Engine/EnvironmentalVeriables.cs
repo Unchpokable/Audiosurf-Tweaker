@@ -1,6 +1,5 @@
 ﻿namespace ChangerAPI
 {
-
     public static class EnvironmentalVeriables
     {
         #region Editable Variables

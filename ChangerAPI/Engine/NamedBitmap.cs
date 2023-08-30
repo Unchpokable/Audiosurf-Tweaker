@@ -10,20 +10,20 @@ namespace ChangerAPI.Engine
     [Serializable]
     public class NamedBitmap : IDisposable
     {
-        public int Width => source.Width;
-        public int Height => source.Height;
+        public int Width => _source.Width;
+        public int Height => _source.Height;
         public Size Size => new Size(Width, Height);
         public string Name;
 
 
         [NonSerialized] public ImageFormat DefaultFormat = ImageFormat.Png;
-        public ImageInfo Info => new ImageInfo(format, Name);
+        public ImageInfo Info => new ImageInfo(_format, Name);
 
-        private Bitmap source;
-        private string format;
+        private Bitmap _source;
+        private string _format;
 
         
-        private bool disposedValue;
+        private bool _disposedValue;
 
         public NamedBitmap()
         {
@@ -31,40 +31,40 @@ namespace ChangerAPI.Engine
 
         public NamedBitmap(Image original)
         {
-            source = new Bitmap(original);
+            _source = new Bitmap(original);
         }
 
         public NamedBitmap(string name, Image source)
         {
             Name = name;
-            this.source = new Bitmap(source);
-            format = ProcessImageFormat(name).ToString();
+            this._source = new Bitmap(source);
+            _format = ProcessImageFormat(name).ToString();
         }
 
         public NamedBitmap(string name, Bitmap source)
         {
             Name = name;
-            this.source = source;
-            format = ProcessImageFormat(name).ToString();
+            this._source = source;
+            _format = ProcessImageFormat(name).ToString();
         }
 
         public NamedBitmap(string path, ImageInfo imageInfo)
         {
-            source = (Bitmap)Image.FromFile(path);
+            _source = (Bitmap)Image.FromFile(path);
             Name = imageInfo.FileName;
-            format = imageInfo.Format;
+            _format = imageInfo.Format;
         }
 
         public NamedBitmap(Image original, ImageInfo imageInfo)
         {
-            source = (Bitmap)original;
+            _source = (Bitmap)original;
             Name = imageInfo.FileName;
-            format = imageInfo.Format;
+            _format = imageInfo.Format;
         }
 
         public void Apply(Func<Bitmap, Bitmap> transform)
         {
-            source = transform(source);
+            _source = transform(_source);
         }
 
         private ImageFormat ProcessImageFormat(string srcFileName)
@@ -74,14 +74,14 @@ namespace ChangerAPI.Engine
 
         public void SetImage(Bitmap source)
         {
-            this.source = source;
+            this._source = source;
         }
 
         public void SetImage(NamedBitmap other)
         {
-            this.source = other.source;
+            this._source = other._source;
             this.Name = other.Name;
-            this.format = other.format;
+            this._format = other._format;
         }
         
         private ImageFormat GetImageFormatByExtension(string extension)
@@ -101,12 +101,12 @@ namespace ChangerAPI.Engine
 
         public static explicit operator Bitmap(NamedBitmap obj)
         {
-            return obj.source;
+            return obj._source;
         }
 
         public static implicit operator Image(NamedBitmap obj)
         {
-            return obj.source;
+            return obj._source;
         }
 
         public static implicit operator NamedBitmap(Bitmap obj)
@@ -116,19 +116,19 @@ namespace ChangerAPI.Engine
 
         public void Save(string filepath)
         {
-            source?.Save(filepath + @"\\" + Name, GetImageFormatByExtension(format.ToLower()));
+            _source?.Save(filepath + @"\\" + Name, GetImageFormatByExtension(_format.ToLower()));
         }
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!_disposedValue)
             {
                 if (disposing)
                 {
-                    source?.Dispose();
+                    _source?.Dispose();
                 }
 
-                disposedValue = true;
+                _disposedValue = true;
             }
         }
 

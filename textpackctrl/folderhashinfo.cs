@@ -18,9 +18,9 @@ namespace FolderChecker
         public string FolderName { get; set; }
         public string Location { get; set; }
 
-        public IList<byte[]> ContainedFilesHashes;
+        public IList<byte[]> ContainedFilesHashes { get; set; }
 
-        private static readonly string stdExt = ".hinf";
+        private static readonly string _stdExt = ".hinf";
 
         public FolderHashInfo(string location)
         {
@@ -61,7 +61,7 @@ namespace FolderChecker
 
         public void Save(string path)
         {
-            path = path + @"\current" + stdExt;
+            path = path + @"\current" + _stdExt;
             using (var fileStream = new FileStream(path, FileMode.Create))
             {
                 var formatter = new BinaryFormatter();
@@ -71,7 +71,7 @@ namespace FolderChecker
 
         public static bool TryFind(string path, out FolderHashInfo folderInfo)
         {
-            var isOk = TryFind(path, stdExt, out FolderHashInfo result);
+            var isOk = TryFind(path, _stdExt, out FolderHashInfo result);
             if (isOk)
             {
                 folderInfo = result;
@@ -115,7 +115,7 @@ namespace FolderChecker
 
         public static FolderHashInfo Find(string path)
         {
-            return Find(path, stdExt);
+            return Find(path, _stdExt);
         }
 
         public static FolderHashInfo Find(string path, string specificExtension)
@@ -159,7 +159,7 @@ namespace FolderChecker
             using (var hashProvider = SHA256.Create())
                 foreach (var file in containedFiles)
                 {
-                    if (Path.GetExtension(file) == stdExt) continue;
+                    if (Path.GetExtension(file) == _stdExt) continue;
                     using (var stream = File.OpenRead(file))
                         hashes.Add(hashProvider.ComputeHash(stream));
                 }

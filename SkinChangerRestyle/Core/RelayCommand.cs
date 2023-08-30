@@ -7,8 +7,8 @@ namespace SkinChangerRestyle.Core
 
     internal class RelayCommand : ICommand
     {
-        protected Action<object> execute;
-        protected Func<object, bool> canExecute;
+        private Action<object> _execute;
+        private Func<object, bool> _canExecute;
 
         public event EventHandler CanExecuteChanged
         {
@@ -18,18 +18,18 @@ namespace SkinChangerRestyle.Core
 
         public RelayCommand(Action<object> exec, Func<object, bool> canExec = null)
         {
-            execute = exec;
-            canExecute = canExec;
+            _execute = exec;
+            _canExecute = canExec;
         }
 
         public bool CanExecute(object parameter)
         {
-            return canExecute == null || canExecute(parameter);
+            return _canExecute == null || _canExecute(parameter);
         }
 
         public void Execute(object parameter)
         {
-            execute(parameter);
+            _execute(parameter);
         }
     }
 }
