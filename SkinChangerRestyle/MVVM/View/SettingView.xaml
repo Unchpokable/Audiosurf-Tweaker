@@ -7,195 +7,210 @@
              xmlns:local="clr-namespace:SkinChangerRestyle.MVVM.View"
              xmlns:pixicolor="clr-namespace:ColorPicker;assembly=ColorPicker"
              mc:Ignorable="d" 
-             d:DesignHeight="1100" d:DesignWidth="800"
-             Width="800"
-             Height="1100">
+             d:DesignHeight="661" d:DesignWidth="800">
 
     <Border Background="White"
                 ScrollViewer.CanContentScroll="True"
                 ScrollViewer.VerticalScrollBarVisibility="Visible">
         <Grid Margin="0 18 0 0">
-            <Grid.RowDefinitions>
-                <RowDefinition/>
-                <RowDefinition/>
-                <RowDefinition/>
-                <RowDefinition/>
-            </Grid.RowDefinitions>
 
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="50"/>
-                    <RowDefinition/>
-                </Grid.RowDefinitions>
+            <TabControl BorderThickness="0">
+                <!-- Paths -->
+                <TabItem Style="{StaticResource TweakerTabItem}">
+                    <TabItem.Header>
+                        Paths Setup
+                    </TabItem.Header>
 
-                <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
-                            BorderThickness="0 0 0 2"
-                            Width="400"
-                            HorizontalAlignment="Left">
-                    <Label Content="Pathes" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
-                </Border>
-
-                <StackPanel Grid.Row="1">
-                    <Border>
+                    <TabItem.Content>
                         <Grid>
                             <Grid.RowDefinitions>
-                                <RowDefinition Height="30"/>
+                                <RowDefinition Height="50"/>
                                 <RowDefinition/>
                             </Grid.RowDefinitions>
 
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="4*"/>
-                                <ColumnDefinition/>
-                            </Grid.ColumnDefinitions>
+                            <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
+                            BorderThickness="0 0 0 2"
+                            Width="400"
+                            HorizontalAlignment="Left">
+                                <Label Content="Paths" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                            </Border>
 
-                            <Label Content="Path to Audiosurf textures"
+                            <StackPanel Grid.Row="1">
+                                <Border>
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="30"/>
+                                            <RowDefinition/>
+                                        </Grid.RowDefinitions>
+
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="4*"/>
+                                            <ColumnDefinition/>
+                                        </Grid.ColumnDefinitions>
+
+                                        <Label Content="Path to Audiosurf textures"
                                        FontFamily="ExoSoft ☞" FontSize="16"
                                        Margin="30 0 0 0" Foreground="#FF888888"/>
-                            <TextBox Grid.Row="2" Height="35" VerticalAlignment="Center" HorizontalAlignment="Stretch"
+                                        <TextBox Grid.Row="2" Height="35" VerticalAlignment="Center" HorizontalAlignment="Stretch"
                                          Margin="30 0 30 0"
                                          Style="{StaticResource StylishTextInput}"
                                          FontSize="20"
                                          IsReadOnly="True"
                                          Text="{Binding TexturesFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Foreground="#FF6D6D6D" BorderBrush="Black">
 
-                            </TextBox>
-                            <Button Grid.Row="1" Grid.Column="1" 
+                                        </TextBox>
+                                        <Button Grid.Row="1" Grid.Column="1" 
                                         Style="{StaticResource UnderscoredButton}"
                                         Content="View"
                                         FontSize="16"
                                         Margin="0 0 30 0"
                                         Command="{Binding SetConfigurationValue}"
                                         CommandParameter="{x:Static vm:SettingsFields.TexturesPath}"/>
-                        </Grid>
-                    </Border>
+                                    </Grid>
+                                </Border>
 
-                    <Border Margin="0 20 0 0">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="30"/>
-                                <RowDefinition/>
-                            </Grid.RowDefinitions>
+                                <Border Margin="0 20 0 0">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="30"/>
+                                            <RowDefinition/>
+                                        </Grid.RowDefinitions>
 
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="4*"/>
-                                <ColumnDefinition/>
-                            </Grid.ColumnDefinitions>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="4*"/>
+                                            <ColumnDefinition/>
+                                        </Grid.ColumnDefinitions>
 
-                            <Label Content="Additional skins folder path"
-                                       FontFamily="ExoSoft ☞" FontSize="16"
-                                       Margin="30 0 0 0" Foreground="#FF888888"/>
-                            <TextBox Grid.Row="2" Height="35" VerticalAlignment="Center" HorizontalAlignment="Stretch"
+                                        <Label Content="Additional skins folder path"
+                                                                        FontFamily="ExoSoft ☞" FontSize="16"
+                                                                        Margin="30 0 0 0" Foreground="#FF888888"/>
+                                        <TextBox Grid.Row="2" Height="35" VerticalAlignment="Center" HorizontalAlignment="Stretch"
                                          Margin="30 0 30 0"
                                          Style="{StaticResource StylishTextInput}"
                                          FontSize="20"
                                          IsReadOnly="True"
                                          Text="{Binding AdditionalSkinsFolderPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Foreground="#FF6D6D6D" BorderBrush="Black">
 
-                            </TextBox>
-                            <Button Grid.Row="1" Grid.Column="1" 
+                                        </TextBox>
+                                        <Button Grid.Row="1" Grid.Column="1" 
                                         Style="{StaticResource UnderscoredButton}"
                                         Content="View"
                                         FontSize="16"
                                         Margin="0 0 30 0"
                                         Command="{Binding SetConfigurationValue}"
                                         CommandParameter="{x:Static vm:SettingsFields.AddSkinsPath}"/>
+                                    </Grid>
+                                </Border>
+                            </StackPanel>
+
                         </Grid>
-                    </Border>
-                </StackPanel>
+                    </TabItem.Content>
+                </TabItem>
+                <!-- Skin Changer -->
+                <TabItem Style="{StaticResource TweakerTabItem}">
+                    <TabItem.Header>
+                        Skin Changer settings
+                    </TabItem.Header>
 
-            </Grid>
+                    <TabItem.Content>
+                        <Grid Grid.Row="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="50"/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
 
-            <Grid Grid.Row="1">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="50"/>
-                    <RowDefinition/>
-                </Grid.RowDefinitions>
-
-                <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
+                            <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
                             BorderThickness="0 0 0 2"
                             Width="400"
                             HorizontalAlignment="Left">
-                    <Label Content="Skin Changer settings" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
-                </Border>
+                                <Label Content="Skin Changer settings" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                            </Border>
 
-                <StackPanel Grid.Row="1">
-                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Hot reload" FontSize="16" Margin="30 0 0 10"
+                            <StackPanel Grid.Row="1">
+                                <CheckBox Style="{StaticResource FlatCheckBox}" Content="Hot reload" FontSize="16" Margin="30 0 0 10"
                                   ToolTip="Force game to reload textures after skin installation. No need to restart track in-game to see changes"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsHotReload, Mode=TwoWay}" FontFamily="ExoSoft ☞"/>
-                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Fast Preview" Margin="30 0 0 10" FontSize="16"
+                                <CheckBox Style="{StaticResource FlatCheckBox}" Content="Fast Preview" Margin="30 0 0 10" FontSize="16"
                                   ToolTip="Allow Tweaker to hold downscaled screenshots in your RAM to show you a skin preview tooltip and load it' screenshots without delay. Disabling this option will cause less memory use, but make SkinChanger laggy"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsFastPreview}"/>
 
-                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Control game' textures folder content" Margin="30 0 0 10" FontSize="16"
+                                <CheckBox Style="{StaticResource FlatCheckBox}" Content="Control game' textures folder content" Margin="30 0 0 10" FontSize="16"
                                   ToolTip="Compare checksums of all files in game's textures folder when program start to prevent unintentional overwriting your not saved textures"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsShouldCheckTextures}"/>
-                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Safety installation" Margin="30 0 0 10" FontSize="16"
+                                <CheckBox Style="{StaticResource FlatCheckBox}" Content="Safety installation" Margin="30 0 0 10" FontSize="16"
                                   ToolTip="Don't allow skins installation when game's textures folder content is unsaved"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsShouldUseSafetyInstallation}"
                                   IsEnabled="{Binding IsShouldCheckTextures}"/>
 
-                </StackPanel>
+                            </StackPanel>
 
-            </Grid>
+                        </Grid>
+                    </TabItem.Content>
+                </TabItem>
+                <TabItem Style="{StaticResource TweakerTabItem}">
+                    <TabItem.Header>
+                        Textures Watcher Settings
+                    </TabItem.Header>
 
-            <Grid Grid.Row="2">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="50"/>
-                    <RowDefinition/>
-                </Grid.RowDefinitions>
+                    <TabItem.Content>
+                        <Grid Grid.Row="2">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="50"/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
 
-                <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
+                            <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
                             BorderThickness="0 0 0 2"
                             Width="400"
                             HorizontalAlignment="Left">
 
-                    <StackPanel Orientation="Horizontal">
-                        <Label Content="Textures Watcher settings" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
-                        <Label Content="?" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FFD0D0D0"
+                                <StackPanel Orientation="Horizontal">
+                                    <Label Content="Textures Watcher settings" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                                    <Label Content="?" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FFD0D0D0"
                                ToolTipService.ShowDuration="30000">
-                            <Label.ToolTip>
-                                Textures Watcher is a service that will track game textures folder, and notify game about any changes in there in real time.
+                                        <Label.ToolTip>
+                                            Textures Watcher is a service that will track game textures folder, and notify game about any changes in there in real time.
                                 Also, Textures Watcher can store a current state of game textures folder in temporary skin file
                                 Textures Watcher works only when audiosurf is connected with Tweaker program
-                                
-                            </Label.ToolTip>
-                        </Label>
-                    </StackPanel>
-                </Border>
 
-                <StackPanel Grid.Row="1">
-                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Enabled" FontSize="16" Margin="30 0 0 10"
+                                        </Label.ToolTip>
+                                    </Label>
+                                </StackPanel>
+                            </Border>
+
+                            <StackPanel Grid.Row="1">
+                                <CheckBox Style="{StaticResource FlatCheckBox}" Content="Enabled" FontSize="16" Margin="30 0 0 10"
                                   ToolTip="Enable File System Watcher to track game' textures folder and notify game about textures changes in real time"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsWatcherActive, Mode=TwoWay}"/>
 
-                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Store textures in temp file" FontSize="16" Margin="30 0 0 10"
+                                <CheckBox Style="{StaticResource FlatCheckBox}" Content="Store textures in temp file" FontSize="16" Margin="30 0 0 10"
                                   ToolTip="Store any change in textures folder in temporal skin file"
                                   ToolTipService.ShowDuration="10000"
                                   IsEnabled="{Binding IsWatcherActive}"
                                   IsChecked="{Binding IsShouldStoreTextures}"/>
-                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Override temp file:" FontSize="16" Margin="30 0 0 10"
+                                <CheckBox Style="{StaticResource FlatCheckBox}" Content="Override temp file:" FontSize="16" Margin="30 0 0 10"
                                   ToolTip="Use selected temp file instead of default \store\temp.tasp"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsTempFileOverrided, Mode=TwoWay}"
                                   IsEnabled="{Binding IsWatcherActive}"/>
-                    <Grid Height="30"
+                                <Grid Height="30"
                               Margin="30 0 30 0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="6*"/>
-                            <ColumnDefinition/>
-                            <ColumnDefinition/>
-                        </Grid.ColumnDefinitions>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="6*"/>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                    </Grid.ColumnDefinitions>
 
-                        <TextBox Style="{StaticResource StylishTextInput}"
+                                    <TextBox Style="{StaticResource StylishTextInput}"
                                      FontSize="18"
                                      IsEnabled="{Binding IsTempFileOverrided}"
                                      Text="{Binding WatcherTempFile, UpdateSourceTrigger=PropertyChanged}"/>
-                        <Button Grid.Column="1"
+                                    <Button Grid.Column="1"
                                     Style="{StaticResource FlatButton}"
                                     Height="50"
                                     VerticalAlignment="Center"
@@ -204,7 +219,7 @@
                                     Width="100"
                                     IsEnabled="{Binding IsTempFileOverrided}"
                                     Command="{Binding SelectTempFile}"/>
-                        <Button Style="{StaticResource FlatButton}"
+                                    <Button Style="{StaticResource FlatButton}"
                                     Grid.Column="2"
                                     Content="Duplicate"
                                     Height="50"
@@ -214,40 +229,59 @@
                                     FontSize="16"
                                     IsEnabled="{Binding IsTempFileOverrided}"
                                     Command="{Binding DuplicateTempFile}"/>
-                    </Grid>
+                                </Grid>
 
-                </StackPanel>
-            </Grid>
+                            </StackPanel>
+                        </Grid>
+                    </TabItem.Content>
+                </TabItem>
+                <!-- UI -->
+                <TabItem Style="{StaticResource TweakerTabItem}">
+                    <TabItem.Header>
+UI
+                    </TabItem.Header>
 
-            <Grid Grid.Row="3">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="50"/>
-                    <RowDefinition/>
-                </Grid.RowDefinitions>
+                    <TabItem.Content>
+                        <Grid Grid.Row="3">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="50"/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
 
-                <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
+                            <Border Margin="10,0,10,10" BorderBrush="#FFC3C3C3"
                             BorderThickness="0 0 0 2"
                             Width="400"
                             HorizontalAlignment="Left">
-                    <Label Content="UI" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
-                </Border>
+                                <Label Content="UI" FontFamily="ExoSoft ☞" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                            </Border>
 
-                <StackPanel Grid.Row="1">
-                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="[Experimental] Enable in-game overlay" FontSize="16" Margin="30 0 0 10"
+                            <StackPanel Grid.Row="1">
+                                <CheckBox Style="{StaticResource FlatCheckBox}" Content="[Experimental] Enable in-game overlay" FontSize="16" Margin="30 0 0 10"
                                   ToolTip="Allow tweaker to hook audiosurf and draw overlay right inside your game"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsOverlayEnabled, Mode=TwoWay}"/>
-                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Use UWP Notifications" FontSize="16" Margin="30 0 0 10"
+                                <CheckBox Style="{StaticResource FlatCheckBox}" Content="Use UWP Notifications" FontSize="16" Margin="30 0 0 10"
                                   ToolTip="Allow tweaker sent a windows 10\11 notifications after successfully completed action instead of default colored popups"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsUWPNotificationsAllowed, Mode=TwoWay}"/>
-                    <CheckBox Style="{StaticResource FlatCheckBox}" Content="Mute UWP Notifications" FontSize="16" Margin="30 0 0 10"
+                                <CheckBox Style="{StaticResource FlatCheckBox}" Content="Mute UWP Notifications" FontSize="16" Margin="30 0 0 10"
                                   ToolTip="Show UWP notifications but supress system notification audio signal"
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsUWPNotificationSilent, Mode=TwoWay}"
                                   IsEnabled="{Binding IsUWPNotificationsAllowed}"/>
-                </StackPanel>
-            </Grid>
+                            </StackPanel>
+                        </Grid>
+                    </TabItem.Content>
+                </TabItem>
+            </TabControl>
+
+            
+
+            
+
+            
+
+            
         </Grid>
     </Border>
 </UserControl>

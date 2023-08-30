@@ -9,8 +9,7 @@
              xmlns:static="clr-namespace:SkinChangerRestyle.Properties"
              mc:Ignorable="d" 
              d:DesignHeight="665" d:DesignWidth="800">
-    <Border Background="White"
-            Height="661">
+    <Border Background="White">
         <Grid Margin="0 18 0 0">
             <Grid.RowDefinitions>
                 <RowDefinition/>
