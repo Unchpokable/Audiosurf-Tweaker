@@ -251,6 +251,8 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         public async void InstallSkin(string pathToOrigin, string target, bool forced = false, bool unpackScreenshots = false, bool clearInstall = false, bool saveState = true)
         {
+            TexturesWatcher.AccordingToApplicationConfiguration?.DisableRaisingEvents();
+
             if (!Directory.Exists(target))
             {
                 MessageBox.Show($"Given Directory does not exists: {target}\n Check that 'Path to game textures' setting is valid", "Installation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -297,6 +299,8 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             ApplicationNotificationManager.Manager.ShowSuccess("Done!", $"Skin \"{skinName}\" successfully installed. Enjoy! ^_^");
 
             ChangerStatus = "Ready";
+
+            TexturesWatcher.AccordingToApplicationConfiguration?.EnableRaisingEvents();
         }
 
         public async void RemoveSkin(SkinCard target)
