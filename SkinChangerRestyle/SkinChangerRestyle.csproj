@@ -293,10 +293,6 @@
       <Project>{81019294-ff0f-4df9-b6b2-8fd4f073c253}</Project>
       <Name>ChangerAPI</Name>
     </ProjectReference>
-    <ProjectReference Include="..\QuickPlayerCore\QuickPlayerCore.csproj">
-      <Project>{4bb9d821-aa5f-4a3b-8580-770d393e1b2e}</Project>
-      <Name>QuickPlayerCore</Name>
-    </ProjectReference>
     <ProjectReference Include="..\textpackctrl\textpackctrl.csproj">
       <Project>{27231428-42a6-43ec-8f0a-9f71726b2934}</Project>
       <Name>textpackctrl</Name>
