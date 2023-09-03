@@ -8,17 +8,31 @@ namespace SkinChangerRestyle.MVVM.Model
 {
     internal class TexturesWatcher : ObservableObject, IDisposable
     {
-        public TexturesWatcher()
+        private TexturesWatcher()
         {
             _watcher = new FileSystemWatcher();
             _watcher.Changed += OnWatcherTriggered;
             _watcher.Created += OnWatcherTriggered;
             _watcher.Deleted += OnWatcherTriggered;
             _watcher.Renamed += OnWatcherTriggered;
+            AllowRaisingEvents = true;
         }
+
 
         public event FileSystemEventHandler Triggered;
         public event EventHandler DiskOperationCompleted;
+
+        public bool AllowRaisingEvents { get; set; }
+
+        public static TexturesWatcher Instance
+        {
+            get
+            {
+                if (_instance == null) 
+                    _instance = new TexturesWatcher();
+                return _instance;
+            }
+        }
 
         public string TargetPath
         {
@@ -34,8 +48,12 @@ namespace SkinChangerRestyle.MVVM.Model
             }
         }
 
+        private static TexturesWatcher _instance;
+
         public void OnWatcherTriggered(object sender, FileSystemEventArgs e)
         {
+            if (!AllowRaisingEvents) return;
+
             if ((DateTime.Now - _lastTrigger).TotalMilliseconds > 200 ) //Avoid massive command spam when some skin installs
             {
                 _lastTrigger = DateTime.Now;
@@ -75,7 +93,6 @@ namespace SkinChangerRestyle.MVVM.Model
                 }
             });
         }
-
         #region Dispose
         private bool _disposedValue;
 
