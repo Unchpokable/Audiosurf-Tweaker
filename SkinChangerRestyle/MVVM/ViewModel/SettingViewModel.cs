@@ -36,10 +36,8 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             if (_isWatcherEnabled)
             {
-                Watcher = new TexturesWatcher
-                {
-                    TargetPath = SettingsProvider.GameTexturesPath
-                };
+                Watcher = TexturesWatcher.Instance;
+                Watcher.TargetPath = SettingsProvider.GameTexturesPath;
 
                 IsShouldStoreTextures = SettingsProvider.WatcherShouldStoreTextures;
                 IsTempFileOverrided = SettingsProvider.WatcherTempFileOverrided;
