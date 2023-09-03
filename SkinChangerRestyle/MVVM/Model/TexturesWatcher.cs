@@ -24,6 +24,16 @@ namespace SkinChangerRestyle.MVVM.Model
 
         public bool AllowRaisingEvents { get; set; }
 
+        public static TexturesWatcher AccordingToApplicationConfiguration
+        {
+            get
+            {
+                if (SettingsProvider.WatcherEnabled)
+                    return Instance;
+                return null;
+            }
+        }
+
         public static TexturesWatcher Instance
         {
             get
@@ -93,6 +103,12 @@ namespace SkinChangerRestyle.MVVM.Model
                 }
             });
         }
+
+        public void DisableRaisingEvents() => AllowRaisingEvents = false;
+        
+        public void EnableRaisingEvents() => AllowRaisingEvents = true;
+
+
         #region Dispose
         private bool _disposedValue;
 
