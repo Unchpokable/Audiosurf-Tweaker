@@ -92,6 +92,9 @@ namespace ChangerAPI.Utilities
 
         public static explicit operator Bitmap(ImageGroup obj)
         {
+            if (obj.Group.Count == 0)
+                return null;
+
             if (obj.Group.Count == 1)
                 return (Bitmap)obj.Group[0];
             throw new InvalidCastException("Can't cast ImageGroup with more that 1 picture into Bitmap");
