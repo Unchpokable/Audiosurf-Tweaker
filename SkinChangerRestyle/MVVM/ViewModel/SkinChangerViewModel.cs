@@ -441,7 +441,20 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     MessageBox.Show("Selected file isn't Audiosurf Tweaker package", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
+
                 var newPath = $@"Skins\{Path.GetFileName(path)}";
+                
+                if (File.Exists(newPath))
+                {
+                    if (MessageBox.Show("Given skin already exists. Do you want to overwrite it?", "File Exists",
+                            MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                    {
+                        File.Delete(newPath);
+                        Skins.RemoveIf(card => card.Name == skin.Name);
+                    }
+                    else return;
+                }
+
                 File.Move(path, newPath);
 
                 lock (_lockObject)

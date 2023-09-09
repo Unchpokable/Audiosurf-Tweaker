@@ -1,6 +1,7 @@
 ﻿using Microsoft.Toolkit.Uwp.Notifications;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
@@ -113,6 +114,18 @@ namespace SkinChangerRestyle.Core.Extensions
         public static System.Windows.Media.Color ToNegative(this System.Windows.Media.Color color)
         {
             return System.Windows.Media.Color.FromArgb(color.A, (byte)(255 - color.R), (byte)(255 - color.G), (byte)(255 - color.B));
+        }
+
+        public static void RemoveIf<T>(this Collection<T> source, Predicate<T> predicate)
+        {
+            foreach (var item in source)
+            {
+                if (predicate(item))
+                {
+                    source.Remove(item);
+                    return; // Removes only first entry of item
+                }
+            }
         }
 
         #region not extensions
