@@ -15,6 +15,9 @@ using System.Reflection;
 using ASCommander;
 using System.Drawing;
 using System.Collections.Generic;
+using Notification.Wpf;
+using SkinChangerRestyle.Core.Utils;
+using System.Security.Cryptography;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -255,12 +258,12 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             if (!Directory.Exists(target))
             {
-                MessageBox.Show($"Given Directory does not exists: {target}\n Check that 'Path to game textures' setting is valid", "Installation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ApplicationNotificationManager.Manager.ShowOverWindow("Installation Error", "Given Directory does not exists: {target}\n Check that 'Path to game textures' setting is valid", NotificationType.Error);
                 return;
             }
             if (!File.Exists(pathToOrigin))
             {
-                MessageBox.Show($"Given path does not exists: {pathToOrigin}\n It may be caused by corrupted skins cache. Please, rebuild skins cache and try again", "Installation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ApplicationNotificationManager.Manager.ShowOverWindow("Installation error", $"Given path does not exists: { pathToOrigin}\n It may be caused by corrupted skins cache.Please, rebuild skins cache and try again", NotificationType.Error);
                 return;
             }
 
@@ -271,23 +274,23 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 {
                     if (!EnvironmentChecker.CheckEnvironment(target, out FolderHashInfo _))
                     {
-                        MessageBox.Show("Current texutre set in unsaved. Skin installation prohibited", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        ApplicationNotificationManager.Manager.ShowOverWindow("Skin installation restriction", "Current texture set is unsaved. Skin Installation prohibited", NotificationType.Warning);
                         return;
                     }
                 }
 
                 if (SettingsProvider.ControlSystemActive && !EnvironmentChecker.CheckEnvironment(target, out FolderHashInfo _))
                 {
-                    var userReply = MessageBox.Show("Your current texture set is unsaved. Installing skin will overwrite unsaved changes and you will lost it. Do you want to continue?", "Warning",
-                        MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-                    if (userReply == DialogResult.No)
+                    var userReply = ApplicationNotificationManager.Manager.AskForAction("Danger action warning",
+                        "Your current texture set is unsaved. Installing skin will overwrite unsaved changes and you will lost it. Do you want to continue?");
+                    if (!userReply)
                         return;
                 }
             }
 
             if (clearInstall)
             {
-                Clean(target);
+                Utils.HardClear(target);
                 AudiosurfHandle.Instance.Command("ascommand reloadtextures");
             }
             
@@ -311,18 +314,24 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             Skins.Remove(target);
 
-            if (MessageBox.Show("Remove file too?", "removing skin", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            if (ApplicationNotificationManager.Manager.AskForAction("Remove Skin", "Do you want to remove file too?"))
             {
                 await Task.Run(() =>
                 {
                     File.Delete(target.PathToOrigin);
-                    if (LoadingCache.TryFind(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), out LoadingCache cache))
+                    if (LoadingCache.TryFind(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
+                            out LoadingCache cache))
                     {
                         cache.Data.RemoveAll(x => x.Name == target.Name);
                         cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
-                        Extensions.DisposeAndClear(cache);
+                        Utils.DisposeAndClear(cache);
                     }
+
                     ChangerStatus = "Ready";
+                })
+                .ContinueWith(task =>
+                {
+                    ApplicationNotificationManager.Manager.ShowOverWindow("", "Operation completed", NotificationType.Information);
                 });
             }
         }
@@ -410,7 +419,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             if (!File.Exists(_selectedItem.PathToOrigin))
             {
-                MessageBox.Show("A Cache read-write error occured. Skins will be reloaded", "Cache corruption warning", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                ApplicationNotificationManager.Manager.ShowOverWindow("Cache error", "A Cache read-write error occured. Skins will be reloaded", NotificationType.Warning);
                 await Task.Run(LoadSkinsFull);
                 return;
             }
@@ -438,7 +447,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 var skin = SkinPackager.Decompile(path);
                 if (skin == null)
                 {
-                    MessageBox.Show("Selected file isn't Audiosurf Tweaker package", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    ApplicationNotificationManager.Manager.ShowOverWindow("Error", "Given file is not an Audiosurf Tweaker skin", NotificationType.Error);
                     return;
                 }
 
@@ -446,8 +455,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 
                 if (File.Exists(newPath))
                 {
-                    if (MessageBox.Show("Given skin already exists. Do you want to overwrite it?", "File Exists",
-                            MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                    if (ApplicationNotificationManager.Manager.AskForAction("Skin Exists", "Given skin already in skins list. Do you want to overwrite it?"))
                     {
                         File.Delete(newPath);
                         Skins.RemoveIf(card => card.Name == skin.Name);
@@ -470,8 +478,12 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                         cache.Data.Add(new LoadedSkinData(skin, newPath));
                         cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
                     }
-                    Extensions.DisposeAndClear(cache, skin);
+                    Utils.DisposeAndClear(cache, skin);
                 }
+            })
+            .ContinueWith(task =>
+            {
+                ApplicationNotificationManager.Manager.ShowOverWindow("", "Operation completed!", NotificationType.Information);
             });
         }
 
@@ -528,7 +540,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
             LoadingProgressbarVisible = System.Windows.Visibility.Hidden;
 
-            Extensions.DisposeAndClear(cache);
+            Utils.DisposeAndClear(cache);
         }
 
         private void LoadSkinsFull()
@@ -558,7 +570,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             LoadingProgressbarVisible = System.Windows.Visibility.Hidden;
             cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
-            Extensions.DisposeAndClear(cache);
+            Utils.DisposeAndClear(cache);
             
         }
 
@@ -584,31 +596,10 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             await Task.Run(() => 
             { 
                 SkinPackager.CompileToPath(skin, "Skins"); 
-                Extensions.DisposeAndClear(skin); 
+                Utils.DisposeAndClear(skin); 
             });
 
             SelectedItem = card;
-        }
-
-        private void Clean(string path)
-        {
-            // Absolute and fast annihilation of any content in specified folder
-            if (Directory.Exists(path))
-            {
-                try
-                {
-                    Directory.GetFiles(path).AsParallel().ForAll(x =>
-                    {
-                        try { File.SetAttributes(path, File.GetAttributes(path) & ~FileAttributes.ReadOnly); } catch { }
-                        try { File.Delete(x); } catch { }
-                    });
-                    Directory.GetDirectories(path).AsParallel().ForAll(x =>
-                    {
-                        try { Directory.Delete(x, true); } catch { };
-                    });
-                }
-                catch { }
-            }
         }
 
         private void InjectOverlayPlugin()

@@ -7,7 +7,9 @@ using System.Windows;
 using System.IO;
 using System.Threading.Tasks;
 using System;
+using Notification.Wpf;
 using SkinChangerRestyle.Core.Extensions;
+using SkinChangerRestyle.Core.Utils;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -19,7 +21,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             if (existsPalettes == null)
             {
-                MessageBox.Show("Palettes storage file was not found or corrupted and has been rewrited by new empty storage. Its OK if you running Audiosurf Tweaker for the first time", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                ApplicationNotificationManager.Manager.ShowOverWindow("Warning", 
+                    "Palettes storage file was not found or corrupted and has been rewrited by new empty storage. Its OK if you running Audiosurf Tweaker for the first time",
+                    NotificationType.Warning);
                 existsPalettes = new PaletteDynamicLoadContainer();
             }
 
@@ -238,9 +242,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         private void RemoveSelectedPaletteInternal(object o)
         {
-            if (MessageBox.Show("This action will delete selected color palette. Are you sure?", "Remove palette", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            if (!ApplicationNotificationManager.Manager.AskForAction("Remove Palette", "This action will delete selected color palette. Are you sure?"))
                 return;
-            
+
             if (!Palettes.Contains(SelectedPalette))
                 return;
 
@@ -258,9 +262,10 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             var gamePid = System.Diagnostics.Process.GetProcessesByName("QuestViewer");
             if (gamePid.Length > 0)
             {
-                if (MessageBox.Show("Audiosurf Tweaker detected running game instance. Color settings can't be overwrited while game is running. Shutdown game to rewrite settings? This action will start your game back when operation complete", "Game is running", MessageBoxButton.YesNo, MessageBoxImage.Question) == MessageBoxResult.Yes)
+                if (ApplicationNotificationManager.Manager.AskForAction("Game is running", 
+                        "Audiosurf Tweaker detected running game instance. Color settings can't be overwrited while game is running. Shutdown game to rewrite settings? This action will start your game back when operation complete"))
                 {
-                    Extensions.Cmd($"taskkill /f /pid {gamePid[0].Id}");
+                    Utils.Cmd($"taskkill /f /pid {gamePid[0].Id}");
                     isGameKilled = true;
                     await WaitForGameStopWorking("QuestViewer");
                 }
@@ -281,18 +286,18 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
             catch (Exception e)
             {
-                MessageBox.Show($"Error while writing game configuration file: {e.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                ApplicationNotificationManager.Manager.ShowOverWindow("Error", $"Error while writing game configuration file: {e.Message}", NotificationType.Error);
             }
 
             if (isGameKilled)
             {
                 await Task.Run(() => 
                 {
-                    Extensions.Cmd($"cd /d \"{Directory.GetParent(SettingsProvider.GameTexturesPath)?.Parent?.FullName}\" && timeout /t 1 && Audiosurf.exe");
+                    Utils.Cmd($"cd /d \"{Directory.GetParent(SettingsProvider.GameTexturesPath)?.Parent?.FullName}\" && timeout /t 1 && Audiosurf.exe");
                 });
             }
 
-            MessageBox.Show("Done!", "Operation complete", MessageBoxButton.OK, MessageBoxImage.Information);
+            ApplicationNotificationManager.Manager.ShowOverWindow("Done!", "Operation Completed!", NotificationType.Success);
         }
 
         private void ExportGamePalette(object obj)
@@ -305,7 +310,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
             catch (Exception e)
             {
-                MessageBox.Show($"Error while reading/writing game configuration: {e.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                ApplicationNotificationManager.Manager.ShowOverWindow("Error", $"Error while reading/writing game configuration: {e.Message}", NotificationType.Error);
                 return;
             }
 
@@ -334,11 +339,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 { 
                     if (!ColorPalette.Save(SelectedPalette, sfDialog.SelectedPath))
                     {
-                        MessageBox.Show("Error while exporting palette", "Export error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        ApplicationNotificationManager.Manager.ShowOverWindow("Error", "Error while exporting palette", NotificationType.Error);
                     } 
                     else
                     {
-                        MessageBox.Show("Operation Completed", "Done", MessageBoxButton.OK, MessageBoxImage.Information);
+                        ApplicationNotificationManager.Manager.ShowOverWindow("Done!", "Operation Completed!", NotificationType.Success);
                     }
                 });
             }
@@ -351,7 +356,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 var palette = ColorPalette.Load(fileDialog.FileName);
                 if (palette == null)
-                    MessageBox.Show("Could not load selected palette", "Import error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    ApplicationNotificationManager.Manager.ShowOverWindow("Error", "Could not load selected palette", NotificationType.Error);
                 else
                 {
                     Palettes.Add(palette);

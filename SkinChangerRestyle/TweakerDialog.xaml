@@ -1,0 +1,34 @@
+﻿<Window x:Class="SkinChangerRestyle.TweakerDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:SkinChangerRestyle"
+        mc:Ignorable="d"
+        Title="{Binding Caption}" Height="Auto" Width="Auto"
+        MinWidth="250"
+        MinHeight="150"
+        ResizeMode="NoResize"
+        SizeToContent="WidthAndHeight"
+        FontSize="16"
+        WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition/>
+            <RowDefinition Height="50"/>
+        </Grid.RowDefinitions>
+
+
+        <TextBlock Text="{Binding Message}" HorizontalAlignment="Center" Margin="10"/>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="10">
+            <Button Content="OK" Click="OK_Click" Visibility="{Binding OkVisibility}"
+                    Style="{StaticResource UnderscoredButton}"
+                    Margin="0 0 10 0"
+                    MinWidth="70"/>
+            <Button Content="Cancel" Click="Cancel_Click" Visibility="{Binding CancelVisibility}"
+                    Style="{StaticResource UnderscoredButton}"
+                    Margin="10 0 0 0"
+                    MinWidth="70"/>
+        </StackPanel>
+    </Grid>
+</Window>
