@@ -55,12 +55,23 @@
                     </Grid.RowDefinitions>
 
                     <ListView Grid.Row="0"
+                              AllowDrop="True"
                               x:Name="serversList"
                               ItemsSource="{Binding Servers}"
                               SelectedItem ="{Binding SelectedServer}"
                               ItemContainerStyle="{StaticResource ServerItem}"
                               BorderBrush="Transparent"
                               BorderThickness="0">
+
+                        <ListView.InputBindings>
+                            <KeyBinding Command="{Binding RemoveSelectedServer}" Key="Delete"/>
+                        </ListView.InputBindings>
+
+                        <i:Interaction.Triggers>
+                            <i:EventTrigger EventName="Drop">
+                                <i:CallMethodAction MethodName="OnFileDrop" TargetObject="{Binding Path=DataContext, ElementName=serversList}"/>
+                            </i:EventTrigger>
+                        </i:Interaction.Triggers>
                     </ListView>
 
                     <Grid Grid.Row="1"
@@ -226,11 +237,7 @@
                 </StatusBarItem>
             </StatusBar>
 
-            <notifications:NotificationArea Grid.Row="1"
-                                            Grid.RowSpan="2"
-                                            x:Name="WindowArea"
-                                            Position="BottomRight"
-                                            MaxItems="3"/>
+            
         </Grid>
     </Border>
 </UserControl>
