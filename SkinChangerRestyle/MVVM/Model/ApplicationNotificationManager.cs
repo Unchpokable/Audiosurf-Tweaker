@@ -65,6 +65,18 @@ namespace SkinChangerRestyle.MVVM.Model
         public void ShowInformation(string title, string message)
             => Show(title, message, NotificationType.Information);
 
+        public void ShowErrorWnd(string title, string message)
+            => ShowOverWindow(title, message, NotificationType.Error);
+
+        public void ShowSuccessWnd(string title, string message)
+            => ShowOverWindow(title, message, NotificationType.Success);
+
+        public void ShowWarningWnd(string title, string message)
+            => ShowOverWindow(title, message, NotificationType.Warning);
+
+        public void ShowInformationWnd(string title, string message)
+            => ShowOverWindow(title, message, NotificationType.Information);
+
         public void ShowUWPNotification(string caption, string message)
         {
             var toast = new ToastContentBuilder()

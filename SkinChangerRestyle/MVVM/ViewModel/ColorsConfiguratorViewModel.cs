@@ -286,7 +286,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
             catch (Exception e)
             {
-                ApplicationNotificationManager.Manager.ShowOverWindow("Error", $"Error while writing game configuration file: {e.Message}", NotificationType.Error);
+                ApplicationNotificationManager.Manager.ShowErrorWnd("Error", $"Error while writing game configuration file: {e.Message}");
             }
 
             if (isGameKilled)
@@ -297,7 +297,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 });
             }
 
-            ApplicationNotificationManager.Manager.ShowOverWindow("Done!", "Operation Completed!", NotificationType.Success);
+            ApplicationNotificationManager.Manager.ShowSuccessWnd("Done!", "Operation Completed!");
         }
 
         private void ExportGamePalette(object obj)
@@ -310,7 +310,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
             catch (Exception e)
             {
-                ApplicationNotificationManager.Manager.ShowOverWindow("Error", $"Error while reading/writing game configuration: {e.Message}", NotificationType.Error);
+                ApplicationNotificationManager.Manager.ShowErrorWnd("Error", $"Error while reading/writing game configuration: {e.Message}");
                 return;
             }
 
@@ -339,11 +339,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 { 
                     if (!ColorPalette.Save(SelectedPalette, sfDialog.SelectedPath))
                     {
-                        ApplicationNotificationManager.Manager.ShowOverWindow("Error", "Error while exporting palette", NotificationType.Error);
+                        ApplicationNotificationManager.Manager.ShowErrorWnd("Error", "Error while exporting palette");
                     } 
                     else
                     {
-                        ApplicationNotificationManager.Manager.ShowOverWindow("Done!", "Operation Completed!", NotificationType.Success);
+                        ApplicationNotificationManager.Manager.ShowSuccessWnd("Done!", "Operation Completed!");
                     }
                 });
             }
@@ -356,12 +356,12 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 var palette = ColorPalette.Load(fileDialog.FileName);
                 if (palette == null)
-                    ApplicationNotificationManager.Manager.ShowOverWindow("Error", "Could not load selected palette", NotificationType.Error);
+                    ApplicationNotificationManager.Manager.ShowErrorWnd("Error", "Could not load selected palette");
                 else
                 {
                     Palettes.Add(palette);
                     PaletteDynamicLoadContainer.Add(palette, PaletteContainerFilename);
-                    MessageBox.Show("Operation complete!", "Done", MessageBoxButton.OK, MessageBoxImage.Information);
+                    ApplicationNotificationManager.Manager.ShowInformationWnd("", "Operation Completed!");
                 }
             }
         }

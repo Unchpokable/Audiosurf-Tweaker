@@ -172,7 +172,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                         if (zip.Entries.Count < 3 ||
                             !uniqueFilesBuffer.All(entry => entry.Name.SameWith(requiredFiles)))
                         {
-                            ApplicationNotificationManager.Manager.ShowOverWindow("Import Error", "Package is not valid. Not all files match requires or some files missing", NotificationType.Error);
+                            ApplicationNotificationManager.Manager.ShowErrorWnd("Import Error", "Package is not valid. Not all files match requires or some files missing");
                             continue;
                         }
 
@@ -182,7 +182,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 }
                 catch (Exception ex) // if archive does not opens or anythings else happening wrong we just ignore it
                 {
-                    ApplicationNotificationManager.Manager.ShowOverWindow("Error", $"Error while add package: {ex.Message}", NotificationType.Error);
+                    ApplicationNotificationManager.Manager.ShowErrorWnd("Error", $"Error while add package: {ex.Message}");
                 }
             }
         }
@@ -311,7 +311,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         {
             if (VariableDefinitionProxy.Name == "%PACKAGE_ROOT%")
             {
-                ApplicationNotificationManager.Manager.ShowOverWindow("Restricted Action", "Unable to add name %PACKAGE_ROOT% - reserved variable name, defined by interpreter itself", NotificationType.Warning);
+                ApplicationNotificationManager.Manager.ShowWarningWnd("Restricted Action", "Unable to add name %PACKAGE_ROOT% - reserved variable name, defined by interpreter itself");
                 return;
             }
             var nameDefinitionProxyClone = VariableDefinitionProxy.Clone();
@@ -339,7 +339,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             if (SelectedVariableItem.Name.SameWith("%AS%", "%BACKUP_PATH%", "%PACKAGE_ROOT"))
             {
-                ApplicationNotificationManager.Manager.ShowOverWindow("Restricted Action", "Requiered Interpreter variable, can not remove", NotificationType.Warning);
+                ApplicationNotificationManager.Manager.ShowWarningWnd("Restricted Action", "Requiered Interpreter variable, can not remove");
                 return;
             }
 
@@ -408,7 +408,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
             else
             {
-                ApplicationNotificationManager.Manager.ShowOverWindow("", "Action was declined", NotificationType.Information);
+                ApplicationNotificationManager.Manager.ShowInformationWnd("", "Action was declined");
             }
         }
 
@@ -427,7 +427,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private void LoadServersCommand(object _)
         {
             LoadServers();
-            ApplicationNotificationManager.Manager.ShowOverWindow("", "Operation completed", NotificationType.Information);
+            ApplicationNotificationManager.Manager.ShowInformationWnd("", "Operation completed");
         }
 
         private async void UpdateServersNetStatsInternal(object _)
@@ -440,7 +440,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 tasks.Add(server.ActualizeRemoteStats());
             }
             await Task.WhenAll(tasks.ToArray());
-            ApplicationNotificationManager.Manager.ShowOverWindow("Done!", "Servers network statistics updated", NotificationType.Information);
+            ApplicationNotificationManager.Manager.ShowInformationWnd("Done!", "Servers network statistics updated");
             NetStatUpdateAvailable = true;
         }
     }

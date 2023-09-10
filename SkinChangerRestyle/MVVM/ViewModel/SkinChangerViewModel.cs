@@ -258,12 +258,12 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             if (!Directory.Exists(target))
             {
-                ApplicationNotificationManager.Manager.ShowOverWindow("Installation Error", "Given Directory does not exists: {target}\n Check that 'Path to game textures' setting is valid", NotificationType.Error);
+                ApplicationNotificationManager.Manager.ShowErrorWnd("Installation Error", "Given Directory does not exists: {target}\n Check that 'Path to game textures' setting is valid");
                 return;
             }
             if (!File.Exists(pathToOrigin))
             {
-                ApplicationNotificationManager.Manager.ShowOverWindow("Installation error", $"Given path does not exists: { pathToOrigin}\n It may be caused by corrupted skins cache.Please, rebuild skins cache and try again", NotificationType.Error);
+                ApplicationNotificationManager.Manager.ShowErrorWnd("Installation error", $"Given path does not exists: { pathToOrigin}\n It may be caused by corrupted skins cache.Please, rebuild skins cache and try again");
                 return;
             }
 
@@ -274,7 +274,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 {
                     if (!EnvironmentChecker.CheckEnvironment(target, out FolderHashInfo _))
                     {
-                        ApplicationNotificationManager.Manager.ShowOverWindow("Skin installation restriction", "Current texture set is unsaved. Skin Installation prohibited", NotificationType.Warning);
+                        ApplicationNotificationManager.Manager.ShowWarningWnd("Skin installation restriction", "Current texture set is unsaved. Skin Installation prohibited");
                         return;
                     }
                 }
@@ -331,7 +331,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 })
                 .ContinueWith(task =>
                 {
-                    ApplicationNotificationManager.Manager.ShowOverWindow("", "Operation completed", NotificationType.Information);
+                    ApplicationNotificationManager.Manager.ShowInformationWnd("", "Operation completed");
                 });
             }
         }
@@ -419,7 +419,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             if (!File.Exists(_selectedItem.PathToOrigin))
             {
-                ApplicationNotificationManager.Manager.ShowOverWindow("Cache error", "A Cache read-write error occured. Skins will be reloaded", NotificationType.Warning);
+                ApplicationNotificationManager.Manager.ShowWarningWnd("Cache error", "A Cache read-write error occured. Skins will be reloaded");
                 await Task.Run(LoadSkinsFull);
                 return;
             }
@@ -447,7 +447,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 var skin = SkinPackager.Decompile(path);
                 if (skin == null)
                 {
-                    ApplicationNotificationManager.Manager.ShowOverWindow("Error", "Given file is not an Audiosurf Tweaker skin", NotificationType.Error);
+                    ApplicationNotificationManager.Manager.ShowErrorWnd("Error", "Given file is not an Audiosurf Tweaker skin");
                     return;
                 }
 
@@ -483,7 +483,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             })
             .ContinueWith(task =>
             {
-                ApplicationNotificationManager.Manager.ShowOverWindow("", "Operation completed!", NotificationType.Information);
+                ApplicationNotificationManager.Manager.ShowInformationWnd("", "Operation completed!");
             });
         }
 
@@ -526,7 +526,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 if (cachedSkin == null)
                 {
-                    MessageBox.Show("Cache error occurred, skins will be loaded from source files");
+                    ApplicationNotificationManager.Manager.ShowErrorWnd("", "Cache error occured. Skins will be loaded from source files");
                     LoadSkinsFull();
                     return;
                 }
