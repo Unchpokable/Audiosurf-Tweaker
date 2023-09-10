@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -127,51 +128,5 @@ namespace SkinChangerRestyle.Core.Extensions
                 }
             }
         }
-
-        #region not extensions
-        public static async void DisposeAndClear(params IDisposable[] disposable)
-        {
-            foreach (var d in disposable)
-                d?.Dispose();
-
-            await Task.Run(async () =>
-            {
-                await Task.Delay(1000);
-                // Ye, i know that manual calling GC.Collct() is a very bad practice, but idk why, in this certain case GC works as shit bag and lefts OVER NINE THOUSANDS unused memory for an undefined long while
-                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, false, true);
-                GC.WaitForPendingFinalizers();
-                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, false, true);
-            });
-        }
-
-        public static void Cmd(string command)
-        {
-            try
-            {
-                Process.Start(new ProcessStartInfo
-                {
-                    FileName = "cmd.exe",
-                    Arguments = $"/c {command}",
-                    WindowStyle = ProcessWindowStyle.Hidden,
-                });
-            }
-            catch
-            {
-                // ignored
-            }
-        }
-
-        public static void ShowUWPNotification(string caption, string message)
-        {
-            var toast = new ToastContentBuilder()
-                .AddHeader("0", caption, new ToastArguments())
-                .SetToastDuration(ToastDuration.Short)
-                .AddText(message);
-
-            if (SettingsProvider.IsUWPNotificationSilent)
-                toast.AddAudio(new ToastAudio() { Silent = true });
-            toast.Show();
-        }
-        #endregion
     }
 }
