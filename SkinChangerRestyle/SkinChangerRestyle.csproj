@@ -66,6 +66,8 @@
     <Reference Include="System.Configuration" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Runtime.Remoting" />
     <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Windows.Forms" />
@@ -89,6 +91,7 @@
     </ApplicationDefinition>
     <Compile Include="Core\AudiosurfConfigurationPresenter.cs" />
     <Compile Include="Core\Converters\InversedBooleanToColorConverter.cs" />
+    <Compile Include="Core\Dialogs\TweakerDialogResult.cs" />
     <Compile Include="Core\EnumBooleanConverter.cs" />
     <Compile Include="Core\LoadedSkinData.cs" />
     <Compile Include="Core\NetworkTools\Exceptions\UnresolvedHostnameException.cs" />
@@ -97,6 +100,7 @@
     <Compile Include="Core\NetworkTools\RemoteServerPingStats.cs" />
     <Compile Include="Core\OverlayHelper.cs" />
     <Compile Include="Core\ServerSwapper\ServerSwapper.cs" />
+    <Compile Include="Core\Utils\Utils.cs" />
     <Compile Include="MVVM\Model\ApplicationNotificationManager.cs" />
     <Compile Include="MVVM\Model\ColorPalette.cs" />
     <Compile Include="MVVM\Model\ASColors.cs" />
@@ -112,6 +116,9 @@
       <DependentUpon>ImageViewWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Core\LoadingCache.cs" />
+    <Compile Include="TweakerDialog.xaml.cs">
+      <DependentUpon>TweakerDialog.xaml</DependentUpon>
+    </Compile>
     <Page Include="EditOnDiskLockWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
@@ -215,6 +222,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Themes\UnderscoredTransparentButton.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="TweakerDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -399,5 +410,6 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </AdditionalFiles>
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

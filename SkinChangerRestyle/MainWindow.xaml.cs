@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
+using SkinChangerRestyle.MVVM.Model;
 
 namespace SkinChangerRestyle
 {
@@ -22,6 +23,7 @@ namespace SkinChangerRestyle
             InitializeComponent();
             Focus();
             _logger = new Logger();
+            ApplicationNotificationManager.Manager.RegisterContext(this.DataContext);
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
