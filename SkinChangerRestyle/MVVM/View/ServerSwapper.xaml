@@ -43,7 +43,16 @@
                                 Height="30"
                                 Style="{StaticResource RoundIconButton}"
                                 Margin="20 0 0 0"
-                                ToolTip="Ping all servers again"/>
+                                ToolTip="Ping all servers again"
+                                IsEnabled="{Binding NetStatUpdateAvailable}"/>
+
+                        <Button Command="{Binding UpdateServersList}"
+                                Content="{Binding ReloadIcon}"
+                                Width="30"
+                                Height="30"
+                                Style="{StaticResource RoundIconButton}"
+                                Margin="20 0 0 0"
+                                ToolTip="Reload servers"/>
                     </StackPanel>
                 </Border>
 
