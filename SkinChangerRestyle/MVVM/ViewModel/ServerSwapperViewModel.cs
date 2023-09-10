@@ -45,7 +45,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             DiscardScriptChanges = new RelayCommand(DiscardScriptChangesInternal);
             DefineNewVariable = new RelayCommand(DefineNewNameInternal);
             RemoveSelected = new RelayCommand(RemoveInterpreterDefine);
-            RemoveSelectedServer = new RelayCommand(RemoveServerPackageInternal);
+            RemoveServerPackage = new RelayCommand(RemoveServerPackageInternal);
             UpdateServersNetworkState = new RelayCommand(o => Servers.ForEach(x => x.ActualizeRemoteStats()));
 
 

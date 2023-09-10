@@ -64,7 +64,7 @@
                               BorderThickness="0">
 
                         <ListView.InputBindings>
-                            <KeyBinding Command="{Binding RemoveSelectedServer}" Key="Delete"/>
+                            <KeyBinding Command="{Binding RemoveServerPackage}" Key="Delete"/>
                         </ListView.InputBindings>
 
                         <i:Interaction.Triggers>
