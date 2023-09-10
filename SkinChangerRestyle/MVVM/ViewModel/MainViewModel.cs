@@ -4,6 +4,7 @@ using ASCommander;
 using SkinChangerRestyle.Core;
 using SkinChangerRestyle.Core.Extensions;
 using System.Windows.Media;
+using SkinChangerRestyle.Core.Utils;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -41,7 +42,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             SetServerSwapperView = new RelayCommand(o => CurrentView = ServerSwapperVM);
             EnableAutoHandling = new RelayCommand(o => _asHandle.StartAutoHandling());
             ResetWndProcService = new RelayCommand(o => _asHandle.ReinitializeWndProcMessageService());
-            Extensions.DisposeAndClear();
+            Utils.DisposeAndClear();
         }
 
         public RelayCommand SetCommandCenterView { get; set; }

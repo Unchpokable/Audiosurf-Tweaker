@@ -12,6 +12,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Media;
+using Notification.Wpf;
+using SkinChangerRestyle.Core.Utils;
 
 namespace SkinChangerRestyle.MVVM.Model
 {
@@ -175,7 +177,7 @@ namespace SkinChangerRestyle.MVVM.Model
                     cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
                 }
 
-                Extensions.DisposeAndClear(cache, skinObject);
+                Utils.DisposeAndClear(cache, skinObject);
             });
         }
 
@@ -207,7 +209,7 @@ namespace SkinChangerRestyle.MVVM.Model
             });
 
             AssignSkin(redactedSkin, _pathToOriginFile);
-            Extensions.DisposeAndClear(dirproc, redactedSkin);
+            Utils.DisposeAndClear(dirproc, redactedSkin);
 
             try
             {
@@ -235,7 +237,7 @@ namespace SkinChangerRestyle.MVVM.Model
             }
             catch
             {
-                System.Windows.MessageBox.Show("Something went wrong! Please, check that destination path contains only latin symbols and you're trying to export valid skin and try again", "Ooops!", MessageBoxButton.OK, MessageBoxImage.Error);
+                ApplicationNotificationManager.Manager.ShowOverWindow("Oooops!", "Something went wrong! Please, check that destination path contains only latin symbols and you're trying to export valid skin and try again", NotificationType.Error);
             }
         }
 

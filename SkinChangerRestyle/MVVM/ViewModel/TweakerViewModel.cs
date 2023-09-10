@@ -3,6 +3,7 @@ using ASCommander;
 using SkinChangerRestyle.MVVM.Model;
 using System;
 using System.Collections.Generic;
+using SkinChangerRestyle.Core.Utils;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -184,7 +185,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         private void KillAudiosurf()
         {
-            Core.Extensions.Extensions.Cmd($"taskkill /f /pid {_audiosurfHandle.GamePID}");
+            Utils.Cmd($"taskkill /f /pid {_audiosurfHandle.GamePID}");
         }
 
         private class Reference<T>
