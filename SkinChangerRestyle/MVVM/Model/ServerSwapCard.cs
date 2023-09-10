@@ -57,13 +57,16 @@ namespace SkinChangerRestyle.MVVM.Model
         private string _serverName;
         private bool _installed;
 
-        public async void ActualizeRemoteStats()
+        public Task ActualizeRemoteStats()
         {
-            if (RemoteStats != null)
-                RemoteStats = await PingHelper.Instance.PingHostAsync(RemoteStats.IP);
-            else
-                RemoteStats = await PingHelper.Instance.PingHostAsync(SpecsServerRemote);
-            NotifyStatisticsChanged();
+            return Task.Run(async () =>
+            {
+                if (RemoteStats != null)
+                    RemoteStats = await PingHelper.Instance.PingHostAsync(RemoteStats.IP);
+                else
+                    RemoteStats = await PingHelper.Instance.PingHostAsync(SpecsServerRemote);
+                NotifyStatisticsChanged();
+            });
         }
         
         private void NotifyStatisticsChanged()
