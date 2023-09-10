@@ -27,17 +27,14 @@ namespace SkinChangerRestyle.MVVM.ViewModel
     {
         public ServerSwapperViewModel()
         {
-            RefreshIcon = Resources.refreshing.ToImageSource();
+            RefreshIcon = Resources.wifi.ToImageSource();
+            ReloadIcon = Resources.refreshing.ToImageSource();
+
             Servers = new ObservableCollection<ServerSwapCard>();
             if (!Directory.Exists(SettingsProvider.BaseServerPackagePath))
                 Directory.CreateDirectory(SettingsProvider.BaseServerPackagePath);
 
-            var packages = Directory.EnumerateDirectories(SettingsProvider.BaseServerPackagePath);
-
-            foreach (var package in packages)
-            {
-                AddServerPackage(package);
-            }
+            LoadServers();
 
             InstallSelectedServer = new RelayCommand(InstallSelectedServerInternal);
             RemoveSelectedServer = new RelayCommand(RemoveSelectedServerInternal);
@@ -46,7 +43,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             DefineNewVariable = new RelayCommand(DefineNewNameInternal);
             RemoveSelected = new RelayCommand(RemoveInterpreterDefine);
             RemoveServerPackage = new RelayCommand(RemoveServerPackageInternal);
-            UpdateServersNetworkState = new RelayCommand(o => Servers.ForEach(x => x.ActualizeRemoteStats()));
+
+            UpdateServersList = new RelayCommand(LoadServersCommand);
+            UpdateServersNetworkState = new RelayCommand(UpdateServersNetStatsInternal);
 
 
             InterpreterVariables = new ObservableCollection<InterpreterVariable>
@@ -60,6 +59,8 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             Status = "Ready";
             Ready = true;
         }
+
+        
 
         public ServerSwapCard SelectedServer
         {
@@ -103,7 +104,18 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
         }
 
+        public bool NetStatUpdateAvailable
+        {
+            get => _netUpdateAvailable;
+            set
+            {
+                _netUpdateAvailable = value;
+                OnPropertyChanged();
+            }
+        }
+
         public ImageSource RefreshIcon { get; set; }
+        public ImageSource ReloadIcon { get; set; }
 
         public ObservableCollection<ServerSwapCard> Servers { get; }
 
@@ -125,6 +137,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         private string _statusMessage;
 
         private bool _ready;
+        private bool _netUpdateAvailable = true;
 
         public void OnFileDrop(object sender, EventArgs rawEvent)
         {
@@ -396,6 +409,38 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 ApplicationNotificationManager.Manager.ShowOverWindow("", "Action was declined", NotificationType.Information);
             }
+        }
+
+        private void LoadServers()
+        {
+            Servers.Clear();
+
+            var packages = Directory.EnumerateDirectories(SettingsProvider.BaseServerPackagePath);
+
+            foreach (var package in packages)
+            {
+                AddServerPackage(package);
+            }
+        }
+
+        private void LoadServersCommand(object _)
+        {
+            LoadServers();
+            ApplicationNotificationManager.Manager.ShowOverWindow("", "Operation completed", NotificationType.Information);
+        }
+
+        private async void UpdateServersNetStatsInternal(object _)
+        {
+            var tasks = new List<Task>(Servers.Count);
+
+            NetStatUpdateAvailable = false;
+            foreach (var server in Servers)
+            { 
+                tasks.Add(server.ActualizeRemoteStats());
+            }
+            await Task.WhenAll(tasks.ToArray());
+            ApplicationNotificationManager.Manager.ShowOverWindow("Done!", "Servers network statistics updated", NotificationType.Information);
+            NetStatUpdateAvailable = true;
         }
     }
 }
