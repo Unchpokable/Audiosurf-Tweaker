@@ -169,11 +169,12 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     using (var zip = ZipFile.OpenRead(file))
                     {
                         var uniqueFilesBuffer = zip.Entries.ToHashSet();
-                        if (zip.Entries.Count < 3)
+                        if (zip.Entries.Count < 3 ||
+                            !uniqueFilesBuffer.All(entry => entry.Name.SameWith(requiredFiles)))
+                        {
+                            ApplicationNotificationManager.Manager.ShowOverWindow("Import Error", "Package is not valid. Not all files match requires or some files missing", NotificationType.Error);
                             continue;
-
-                        if (!uniqueFilesBuffer.All(entry => entry.Name.SameWith(requiredFiles)))
-                            continue;
+                        }
 
                         zip.ExtractToDirectory($"Servers\\{fileName}");
                         AddServerPackage($"Servers\\{fileName}");
@@ -435,7 +436,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             NetStatUpdateAvailable = false;
             foreach (var server in Servers)
-            { 
+            {
                 tasks.Add(server.ActualizeRemoteStats());
             }
             await Task.WhenAll(tasks.ToArray());
