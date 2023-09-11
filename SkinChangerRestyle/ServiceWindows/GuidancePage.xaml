@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:SkinChangerRestyle"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         mc:Ignorable="d"
-        Title="GuidancePage" Height="450" Width="800">
+        Title="Tweaker Guides" Height="450" Width="800">
     <Grid>
         <!--<WebBrowser x:Name="ContentViewBrowser"></WebBrowser>-->
         <wv2:WebView2 x:Name="ContentViewBrowser"></wv2:WebView2>
