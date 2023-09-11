@@ -47,6 +47,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             UpdateServersList = new RelayCommand(LoadServersCommand);
             UpdateServersNetworkState = new RelayCommand(UpdateServersNetStatsInternal);
 
+            OpenGuidePage = new RelayCommand(o => GuidePageHelper.ShowServerSwapperGuile());
 
             InterpreterVariables = new ObservableCollection<InterpreterVariable>
             {
@@ -128,6 +129,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         public RelayCommand UpdateServersNetworkState { get; set; }
         public RelayCommand UpdateServersList { get; set; }
         public RelayCommand RemoveServerPackage { get; set; }
+        public RelayCommand OpenGuidePage { get; set; }
         public InterpreterVariable VariableDefinitionProxy { get; set; }
         public InterpreterVariable SelectedVariableItem { get; set; }
         public ObservableCollection<InterpreterVariable> InterpreterVariables { get; set; }

@@ -109,7 +109,14 @@
                         Width="400"
                         HorizontalAlignment="Left"
                         Grid.Column="1">
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Left">
                     <Label Content="Installer Script" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                    <Button Content="Guide" Margin="10 -5 0 -5" Style="{StaticResource FlatButton}"
+                            Width="100"
+                            FontSize="16"
+                            Command="{Binding OpenGuidePage}"></Button>
+                    </StackPanel>
                 </Border>
 
                 <Grid Grid.Column="1"
