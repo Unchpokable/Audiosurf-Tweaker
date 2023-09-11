@@ -34,8 +34,8 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             RemoveSelectedServer = new RelayCommand(RemoveSelectedServerInternal);
             SaveInstallerScript = new RelayCommand(SaveInstallerScriptInternal);
             DiscardScriptChanges = new RelayCommand(DiscardScriptChangesInternal);
-            DefineNewVariable = new RelayCommand(DefineNewNameInternal);
-            RemoveSelected = new RelayCommand(RemoveInterpreterDefine);
+            DefineNewVariable = new RelayCommand(DefineNewVariableInternal);
+            RemoveSelected = new RelayCommand(RemoveInterpreterVariable);
             RemoveServerPackage = new RelayCommand(RemoveServerPackageInternal);
 
             UpdateServersList = new RelayCommand(LoadServersCommand);
@@ -303,7 +303,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             });
         }
 
-        private void DefineNewNameInternal(object obj)
+        private void DefineNewVariableInternal(object obj)
         {
             if (VariableDefinitionProxy.Name == "%PACKAGE_ROOT%")
             {
@@ -311,6 +311,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 return;
             }
             var nameDefinitionProxyClone = VariableDefinitionProxy.Clone();
+            if (InterpreterVariables.Any(v => v.Equals(nameDefinitionProxyClone)))
+            {
+                ApplicationNotificationManager.Manager.ShowErrorWnd("Error", "Variable already defined");
+                return;
+            }
             InterpreterVariables.Add(nameDefinitionProxyClone);
         }
 
@@ -328,7 +333,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 ApplicationNotificationManager.Manager.ShowSuccess("Done!", "Operation Completed");
         }
 
-        private void RemoveInterpreterDefine(object o)
+        private void RemoveInterpreterVariable(object o)
         {
             if (SelectedVariableItem == null)
                 return;
