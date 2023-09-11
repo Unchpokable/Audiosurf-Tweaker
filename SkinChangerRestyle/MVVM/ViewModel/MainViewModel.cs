@@ -5,6 +5,7 @@ using SkinChangerRestyle.Core;
 using SkinChangerRestyle.Core.Extensions;
 using System.Windows.Media;
 using SkinChangerRestyle.Core.Utils;
+using SkinChangerRestyle.Properties;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -43,7 +44,10 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             EnableAutoHandling = new RelayCommand(o => _asHandle.StartAutoHandling());
             ResetWndProcService = new RelayCommand(o => _asHandle.ReinitializeWndProcMessageService());
             Utils.DisposeAndClear();
+            MainIcon = Resources.TweakerIcon.ToImageSource();
         }
+
+        public ImageSource MainIcon { get; set; }
 
         public RelayCommand SetCommandCenterView { get; set; }
         public RelayCommand SetChangerView { get; set; }
