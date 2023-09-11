@@ -526,7 +526,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             {
                 if (cachedSkin == null)
                 {
-                    ApplicationNotificationManager.Manager.ShowErrorWnd("", "Cache error occured. Skins will be loaded from source files");
+                    ApplicationNotificationManager.Manager.ShowErrorWnd("", "Cache error occurred. Skins will be loaded from source files");
                     LoadSkinsFull();
                     return;
                 }
