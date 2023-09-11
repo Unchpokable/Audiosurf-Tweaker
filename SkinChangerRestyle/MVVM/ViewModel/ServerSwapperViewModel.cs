@@ -1,6 +1,4 @@
-﻿using ChangerAPI.Utilities;
-using Notification.Wpf;
-using SkinChangerRestyle.Core;
+﻿using SkinChangerRestyle.Core;
 using SkinChangerRestyle.Core.Extensions;
 using SkinChangerRestyle.Core.ServerSwapper;
 using SkinChangerRestyle.MVVM.Model;
@@ -13,13 +11,9 @@ using System.IO.Compression;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using System.Windows;
-using System.Windows.Forms;
 using System.Windows.Media;
 using SkinChangerRestyle.Core.Utils;
 using DataFormats = System.Windows.DataFormats;
-using Extensions = SkinChangerRestyle.Core.Extensions.Extensions;
-using MessageBox = System.Windows.MessageBox;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
