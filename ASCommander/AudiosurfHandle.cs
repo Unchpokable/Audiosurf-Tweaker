@@ -127,6 +127,8 @@ namespace ASCommander
 
         public bool SetHandle(Process target)
         {
+            if (target.MainWindowHandle == IntPtr.Zero)
+                return false;
             lock (_lockObject)
             {
                 return SetHandle(target.MainWindowHandle);
