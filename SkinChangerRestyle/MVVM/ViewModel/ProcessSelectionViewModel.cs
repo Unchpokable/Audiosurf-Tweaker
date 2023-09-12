@@ -20,11 +20,6 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             SetHandleToSelectedProcess = new RelayCommand(SetHandleToSelectedProcessInternal);
         }
 
-        ~ProcessSelectionViewModel()
-        {
-            Extensions.DisposeAndClear(this);
-        }
-
         private ObservableCollection<ShortProcessDescriptor> _processes;
         private object _locker = new object();
         private bool _disposedValue;

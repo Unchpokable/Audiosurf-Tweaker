@@ -10,8 +10,7 @@
              mc:Ignorable="d" 
              d:DesignHeight="661" d:DesignWidth="800">
 
-    <Border Background="White"
-            Height="661">
+    <Border Background="White">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="2*"/>
@@ -85,7 +84,8 @@
             </Grid>
                 
 
-            <Grid Grid.Row="2" Background="Transparent">
+            <Grid Grid.Row="2" Background="Transparent"
+                  >
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width=".9*"/>
                     <ColumnDefinition Width=".9*"/>
@@ -94,8 +94,8 @@
                 </Grid.ColumnDefinitions>
 
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="1*"/>
-                    <RowDefinition Height="3*"/>
+                    <RowDefinition Height="40"/>
+                    <RowDefinition/>
                 </Grid.RowDefinitions>
 
                 <Border BorderBrush="#FFC3C3C3"
@@ -148,7 +148,7 @@
                     <CheckBox FontSize="16" Style="{StaticResource FlatCheckBox}" Content="Rings" IsChecked="{Binding ShouldInstallRings}"/>
                     <CheckBox FontSize="16" Style="{StaticResource FlatCheckBox}" Content="Hits" IsChecked="{Binding ShouldInstallHits}"/>
                 </StackPanel>
-
+                
                 <Border Grid.Column="2" Grid.RowSpan="2" Grid.ColumnSpan="2" Background="#FFEFEFEF"/>
 
                 <Border BorderBrush="#FFC3C3C3"
@@ -157,6 +157,7 @@
                     <Label Content="Screenshots" FontFamily="ExoSoft-Regular ☞" Foreground="#FF8A8A8A" FontSize="18" HorizontalAlignment="Left" VerticalAlignment="Stretch" Margin="0,0,0,0" BorderBrush="#FFC3C3C3"/>
                 </Border>
                 <ListView Grid.Column="2" Grid.Row="1"
+                          
                           Background="Transparent"
                           BorderBrush="Transparent"
                           BorderThickness="0"
@@ -165,6 +166,7 @@
                           ScrollViewer.CanContentScroll="False">
                     
                 </ListView>
+
             </Grid>
             <StatusBar Grid.Row="3" Background="#FF8536ef" Margin="0,0,0,-1">
                 <StatusBarItem>

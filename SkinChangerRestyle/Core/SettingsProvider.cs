@@ -27,7 +27,7 @@ namespace SkinChangerRestyle.Core
         internal static string InfopanelYOffset { get; set; }
 
         internal static string DefaultSkinsPath => Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location) + @"\\Skins";
-        internal static string WatcherDefaultTemp => @"storage\temp.tasp";
+        internal static string WatcherDefaultTemp => @"Storage\temp.tasp";
         internal static string DefaultDylanServerName = "Dylan's";
         internal static string BaseServerPackagePath = "Servers\\";
     }

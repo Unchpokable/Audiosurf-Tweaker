@@ -1,8 +1,10 @@
 ﻿using Microsoft.Toolkit.Uwp.Notifications;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -115,50 +117,16 @@ namespace SkinChangerRestyle.Core.Extensions
             return System.Windows.Media.Color.FromArgb(color.A, (byte)(255 - color.R), (byte)(255 - color.G), (byte)(255 - color.B));
         }
 
-        #region not extensions
-        public static async void DisposeAndClear(params IDisposable[] disposable)
+        public static void RemoveIf<T>(this Collection<T> source, Predicate<T> predicate)
         {
-            foreach (var d in disposable)
-                d?.Dispose();
-
-            await Task.Run(async () =>
+            foreach (var item in source)
             {
-                await Task.Delay(1000);
-                // Ye, i know that manual calling GC.Collct() is a very bad practice, but idk why, in this certain case GC works as shit bag and lefts OVER NINE THOUSANDS unused memory for an undefined long while
-                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, false, true);
-                GC.WaitForPendingFinalizers();
-                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, false, true);
-            });
-        }
-
-        public static void Cmd(string command)
-        {
-            try
-            {
-                Process.Start(new ProcessStartInfo
+                if (predicate(item))
                 {
-                    FileName = "cmd.exe",
-                    Arguments = $"/c {command}",
-                    WindowStyle = ProcessWindowStyle.Hidden,
-                });
-            }
-            catch
-            {
-                // ignored
+                    source.Remove(item);
+                    return; // Removes only first entry of item
+                }
             }
         }
-
-        public static void ShowUWPNotification(string caption, string message)
-        {
-            var toast = new ToastContentBuilder()
-                .AddHeader("0", caption, new ToastArguments())
-                .SetToastDuration(ToastDuration.Short)
-                .AddText(message);
-
-            if (SettingsProvider.IsUWPNotificationSilent)
-                toast.AddAudio(new ToastAudio() { Silent = true });
-            toast.Show();
-        }
-        #endregion
     }
 }

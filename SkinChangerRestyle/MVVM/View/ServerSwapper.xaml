@@ -9,8 +9,7 @@
              xmlns:static="clr-namespace:SkinChangerRestyle.Properties"
              mc:Ignorable="d" 
              d:DesignHeight="665" d:DesignWidth="800">
-    <Border Background="White"
-            Height="661">
+    <Border Background="White">
         <Grid Margin="0 18 0 0">
             <Grid.RowDefinitions>
                 <RowDefinition/>
@@ -44,7 +43,16 @@
                                 Height="30"
                                 Style="{StaticResource RoundIconButton}"
                                 Margin="20 0 0 0"
-                                ToolTip="Ping all servers again"/>
+                                ToolTip="Ping all servers again"
+                                IsEnabled="{Binding NetStatUpdateAvailable}"/>
+
+                        <Button Command="{Binding UpdateServersList}"
+                                Content="{Binding ReloadIcon}"
+                                Width="30"
+                                Height="30"
+                                Style="{StaticResource RoundIconButton}"
+                                Margin="20 0 0 0"
+                                ToolTip="Reload servers"/>
                     </StackPanel>
                 </Border>
 
@@ -52,16 +60,27 @@
                       >
                     <Grid.RowDefinitions>
                         <RowDefinition/>
-                        <RowDefinition Height=".25*"/>
+                        <RowDefinition Height="60"/>
                     </Grid.RowDefinitions>
 
                     <ListView Grid.Row="0"
+                              AllowDrop="True"
                               x:Name="serversList"
                               ItemsSource="{Binding Servers}"
                               SelectedItem ="{Binding SelectedServer}"
                               ItemContainerStyle="{StaticResource ServerItem}"
                               BorderBrush="Transparent"
                               BorderThickness="0">
+
+                        <ListView.InputBindings>
+                            <KeyBinding Command="{Binding RemoveServerPackage}" Key="Delete"/>
+                        </ListView.InputBindings>
+
+                        <i:Interaction.Triggers>
+                            <i:EventTrigger EventName="Drop">
+                                <i:CallMethodAction MethodName="OnFileDrop" TargetObject="{Binding Path=DataContext, ElementName=serversList}"/>
+                            </i:EventTrigger>
+                        </i:Interaction.Triggers>
                     </ListView>
 
                     <Grid Grid.Row="1"
@@ -90,14 +109,21 @@
                         Width="400"
                         HorizontalAlignment="Left"
                         Grid.Column="1">
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Left">
                     <Label Content="Installer Script" FontFamily="Exo 2 Medium" FontSize="24" VerticalAlignment="Center" Foreground="#FF888888"/>
+                    <Button Content="Guide" Margin="10 -5 0 -5" Style="{StaticResource FlatButton}"
+                            Width="100"
+                            FontSize="16"
+                            Command="{Binding OpenGuidePage}"></Button>
+                    </StackPanel>
                 </Border>
 
                 <Grid Grid.Column="1"
                       Grid.Row="1">
                     <Grid.RowDefinitions>
                         <RowDefinition/>
-                        <RowDefinition Height=".25*"/>
+                        <RowDefinition Height="60"/>
                     </Grid.RowDefinitions>
 
                     <TextBox x:Name="ScriptsEditor"
@@ -159,13 +185,16 @@
                           BorderThickness="0"
                           ItemsSource="{Binding InterpreterVariables}"
                           SelectedItem="{Binding SelectedVariableItem}"
-                          ItemContainerStyle="{StaticResource VariableDefinitionItem}">
+                          ItemContainerStyle="{StaticResource VariableDefinitionItem}"
+                          
+                          
+                          Grid.RowSpan="3"> <!-- Dont Forget to remove when variables add fixed -->
                     <ListView.InputBindings>
                         <KeyBinding Command="{Binding RemoveSelected}" Key="Delete"/>
                     </ListView.InputBindings>
                 </ListView>
 
-                <Border Grid.Row="2"
+                <!--<Border Grid.Row="2"
                         Margin="10 0 0 0" BorderBrush="#FFC3C3C3"
                         BorderThickness="0 0 0 2"
                         Width="400"
@@ -216,7 +245,7 @@
                                 Command="{Binding DefineNewVariable}">
                         </Button>
                     </Grid>
-                </Grid>
+                </Grid>-->
             </Grid>
 
 
@@ -226,11 +255,7 @@
                 </StatusBarItem>
             </StatusBar>
 
-            <notifications:NotificationArea Grid.Row="1"
-                                            Grid.RowSpan="2"
-                                            x:Name="WindowArea"
-                                            Position="BottomRight"
-                                            MaxItems="3"/>
+            
         </Grid>
     </Border>
 </UserControl>

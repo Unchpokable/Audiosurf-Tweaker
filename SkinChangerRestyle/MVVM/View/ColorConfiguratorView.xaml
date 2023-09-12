@@ -154,7 +154,8 @@
                         </Border.Background>
                     </Border>
 
-                    <Grid Grid.Row="2">
+                    <Grid Grid.Row="2"
+                          Margin="15 5 15 0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition/>
                             <ColumnDefinition/>
@@ -167,28 +168,33 @@
                         </Grid.RowDefinitions>
 
                         <RadioButton Style="{StaticResource ColoredRadioButton}" 
-                                     Height="30" Width="150" 
+                                     Margin="5 5 5 5"
+                                     MaxHeight="50"
                                      Content="Purple" 
                                      Background="{Binding PurpleBrush}" FontSize="16"
                                      IsChecked="{Binding Path=CurrentlyEditedColor, Converter={StaticResource enumBooleanConverter}, ConverterParameter=Purple}"/>
                                      
                         <RadioButton Style="{StaticResource ColoredRadioButton}" 
-                                     Height="30" Width="150" 
+                                     Margin="5 5 5 5"
+                                     MaxHeight="50"
                                      Content="Blue" 
                                      Background="{Binding BlueBrush}" FontSize="16" Grid.Row="1"
                                      IsChecked="{Binding Path=CurrentlyEditedColor, Converter={StaticResource enumBooleanConverter}, ConverterParameter=Blue}"/>
                         <RadioButton Style="{StaticResource ColoredRadioButton}" 
-                                     Height="30" Width="150" 
+                                     Margin="5 5 5 5" 
+                                     MaxHeight="50"
                                      Content="Green" 
                                      Background="{Binding GreenBrush}" FontSize="16" Grid.Row="2"
                                      IsChecked="{Binding Path=CurrentlyEditedColor, Converter={StaticResource enumBooleanConverter}, ConverterParameter=Green}"/>
                         <RadioButton Style="{StaticResource ColoredRadioButton}" 
-                                     Height="30" Width="150" 
+                                     Margin="5 5 5 5"
+                                     MaxHeight="50"
                                      Content="Yellow" 
                                      Background="{Binding YellowBrush}" FontSize="16" Grid.Column="1"
                                      IsChecked="{Binding Path=CurrentlyEditedColor, Converter={StaticResource enumBooleanConverter}, ConverterParameter=Yellow}"/>
                         <RadioButton Style="{StaticResource ColoredRadioButton}" 
-                                     Height="30" Width="150" 
+                                     Margin="5 5 5 5"
+                                     MaxHeight="50"
                                      Content="Red" 
                                      Background="{Binding RedBrush}" FontSize="16" Grid.Row="1" Grid.Column="1"
                                      IsChecked="{Binding Path=CurrentlyEditedColor, Converter={StaticResource enumBooleanConverter}, ConverterParameter=Red}"/>
@@ -197,8 +203,9 @@
                                 Grid.Row="2"
                                 Style="{StaticResource FlatButton}"
                                 Content="Negative"
+                                Height="50" 
                                 Command="{Binding MakeNegative}"
-                                Margin="10 0 10 0"/>
+                                Margin="0 -5 0 0"/>
                     </Grid>
                 </Grid>
 

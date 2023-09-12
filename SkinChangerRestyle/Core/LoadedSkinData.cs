@@ -20,7 +20,7 @@ namespace SkinChangerRestyle.Core
             PathToOriginFile = pathToOrigin;
         }
 
-        private bool disposedValue;
+        private bool _disposedValue;
 
         public string Name { get; set; }
         public Bitmap[] Screenshots { get; set; }
@@ -28,7 +28,7 @@ namespace SkinChangerRestyle.Core
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!_disposedValue)
             {
                 if (disposing)
                 {
@@ -36,7 +36,7 @@ namespace SkinChangerRestyle.Core
                         bmp.Dispose();
                 }
                 Screenshots = null;
-                disposedValue = true;
+                _disposedValue = true;
             }
         }
 

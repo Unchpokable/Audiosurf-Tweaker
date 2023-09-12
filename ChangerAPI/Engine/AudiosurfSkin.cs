@@ -10,7 +10,7 @@ namespace ChangerAPI.Engine
     [Serializable]
     public class AudiosurfSkin : IDisposable
     {
-        private bool disposedValue;
+        private bool _disposedValue;
 
         public string Source { get; set; }
         public string Name { get; set; }
@@ -70,7 +70,7 @@ namespace ChangerAPI.Engine
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!_disposedValue)
             {
                 if (disposing)
                 {
@@ -87,7 +87,7 @@ namespace ChangerAPI.Engine
                 Rings = null;
                 Hits = null;
                 Previews = null;
-                disposedValue = true;
+                _disposedValue = true;
             }
         }
 

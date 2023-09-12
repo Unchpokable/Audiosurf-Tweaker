@@ -2,6 +2,7 @@
 using SkinChangerRestyle.Core.Extensions;
 using System;
 using System.Text;
+using SkinChangerRestyle.Core.Utils;
 
 namespace SkinChangerRestyle.MVVM.Model
 {
@@ -24,7 +25,7 @@ namespace SkinChangerRestyle.MVVM.Model
             _content.Clear();
             ContentUpdated?.Invoke(this, EventArgs.Empty);
             _content = new StringBuilder();
-            Extensions.DisposeAndClear();
+            Utils.DisposeAndClear();
 
         }
 

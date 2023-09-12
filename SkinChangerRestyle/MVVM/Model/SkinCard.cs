@@ -12,6 +12,8 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Media;
+using Notification.Wpf;
+using SkinChangerRestyle.Core.Utils;
 
 namespace SkinChangerRestyle.MVVM.Model
 {
@@ -154,6 +156,7 @@ namespace SkinChangerRestyle.MVVM.Model
             var oldName = Name;
             var newName = NewName;
             var skinObject = SkinPackager.Decompile(_pathToOriginFile);
+            if (skinObject == null) return;
             skinObject.Name = newName;
             Name = newName;
             var newFile = $@"Skins\{newName}{ChangerAPI.EnvironmentalVeriables.ActualSkinExtention}";
@@ -174,7 +177,7 @@ namespace SkinChangerRestyle.MVVM.Model
                     cache.Serialize(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
                 }
 
-                Extensions.DisposeAndClear(cache, skinObject);
+                Utils.DisposeAndClear(cache, skinObject);
             });
         }
 
@@ -206,7 +209,7 @@ namespace SkinChangerRestyle.MVVM.Model
             });
 
             AssignSkin(redactedSkin, _pathToOriginFile);
-            Extensions.DisposeAndClear(dirproc, redactedSkin);
+            Utils.DisposeAndClear(dirproc, redactedSkin);
 
             try
             {
@@ -225,14 +228,16 @@ namespace SkinChangerRestyle.MVVM.Model
                 using (var output = new FolderBrowserDialog())
                     if (output.ShowDialog() == DialogResult.OK)
                     {
-                        var skin = SkinPackager.Decompile(_pathToOriginFile);
-                        SkinPackager.CompileToPath(skin, output.SelectedPath);
-                        Extensions.DisposeAndClear(skin);
+                        var targetFile = Path.Combine(output.SelectedPath,
+                            _name + ChangerAPI.EnvironmentalVeriables.ActualSkinExtention); // kinda skin.tasp (skin.askin2)
+
+                        File.Copy(_pathToOriginFile, targetFile);
+                        ApplicationNotificationManager.Manager.ShowSuccess("Done!", "Copy of skin file successfully exported to selected destination");
                     }
             }
             catch
             {
-                System.Windows.MessageBox.Show("Something went wrong! Please, check that destination path contains only latin symbols and you're trying to export valid skin and try again", "Ooops!", MessageBoxButton.OK, MessageBoxImage.Error);
+                ApplicationNotificationManager.Manager.ShowOverWindow("Oooops!", "Something went wrong! Please, check that destination path contains only latin symbols and you're trying to export valid skin and try again", NotificationType.Error);
             }
         }
 

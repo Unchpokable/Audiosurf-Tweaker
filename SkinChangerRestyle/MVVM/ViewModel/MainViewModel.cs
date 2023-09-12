@@ -4,6 +4,10 @@ using ASCommander;
 using SkinChangerRestyle.Core;
 using SkinChangerRestyle.Core.Extensions;
 using System.Windows.Media;
+using Notification.Wpf;
+using SkinChangerRestyle.Core.Utils;
+using SkinChangerRestyle.MVVM.Model;
+using SkinChangerRestyle.Properties;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -41,8 +45,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             SetServerSwapperView = new RelayCommand(o => CurrentView = ServerSwapperVM);
             EnableAutoHandling = new RelayCommand(o => _asHandle.StartAutoHandling());
             ResetWndProcService = new RelayCommand(o => _asHandle.ReinitializeWndProcMessageService());
-            Extensions.DisposeAndClear();
+            Utils.DisposeAndClear();
+            MainIcon = Resources.TweakerIcon.ToImageSource();
         }
+
+        public ImageSource MainIcon { get; set; }
 
         public RelayCommand SetCommandCenterView { get; set; }
         public RelayCommand SetChangerView { get; set; }
@@ -81,6 +88,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         {
             OnPropertyChanged(nameof(AudiosurfStatusMessage));
             OnPropertyChanged(nameof(AudiosurfStatusBackgroundColor));
+            ApplicationNotificationManager.Manager.Show("Audiosurf Status Changed", AudiosurfStatusMessage, NotificationType.Information);
         }
 
         private void ConnectAudiosurfWindowInternal(object param)

@@ -66,6 +66,8 @@
     <Reference Include="System.Configuration" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="System.Runtime.Remoting" />
     <Reference Include="System.Web.Extensions" />
     <Reference Include="System.Windows.Forms" />
@@ -89,6 +91,7 @@
     </ApplicationDefinition>
     <Compile Include="Core\AudiosurfConfigurationPresenter.cs" />
     <Compile Include="Core\Converters\InversedBooleanToColorConverter.cs" />
+    <Compile Include="Core\Dialogs\TweakerDialogResult.cs" />
     <Compile Include="Core\EnumBooleanConverter.cs" />
     <Compile Include="Core\LoadedSkinData.cs" />
     <Compile Include="Core\NetworkTools\Exceptions\UnresolvedHostnameException.cs" />
@@ -97,26 +100,38 @@
     <Compile Include="Core\NetworkTools\RemoteServerPingStats.cs" />
     <Compile Include="Core\OverlayHelper.cs" />
     <Compile Include="Core\ServerSwapper\ServerSwapper.cs" />
+    <Compile Include="Core\Utils\Utils.cs" />
+    <Compile Include="ServiceWindows\GuidancePage.xaml.cs">
+      <DependentUpon>GuidancePage.xaml</DependentUpon>
+    </Compile>
     <Compile Include="MVVM\Model\ApplicationNotificationManager.cs" />
     <Compile Include="MVVM\Model\ColorPalette.cs" />
     <Compile Include="MVVM\Model\ASColors.cs" />
     <Compile Include="MVVM\Model\ColorPalettePrint.cs" />
+    <Compile Include="MVVM\Model\GuidePageHelper.cs" />
     <Compile Include="MVVM\Model\PaletteDynamicLoadContainer.cs" />
     <Compile Include="MVVM\Model\InterpreterVariable.cs" />
     <Compile Include="MVVM\Model\ServerSwapCard.cs" />
     <Compile Include="MVVM\Model\TweakerConsole.cs" />
-    <Compile Include="EditOnDiskLockWindow.xaml.cs">
+    <Compile Include="ServiceWindows\EditOnDiskLockWindow.xaml.cs">
       <DependentUpon>EditOnDiskLockWindow.xaml</DependentUpon>
     </Compile>
-    <Compile Include="ImageViewWindow.xaml.cs">
+    <Compile Include="ServiceWindows\ImageViewWindow.xaml.cs">
       <DependentUpon>ImageViewWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Core\LoadingCache.cs" />
-    <Page Include="EditOnDiskLockWindow.xaml">
+    <Compile Include="ServiceWindows\TweakerDialog.xaml.cs">
+      <DependentUpon>TweakerDialog.xaml</DependentUpon>
+    </Compile>
+    <Page Include="ServiceWindows\EditOnDiskLockWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="ImageViewWindow.xaml">
+    <Page Include="ServiceWindows\GuidancePage.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="ServiceWindows\ImageViewWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -140,7 +155,7 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="ProcessSelectionWindow.xaml">
+    <Page Include="ServiceWindows\ProcessSelectionWindow.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -190,6 +205,10 @@
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
+    <Page Include="Themes\TabItem.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="Themes\VariableDefinitionItem.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
@@ -211,6 +230,10 @@
       <Generator>MSBuild:Compile</Generator>
     </Page>
     <Page Include="Themes\UnderscoredTransparentButton.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="ServiceWindows\TweakerDialog.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -241,7 +264,7 @@
     <Compile Include="MVVM\View\Tweaker.xaml.cs">
       <DependentUpon>Tweaker.xaml</DependentUpon>
     </Compile>
-    <Compile Include="ProcessSelectionWindow.xaml.cs">
+    <Compile Include="ServiceWindows\ProcessSelectionWindow.xaml.cs">
       <DependentUpon>ProcessSelectionWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs">
@@ -288,10 +311,6 @@
     <ProjectReference Include="..\ChangerAPI\ChangerAPI.csproj">
       <Project>{81019294-ff0f-4df9-b6b2-8fd4f073c253}</Project>
       <Name>ChangerAPI</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\QuickPlayerCore\QuickPlayerCore.csproj">
-      <Project>{4bb9d821-aa5f-4a3b-8580-770d393e1b2e}</Project>
-      <Name>QuickPlayerCore</Name>
     </ProjectReference>
     <ProjectReference Include="..\textpackctrl\textpackctrl.csproj">
       <Project>{27231428-42a6-43ec-8f0a-9f71726b2934}</Project>
@@ -354,9 +373,6 @@
     <None Include="Resources\TweakerIcon.ico" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="TweakerIcon.ico" />
-  </ItemGroup>
-  <ItemGroup>
     <SplashScreen Include="Resources\TweakerSplashScreen.png" />
   </ItemGroup>
   <ItemGroup>
@@ -372,9 +388,6 @@
     <None Include="Resources\exportmy.png" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="Tweaker_Icon.ico" />
-  </ItemGroup>
-  <ItemGroup>
     <Resource Include="Tweaker_Icon_1.ico" />
   </ItemGroup>
   <ItemGroup>
@@ -387,6 +400,9 @@
     <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications">
       <Version>7.1.3</Version>
     </PackageReference>
+    <PackageReference Include="Microsoft.Web.WebView2">
+      <Version>1.0.1938.49</Version>
+    </PackageReference>
     <PackageReference Include="Notification.Wpf">
       <Version>7.0.0.2</Version>
     </PackageReference>
@@ -395,9 +411,8 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <AdditionalFiles Include="TweakerScriptsSyntax.xshd">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </AdditionalFiles>
+    <None Include="Resources\wifi.png" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

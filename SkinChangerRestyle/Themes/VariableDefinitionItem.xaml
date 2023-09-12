@@ -23,10 +23,10 @@
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="50"/>
-                                <ColumnDefinition Width="100"/>
+                                <ColumnDefinition Width="70"/>
                                 <ColumnDefinition Width="200"/>
-                                <ColumnDefinition Width="100"/>
-                                <ColumnDefinition Width="420"/>
+                                <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
 
                             <Border CornerRadius="5"
@@ -67,9 +67,10 @@
                                  Margin="10"
                                  Text="{Binding Value, Mode=TwoWay}"
                                  IsEnabled="{Binding ValueEditable}"
-                                     TextWrapping="NoWrap"
+                                     TextWrapping="Wrap"
                                      ToolTip="{Binding Value, Mode=OneWay}"
-                                     ToolTipService.ShowOnDisabled="True"/>
+                                     ToolTipService.ShowOnDisabled="True"
+                                 />
 
                         </Grid>
                     </Border>

@@ -42,7 +42,7 @@ namespace SkinChangerRestyle.Core
 
             var overlayAlreadyLoaded = await CheckIfOverlayDllAlreadyLoadedAsync();
             if (!overlayAlreadyLoaded)
-                Extensions.Extensions.Cmd($"cd /d {currentPath}\\Plugins && InjectHelper.exe {AudiosurfHandle.Instance.GamePID} \"{overlayPluginPath}\"");
+                Utils.Utils.Cmd($"cd /d {currentPath}\\Plugins && InjectHelper.exe {AudiosurfHandle.Instance.GamePID} \"{overlayPluginPath}\"");
 
             await Task.Delay(500);
 

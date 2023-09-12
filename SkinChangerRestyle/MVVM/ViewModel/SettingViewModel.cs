@@ -5,6 +5,7 @@ using SkinChangerRestyle.MVVM.Model;
 using System;
 using System.IO;
 using System.Windows.Forms;
+using SkinChangerRestyle.Core.Utils;
 
 
 namespace SkinChangerRestyle.MVVM.ViewModel
@@ -15,7 +16,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         AddSkinsPath
     }
 
-    internal class SettingViewModel : ObservableObject
+    internal class SettingViewModel : ObservableObject, IDisposable
     {
         public SettingViewModel()
         {
@@ -36,10 +37,8 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
             if (_isWatcherEnabled)
             {
-                Watcher = new TexturesWatcher
-                {
-                    TargetPath = SettingsProvider.GameTexturesPath
-                };
+                Watcher = TexturesWatcher.Instance;
+                Watcher.TargetPath = SettingsProvider.GameTexturesPath;
 
                 IsShouldStoreTextures = SettingsProvider.WatcherShouldStoreTextures;
                 IsTempFileOverrided = SettingsProvider.WatcherTempFileOverrided;
@@ -73,15 +72,14 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             get => SettingsProvider.UseFastPreview;
             set
             {
-                var isRestart = MessageBox.Show("Turning this parameter needs to restart applicaton. Would you like to continue?", "Module parameter changed", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (isRestart == DialogResult.Yes)
+                var isRestart = ApplicationNotificationManager.Manager.AskForAction("Module Parameter Changed",
+                    "Turning this parameter needs to restart applicaton. Would you like to continue?");
+                if (isRestart)
                 {
                     SettingsProvider.UseFastPreview = value;
                     ApplySettings();
-                    Extensions.Cmd($"taskkill /f /im \"{AppDomain.CurrentDomain.FriendlyName}\" && timeout /t 1 && {AppDomain.CurrentDomain.FriendlyName}");
+                    Utils.Cmd($"taskkill /f /im \"{AppDomain.CurrentDomain.FriendlyName}\" && timeout /t 1 && {AppDomain.CurrentDomain.FriendlyName}");
                 }
-                else
-                    return;
             }
         }
 
@@ -150,16 +148,15 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             get => Watcher != null && IsGuiActive;
             set
             {
-                var isRestart = MessageBox.Show("Turning this parameter needs to restart applicaton. Would you like to continue?", "Module parameter changed", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (isRestart == DialogResult.Yes)
+                var isRestart = ApplicationNotificationManager.Manager.AskForAction("Module Parameter Changed",
+                    "Turning this parameter needs to restart applicaton. Would you like to continue?");
+                if (isRestart)
                 {
                     _isWatcherEnabled = value;
                     SettingsProvider.WatcherEnabled = value;
                     ApplySettings();
-                    Extensions.Cmd($"taskkill /f /im \"{AppDomain.CurrentDomain.FriendlyName}\" && timeout /t 1 && {AppDomain.CurrentDomain.FriendlyName}");
+                    Utils.Cmd($"taskkill /f /im \"{AppDomain.CurrentDomain.FriendlyName}\" && timeout /t 1 && {AppDomain.CurrentDomain.FriendlyName}");
                 }
-                else
-                    return;
             }
         }
 
@@ -173,9 +170,9 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 if (!File.Exists(_watcherTempFile))
                 {
                     if (!Directory.Exists(Path.GetDirectoryName(_watcherTempFile)))
-                        Directory.CreateDirectory(Path.GetDirectoryName(_watcherTempFile));
+                        Directory.CreateDirectory(Path.GetDirectoryName(_watcherTempFile) ?? throw new InvalidOperationException());
 
-                    File.Create(_watcherTempFile);
+                    using (var _ = File.Create(_watcherTempFile)) { }
                 }
 
                 SettingsProvider.WatcherTempFile = value;
@@ -243,7 +240,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     : "Windows notification disabled. That was the last time";
 
                 if (value) 
-                    Extensions.ShowUWPNotification("UWP Notification settings", notifyMessage);
+                    ApplicationNotificationManager.Manager.ShowUWPNotification("UWP Notification settings", notifyMessage);
                 ApplySettings();
             }
         }
@@ -265,16 +262,15 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             get => _overlayEnabled;
             set
             {
-                var isRestart = MessageBox.Show("Turning this parameter needs to restart applicaton. Would you like to continue?", "Module parameter changed", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-                if (isRestart == DialogResult.Yes)
+                var isRestart = ApplicationNotificationManager.Manager.AskForAction("Module Parameter Changed",
+                    "Turning this parameter needs to restart applicaton. Would you like to continue?");
+                if (isRestart)
                 {
                     _overlayEnabled = value;
                     SettingsProvider.IsOverlayEnabled = value;
                     ApplySettings();
-                    Extensions.Cmd($"taskkill /f /im \"{AppDomain.CurrentDomain.FriendlyName}\" && timeout /t 1 && {AppDomain.CurrentDomain.FriendlyName}");
+                    Utils.Cmd($"taskkill /f /im \"{AppDomain.CurrentDomain.FriendlyName}\" && timeout /t 1 && {AppDomain.CurrentDomain.FriendlyName}");
                 }
-                else
-                    return;
             }
         }
 
@@ -362,6 +358,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     ConfigurationManager.UpdateSection(keyValuePair[0], keyValuePair[1]);
                 }
             }
+        }
+
+        public void Dispose()
+        {
+            Watcher.Dispose();
         }
     }
 }

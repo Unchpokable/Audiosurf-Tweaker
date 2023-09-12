@@ -8,11 +8,12 @@ namespace SkinChangerRestyle.Core
     {
         public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
         {
+            if (value == null) return null;
             string parameterString = parameter as string;
             if (parameterString == null)
                 return DependencyProperty.UnsetValue;
 
-            if (value != null && !Enum.IsDefined(value.GetType(), value))
+            if (!Enum.IsDefined(value.GetType(), value))
                 return DependencyProperty.UnsetValue;
 
             object parameterValue = Enum.Parse(value.GetType(), parameterString);

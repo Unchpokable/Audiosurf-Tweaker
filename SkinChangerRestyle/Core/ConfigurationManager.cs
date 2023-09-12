@@ -152,10 +152,6 @@ namespace SkinChangerRestyle.Core
         private static string GetAudiosurfBaseDirectory()
         {
             var steamPath = GetSteamInstallPath().Replace("/", "\\");
-            if (steamPath == null)
-            {
-                return null;
-            }
 
             var libfolders = Path.Combine(steamPath, "steamapps", "libraryfolders.vdf");
 

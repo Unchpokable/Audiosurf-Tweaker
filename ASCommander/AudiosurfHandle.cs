@@ -10,7 +10,7 @@ namespace ASCommander
 {
     public delegate void MessageEventHandler(object sender, string messageContent);
 
-    public class AudiosurfHandle
+    public class AudiosurfHandle : IDisposable
     {
         private AudiosurfHandle()
         {
@@ -119,12 +119,16 @@ namespace ASCommander
             {
                 _lastConnectionRequestSended = DateTime.Now;
                 var handle = GetAudiosurfMainwindowHandle(out bool shouldUseQuickRegister);
+                if (handle == IntPtr.Zero)
+                    return false;
                 return SetHandle(handle, shouldUseQuickRegister);
             }
         }
 
         public bool SetHandle(Process target)
         {
+            if (target.MainWindowHandle == IntPtr.Zero)
+                return false;
             lock (_lockObject)
             {
                 return SetHandle(target.MainWindowHandle);
@@ -133,13 +137,6 @@ namespace ASCommander
 
         private bool SetHandle(IntPtr handle, bool sendQuickRegisterCommand = false)
         {
-            if (handle == IntPtr.Zero)
-            {
-                _currentState = ASHandleState.NotConnected;
-                StateChanged?.Invoke(this, EventArgs.Empty);
-                return false;
-            }
-
             var registrationString = sendQuickRegisterCommand ? "quickstartregisterwindow" : "registerlistenerwindow";
 
             Handle = handle;
@@ -201,7 +198,7 @@ namespace ASCommander
                 Handle = IntPtr.Zero;
                 _currentState = ASHandleState.NotConnected;
                 _wndProcMessageService.Invalidate();
-                IsValid = false;
+                IsValid = false; 
                 StateChanged?.Invoke(this, EventArgs.Empty);
                 _autoHandling = true;
                 _timer.Interval = 1000;
@@ -249,6 +246,11 @@ namespace ASCommander
 
             GamePID = processes[0].Id;
             return processes[0].MainWindowHandle;
+        }
+
+        public void Dispose()
+        {
+            _wndProcMessageService.Dispose();
         }
     }
 }
