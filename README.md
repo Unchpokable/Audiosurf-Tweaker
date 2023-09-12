@@ -15,6 +15,8 @@
 - Manage your texture packs. Save, install and share your textures with other ASTweaker users. Uses its own binary format .tasp/.askin2. 
 ### Color Configurator
 - Provides you an flexible color picker instead of R-G-B drag bars presented in game so you can setup game color exactly what you want. Also you can save and share your color presets
+### Server Swapper 
+- Script tool and package manager for automatic install and remove community servers (there is a single one at this moment, but anyway)
 ### Tweaker
 - Make your road invisible, hide song title in game or make camera follow horizon instead of your car
 
