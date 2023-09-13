@@ -37,7 +37,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>Tweaker_Icon_1.ico</ApplicationIcon>
+    <ApplicationIcon>NewTweakerIcon.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
@@ -413,6 +413,14 @@
   <ItemGroup>
     <None Include="Resources\wifi.png" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <None Include="Resources\NewTweakerIcon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="NewTweakerIcon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icon.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
