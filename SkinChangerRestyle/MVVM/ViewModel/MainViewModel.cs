@@ -88,7 +88,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         {
             OnPropertyChanged(nameof(AudiosurfStatusMessage));
             OnPropertyChanged(nameof(AudiosurfStatusBackgroundColor));
-            ApplicationNotificationManager.Manager.Show("Audiosurf Status Changed", AudiosurfStatusMessage, NotificationType.Information);
+            ApplicationNotificationManager.Manager.ShowInformation("Audiosurf Status Changed", AudiosurfStatusMessage);
         }
 
         private void ConnectAudiosurfWindowInternal(object param)
