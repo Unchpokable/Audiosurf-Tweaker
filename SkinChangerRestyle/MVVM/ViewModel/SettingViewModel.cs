@@ -24,6 +24,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             SetConfigurationValue = new RelayCommand(AskAndSetConfigValue);
             SelectTempFile = new RelayCommand(SelectTempFileInternal);
             DuplicateTempFile = new RelayCommand(DuplicateTempFileInternal);
+            OpenOverlayHelpWindow = new RelayCommand(OpenOverlayHelpPage);
             TexturesFolderPath = SettingsProvider.GameTexturesPath;
             AdditionalSkinsFolderPath = SettingsProvider.SkinsFolderPath;
             IsHotReload = SettingsProvider.HotReload;
@@ -277,6 +278,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         public RelayCommand SetConfigurationValue { get; set; }
         public RelayCommand SelectTempFile { get; set; }
         public RelayCommand DuplicateTempFile { get; set; }
+        public RelayCommand OpenOverlayHelpWindow { get; set; }
         public TexturesWatcher Watcher { get; private set; }
 
         private string _texturesPath;
@@ -358,6 +360,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                     ConfigurationManager.UpdateSection(keyValuePair[0], keyValuePair[1]);
                 }
             }
+        }
+
+        private void OpenOverlayHelpPage(object _)
+        {
+            GuidePageHelper.ShowOverlayHelp();
         }
 
         public void Dispose()
