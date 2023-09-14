@@ -37,7 +37,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>Tweaker_Icon_1.ico</ApplicationIcon>
+    <ApplicationIcon>NewTweakerIcon.ico</ApplicationIcon>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
@@ -373,7 +373,7 @@
     <None Include="Resources\TweakerIcon.ico" />
   </ItemGroup>
   <ItemGroup>
-    <SplashScreen Include="Resources\TweakerSplashScreen.png" />
+    <None Include="Resources\TweakerSplashScreen.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\trash.png" />
@@ -413,6 +413,17 @@
   <ItemGroup>
     <None Include="Resources\wifi.png" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <None Include="Resources\NewTweakerIcon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="NewTweakerIcon.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\Icon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <SplashScreen Include="Resources\TweakerSplashScreenV2.png" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

@@ -153,6 +153,16 @@ namespace SkinChangerRestyle.Properties {
         /// <summary>
         ///   Поиск локализованного ресурса типа System.Drawing.Bitmap.
         /// </summary>
+        public static System.Drawing.Bitmap Icon {
+            get {
+                object obj = ResourceManager.GetObject("Icon", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Поиск локализованного ресурса типа System.Drawing.Bitmap.
+        /// </summary>
         public static System.Drawing.Bitmap install {
             get {
                 object obj = ResourceManager.GetObject("install", resourceCulture);
@@ -167,6 +177,16 @@ namespace SkinChangerRestyle.Properties {
             get {
                 object obj = ResourceManager.GetObject("InstallIcon", resourceCulture);
                 return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Поиск локализованного ресурса типа System.Drawing.Icon, аналогичного (Значок).
+        /// </summary>
+        public static System.Drawing.Icon NewTweakerIcon {
+            get {
+                object obj = ResourceManager.GetObject("NewTweakerIcon", resourceCulture);
+                return ((System.Drawing.Icon)(obj));
             }
         }
         
@@ -236,6 +256,16 @@ namespace SkinChangerRestyle.Properties {
         public static System.Drawing.Bitmap TweakerSplashScreen {
             get {
                 object obj = ResourceManager.GetObject("TweakerSplashScreen", resourceCulture);
+                return ((System.Drawing.Bitmap)(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Поиск локализованного ресурса типа System.Drawing.Bitmap.
+        /// </summary>
+        public static System.Drawing.Bitmap TweakerSplashScreenV2 {
+            get {
+                object obj = ResourceManager.GetObject("TweakerSplashScreenV2", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
