@@ -267,6 +267,13 @@ UI
                                   ToolTipService.ShowDuration="10000"
                                   IsChecked="{Binding IsUWPNotificationSilent, Mode=TwoWay}"
                                   IsEnabled="{Binding IsUWPNotificationsAllowed}"/>
+
+                                <Button Style="{StaticResource FlatButton}"
+                                        Content="Overlay works bad?"
+                                        HorizontalContentAlignment="Left"
+                                        Height="50"
+                                        FontSize="16"
+                                        Command="{Binding OpenOverlayHelpWindow}"/>
                             </StackPanel>
                         </Grid>
                     </TabItem.Content>
