@@ -373,7 +373,7 @@
     <None Include="Resources\TweakerIcon.ico" />
   </ItemGroup>
   <ItemGroup>
-    <SplashScreen Include="Resources\TweakerSplashScreen.png" />
+    <None Include="Resources\TweakerSplashScreen.png" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\trash.png" />
@@ -421,6 +421,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\Icon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <SplashScreen Include="Resources\TweakerSplashScreenV2.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

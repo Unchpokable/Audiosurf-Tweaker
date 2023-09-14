@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using System.Windows;
 using ASCommander;
 using SkinChangerRestyle.Core;
