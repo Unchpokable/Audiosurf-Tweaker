@@ -9,6 +9,7 @@
 - Extract all files from downloaded release's .zip to any folder you want
 - Run "audiosurftweaker.exe"
 - Enjoy
+- [Optional] You may create a shortcut to .exe file to avoid need to go to program directory every time when you want to run Tweaker
 
 ## Features
 ### Skin Changer
