@@ -21,27 +21,6 @@ bool OverlayInitialized;
 int NativeScreenWidth = 0;
 int NativeScreenHeight = 0;
 
-#pragma region Overlay Rectange Parameters
-
-//int ovlRectLX = 50;
-//int ovlRectLY = 500; // Default Audiosurf window geometry - 800x600. So we place info overlay at 50px offset by OX and and window height - 100px by OY axis
-//
-//int ovlRectWidth = 450; //450x70 should be enough to display all info that we need
-//int ovlRectHeight = 70;
-//
-//int padding = 2;
-//
-//PINT OvlXOffset;
-//PINT OvlYOffset;
-//
-//PArgb_t FontColor = nullptr;
-//PINT FontSize = nullptr;
-//PFLOAT MenuFontSize = nullptr;
-//LPCSTR FontFamily = "Tahoma";
-//
-
-
-#pragma endregion
 
 #pragma region UI globals
 
