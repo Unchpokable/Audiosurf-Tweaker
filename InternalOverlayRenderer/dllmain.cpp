@@ -1,32 +1,19 @@
 ﻿#include "dllmain.h"
 
-constexpr OverlayData::OverlayInfopanelParameters* OverlayData::Infopanel()
-{
-    return OverlayData::Infopanel();
-}
-
-constexpr OverlayData::OverlayMenuParameters* OverlayData::Menu()
-{
-    return OverlayData::Menu();
-}
-
 constexpr int padding = 2;
+constexpr LPCSTR IntallPackageCommandHeader = "tw-Install-package";
 
 DxEndScene pEndScene;
 DxReset pReset;
-
-PD3DPRESENT_PARAMETERS D3DPresentParameters = nullptr;
-LPDIRECT3DDEVICE9 ActualD3DDevice = nullptr;
-LPD3DXFONT font = nullptr;
 HINSTANCE DllHandle = nullptr;
-D3DDEVICE_CREATION_PARAMETERS ViewportParams;
+OverlaySpecs::OverlayData* g_overlay_data = new OverlaySpecs::OverlayData();
+OverlaySpecs::DXData* g_dx_data = new OverlaySpecs::DXData();
+
+
 HWND HostApplicationHandle;
 HWND GameHandle;
 WNDPROC WndProcOriginal;
 FILE* PConsoleOutFile; // Bad to store raw pointers in global memory but i actually dont give a fuck
-
-
-constexpr LPCSTR IntallPackageCommandHeader = "tw-Install-package";
 
 bool DXCritical_SwapchianNullPtr = false;
 bool OverlayInitialized;
@@ -59,15 +46,12 @@ int NativeScreenHeight = 0;
 #pragma region UI globals
 
 bool OverlayVisible = true;
-bool GameRunsFullscreen = false;
 bool ImguiToolboxVisible = false;
 bool ImguiInitialized = false;
 int ListboxSelect(0);
 
 std::vector<std::string> ActualSkinsList{};
 std::string DisplayInfo{};
-
-
 #pragma endregion
 
 #pragma region tweaks flags
@@ -125,32 +109,37 @@ HRESULT __stdcall HookedReset(LPDIRECT3DDEVICE9 pDevice, PD3DPRESENT_PARAMETERS 
 {
     if (pDevice == nullptr || presentParameters == nullptr)
         return pReset(pDevice, presentParameters);
+	auto infopanel = g_overlay_data->Infopanel();
+    auto menu = g_overlay_data->Menu();
+    auto dx = g_dx_data->GetDirectXParameters();
 
-    pDevice->GetCreationParameters(&ViewportParams);
+    D3DDEVICE_CREATION_PARAMETERS creation_params;
+	pDevice->GetCreationParameters(&creation_params);
     
     RECT rect;
-    GetWindowRect(ViewportParams.hFocusWindow, &rect);
-    constexpr auto infopanel = OverlayData::Infopanel();
-    constexpr auto menu = OverlayData::Menu();
-	infopanel->SetLeftXPos(rect.bottom - 100);
+    GetWindowRect(creation_params.hFocusWindow, &rect);
+	infopanel->SetLeftYPos(rect.bottom - 100);
 
     if (presentParameters->Windowed == FALSE)
         ImGui::GetIO().MouseDrawCursor = true;
 
-    auto font_ok = ConfigureFont(pDevice, &font, menu->GetFontFamily(), menu->GetFontSize());
-        
+    auto dx_font = dx->GetFont();
+    auto font_ok = ConfigureFont(pDevice, &dx_font, menu->GetFontFamily(), menu->GetFontSize());
+    dx->SetFont(dx_font);
+
     ImGui_ImplDX9_InvalidateDeviceObjects();
     HRESULT result = pReset(pDevice, presentParameters);
     ImGui_ImplDX9_CreateDeviceObjects();
-    D3DPresentParameters = presentParameters;
+    dx->SetPresentParameters(presentParameters);
     ImguiInitialized = false;
     return result;
 }
 
 HRESULT __stdcall HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
 {
-    if (ActualD3DDevice == nullptr)
-        ActualD3DDevice = pDevice;
+    auto dx = g_dx_data->GetDirectXParameters();
+    if (dx->GetDevice() == nullptr)
+        dx->SetDevice(pDevice);
 
     if (!OverlayVisible)
         return pEndScene(pDevice);
@@ -166,8 +155,8 @@ HRESULT __stdcall HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
         ImguiInitialized = true;
     }
 
-    constexpr auto infopanel = OverlayData::Infopanel();
-    constexpr auto menu = OverlayData::Menu();
+    auto infopanel = g_overlay_data->Infopanel();
+    auto menu = g_overlay_data->Menu();
 
     auto rectx1 = infopanel->GetLeftXPos() + *infopanel->GetOverlayXOffset(),
 	rectx2 = infopanel->GetLeftXPos() + infopanel->GetWidth()+ *infopanel->GetOverlayXOffset(),
@@ -186,9 +175,10 @@ HRESULT __stdcall HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
     if (menu->GetFontColor() == nullptr)
         menu->SetFontColor(new Argb_t{ 255, 153, 255, 153 }); // Default shitty-green color
 
-    if (!font)
+    auto font = dx->GetFont();
+    if (!font || font == nullptr)
         ConfigureFont(pDevice, &font, menu->GetFontFamily(), menu->GetFontSize());
-
+    dx->SetFont(font);
     auto font_color = menu->GetFontColor();
 
     font->DrawText(NULL, DisplayInfo.c_str(),
@@ -299,9 +289,9 @@ inline void DrawMenu(LPDIRECT3DDEVICE9 pDevice)
 
     if (ImGui::CollapsingHeader("Info panel config"))
     {
-        constexpr auto menu = OverlayData::Menu();
-        constexpr auto infopanel = OverlayData::Infopanel();
-        constexpr auto font_color = menu->GetFontColor();
+        auto menu = g_overlay_data->Menu();
+        auto infopanel = g_overlay_data->Infopanel();
+        auto font_color = menu->GetFontColor();
         auto font_size = menu->GetFontSize();
         ImGui::Text("Info panel is a little text block at left bottom screen corner\nIts displays info about current installed skin and etc.");
 
@@ -312,7 +302,10 @@ inline void DrawMenu(LPDIRECT3DDEVICE9 pDevice)
 
         if (ImGui::SliderInt("Font Size", &font_size, 14, 72))
         {
-            ConfigureFont(pDevice, &font, "Tahoma", font_size);
+            auto font = g_dx_data->GetDirectXParameters()->GetFont();
+            menu->SetFontSize(font_size);
+            ConfigureFont(pDevice, &font, "Tahoma", menu->GetFontSize());
+            g_dx_data->GetDirectXParameters()->SetFont(font);
         }
         
         ImGui::Spacing();
@@ -486,7 +479,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         }
     }
 
-    catch (std::exception ex)
+    catch (const std::exception& ex)
     {
         std::cout << "Error while WndProc handling " << ex.what() << "\n";
     }
@@ -565,7 +558,7 @@ inline void HandleWMSize(WPARAM wParam, LPARAM lParam)
     UINT width = LOWORD(lParam);
     UINT height = HIWORD(lParam);
 
-    OverlayData::Infopanel()->SetLeftYPos(height - 100);
+    g_overlay_data->Infopanel()->SetLeftYPos(height - 100);
 }
 
 HRESULT ConfigureFont(LPDIRECT3DDEVICE9 pDevice, LPD3DXFONT* font, LPCSTR fontFamily, int size)
@@ -582,8 +575,6 @@ DWORD __stdcall EjectThread(LPVOID lpParam)
 
 DWORD WINAPI BuildOverlay(HINSTANCE hModule)
 {
-    OverlayData::OverlayData::Initialize();
-
     AllocConsole();
     FILE* fp;
     freopen_s(&fp, "CONOUT$", "w", stdout);
@@ -616,16 +607,20 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
         *Assoc::TweaksFlags[key] = false;
     }
 
+
     auto initResult = Init();
 
     if (FAILED(initResult))
     {
+        delete g_dx_data;
+        delete g_overlay_data;
+
         std::cout << "Overlay initialization failed with error code " << initResult << "\n Exiting process after 5 second...\n" << "Please, restart audiosurf if you see this message for the first time\n"
             << "If you see this message every time, disable game overlay in Host application settings tab, then restart game and Audiosurf Tweaker. Sorry if this thing doesn't work for you :( ";
         Sleep(5000);
         EjectOverlayProcess(fp);
     }
-    
+
     while (true)
     {
         Sleep(150);
@@ -659,7 +654,6 @@ void EjectOverlayProcess(FILE* fp)
     
     FreeConsole();
 
-    OverlayData::OverlayData::Free();
     delete PConsoleOutFile;
 
     CreateThread(0, 0, EjectThread, 0, 0, 0);
@@ -671,24 +665,28 @@ inline void ProcessConfigurationCommand(std::string& cfgStr)
 {
     try
     {
-        constexpr auto infopanel = OverlayData::Infopanel();
-        constexpr auto menu = OverlayData::Menu();
+        auto infopanel = g_overlay_data->Infopanel();
+        auto menu = g_overlay_data->Menu();
+        auto font_color = menu->GetFontColor();
+        auto dx = g_dx_data->GetDirectXParameters();
+
         if (cfgStr.find("font-color") != std::string::npos)
         {
             auto values = Split(cfgStr.substr(std::string("font-color").length()), std::string(" "));
             if (values.size() != 4) // ARGB - 0-255 0-255 0-255 0-255 
                 return;
-            menu->GetFontColor()->alpha = std::stoi(values[0]);
-            menu->GetFontColor()->r = std::stoi(values[1]);
-            menu->GetFontColor()->g = std::stoi(values[2]);
-            menu->GetFontColor()->b = std::stoi(values[3]);
+            font_color->alpha = std::stoi(values[0]);
+            font_color->r = std::stoi(values[1]);
+            font_color->g = std::stoi(values[2]);
+            font_color->b = std::stoi(values[3]);
         }
 
         else if (cfgStr.find("font-size") != std::string::npos)
         {
             auto value = std::stoi(cfgStr.substr(std::string("font-size").length()));
             menu->SetFontSize(value);
-            ConfigureFont(ActualD3DDevice, &font, "Tahoma", menu->GetFontSize());
+            auto font = dx->GetFont();
+            ConfigureFont(dx->GetDevice(), &font, "Tahoma", menu->GetFontSize());
         }
 
         // FIXME: Code duplicate. Do something with it later. Or not?
@@ -710,7 +708,7 @@ inline void ProcessConfigurationCommand(std::string& cfgStr)
             UpdateTweaksState(value);
         }
     }
-    catch (const std::exception ex)
+    catch (const std::exception& ex)
     {
         std::cout << "Exception during settings apply: " << ex.what() << "\n";
     }
@@ -720,9 +718,9 @@ inline void ProcessConfigurationCommand(std::string& cfgStr)
     }
 }
 
-inline void UpdateTweaksState(std::string parameter)
+inline void UpdateTweaksState(const std::string& parameter)
 {
-    auto values = Split(parameter, " ");
+    const auto values = Split(parameter, " ");
     if (values.size() == 2)// we need 2 values - property and its new value, like "InvisibleRoad true"
     {
         try
@@ -757,7 +755,7 @@ inline void Trim(std::string& str)
     LTrim(str);
 }
 
-std::vector<std::string> Split(std::string src, std::string delimeter)
+std::vector<std::string> Split(std::string src, const std::string delimeter)
 {
     std::vector<std::string> outputContainer{};
 

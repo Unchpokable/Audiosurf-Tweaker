@@ -53,44 +53,19 @@ namespace Win32Exceptions {
 	int ExcFilter(unsigned int, struct _EXCEPTION_POINTERS*);
 }
 
-
-// I dont want to separate declaration and implementation of constructors and get-set methods in .h\.cpp files so
-namespace OverlayData
+namespace OverlaySpecs
 {
 	class DXFunctions
 	{
 	public:
-		DXFunctions(DxEndScene pEndScene, DxReset pReset)
-		{
-			if (pEndScene == nullptr || pReset == nullptr)
-				throw std::invalid_argument("One of the required DirectX functions was assigned to nullptr");
+		DXFunctions();
+		DXFunctions(DxEndScene, DxReset);
 
-			m_pEndScene = pEndScene;
-			m_pReset = pReset;
-		}
+		DxEndScene GetEndScene() const noexcept;
+		DxReset GetReset() const noexcept;
 
-		DxEndScene GetEndScene() const noexcept
-		{
-			return m_pEndScene;
-		}
-
-		DxReset GetReset() const noexcept
-		{
-			return m_pReset;
-		}
-
-		void SetEndScene(DxEndScene pEndScene) noexcept(false)
-		{
-			THROW_IF_NULL(pEndScene, "DxEndScene");
-			m_pEndScene = pEndScene;
-		}
-
-		void SetReset(DxReset pReset) noexcept(false)
-		{
-			THROW_IF_NULL(pReset, "DxReset");
-			m_pReset = pReset;
-		}
-
+		void SetEndScene(DxEndScene);
+		void SetReset(DxReset);
 	private:
 		DxEndScene m_pEndScene;
 		DxReset m_pReset;
@@ -109,26 +84,13 @@ namespace OverlayData
 		{
 		}
 
-		PD3DPRESENT_PARAMETERS GetPresentParameters() const { return m_pD3DPresentParameters; }
-		LPDIRECT3DDEVICE9 GetDevice() const { return m_pCurrentD3DDevice9; }
-		LPD3DXFONT GetFont() const { return m_pFont; }
+		PD3DPRESENT_PARAMETERS GetPresentParameters() const noexcept;
+		LPDIRECT3DDEVICE9 GetDevice() const noexcept;
+		LPD3DXFONT GetFont() const noexcept;
 
-		void SetPresentParameters(PD3DPRESENT_PARAMETERS pParams)
-		{
-			m_pD3DPresentParameters = pParams;
-		}
-
-		void SetDevice(LPDIRECT3DDEVICE9 pDevice)
-		{
-			THROW_IF_NULL(pDevice, "Direct3DDevice9 Interface")
-			m_pCurrentD3DDevice9 = pDevice;
-		}
-
-		void SetFont(LPD3DXFONT pFont)
-		{
-			THROW_IF_NULL(pFont, "Direct3D Font")
-			m_pFont = pFont;
-		}
+		void SetPresentParameters(PD3DPRESENT_PARAMETERS);
+		void SetDevice(LPDIRECT3DDEVICE9);
+		void SetFont(LPD3DXFONT);
 
 	private:
 		PD3DPRESENT_PARAMETERS m_pD3DPresentParameters;
@@ -138,81 +100,42 @@ namespace OverlayData
 
 	class OverlayMenuParameters
 	{
-
 	public:
 		OverlayMenuParameters()
-			: m_fontColor(nullptr), m_fontSize(new int(22)), m_menuFontSize(new float(16.0f))
+		: m_fontColor(nullptr), m_fontSize(22), m_menuFontSize(16.0f)
 		{
 		}
 
 		OverlayMenuParameters(const OverlayMenuParameters& other)
-			: m_fontColor(other.m_fontColor),
-			m_fontSize(new int(*other.m_fontSize)),
-			m_menuFontSize(new float(*other.m_menuFontSize))
+		  : m_fontSize(other.m_fontSize),
+		    m_menuFontSize(other.m_menuFontSize),
+		    m_fontColor(other.m_fontColor)
 		{
-		}
-
-		OverlayMenuParameters& operator=(const OverlayMenuParameters& other)
-		{
-			if (this != &other)
-			{
-				m_fontColor = other.m_fontColor;
-				delete m_fontSize;
-				m_fontSize = new int(*other.m_fontSize);
-				delete m_menuFontSize;
-				m_menuFontSize = new float(*other.m_menuFontSize);
-			}
-			return *this;
 		}
 
 		~OverlayMenuParameters()
 		{
-			delete m_fontSize;
-			delete m_menuFontSize;
+			delete m_fontColor;
+			delete m_fontFamily;
 		}
 
-		PArgb_t GetFontColor() const { return m_fontColor; }
-		int GetFontSize() const { return *m_fontSize; }
-		float GetMenuFontSize() const { return *m_menuFontSize; }
+		PArgb_t GetFontColor() const noexcept;
+		int GetFontSize() const noexcept;
+		float GetMenuFontSize() const noexcept;
+		LPCSTR GetFontFamily() const noexcept;
 
-		void SetFontColor(PArgb_t newFontColor)
-		{
-			if (newFontColor == nullptr)
-			{
-				throw std::invalid_argument("FontColor cannot be nullptr");
-			}
-			m_fontColor = newFontColor;
-		}
-
-		void SetFontSize(int* newFontSize)
-		{
-			THROW_IF_NULL(newFontSize, "FontSize");
-			delete m_fontSize;
-			m_fontSize = newFontSize;
-		}
-
-		void SetFontSize(int size)
-		{
-			*m_fontSize = size;
-		}
-
-		void SetMenuFontSize(float* newMenuFontSize)
-		{
-			THROW_IF_NULL(newMenuFontSize, "MenuFontSize");
-			delete m_menuFontSize;
-			m_menuFontSize = newMenuFontSize;
-		}
-
-		LPCSTR GetFontFamily()
-		{
-			return m_fontFamily;
-		}
+		void SetFontSize(int newSize);
+		void SetMenuFontSize(float newSize);
+		void SetFontColor(PArgb_t newColor);
+		void SetFontFamily(LPCSTR family);
 
 	private:
+		int m_fontSize;
+		float m_menuFontSize;
+
+		//pointers
 		PArgb_t m_fontColor;
-		int* m_fontSize;
-		float* m_menuFontSize;
-		constexpr LPCSTR m_fontFamily = "Tahoma";
+		LPCSTR m_fontFamily = "Tahoma";
 	};
 
 	class OverlayInfopanelParameters
@@ -232,70 +155,25 @@ namespace OverlayData
 		{
 		}
 
-		OverlayInfopanelParameters& operator=(const OverlayInfopanelParameters& other)
-		{
-			if (this != &other)
-			{
-				m_leftXPos = other.m_leftXPos;
-				m_leftYPos = other.m_leftYPos;
-				m_width = other.m_width;
-				m_height = other.m_height;
-
-				delete m_overlayXOffset;
-				m_overlayXOffset = new int(*other.m_overlayXOffset);
-
-				delete m_overlayYOffset;
-				m_overlayYOffset = new int(*other.m_overlayYOffset);
-			}
-			return *this;
-		}
-
 		~OverlayInfopanelParameters()
 		{
 			delete m_overlayXOffset;
 			delete m_overlayYOffset;
 		}
 
-		int GetLeftXPos() const { return m_leftXPos; }
-		int GetLeftYPos() const { return m_leftYPos; }
-		int GetWidth() const { return m_width; }
-		int GetHeight() const { return m_height; }
-		int* GetOverlayXOffset() const { return m_overlayXOffset; }
-		int* GetOverlayYOffset() const { return m_overlayYOffset; }
+		int GetLeftXPos() const noexcept;
+		int GetLeftYPos() const noexcept;
+		int GetWidth() const noexcept;
+		int GetHeight() const noexcept;
+		int* GetOverlayXOffset() const noexcept;
+		int* GetOverlayYOffset() const noexcept;
 
-		void SetLeftXPos(int newLeftXPos)
-		{
-			m_leftXPos = newLeftXPos;
-		}
-
-		void SetLeftYPos(int newLeftYPos)
-		{
-			m_leftYPos = newLeftYPos;
-		}
-
-		void SetWidth(int newWidth)
-		{
-			m_width = newWidth;
-		}
-
-		void SetHeight(int newHeight)
-		{
-			m_height = newHeight;
-		}
-
-		void SetOverlayXOffset(int* newOffset)
-		{
-			THROW_IF_NULL(newOffset, "OverlayXOffset")
-			delete m_overlayXOffset;
-			m_overlayXOffset = newOffset;
-		}
-
-		void SetOverlayYOffset(int* newOffset)
-		{
-			THROW_IF_NULL(newOffset, "OverlayYOffset")
-			delete m_overlayYOffset;
-			m_overlayYOffset = newOffset;
-		}
+		void SetLeftXPos(int);
+		void SetLeftYPos(int);
+		void SetWidth(int);
+		void SetHeight(int);
+		void SetOverlayXOffset(int*);
+		void SetOverlayYOffset(int*);
 
 	private:
 		int m_leftXPos;
@@ -305,7 +183,6 @@ namespace OverlayData
 		int* m_overlayXOffset;
 		int* m_overlayYOffset;
 	};
-
 	class OverlayParameters
 	{
 	public:
@@ -325,33 +202,12 @@ namespace OverlayData
 			delete m_menuParameters;
 		}
 
-		OverlayMenuParameters* GetMenuParameters() const noexcept
-		{
-			return m_menuParameters;
-		}
+		OverlayMenuParameters* GetMenuParameters() const noexcept;
+		OverlayInfopanelParameters* GetInfopanelParameters() const noexcept;
+		void SetMenuParameters(OverlayMenuParameters*);
+		void SetInfopanelParameters(OverlayInfopanelParameters*);
 
-		OverlayInfopanelParameters* GetInfopanelParameters() const noexcept
-		{
-			return m_infopanelParameters;
-		}
-
-		void SetMenuParameters(OverlayMenuParameters* menuParams)
-		{
-			m_menuParameters = menuParams;
-		}
-
-		void SetInfopanelParameters(OverlayInfopanelParameters* infopanelParams)
-		{
-			m_infopanelParameters = infopanelParams;
-		}
-
-		static OverlayParameters* CreateDefault()
-		{
-			const auto defaultOverlayMenu = new OverlayMenuParameters();
-			const auto defaultOverlayInfopanel = new OverlayInfopanelParameters();
-			const auto thiz = new OverlayParameters(defaultOverlayMenu, defaultOverlayInfopanel);
-			return thiz;
-		}
+		static OverlayParameters* CreateDefault() noexcept;
 
 	private:
 		OverlayMenuParameters* m_menuParameters;
@@ -361,30 +217,41 @@ namespace OverlayData
 	class OverlayData
 	{
 	public:
-		static void Initialize() noexcept
+		OverlayData() : m_overlay_parameters(OverlayParameters::CreateDefault())
 		{
-			m_overlay_parameters = OverlayParameters::CreateDefault();
 		}
 
-		static void Free() noexcept
+		~OverlayData()
 		{
 			delete m_overlay_parameters;
 		}
 
-		static const OverlayParameters* GetOverlayParameters() noexcept 
-		{
-			return m_overlay_parameters;
-		}
+		const OverlayParameters* GetOverlayParameters() const noexcept;
 
-		static OverlayMenuParameters* Menu() { return m_overlay_parameters->GetMenuParameters(); }
-		static OverlayInfopanelParameters* Infopanel() { return m_overlay_parameters->GetInfopanelParameters(); }
-
+		OverlayMenuParameters* Menu() const noexcept;
+		OverlayInfopanelParameters* Infopanel() const noexcept;
 	private:
-		static OverlayParameters* m_overlay_parameters;
+		OverlayParameters* m_overlay_parameters;
 	};
 
-	constexpr OverlayMenuParameters* Menu();
-	constexpr OverlayInfopanelParameters* Infopanel();
+	class DXData
+	{
+	public:
+		DXData() : m_dx_parameters(new DXParameters()), m_dx_functions(new DXFunctions())
+		{
+		}
+		~DXData()
+		{
+			delete m_dx_functions;
+			delete m_dx_parameters;
+		}
+
+		DXParameters* GetDirectXParameters() const noexcept;
+		DXFunctions* GetDirectXFunctions() const noexcept;
+	private:
+		DXParameters* m_dx_parameters;
+		DXFunctions* m_dx_functions;
+	};
 }
 
 
@@ -417,7 +284,7 @@ HRESULT ConfigureFont(LPDIRECT3DDEVICE9, LPD3DXFONT*, LPCSTR, int);
 inline void HandleCopyDataMessage(PCOPYDATASTRUCT);
 inline void HandleWMSize(WPARAM, LPARAM);
 
-inline void UpdateTweaksState(std::string);
+inline void UpdateTweaksState(const std::string&);
 inline void ProcessConfigurationCommand(std::string&);
 inline void LTrim(std::string&);
 inline void RTrim(std::string&);
