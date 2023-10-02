@@ -29,7 +29,7 @@
 
 #define ARRSIZE(arr) (sizeof(arr)/sizeof((arr)[0]))
 
-#define THROW_IF_NULL(ptr, param_name) \
+#define THROW_IF_NULL(ptr, param_name)\
 	if ((ptr) == nullptr)\
 		throw std::exception("Required parameter was assigned with nullptr");
 
@@ -217,13 +217,13 @@ namespace OverlaySpecs
 	class OverlayData
 	{
 	public:
-		OverlayData() : m_overlay_parameters(OverlayParameters::CreateDefault())
+		OverlayData() : m_overlayParameters(OverlayParameters::CreateDefault())
 		{
 		}
 
 		~OverlayData()
 		{
-			delete m_overlay_parameters;
+			delete m_overlayParameters;
 		}
 
 		const OverlayParameters* GetOverlayParameters() const noexcept;
@@ -231,7 +231,7 @@ namespace OverlaySpecs
 		OverlayMenuParameters* Menu() const noexcept;
 		OverlayInfopanelParameters* Infopanel() const noexcept;
 	private:
-		OverlayParameters* m_overlay_parameters;
+		OverlayParameters* m_overlayParameters;
 	};
 
 	class DXData
@@ -251,6 +251,34 @@ namespace OverlaySpecs
 	private:
 		DXParameters* m_dx_parameters;
 		DXFunctions* m_dx_functions;
+	};
+
+	class UIData
+	{
+	public:
+		UIData()
+		{
+			m_skins.clear();
+			m_displayInfo.clear();
+		}
+
+		UIData(const std::string& display_info, std::initializer_list<std::string> skins)
+			: m_skins(skins), m_displayInfo(display_info)
+		{
+		}
+
+		const std::vector<std::string>& GetSkins() const noexcept;
+		const std::string& GetInfoPanelMessage() const noexcept;
+		LPCSTR GetInfoPanelMessageCStr() const noexcept;
+
+		void AppendSkin(const std::string& skin_name);
+		void EraseSkin(const std::string& to_delete);
+		void SetSkins(const std::vector<std::string>& skins);
+		void SetInfoPanelMessage(const std::string& message);
+
+	private:
+		std::vector<std::string> m_skins;
+		std::string m_displayInfo;
 	};
 }
 
