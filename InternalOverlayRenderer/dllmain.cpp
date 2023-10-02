@@ -1,26 +1,24 @@
 ﻿#include "dllmain.h"
 
-constexpr int padding = 2;
-constexpr LPCSTR IntallPackageCommandHeader = "tw-Install-package";
+constexpr int Padding = 2;
+constexpr LPCSTR InstallPackageCommandHeader = "tw-Install-package";
 
+// Bad to store raw pointers in global memory but i actually have no idea how to do this better. C++'s static defeated me totally
 DxEndScene pEndScene;
 DxReset pReset;
-HINSTANCE DllHandle = nullptr;
+HINSTANCE ThisHandle = nullptr;
 OverlaySpecs::OverlayData* g_overlay_data = new OverlaySpecs::OverlayData();
 OverlaySpecs::DXData* g_dx_data = new OverlaySpecs::DXData();
-
 
 HWND HostApplicationHandle;
 HWND GameHandle;
 WNDPROC WndProcOriginal;
-FILE* PConsoleOutFile; // Bad to store raw pointers in global memory but i actually dont give a fuck
+FILE* PConsoleOutFile;
 
-bool DXCritical_SwapchianNullPtr = false;
 bool OverlayInitialized;
 
 int NativeScreenWidth = 0;
 int NativeScreenHeight = 0;
-
 
 #pragma region UI globals
 
@@ -29,6 +27,7 @@ bool ImguiToolboxVisible = false;
 bool ImguiInitialized = false;
 int ListboxSelect(0);
 
+//TODO: Hide this somewhere to `OverlayData` class
 std::vector<std::string> ActualSkinsList{};
 std::string DisplayInfo{};
 #pragma endregion
@@ -145,7 +144,7 @@ HRESULT __stdcall HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
 
     RECT textRectangle;
 
-    SetRect(&textRectangle, rectx1 + padding, recty1 + padding, rectx2 - padding, recty2 - padding);
+    SetRect(&textRectangle, rectx1 + Padding, recty1 + Padding, rectx2 - Padding, recty2 - Padding);
     
     if (DisplayInfo.empty())
         DisplayInfo.append("Tweaker overlay v0.1...\nWaiting for connection with host application...");
@@ -202,7 +201,7 @@ inline void DrawMenu(LPDIRECT3DDEVICE9 pDevice)
                 return;
             }
             std::stringstream cmdText{};
-            cmdText << IntallPackageCommandHeader << " " << ActualSkinsList[ListboxSelect];
+            cmdText << InstallPackageCommandHeader << " " << ActualSkinsList[ListboxSelect];
             SendCommandToHostApplication(const_cast<char*>(cmdText.str().c_str()));// tw-Install-package <skin_name>
         }
 
@@ -548,7 +547,7 @@ HRESULT ConfigureFont(LPDIRECT3DDEVICE9 pDevice, LPD3DXFONT* font, LPCSTR fontFa
 DWORD __stdcall EjectThread(LPVOID lpParam) 
 {
     Sleep(100);
-    FreeLibraryAndExitThread(DllHandle, 0);
+    FreeLibraryAndExitThread(ThisHandle, 0);
     return 0;
 }
 
@@ -767,8 +766,8 @@ BOOL APIENTRY DllMain(HMODULE hModule,
              FreeLibraryAndExitThread(hModule, 0);
              break;
         }
-        DllHandle = hModule;
-        DisableThreadLibraryCalls(DllHandle);
+        ThisHandle = hModule;
+        DisableThreadLibraryCalls(ThisHandle);
         CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)BuildOverlay, NULL, 0, NULL);
     case DLL_THREAD_ATTACH:
     case DLL_THREAD_DETACH:
