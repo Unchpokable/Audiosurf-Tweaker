@@ -37,6 +37,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             DefineNewVariable = new RelayCommand(DefineNewVariableInternal);
             RemoveSelected = new RelayCommand(RemoveInterpreterVariable);
             RemoveServerPackage = new RelayCommand(RemoveServerPackageInternal);
+            EditPackage = new RelayCommand(RunEditPackage);
 
             UpdateServersList = new RelayCommand(LoadServersCommand);
             UpdateServersNetworkState = new RelayCommand(UpdateServersNetStatsInternal);
@@ -109,6 +110,16 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
         }
 
+        public bool DevModeActive
+        {
+            get => _devMode;
+            set
+            {
+                _devMode = value;
+                OnPropertyChanged();
+            }
+        }
+
         public ImageSource RefreshIcon { get; set; }
         public ImageSource ReloadIcon { get; set; }
 
@@ -124,6 +135,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         public RelayCommand UpdateServersList { get; set; }
         public RelayCommand RemoveServerPackage { get; set; }
         public RelayCommand OpenGuidePage { get; set; }
+        public RelayCommand EditPackage { get; set; }
         public InterpreterVariable VariableDefinitionProxy { get; set; }
         public InterpreterVariable SelectedVariableItem { get; set; }
         public ObservableCollection<InterpreterVariable> InterpreterVariables { get; set; }
@@ -134,6 +146,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         private bool _ready;
         private bool _netUpdateAvailable = true;
+        private bool _devMode;
 
         public void OnFileDrop(object sender, EventArgs rawEvent)
         {
@@ -443,6 +456,11 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             await Task.WhenAll(tasks.ToArray());
             ApplicationNotificationManager.Manager.ShowInformationWnd("Done!", "Servers network statistics updated");
             NetStatUpdateAvailable = true;
+        }
+
+        private async void RunEditPackage(object arg)
+        {
+            await Task.Delay(0);
         }
     }
 }
