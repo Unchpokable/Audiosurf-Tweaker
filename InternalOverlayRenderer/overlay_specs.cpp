@@ -1,4 +1,5 @@
 ﻿#include <stdexcept>
+#include <algorithm>
 #include "dllmain.h"
 
 using namespace OverlaySpecs;
@@ -221,10 +222,10 @@ OverlayParameters* OverlayParameters::CreateDefault() noexcept
 #pragma region OverlayData impl
 const OverlayParameters* OverlayData::GetOverlayParameters() const noexcept
 {
-	return m_overlay_parameters;
+	return m_overlayParameters;
 }
-OverlayMenuParameters* OverlayData::Menu() const noexcept { return m_overlay_parameters->GetMenuParameters(); }
-OverlayInfopanelParameters* OverlayData::Infopanel() const noexcept { return m_overlay_parameters->GetInfopanelParameters(); }
+OverlayMenuParameters* OverlayData::Menu() const noexcept { return m_overlayParameters->GetMenuParameters(); }
+OverlayInfopanelParameters* OverlayData::Infopanel() const noexcept { return m_overlayParameters->GetInfopanelParameters(); }
 #pragma endregion
 
 #pragma region DXData impl
@@ -238,3 +239,50 @@ DXFunctions* DXData::GetDirectXFunctions() const noexcept
 	return m_dx_functions;
 }
 #pragma endregion
+
+#pragma region UIData impl
+const std::vector<std::string>& UIData::GetSkins() const noexcept
+{
+	return m_skins;
+}
+
+const std::string& UIData::GetInfoPanelMessage() const noexcept
+{
+	return m_displayInfo;
+}
+
+LPCSTR UIData::GetInfoPanelMessageCStr() const noexcept
+{
+	return m_displayInfo.c_str();
+}
+
+
+void UIData::AppendSkin(const std::string& skin_name)
+{
+	m_skins.push_back(skin_name);
+}
+
+void UIData::EraseSkin(const std::string& to_delete)
+{
+	auto pos = std::find(m_skins.begin(), m_skins.end(), to_delete);
+	if (pos != m_skins.end())
+		m_skins.erase(pos);
+}
+
+void UIData::SetSkins(const std::vector<std::string>& skins)
+{
+	m_skins.clear();
+	m_skins.reserve(skins.size());
+	m_skins.insert(m_skins.begin(), skins.begin(), skins.end());
+}
+
+void UIData::SetInfoPanelMessage(const std::string& message)
+{
+	m_displayInfo.clear();
+	m_displayInfo.assign(message);
+}
+
+
+
+
+
