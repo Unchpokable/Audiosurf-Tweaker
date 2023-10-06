@@ -1,7 +1,7 @@
 # Audiosurf Tweaker
 ---
 ## What is it?
-- Audiosurf Twekaer - A tool for managing Audiosurf textures and color presets. Also, tweaker can interact with audiosurf to use some uncommon configurations
+- Audiosurf Twekaer - A tool for managing Audiosurf textures, color presets and even community server patches. Also, tweaker can interact with audiosurf to use some uncommon configurations
 
 ---
 ## Installation guide 
