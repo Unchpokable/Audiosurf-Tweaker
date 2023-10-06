@@ -251,6 +251,12 @@ const std::string& UIData::GetInfoPanelMessage() const noexcept
 	return m_displayInfo;
 }
 
+const std::vector<std::string>* UIData::GetSkinsPtr() noexcept
+{
+	return &m_skins;
+}
+
+
 LPCSTR UIData::GetInfoPanelMessageCStr() const noexcept
 {
 	return m_displayInfo.c_str();
@@ -261,6 +267,12 @@ void UIData::AppendSkin(const std::string& skin_name)
 {
 	m_skins.push_back(skin_name);
 }
+
+void UIData::UpdateInfoPanelMessage(const std::string& to_append) noexcept
+{
+	m_displayInfo.append(to_append);
+}
+
 
 void UIData::EraseSkin(const std::string& to_delete)
 {
@@ -282,7 +294,69 @@ void UIData::SetInfoPanelMessage(const std::string& message)
 	m_displayInfo.assign(message);
 }
 
+#pragma endregion
+
+#pragma region ImGUIData impl
+bool ImGUIData::IsVisible() const noexcept
+{
+	return m_toolbox_visible;
+}
+
+bool ImGUIData::Initialized() const noexcept
+{
+	return m_initialized;
+}
+
+int* ImGUIData::GetSkinsListboxSelectedItemPtr() noexcept
+{
+	return &m_skins_listbox_selection;
+}
+
+int ImGUIData::GetSkinsListboxSelectedItem() const noexcept
+{
+	return m_skins_listbox_selection;
+}
 
 
+void ImGUIData::Show()
+{
+	m_toolbox_visible = true;
+}
+
+void ImGUIData::Hide()
+{
+	m_toolbox_visible = false;
+}
+
+void ImGUIData::Toggle() noexcept
+{
+	m_toolbox_visible = !m_toolbox_visible;
+}
+
+
+inline void ImGUIData::Initialize(PDIRECT3DDEVICE9 pDevice) noexcept
+{
+	D3DDEVICE_CREATION_PARAMETERS params;
+	pDevice->GetCreationParameters(&params);
+
+	ImGui::CreateContext();
+	ImGui_ImplWin32_Init(params.hFocusWindow);
+	ImGui_ImplDX9_Init(pDevice);
+	m_initialized = true;
+}
+
+void ImGUIData::UnsetInitialized()
+{
+	m_initialized = false;
+}
+
+void ImGUIData::SetListboxSelection(const int pos)
+{
+	if (pos < -1)
+		throw std::invalid_argument("Selection out of range");
+	m_skins_listbox_selection = pos;
+}
+
+#pragma endregion
 
 

@@ -267,11 +267,18 @@ namespace OverlaySpecs
 		{
 		}
 
+		UIData(const std::string& display_info, const std::vector<std::string>& skins)
+			: m_skins(skins), m_displayInfo(display_info)
+		{
+		}
+
 		const std::vector<std::string>& GetSkins() const noexcept;
+		const std::vector<std::string>* GetSkinsPtr() noexcept;
 		const std::string& GetInfoPanelMessage() const noexcept;
 		LPCSTR GetInfoPanelMessageCStr() const noexcept;
 
 		void AppendSkin(const std::string& skin_name);
+		void UpdateInfoPanelMessage(const std::string& to_append) noexcept;
 		void EraseSkin(const std::string& to_delete);
 		void SetSkins(const std::vector<std::string>& skins);
 		void SetInfoPanelMessage(const std::string& message);
@@ -279,6 +286,34 @@ namespace OverlaySpecs
 	private:
 		std::vector<std::string> m_skins;
 		std::string m_displayInfo;
+	};
+
+	class ImGUIData
+	{
+	public:
+		ImGUIData()
+			: m_toolbox_visible(false), m_initialized(false), m_skins_listbox_selection(0)
+		{
+		}
+
+		bool IsVisible() const noexcept;
+		bool Initialized() const noexcept;
+		int* GetSkinsListboxSelectedItemPtr() noexcept;
+		int GetSkinsListboxSelectedItem() const noexcept;
+
+		void Show() noexcept;
+		void Hide() noexcept;
+		void Toggle() noexcept;
+
+		inline void Initialize(PDIRECT3DDEVICE9 pDevice) noexcept;
+		void UnsetInitialized();
+
+		void SetListboxSelection(const int pos);
+
+	private:
+		bool m_toolbox_visible;
+		bool m_initialized;
+		int m_skins_listbox_selection;
 	};
 }
 
