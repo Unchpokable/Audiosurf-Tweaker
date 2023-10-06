@@ -278,6 +278,7 @@ namespace OverlaySpecs
 		LPCSTR GetInfoPanelMessageCStr() const noexcept;
 
 		void AppendSkin(const std::string& skin_name);
+		void AppendSkins(const std::vector<std::string>& to_append);
 		void UpdateInfoPanelMessage(const std::string& to_append) noexcept;
 		void EraseSkin(const std::string& to_delete);
 		void SetSkins(const std::vector<std::string>& skins);
@@ -305,7 +306,7 @@ namespace OverlaySpecs
 		void Hide() noexcept;
 		void Toggle() noexcept;
 
-		inline void Initialize(PDIRECT3DDEVICE9 pDevice) noexcept;
+		void Initialize(PDIRECT3DDEVICE9 pDevice) noexcept;
 		void UnsetInitialized();
 
 		void SetListboxSelection(const int pos);
@@ -316,9 +317,6 @@ namespace OverlaySpecs
 		int m_skins_listbox_selection;
 	};
 }
-
-
-
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND, UINT, WPARAM, LPARAM);
 

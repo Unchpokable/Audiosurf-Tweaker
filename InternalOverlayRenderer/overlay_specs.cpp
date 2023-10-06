@@ -268,11 +268,16 @@ void UIData::AppendSkin(const std::string& skin_name)
 	m_skins.push_back(skin_name);
 }
 
+void UIData::AppendSkins(const std::vector<std::string>& to_append)
+{
+	m_skins.reserve(m_skins.size() + to_append.size());
+	m_skins.insert(m_skins.end(), to_append.begin(), to_append.end());
+}
+
 void UIData::UpdateInfoPanelMessage(const std::string& to_append) noexcept
 {
 	m_displayInfo.append(to_append);
 }
-
 
 void UIData::EraseSkin(const std::string& to_delete)
 {
@@ -318,12 +323,12 @@ int ImGUIData::GetSkinsListboxSelectedItem() const noexcept
 }
 
 
-void ImGUIData::Show()
+void ImGUIData::Show() noexcept 
 {
 	m_toolbox_visible = true;
 }
 
-void ImGUIData::Hide()
+void ImGUIData::Hide() noexcept
 {
 	m_toolbox_visible = false;
 }
@@ -333,8 +338,7 @@ void ImGUIData::Toggle() noexcept
 	m_toolbox_visible = !m_toolbox_visible;
 }
 
-
-inline void ImGUIData::Initialize(PDIRECT3DDEVICE9 pDevice) noexcept
+void ImGUIData::Initialize(PDIRECT3DDEVICE9 pDevice) noexcept
 {
 	D3DDEVICE_CREATION_PARAMETERS params;
 	pDevice->GetCreationParameters(&params);
@@ -356,6 +360,7 @@ void ImGUIData::SetListboxSelection(const int pos)
 		throw std::invalid_argument("Selection out of range");
 	m_skins_listbox_selection = pos;
 }
+
 
 #pragma endregion
 
