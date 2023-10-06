@@ -9,28 +9,13 @@ DxReset pReset;
 HINSTANCE ThisHandle = nullptr;
 OverlaySpecs::OverlayData* g_overlay_data = new OverlaySpecs::OverlayData();
 OverlaySpecs::DXData* g_dx_data = new OverlaySpecs::DXData();
+OverlaySpecs::UIData* g_ui_data = new OverlaySpecs::UIData();
+OverlaySpecs::ImGUIData* g_ImGui_data = new OverlaySpecs::ImGUIData();
 
 HWND HostApplicationHandle;
 HWND GameHandle;
 WNDPROC WndProcOriginal;
 FILE* PConsoleOutFile;
-
-bool OverlayInitialized;
-
-int NativeScreenWidth = 0;
-int NativeScreenHeight = 0;
-
-#pragma region UI globals
-
-bool OverlayVisible = true;
-bool ImguiToolboxVisible = false;
-bool ImguiInitialized = false;
-int ListboxSelect(0);
-
-//TODO: Hide this somewhere to `OverlayData` class
-std::vector<std::string> ActualSkinsList{};
-std::string DisplayInfo{};
-#pragma endregion
 
 #pragma region tweaks flags
 
@@ -109,7 +94,7 @@ HRESULT __stdcall HookedReset(LPDIRECT3DDEVICE9 pDevice, PD3DPRESENT_PARAMETERS 
     HRESULT result = pReset(pDevice, presentParameters);
     ImGui_ImplDX9_CreateDeviceObjects();
     dx->SetPresentParameters(presentParameters);
-    ImguiInitialized = false;
+    g_ImGui_data->UnsetInitialized();
     return result;
 }
 
@@ -119,18 +104,9 @@ HRESULT __stdcall HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
     if (dx->GetDevice() == nullptr)
         dx->SetDevice(pDevice);
 
-    if (!OverlayVisible)
-        return pEndScene(pDevice);
-
-    if (!ImguiInitialized)
+    if (!g_ImGui_data->Initialized())
     {
-        D3DDEVICE_CREATION_PARAMETERS params;
-        pDevice->GetCreationParameters(&params);
-
-        ImGui::CreateContext();
-        ImGui_ImplWin32_Init(params.hFocusWindow);
-        ImGui_ImplDX9_Init(pDevice);
-        ImguiInitialized = true;
+        g_ImGui_data->Initialize(pDevice);
     }
 
     auto infopanel = g_overlay_data->Infopanel();
@@ -146,9 +122,8 @@ HRESULT __stdcall HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
 
     SetRect(&textRectangle, rectx1 + Padding, recty1 + Padding, rectx2 - Padding, recty2 - Padding);
     
-    if (DisplayInfo.empty())
-        DisplayInfo.append("Tweaker overlay v0.1...\nWaiting for connection with host application...");
-
+    if (g_ui_data->GetInfoPanelMessage().empty())
+        g_ui_data->SetInfoPanelMessage(std::string("Tweaker overlay v0.1...\nWaiting for connection with host application..."));
 
     if (menu->GetFontColor() == nullptr)
         menu->SetFontColor(new Argb_t{ 255, 153, 255, 153 }); // Default shitty-green color
@@ -159,10 +134,10 @@ HRESULT __stdcall HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
     dx->SetFont(font);
     auto font_color = menu->GetFontColor();
 
-    font->DrawText(NULL, DisplayInfo.c_str(),
+    font->DrawText(NULL, g_ui_data->GetInfoPanelMessageCStr(),
         -1, &textRectangle, DT_NOCLIP | DT_LEFT, D3DCOLOR_ARGB(font_color->alpha, font_color->r, font_color->g, font_color->b));
     
-    if (ImguiToolboxVisible)
+    if (g_ImGui_data->IsVisible())
     {
         DrawMenu(pDevice);
     }
@@ -186,22 +161,24 @@ inline void DrawMenu(LPDIRECT3DDEVICE9 pDevice)
 
         std::vector<const char*> localSkinList{};
 
-        localSkinList.reserve(ActualSkinsList.size());
-        for (auto& item : ActualSkinsList)
+        auto skins = g_ui_data->GetSkins();
+
+        localSkinList.reserve(skins.size());
+        for (auto& item : skins)
         {
             localSkinList.push_back(item.c_str());
         }
 
-        ImGui::ListBox("", &ListboxSelect, localSkinList.data(), localSkinList.size(), -1);
+        ImGui::ListBox("", g_ImGui_data->GetSkinsListboxSelectedItemPtr(), localSkinList.data(), localSkinList.size(), -1);
 
         if (ImGui::Button("Install Now"))
         {
-            if (ActualSkinsList.empty())
+            if (skins.empty())
             {
                 return;
             }
             std::stringstream cmdText{};
-            cmdText << InstallPackageCommandHeader << " " << ActualSkinsList[ListboxSelect];
+            cmdText << InstallPackageCommandHeader << " " << skins[g_ImGui_data->GetSkinsListboxSelectedItem()];
             SendCommandToHostApplication(const_cast<char*>(cmdText.str().c_str()));// tw-Install-package <skin_name>
         }
 
@@ -350,15 +327,6 @@ HRESULT Init()
     GameHandle = FindWindow(NULL, "Audiosurf");
     WndProcOriginal = (WNDPROC)SetWindowLong(GameHandle, GWL_WNDPROC, (LRESULT)WndProc);
 
-    RECT desktop;
-
-    auto hDesktop = GetDesktopWindow();
-
-    GetWindowRect(hDesktop, &desktop);
-
-    NativeScreenHeight = desktop.bottom;
-    NativeScreenWidth = desktop.right;
-
     return 0;
 }
 
@@ -474,6 +442,7 @@ inline void HandleCopyDataMessage(PCOPYDATASTRUCT cds)
         return;
 
     auto msg = std::string((LPCSTR)cds->lpData);
+    auto skins = g_ui_data->GetSkins();
 
     if (msg.find("tw-update-listener") != std::string::npos) // catch ovl-update-listener command from host application, that has a signature of "tw-update-listener AsMsgHandler_<unique_symbol_sequence>
     {
@@ -492,20 +461,19 @@ inline void HandleCopyDataMessage(PCOPYDATASTRUCT cds)
         std::cout << "tw-update-skin-list handled with arguments " << list << "\n";
 
         LTrim(list);
-        ActualSkinsList.clear();
+        skins.clear();
 
         for (auto& item : Split(list, "; "))
         {
             std::cout << "appending item " << item << "\n";
-            ActualSkinsList.push_back(item);
+            skins.push_back(item);
         }
     }
 
     else if (msg.find("tw-update-ovl-info") != std::string::npos)
     {
         auto newInfo = msg.substr(std::string("tw-update-ovl-info").length());
-        DisplayInfo.clear();
-        DisplayInfo.append(newInfo);
+        g_ui_data->SetInfoPanelMessage(newInfo);
     }
 
     else if (msg.find("tw-pulse") != std::string::npos)
@@ -516,8 +484,8 @@ inline void HandleCopyDataMessage(PCOPYDATASTRUCT cds)
 
     else if (msg.find("tw-append-ovl-info") != std::string::npos)
     {
-        auto infoToAppend = msg.substr(std::string("tw-append-ovl-info").length());
-        DisplayInfo.append(std::string("\n") + infoToAppend);
+        const auto infoToAppend = msg.substr(std::string("tw-append-ovl-info").length());
+        g_ui_data->UpdateInfoPanelMessage(infoToAppend);
     }
 
     else if (msg.find("tw-config") != std::string::npos)
@@ -567,19 +535,6 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
 
     std::cout << "Game PID: " << GetCurrentProcessId() << "\nOverlay initialization...\n";
 
-    //FontColor = new Argb{255, 153, 255, 153};
-    //FontSize = new int;
-    //*FontSize = 22;
-
-    //MenuFontSize = new float;
-    //*MenuFontSize = 16;
-
-    //OvlXOffset = new int;
-    //OvlYOffset = new int;
-
-    //*OvlXOffset = 0;
-    //*OvlYOffset = 0;
-
     for (auto const& [key, value] : Assoc::TweaksFlags) 
     {
         *Assoc::TweaksFlags[key] = false;
@@ -610,13 +565,8 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
 
         if (GetAsyncKeyState(VK_INSERT))
         {
-            //OverlayVisible = !OverlayVisible;
-            ImguiToolboxVisible = !ImguiToolboxVisible;
+            g_ImGui_data->Toggle();
         }
-
-        /*if (GetAsyncKeyState(VK_SHIFT) && GetAsyncKeyState(VK_END))
-        {
-        }*/
     }
     return 0;
 }
