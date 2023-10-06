@@ -3,32 +3,56 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:SkinChangerRestyle"
+        xmlns:effects="clr-namespace:System.Windows.Media.Effects;assembly=PresentationCore"
         mc:Ignorable="d"
         Title="{Binding Caption}" Height="Auto" Width="Auto"
         MinWidth="250"
         MinHeight="150"
         ResizeMode="NoResize"
-        SizeToContent="WidthAndHeight"
         FontSize="16"
-        WindowStartupLocation="CenterScreen">
-    <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition/>
-            <RowDefinition Height="50"/>
-        </Grid.RowDefinitions>
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent">
+    <Border Background="Transparent">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="2*"/>
+                <RowDefinition/>
+                <RowDefinition Height="2*"/>
+            </Grid.RowDefinitions>
+
+            <Border
+                Background="Black"
+                Opacity="0.5">
+            </Border>
+
+            <Border Grid.Row="1"
+                    Background="White">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition/>
+                        <RowDefinition Height="50"/>
+                    </Grid.RowDefinitions>
 
 
-        <TextBlock Text="{Binding Message}" HorizontalAlignment="Center" Margin="10"/>
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="10">
-            <Button Content="OK" Click="OK_Click" Visibility="{Binding OkVisibility}"
-                    Style="{StaticResource UnderscoredButton}"
-                    Margin="0 0 10 0"
-                    MinWidth="70"/>
-            <Button Content="Cancel" Click="Cancel_Click" Visibility="{Binding CancelVisibility}"
-                    Style="{StaticResource UnderscoredButton}"
-                    Margin="10 0 0 0"
-                    MinWidth="70"/>
-        </StackPanel>
-    </Grid>
+                    <TextBlock Text="{Binding Message}" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="10"/>
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="10">
+                        <Button Content="OK" Click="OK_Click" Visibility="{Binding OkVisibility}"
+                                Style="{StaticResource UnderscoredButton}"
+                                Margin="0 0 10 0"
+                                MinWidth="70"/>
+                        <Button Content="Cancel" Click="Cancel_Click" Visibility="{Binding CancelVisibility}"
+                                Style="{StaticResource UnderscoredButton}"
+                                Margin="10 0 0 0"
+                                MinWidth="70"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="2"
+                    Background="Black"
+                    Opacity="0.5">
+            </Border>
+        </Grid>
+    </Border>
 </Window>

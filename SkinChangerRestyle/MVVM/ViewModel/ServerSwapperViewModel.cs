@@ -12,6 +12,7 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Media;
+using Notification.Wpf;
 using SkinChangerRestyle.Core.Utils;
 using DataFormats = System.Windows.DataFormats;
 
@@ -37,7 +38,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             DefineNewVariable = new RelayCommand(DefineNewVariableInternal);
             RemoveSelected = new RelayCommand(RemoveInterpreterVariable);
             RemoveServerPackage = new RelayCommand(RemoveServerPackageInternal);
-            EditPackage = new RelayCommand(RunEditPackage);
+            
 
             UpdateServersList = new RelayCommand(LoadServersCommand);
             UpdateServersNetworkState = new RelayCommand(UpdateServersNetStatsInternal);
@@ -135,7 +136,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         public RelayCommand UpdateServersList { get; set; }
         public RelayCommand RemoveServerPackage { get; set; }
         public RelayCommand OpenGuidePage { get; set; }
-        public RelayCommand EditPackage { get; set; }
+        
         public InterpreterVariable VariableDefinitionProxy { get; set; }
         public InterpreterVariable SelectedVariableItem { get; set; }
         public ObservableCollection<InterpreterVariable> InterpreterVariables { get; set; }
@@ -458,9 +459,6 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             NetStatUpdateAvailable = true;
         }
 
-        private async void RunEditPackage(object arg)
-        {
-            await Task.Delay(0);
-        }
+        
     }
 }

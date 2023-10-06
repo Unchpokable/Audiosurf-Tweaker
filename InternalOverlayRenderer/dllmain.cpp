@@ -461,13 +461,7 @@ inline void HandleCopyDataMessage(PCOPYDATASTRUCT cds)
         std::cout << "tw-update-skin-list handled with arguments " << list << "\n";
 
         LTrim(list);
-        skins.clear();
-
-        for (auto& item : Split(list, "; "))
-        {
-            std::cout << "appending item " << item << "\n";
-            skins.push_back(item);
-        }
+        g_ui_data->SetSkins((Split(list, "; ")));
     }
 
     else if (msg.find("tw-update-ovl-info") != std::string::npos)
@@ -547,6 +541,11 @@ DWORD WINAPI BuildOverlay(HINSTANCE hModule)
     {
         delete g_dx_data;
         delete g_overlay_data;
+        delete g_ui_data;
+        delete g_ImGui_data;
+
+        if (PConsoleOutFile || PConsoleOutFile != nullptr)
+			delete PConsoleOutFile;
 
         std::cout << "Overlay initialization failed with error code " << initResult << "\n Exiting process after 5 second...\n" << "Please, restart audiosurf if you see this message for the first time\n"
             << "If you see this message every time, disable game overlay in Host application settings tab, then restart game and Audiosurf Tweaker. Sorry if this thing doesn't work for you :( ";
@@ -582,7 +581,10 @@ void EjectOverlayProcess(FILE* fp)
     
     FreeConsole();
 
-    delete PConsoleOutFile;
+    delete g_dx_data;
+    delete g_overlay_data;
+    delete g_ui_data;
+    delete g_ImGui_data;
 
     CreateThread(0, 0, EjectThread, 0, 0, 0);
 }
