@@ -84,6 +84,12 @@ namespace OverlaySpecs
 		{
 		}
 
+		~DXParameters()
+		{
+			delete m_pD3DPresentParameters;
+			m_pFont->Release();
+		}
+
 		PD3DPRESENT_PARAMETERS GetPresentParameters() const noexcept;
 		LPDIRECT3DDEVICE9 GetDevice() const noexcept;
 		LPD3DXFONT GetFont() const noexcept;
