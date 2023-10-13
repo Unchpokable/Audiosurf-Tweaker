@@ -95,5 +95,12 @@ namespace SkinChangerRestyle.MVVM.Model
             dialog.ShowDialog();
             return dialog.Result == TweakerDialogResult.OK;
         }
+
+        public void ShowImportantInfo(string title, string message)
+        {
+            var dialiog = new TweakerDialog(message, title, MessageBoxButton.OK, Application.Current.MainWindow);
+            dialiog.ShowDialog();
+            return;
+        }
     }
 }
