@@ -82,7 +82,13 @@
                                      Height="20"
                                      ToolTip="This Server installed now"/>
                         </Grid>
-
+                    <Border.ContextMenu>
+                        <ContextMenu StaysOpen="True">
+                            <MenuItem Header="Edit this package"
+                                      Command="{Binding EditPackage}"
+                                      CommandParameter="{Binding PlacementTarget, RelativeSource={RelativeSource FindAncestor, AncestorType={x:Type ContextMenu}}}"></MenuItem>
+                        </ContextMenu>
+                    </Border.ContextMenu>
                     </Border>
 
                     <ControlTemplate.Triggers>

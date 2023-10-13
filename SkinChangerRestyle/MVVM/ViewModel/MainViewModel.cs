@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading;
-using System.Windows;
+using System.Threading.Tasks;
+using System.Windows.Forms;
 using ASCommander;
 using SkinChangerRestyle.Core;
 using SkinChangerRestyle.Core.Extensions;
@@ -16,37 +17,39 @@ namespace SkinChangerRestyle.MVVM.ViewModel
     {
         public MainViewModel()
         {
-            ConfigurationManager.InitializationFaultCallback += async (e) =>
+            ConfigurationManager.InitializationFaultCallback += (e) =>
             {
-#if ASD
-                await Task.Run(() =>
-                {
-                    MessageBox.Show($"{e.Message}\nPlease, check your settings tab", "Default Configuration initialization fault", MessageBoxButton.OK, MessageBoxImage.Warning);
-                });
-#endif
+                MessageBox.Show("Settings initialization error", "Can not detect game installation path. Please, check your settings tab, setup in manually and reboot Audiosurf Tweaker", MessageBoxButtons.OK, MessageBoxIcon.Error);
             };
 
-            ConfigurationManager.SetUpDefaultSettings();
-            ConfigurationManager.InitializeEnvironment();
-            _asHandle = AudiosurfHandle.Instance;
-            _asHandle.StateChanged += OnASHandleStateChanged;
-            SkinsGridVM = SkinChangerViewModel.Instance;
-            TweakerVM = new TweakerViewModel();
-            SettingsVM = new SettingViewModel();
-            ColorsVM = ColorsConfiguratorViewModel.Instance;
-            ServerSwapperVM = new ServerSwapperViewModel();
+            try
+            {
+                ConfigurationManager.SetUpDefaultSettings();
+                ConfigurationManager.InitializeEnvironment();
+                _asHandle = AudiosurfHandle.Instance;
+                _asHandle.StateChanged += OnASHandleStateChanged;
+                SkinsGridVM = SkinChangerViewModel.Instance;
+                TweakerVM = new TweakerViewModel();
+                SettingsVM = new SettingViewModel();
+                ColorsVM = ColorsConfiguratorViewModel.Instance;
+                ServerSwapperVM = new ServerSwapperViewModel();
 
-            CurrentView = SkinsGridVM;
-            SetChangerView = new RelayCommand(o => CurrentView = SkinsGridVM);
-            ConnectAudiosurfWindow = new RelayCommand(ConnectAudiosurfWindowInternal);
-            SetCommandCenterView = new RelayCommand(o => CurrentView = TweakerVM);
-            SetSettingsView = new RelayCommand(o => CurrentView = SettingsVM);
-            SetColorsView = new RelayCommand(o => CurrentView = ColorsVM);
-            SetServerSwapperView = new RelayCommand(o => CurrentView = ServerSwapperVM);
-            EnableAutoHandling = new RelayCommand(o => _asHandle.StartAutoHandling());
-            ResetWndProcService = new RelayCommand(o => _asHandle.ReinitializeWndProcMessageService());
-            Utils.DisposeAndClear();
-            MainIcon = Resources.Icon.ToImageSource();
+                CurrentView = SkinsGridVM;
+                SetChangerView = new RelayCommand(o => CurrentView = SkinsGridVM);
+                ConnectAudiosurfWindow = new RelayCommand(ConnectAudiosurfWindowInternal);
+                SetCommandCenterView = new RelayCommand(o => CurrentView = TweakerVM);
+                SetSettingsView = new RelayCommand(o => CurrentView = SettingsVM);
+                SetColorsView = new RelayCommand(o => CurrentView = ColorsVM);
+                SetServerSwapperView = new RelayCommand(o => CurrentView = ServerSwapperVM);
+                EnableAutoHandling = new RelayCommand(o => _asHandle.StartAutoHandling());
+                ResetWndProcService = new RelayCommand(o => _asHandle.ReinitializeWndProcMessageService());
+                Utils.DisposeAndClear();
+                MainIcon = Resources.Icon.ToImageSource();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message + "\n\n\n" + ex.StackTrace, "error");
+            }
         }
 
         public ImageSource MainIcon { get; set; }
@@ -99,7 +102,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
             catch
             {
-                MessageBox.Show("Error occurred during opening process browser. Try again", "Windows process browser error", MessageBoxButton.OK, MessageBoxImage.Error);
+                ApplicationNotificationManager.Manager.ShowErrorWnd("Process Browser error", "Error occurred during opening process browser. Try again");
             }
         }
     }

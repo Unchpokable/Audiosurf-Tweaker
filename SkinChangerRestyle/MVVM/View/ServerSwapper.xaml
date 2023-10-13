@@ -123,6 +123,7 @@
                       Grid.Row="1">
                     <Grid.RowDefinitions>
                         <RowDefinition/>
+                        <RowDefinition Height="20"/>
                         <RowDefinition Height="60"/>
                     </Grid.RowDefinitions>
 
@@ -136,11 +137,19 @@
                                            AcceptsTab="True"
                                            BorderBrush="LightGray"
                                            BorderThickness="1"
-                                           Text="{Binding SelectedPackageScript, Mode=TwoWay}">
+                                           Text="{Binding SelectedPackageScript, Mode=TwoWay}"
+                                           IsEnabled="{Binding DevModeActive}">
 
                     </TextBox>
 
-                    <Grid Grid.Row="1"
+                    <CheckBox Grid.Row="1"
+                              Style="{StaticResource FlatCheckBox}"
+                              Content="I'm dev"
+                              IsChecked="{Binding DevModeActive}"
+                              Margin="10 0 0 0"
+                              ToolTip="I'm fully understand what i want to do with script text and maybe even read guide. If something will break, it will only my fault."/>
+
+                        <Grid Grid.Row="2"
                           Margin="10 10 10 0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition/>
@@ -151,12 +160,14 @@
                         <Button Style="{StaticResource FlatButton}" 
                                 Content="Save" Command="{Binding SaveInstallerScript}"
                                 FontSize="18"
-                                Grid.Column="0"/>
+                                Grid.Column="0"
+                                IsEnabled="{Binding DevModeActive}"/>
 
                         <Button Style="{StaticResource FlatButton}" 
                                 Content="Discard" Command="{Binding DiscardScriptChanges}"
                                 FontSize="18"
-                                Grid.Column="2"/>
+                                Grid.Column="1"
+                                IsEnabled="{Binding DevModeActive}"/>
                     </Grid>
 
                 </Grid>

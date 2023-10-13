@@ -91,9 +91,16 @@ namespace SkinChangerRestyle.MVVM.Model
 
         public bool AskForAction(string title, string message)
         {
-            var dialog = new TweakerDialog(message, title, MessageBoxButton.OKCancel);
+            var dialog = new TweakerDialog(message, title, MessageBoxButton.OKCancel, Application.Current.MainWindow);
             dialog.ShowDialog();
             return dialog.Result == TweakerDialogResult.OK;
+        }
+
+        public void ShowImportantInfo(string title, string message)
+        {
+            var dialiog = new TweakerDialog(message, title, MessageBoxButton.OK, Application.Current.MainWindow);
+            dialiog.ShowDialog();
+            return;
         }
     }
 }

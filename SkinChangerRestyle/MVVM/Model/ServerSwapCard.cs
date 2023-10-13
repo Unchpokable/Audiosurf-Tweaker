@@ -1,4 +1,5 @@
-﻿using SkinChangerRestyle.Core;
+﻿using Notification.Wpf;
+using SkinChangerRestyle.Core;
 using SkinChangerRestyle.Core.NetworkTools;
 using System;
 using System.Threading.Tasks;
@@ -10,6 +11,7 @@ namespace SkinChangerRestyle.MVVM.Model
         public ServerSwapCard(string baseDirectory)
         {
             BasePackagePath = baseDirectory;
+            EditPackage = new RelayCommand(RunEditPackage);
         }
 
         public string ServerName
@@ -45,6 +47,8 @@ namespace SkinChangerRestyle.MVVM.Model
             }
         }
 
+        public RelayCommand EditPackage { get; set; }
+
         public string ServerPing => RemoteStats?.Ping.ToString();
         public string SpecsServerRemote { get; set; }
 
@@ -76,6 +80,11 @@ namespace SkinChangerRestyle.MVVM.Model
             OnPropertyChanged(nameof(ServerPing));
             OnPropertyChanged(nameof(IsAvailable));
             OnPropertyChanged(nameof(SpecsServerRemote));
+        }
+
+        private async void RunEditPackage(object arg)
+        {
+            ApplicationNotificationManager.Manager.Show("#DEBUG# Type given:", arg.GetType().ToString(), NotificationType.Information);
         }
     }
 }

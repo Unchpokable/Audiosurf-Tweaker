@@ -8,7 +8,7 @@ namespace SkinChangerRestyle
     /// </summary>
     public partial class TweakerDialog : Window
     {
-        public TweakerDialog(string message, string caption, MessageBoxButton buttons)
+        public TweakerDialog(string message, string caption, MessageBoxButton buttons, Window hostWindow)
         {
             InitializeComponent();
             DataContext = this;
@@ -16,6 +16,11 @@ namespace SkinChangerRestyle
             Caption = caption;
             OkVisibility = buttons == MessageBoxButton.OK || buttons == MessageBoxButton.OKCancel ? Visibility.Visible : Visibility.Collapsed;
             CancelVisibility = buttons == MessageBoxButton.OKCancel ? Visibility.Visible : Visibility.Collapsed;
+
+            Left = hostWindow.Left;
+            Top = hostWindow.Top;
+            Width = hostWindow.Width;
+            Height = hostWindow.Height;
         }
 
         public TweakerDialogResult Result { get; private set; }

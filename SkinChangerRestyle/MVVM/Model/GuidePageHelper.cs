@@ -5,7 +5,7 @@
         private static string _serverSwapperGuide = "Docs\\ServerSwapper.html";
         private static string _overlayGide = "Docs\\OverlayTroubleshooting.html";
 
-        public static void ShowServerSwapperGuile()
+        public static void ShowServerSwapperGuide()
         {
             new GuidancePage(_serverSwapperGuide).Show();
         }
