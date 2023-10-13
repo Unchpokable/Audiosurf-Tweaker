@@ -43,7 +43,15 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             UpdateServersList = new RelayCommand(LoadServersCommand);
             UpdateServersNetworkState = new RelayCommand(UpdateServersNetStatsInternal);
 
-            OpenGuidePage = new RelayCommand(o => GuidePageHelper.ShowServerSwapperGuile());
+            OpenGuidePage = new RelayCommand(o => GuidePageHelper.ShowServerSwapperGuide());
+
+            if (!Directory.Exists(SettingsProvider.GameTexturesPath))
+            {
+                ApplicationNotificationManager.Manager.ShowImportantInfo("Invalid Path",
+                    "Path to game is invalid. Please, check your Settings tab and select valid path to game textures folder");
+                Status = "Boot failure";
+                return;
+            }
 
             InterpreterVariables = new ObservableCollection<InterpreterVariable>
             {

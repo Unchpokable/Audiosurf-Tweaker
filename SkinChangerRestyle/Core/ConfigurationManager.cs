@@ -30,7 +30,7 @@ namespace SkinChangerRestyle.Core
                     return;
                 }
                 
-                if (!bool.Parse(cfg.AppSettings.Settings["FirstRun"].Value))
+                if (!bool.Parse(cfg.AppSettings.Settings["FirstRun"].Value) && Directory.Exists(cfg.AppSettings.Settings["TexturesPath"].Value))
                     return;
 
                 cfg.AppSettings.Settings["FirstRun"].Value = bool.FalseString;
@@ -151,7 +151,10 @@ namespace SkinChangerRestyle.Core
 
         private static string GetAudiosurfBaseDirectory()
         {
-            var steamPath = GetSteamInstallPath().Replace("/", "\\");
+            var steamPath = GetSteamInstallPath()?.Replace("/", "\\");
+
+            if (steamPath == null)
+                return string.Empty;
 
             var libfolders = Path.Combine(steamPath, "steamapps", "libraryfolders.vdf");
 
