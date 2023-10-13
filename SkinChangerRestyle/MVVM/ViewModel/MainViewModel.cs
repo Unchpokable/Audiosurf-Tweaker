@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Forms;
 using ASCommander;
 using SkinChangerRestyle.Core;
 using SkinChangerRestyle.Core.Extensions;
@@ -9,6 +10,7 @@ using System.Windows.Media;
 using SkinChangerRestyle.Core.Utils;
 using SkinChangerRestyle.MVVM.Model;
 using SkinChangerRestyle.Properties;
+using MessageBox = System.Windows.Forms.MessageBox;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -19,7 +21,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         {
             ConfigurationManager.InitializationFaultCallback += (e) =>
             {
-                ApplicationNotificationManager.Manager.ShowImportantInfo("Settings initialization error", "Can not detect game installation path. Please, check your settings tab, setup in manually and reboot Audiosurf Tweaker");
+                MessageBox.Show("Settings initialization error", "Can not detect game installation path. Please, check your settings tab, setup in manually and reboot Audiosurf Tweaker", MessageBoxButtons.OK, MessageBoxIcon.Error);
             };
 
             try
