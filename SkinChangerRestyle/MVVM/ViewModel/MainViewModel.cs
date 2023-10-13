@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows;
 using System.Windows.Forms;
 using ASCommander;
 using SkinChangerRestyle.Core;
@@ -10,7 +9,6 @@ using System.Windows.Media;
 using SkinChangerRestyle.Core.Utils;
 using SkinChangerRestyle.MVVM.Model;
 using SkinChangerRestyle.Properties;
-using MessageBox = System.Windows.Forms.MessageBox;
 
 namespace SkinChangerRestyle.MVVM.ViewModel
 {
@@ -104,7 +102,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             }
             catch
             {
-                MessageBox.Show("Error occurred during opening process browser. Try again", "Windows process browser error", MessageBoxButton.OK, MessageBoxImage.Error);
+                ApplicationNotificationManager.Manager.ShowErrorWnd("Process Browser error", "Error occurred during opening process browser. Try again");
             }
         }
     }

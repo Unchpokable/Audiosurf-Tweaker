@@ -48,7 +48,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             if (!Directory.Exists(SettingsProvider.GameTexturesPath))
             {
                 ApplicationNotificationManager.Manager.ShowImportantInfo("Invalid Path",
-                    "Path to game is invalid. Please, check your Settings tab and select valid path to game textures folder");
+                    "Path to game is invalid. Please, check your Settings tab and select valid path to game textures folder then restart Audiosurf Tweaker");
                 Status = "Boot failure";
                 return;
             }
