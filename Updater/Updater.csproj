@@ -1,0 +1,25 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net7.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>NewTweakerIcon.ico</ApplicationIcon>
+    <PublishSingleFile>true</PublishSingleFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="NewTweakerIcon.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MdXaml" Version="1.21.0" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Core\Extensions\" />
+  </ItemGroup>
+
+</Project>

@@ -27,6 +27,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TweakerScriptInterpreter", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DiscordRichPresence", "DiscordRichPresence\DiscordRichPresence.csproj", "{07F5675F-A501-485F-B1D8-C15A95DA9615}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Updater", "Updater\Updater.csproj", "{A2152361-38DE-46F5-BB87-BCA5A25067CE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -256,6 +258,24 @@ Global
 		{07F5675F-A501-485F-B1D8-C15A95DA9615}.x64|x64.Build.0 = Debug|Any CPU
 		{07F5675F-A501-485F-B1D8-C15A95DA9615}.x64|x86.ActiveCfg = Debug|Any CPU
 		{07F5675F-A501-485F-B1D8-C15A95DA9615}.x64|x86.Build.0 = Debug|Any CPU
+		{A2152361-38DE-46F5-BB87-BCA5A25067CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2152361-38DE-46F5-BB87-BCA5A25067CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A2152361-38DE-46F5-BB87-BCA5A25067CE}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A2152361-38DE-46F5-BB87-BCA5A25067CE}.Debug|x64.Build.0 = Debug|Any CPU
+		{A2152361-38DE-46F5-BB87-BCA5A25067CE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A2152361-38DE-46F5-BB87-BCA5A25067CE}.Debug|x86.Build.0 = Debug|Any CPU
+		{A2152361-38DE-46F5-BB87-BCA5A25067CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A2152361-38DE-46F5-BB87-BCA5A25067CE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A2152361-38DE-46F5-BB87-BCA5A25067CE}.Release|x64.ActiveCfg = Release|Any CPU
+		{A2152361-38DE-46F5-BB87-BCA5A25067CE}.Release|x64.Build.0 = Release|Any CPU
+		{A2152361-38DE-46F5-BB87-BCA5A25067CE}.Release|x86.ActiveCfg = Release|Any CPU
+		{A2152361-38DE-46F5-BB87-BCA5A25067CE}.Release|x86.Build.0 = Release|Any CPU
+		{A2152361-38DE-46F5-BB87-BCA5A25067CE}.x64|Any CPU.ActiveCfg = Debug|Any CPU
+		{A2152361-38DE-46F5-BB87-BCA5A25067CE}.x64|Any CPU.Build.0 = Debug|Any CPU
+		{A2152361-38DE-46F5-BB87-BCA5A25067CE}.x64|x64.ActiveCfg = Debug|Any CPU
+		{A2152361-38DE-46F5-BB87-BCA5A25067CE}.x64|x64.Build.0 = Debug|Any CPU
+		{A2152361-38DE-46F5-BB87-BCA5A25067CE}.x64|x86.ActiveCfg = Debug|Any CPU
+		{A2152361-38DE-46F5-BB87-BCA5A25067CE}.x64|x86.Build.0 = Debug|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
