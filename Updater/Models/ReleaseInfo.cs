@@ -37,8 +37,32 @@ namespace Updater.Models
             }
         }
 
+        public string Title
+        {
+            get => _title;
+            set
+            {
+                _title = value;
+                OnPropertyChanged();
+            }
+        }
+
+
+        public long Size
+        {
+            get => _size;
+            set
+            {
+                _size = value;
+                OnPropertyChanged();
+            }
+        }
+
+
         private DateTime _releaseDate;
         private string _body;
         private string _updateDownloadPath;
+        private string _title;
+        private long _size;
     }
 }
