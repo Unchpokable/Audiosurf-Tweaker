@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using MdXaml;
@@ -11,20 +8,28 @@ using Updater.Models;
 
 namespace Updater.ViewModels
 {
-    class MainViewModel : ViewModelBase
+    class MainViewModel : ViewModelBase, IDisposable
     {
         public MainViewModel()
         {
             Style = MarkdownStyle.GithubLike;
+            CurrentVisibleComponent = ComponentVisibility.None;
 
             Task.Run(async () =>
             {
-                var downloader = new GithubDownloader(_user, _repo);
-                ReleaseInfo = await downloader.GetLatestRelease();
+                var githubRepo = new GithubRepoReleaseProvider(_user, _repo);
+                ReleaseInfo = await githubRepo.GetLatestRelease();
+
+                if (ReleaseInfo == null) return;
 
                 _downloadProxy = new DownloadProxy(ReleaseInfo.DownloadUrl);
-                Process.Start(await _downloadProxy.StartDownloadAsync());
+                _downloadProxy.PropertyChanged += (o, e) => OnPropertyChanged(nameof(DownloadProxy));
+                CurrentVisibleComponent = ComponentVisibility.AskForDownload;
             });
+
+
+            CloseApplication = new RelayCommand(o => Application.Current.Shutdown(0));
+            DownloadUpdate = new RelayCommand(DownloadUpdateInternal);
         }
 
         public Style Style
@@ -37,7 +42,7 @@ namespace Updater.ViewModels
             }
         }
 
-        public ReleaseInfo ReleaseInfo
+        public ReleaseInfo? ReleaseInfo
         {
             get => _releaseInfo;
             set
@@ -47,11 +52,48 @@ namespace Updater.ViewModels
             }
         }
 
-        private Style _style;
-        private ReleaseInfo _releaseInfo;
-        private DownloadProxy _downloadProxy;
+        public DownloadProxy? DownloadProxy
+        {
+            get => _downloadProxy;
+            set
+            {
+                _downloadProxy = value;
+                OnPropertyChanged();
+            }
+        }
 
+        public ComponentVisibility CurrentVisibleComponent
+        {
+            get => _currentComponentVisibility;
+            set
+            {
+                _currentComponentVisibility = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public RelayCommand CloseApplication { get; set; }
+        public RelayCommand DownloadUpdate { get; set; }
+
+        private Style _style;
+        private ReleaseInfo? _releaseInfo;
+        private DownloadProxy? _downloadProxy;
+        private ComponentVisibility _currentComponentVisibility;
+
+        private Core.Updater _updater;
+        
         private const string _user = "Unchpokable";
         private const string _repo = "Audiosurf-Tweaker";
+
+        public void Dispose()
+        {
+            _updater.Dispose();
+        }
+
+        public async void DownloadUpdateInternal(object _)
+        {
+            CurrentVisibleComponent = ComponentVisibility.DownloadingPage;
+            var updateZip = await _downloadProxy.StartDownloadAsync();
+        }
     }
 }
