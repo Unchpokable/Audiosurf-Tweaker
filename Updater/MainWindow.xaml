@@ -4,13 +4,21 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Updater"
+        xmlns:con="clr-namespace:Updater.Core.Converters"
         xmlns:viewModels="clr-namespace:Updater.ViewModels"
+        xmlns:core="clr-namespace:Updater.Core"
+        xmlns:models="clr-namespace:Updater.Models"
         xmlns:md="clr-namespace:MdXaml;assembly=MdXaml"
         mc:Ignorable="d"
         Title="Audiosurf Tweaker updater" Height="450" Width="800"
         MaxWidth="1000"
         MaxHeight="700"
         SizeToContent="WidthAndHeight">
+
+    <Window.Resources>
+        <con:FileSizeToStringConverter x:Key="SizeToStringConverter"></con:FileSizeToStringConverter>
+        <con:VisibilityConverter x:Key="ComponentToVisibilityConverter"></con:VisibilityConverter>
+    </Window.Resources>
 
     <Window.DataContext>
         <viewModels:MainViewModel/>
@@ -23,13 +31,31 @@
             <RowDefinition Height="80"/>
         </Grid.RowDefinitions>
 
-        <TextBlock FontSize="24"
-               FontFamily="Tahoma"
-               FontWeight="SemiBold"
-               VerticalAlignment="Center" Foreground="#FF5D5D5D"
-               Margin="10 0 0 0">
-            A new version of Audiosurf Tweaker available for download!
-        </TextBlock>
+        <StackPanel Margin="10">
+            <TextBlock FontSize="24"
+                   FontFamily="Tahoma"
+                   FontWeight="SemiBold"
+                   VerticalAlignment="Center" Foreground="#FF5D5D5D"
+                   Margin="10 0 0 0">
+                A new version of Audiosurf Tweaker available for download!
+            </TextBlock>
+
+            <StackPanel Orientation="Horizontal">
+                <TextBlock FontSize="20"
+                           FontFamily="Tahoma"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           Margin="10 0 20 0"
+                           Text="{Binding ReleaseInfo.Title}"></TextBlock>
+                <TextBlock FontSize="20"
+                           FontFamily="Tahoma"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Left"
+                           Margin="10 0 0 0"
+                           Text="{Binding ReleaseInfo.Size, Converter={StaticResource SizeToStringConverter}}"></TextBlock>
+            </StackPanel>
+        </StackPanel>
+
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Left"
                      VerticalAlignment="Center">
@@ -55,6 +81,56 @@
                                  MarkdownStyle="{Binding Style}">
 
         </md:MarkdownScrollViewer>
+
+        <Grid Grid.Row="3" Visibility="{Binding CurrentVisibleComponent, 
+            Converter={StaticResource ComponentToVisibilityConverter},
+            ConverterParameter={x:Static models:ComponentVisibility.AskForDownload}}">
+            <StackPanel VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Orientation="Horizontal">
+                <Button Content="Download update" Margin="10"
+                        Command="{Binding DownloadUpdate}"></Button>
+                <Button Content="Ask me next time" Margin="10"
+                        Command="{Binding CloseApplication}"></Button>
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="3"
+              Visibility="{Binding CurrentVisibleComponent, 
+              Converter={StaticResource ComponentToVisibilityConverter},
+              ConverterParameter={x:Static models:ComponentVisibility.DownloadingPage}}">
+            <Grid.RowDefinitions>
+                <RowDefinition/>
+                <RowDefinition/>
+            </Grid.RowDefinitions>
+
+            <StackPanel Orientation="Horizontal"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Left"
+                        Margin="0 5 0 0">
+                <TextBlock FontSize="14"
+                           FontFamily="Tahoma"
+                           Text="Downloading:"
+                           Margin="10 0 10 0"/>
+
+                <TextBlock FontSize="14"
+                           FontFamily="Tahoma"
+                           Text="{Binding DownloadProxy.DownloadedSize, Converter={StaticResource SizeToStringConverter}}"/>
+                <TextBlock FontSize="14"
+                           FontFamily="Tahoma"
+                           Text="\" Margin="5 0 5 0"/>
+                <TextBlock FontSize="14"
+                           FontFamily="Tahoma"
+                           Text="{Binding DownloadProxy.TotalSize, Converter={StaticResource SizeToStringConverter}}"/>
+            </StackPanel>
+
+            <ProgressBar Grid.Row="1"
+                         Margin="10"
+                         Minimum="0"
+                         Maximum="{Binding DownloadProxy.TotalSize}"
+                         Value="{Binding DownloadProxy.DownloadedSize}"></ProgressBar>
+
+        </Grid>
 
     </Grid>
 </Window>
