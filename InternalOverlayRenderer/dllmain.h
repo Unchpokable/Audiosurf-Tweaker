@@ -108,7 +108,7 @@ namespace OverlaySpecs
 	{
 	public:
 		OverlayMenuParameters()
-		: m_fontColor(nullptr), m_fontSize(22), m_menuFontSize(16.0f)
+		: m_fontSize(22), m_menuFontSize(16.0f), m_fontColor(nullptr)
 		{
 		}
 
