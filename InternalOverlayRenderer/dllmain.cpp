@@ -50,6 +50,16 @@ int Win32Exceptions::ExcFilter(unsigned int code, struct _EXCEPTION_POINTERS* ep
     return 0;
 }
 
+inline bool ImGuiSliderIntWithText(const char* label, int* value, int min, int max, const char* tag)
+{
+    auto changed = ImGui::SliderInt(tag, value, min, max);
+    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 0, 0, 255));
+    ImGui::SameLine();
+    ImGui::Text(label);
+    ImGui::PopStyleColor();
+    return changed;
+}
+
 HRESULT __stdcall DetourAttachHook(PPVOID ppPointer, PVOID pDetour)
 {
     DetourTransactionBegin();
@@ -156,8 +166,10 @@ inline void DrawMenu(LPDIRECT3DDEVICE9 pDevice)
 
     if (ImGui::CollapsingHeader("Skin Changer"))
     {
+        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 0, 0, 255));
         ImGui::Text("Available Tweaker texture packages:\n");
         ImGui::Spacing();
+        ImGui::PopStyleColor();
 
         std::vector<const char*> localSkinList{};
 
@@ -189,7 +201,9 @@ inline void DrawMenu(LPDIRECT3DDEVICE9 pDevice)
     {
         if (GameHandle == nullptr || !IsWindow(GameHandle))
         {
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(40, 40, 40, 255));
             ImGui::Text("Game handle is invalid. Tweaks unavailable");
+            ImGui::PopStyleColor();
         }
 
         else
@@ -200,6 +214,8 @@ inline void DrawMenu(LPDIRECT3DDEVICE9 pDevice)
             hostNotifyCommand << "tw-Notify-Tweak-Changed ";
             bool shouldNotifyHost = false;
             rawCommand << "asconfig ";
+
+            ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 0, 0, 255));
 
             if (ImGui::Checkbox("Invisible Road", Assoc::TweaksFlags["InvisibleRoad"].get()))
             {
@@ -237,6 +253,8 @@ inline void DrawMenu(LPDIRECT3DDEVICE9 pDevice)
                 shouldNotifyHost = true;
             }
 
+            ImGui::PopStyleColor();
+
             if (shouldNotifyHost)
                 SendCopyDataMessage(HostApplicationHandle, hostNotifyCommand.str().c_str());
         }
@@ -248,14 +266,17 @@ inline void DrawMenu(LPDIRECT3DDEVICE9 pDevice)
         auto infopanel = g_overlay_data->Infopanel();
         auto font_color = menu->GetFontColor();
         auto font_size = menu->GetFontSize();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 0, 0, 255));
         ImGui::Text("Info panel is a little text block at left bottom screen corner\nIts displays info about current installed skin and etc.");
+        ImGui::PopStyleColor();
 
-        ImGui::SliderInt("Transp", &font_color->alpha, 0, 255);
-        ImGui::SliderInt("R", &font_color->r, 0, 255);
-        ImGui::SliderInt("G", &font_color->g, 0, 255);
-        ImGui::SliderInt("B", &font_color->b, 0, 255);
+        ImGuiSliderIntWithText("Transp", &font_color->alpha, 0, 255, "1");
+        ImGuiSliderIntWithText("R", &font_color->r, 0, 255, "2");
+        ImGuiSliderIntWithText("G", &font_color->g, 0, 255, "3");
+        ImGuiSliderIntWithText("B", &font_color->b, 0, 255, "4");
 
-        if (ImGui::SliderInt("Font Size", &font_size, 14, 72))
+        if (ImGuiSliderIntWithText("Font Size", &font_size, 14, 72, "5"))
         {
             auto font = g_dx_data->GetDirectXParameters()->GetFont();
             menu->SetFontSize(font_size);
@@ -265,7 +286,9 @@ inline void DrawMenu(LPDIRECT3DDEVICE9 pDevice)
         
         ImGui::Spacing();
 
+        ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 0, 0, 255));
         ImGui::Text("Info panel position correction");
+        ImGui::PopStyleColor();
 
         ImGui::SliderInt("X axis offset", infopanel->GetOverlayXOffset(), -300, 300);
         ImGui::SliderInt("Y axis offset", infopanel->GetOverlayYOffset(), -300, 300);
@@ -282,7 +305,9 @@ inline void DrawMenu(LPDIRECT3DDEVICE9 pDevice)
         }
     }
 
+    ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(0, 0, 0, 255));
     ImGui::Text("Press insert to toggle this menu");
+    ImGui::PopStyleColor();
 
     ImGui::End();
 

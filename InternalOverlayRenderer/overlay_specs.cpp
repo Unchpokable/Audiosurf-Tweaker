@@ -4,6 +4,15 @@
 
 using namespace OverlaySpecs;
 
+#pragma region service functions
+int HexToDecimal(const std::string& hex)
+{
+	int dec;
+	std::istringstream(hex) >> std::hex >> dec;
+	return dec;
+}
+#pragma endregion
+
 #pragma region DXFunctions impl
 DXFunctions::DXFunctions()
 {
@@ -346,6 +355,7 @@ void ImGUIData::Initialize(PDIRECT3DDEVICE9 pDevice) noexcept
 	ImGui::CreateContext();
 	ImGui_ImplWin32_Init(params.hFocusWindow);
 	ImGui_ImplDX9_Init(pDevice);
+	SetupGlobalStyles();
 	m_initialized = true;
 }
 
@@ -359,6 +369,52 @@ void ImGUIData::SetListboxSelection(const int pos)
 	if (pos < -1)
 		throw std::invalid_argument("Selection out of range");
 	m_skins_listbox_selection = pos;
+}
+
+ImVec4 ImGUIData::ImGuiColor(const std::string& hexColor)
+{
+	ImVec4 color = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);
+
+	if (hexColor[0] == '#' && hexColor.size() == 9) 
+	{ 
+		color.x = HexToDecimal(hexColor.substr(1, 2)) / 255.0f;
+		color.y = HexToDecimal(hexColor.substr(3, 2)) / 255.0f;
+		color.z = HexToDecimal(hexColor.substr(5, 2)) / 255.0f;
+		color.w = HexToDecimal(hexColor.substr(7, 2)) / 255.0f;
+	}
+
+	return color;
+}
+
+
+
+void ImGUIData::SetupGlobalStyles()
+{
+	ImGuiStyle& style = ImGui::GetStyle();
+	ImGuiIO& io = ImGui::GetIO();
+
+	auto font = io.Fonts->AddFontFromFileTTF("Tahoma.ttf", 14);
+	io.FontDefault = font;
+
+	style.Colors[ImGuiCol_TitleBg] = ImGuiColor("#9D5BF5ff"); 
+	style.Colors[ImGuiCol_TitleBgActive] = style.Colors[ImGuiCol_TitleBg];
+	style.Colors[ImGuiCol_Header] = ImGuiColor("#9D5BF5ff"); 
+	style.Colors[ImGuiCol_WindowBg] = ImGuiColor("#ffffffff"); 
+	style.Colors[ImGuiCol_Text] = ImGuiColor("#ffffffff"); 
+
+	style.Colors[ImGuiCol_Button] = ImGuiColor("#9D5BF5ff"); 
+	style.Colors[ImGuiCol_ButtonHovered] = ImGuiColor("#B582F8ff"); 
+	style.Colors[ImGuiCol_ButtonActive] = ImGuiColor("#D2B3FCff"); 
+
+	style.Colors[ImGuiCol_FrameBg] = ImGuiColor("#9D5BF5ff");
+
+	style.WindowRounding = 5;
+	style.FrameRounding = 5;
+	style.ScrollbarRounding = 5;
+	style.GrabRounding = 5;
+	style.TabRounding = 5;
+	style.ChildRounding = 5;
+	style.PopupRounding = 5;
 }
 
 

@@ -316,8 +316,11 @@ namespace OverlaySpecs
 		void UnsetInitialized();
 
 		void SetListboxSelection(const int pos);
+		void SetupGlobalStyles();
 
 	private:
+		static ImVec4 ImGuiColor(const std::string& hexColor);
+
 		bool m_toolbox_visible;
 		bool m_initialized;
 		int m_skins_listbox_selection;
@@ -325,6 +328,7 @@ namespace OverlaySpecs
 }
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND, UINT, WPARAM, LPARAM);
+inline bool ImGuiSliderIntWithText(const char* label, int* value, int min, int max, const char* tag);
 
 HRESULT __stdcall DetourAttachHook(PVOID*, PVOID);
 HRESULT __stdcall DetourDetachHook(PVOID*, PVOID);
