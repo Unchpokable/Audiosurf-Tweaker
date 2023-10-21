@@ -114,6 +114,9 @@ HRESULT __stdcall HookedEndScene(LPDIRECT3DDEVICE9 pDevice)
     if (dx->GetDevice() == nullptr)
         dx->SetDevice(pDevice);
 
+    if (dx->GetDevice() != pDevice) // If somehow we got an different IDirect3DDevice9 here, we should reinitialize ImGui
+        g_ImGui_data->UnsetInitialized();
+
     if (!g_ImGui_data->Initialized())
     {
         g_ImGui_data->Initialize(pDevice);

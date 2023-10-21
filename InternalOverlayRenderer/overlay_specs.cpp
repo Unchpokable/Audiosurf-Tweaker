@@ -78,13 +78,15 @@ void DXParameters::SetPresentParameters(PD3DPRESENT_PARAMETERS pParams)
 void DXParameters::SetDevice(LPDIRECT3DDEVICE9 pDevice)
 {
 	THROW_IF_NULL(pDevice, "Direct3DDevice9 Interface")
-		m_pCurrentD3DDevice9 = pDevice;
+	m_pCurrentD3DDevice9 = pDevice;
+	pDevice->AddRef();
 }
 
 void DXParameters::SetFont(LPD3DXFONT pFont)
 {
 	THROW_IF_NULL(pFont, "Direct3D Font")
-		m_pFont = pFont;
+	m_pFont = pFont;
+	m_pFont->AddRef();
 }
 #pragma endregion
 
@@ -406,7 +408,7 @@ void ImGUIData::SetupGlobalStyles()
 	style.Colors[ImGuiCol_ButtonHovered] = ImGuiColor("#B582F8ff"); 
 	style.Colors[ImGuiCol_ButtonActive] = ImGuiColor("#D2B3FCff"); 
 
-	style.Colors[ImGuiCol_FrameBg] = ImGuiColor("#9D5BF5ff");
+	style.Colors[ImGuiCol_FrameBg] = ImGuiColor("#6B12E2ff");
 
 	style.WindowRounding = 5;
 	style.FrameRounding = 5;

@@ -88,6 +88,7 @@ namespace OverlaySpecs
 		{
 			delete m_pD3DPresentParameters;
 			m_pFont->Release();
+			m_pCurrentD3DDevice9->Release();
 		}
 
 		PD3DPRESENT_PARAMETERS GetPresentParameters() const noexcept;
