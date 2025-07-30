@@ -23,7 +23,8 @@ sym::SymbolStatus sym::initialize()
         return NoTargetModule;
     }
 
-    auto baseAddress = SymLoadModuleEx(GetCurrentProcess(), NULL, "d3d9.dll", NULL, (DWORD64)module_handle, 0, NULL, 0);
+    auto baseAddress = SymLoadModuleEx(GetCurrentProcess(), nullptr, "d3d9.dll", nullptr, reinterpret_cast<DWORD64>(module_handle),
+        0, nullptr, 0);
 
     if(baseAddress == 0) {
         return CouldNotLoadModule;

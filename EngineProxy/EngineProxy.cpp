@@ -29,6 +29,8 @@ extern "C" __declspec(dllexport) ChannelType* __cdecl GetType()
 
 Aco_EngineProxy::Aco_EngineProxy()
 {
+    AllocConsole();
+
     SetChannelName(ENGINEPROXY_CHANNEL_NAME);
 
     engine_interface = engine;
@@ -48,4 +50,16 @@ ENGINEPROXYDLL_EXPORTS;
 EngineInterface* get_engine()
 {
     return engine_interface;
+}
+
+BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID reserved)
+{
+    switch(reason) {
+        case DLL_PROCESS_ATTACH:
+            {
+                volatile Aco_EngineProxy channel = {};
+                return TRUE;
+            }
+    }
+    return TRUE;
 }

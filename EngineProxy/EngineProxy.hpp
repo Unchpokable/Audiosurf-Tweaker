@@ -38,6 +38,7 @@ public:
 #define ENGINEPROXYDLL_EXPORTS extern "C" {                 \
     __declspec(dllexport) DllInterface* __cdecl InitDll()   \
     {                                                       \
+        AllocConsole();                                     \
         return new Aco_EngineProxy();                       \
     }                                                       \
 }                                                           

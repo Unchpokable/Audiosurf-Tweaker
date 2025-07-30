@@ -13,7 +13,7 @@ using d3d_create_device = HRESULT (*)(IDirect3D9* d3d_object,
     D3DDEVTYPE,
     HWND,
     DWORD,
-    D3DPRESENT_PARAMETERS* ,
+    D3DPRESENT_PARAMETERS*,
     IDirect3DDevice9*);
 
 direct3d_create9 original_direct3d_create9;
@@ -24,6 +24,11 @@ namespace
 std::unordered_set<IDirect3D9*> directx_objects;
 std::unordered_map<IDirect3D9*, d3d_create_device> original_create_devices;
 IDirect3DDevice9* active_device;
+}
+
+namespace
+{
+constexpr std::ptrdiff_t CREATE_DEVICE_FUNC = 16;
 }
 
 namespace
@@ -71,7 +76,8 @@ HRESULT set_create_device_hook(IDirect3D9* direct3d)
 {
     void** vtable = *reinterpret_cast<void***>(direct3d);
 
-    auto original_create_device = vtable[16];
+    auto original_create_device = vtable[CREATE_DEVICE_FUNC];
+    original_create_devices.insert_or_assign(direct3d, reinterpret_cast<d3d_create_device>(original_create_device));
 
     auto error = tw::native::detour_attach_hook(&static_cast<PVOID&>(original_create_device), create_device_hook);
 
@@ -86,11 +92,7 @@ IDirect3D9* direct3d_create9_hook(UINT version)
         directx_objects.emplace(device);
     }
 
-    void** vtable = *reinterpret_cast<void***>(device);
-
-    auto original_create_device = vtable[16];
-
-    auto error = tw::native::detour_attach_hook(&static_cast<PVOID&>(original_create_device), create_device_hook);
+    auto error = set_create_device_hook(device);
 
     if(error != NO_ERROR) {
         // todo:: handle we're fucked up
@@ -101,7 +103,7 @@ IDirect3D9* direct3d_create9_hook(UINT version)
 }
 
 // ReSharper disable once CppParameterMayBeConstPtrOrRef
-DWORD tw::plugin::load(void* thread_parameter)
+DWORD __stdcall tw::plugin::load(void* thread_parameter)
 {
     (void)thread_parameter;
     

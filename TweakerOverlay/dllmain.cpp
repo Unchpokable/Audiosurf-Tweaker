@@ -10,7 +10,8 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID reserved)
 {
     switch(reason) {
         case DLL_PROCESS_ATTACH: {
-                CreateThread(nullptr, 0, tw::plugin::load, module, 0, nullptr);
+            CreateThread(nullptr, 0, tw::plugin::load, module, 0, nullptr);
+            return TRUE;
         }
     }
     return TRUE;
