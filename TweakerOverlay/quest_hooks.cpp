@@ -2,6 +2,8 @@
 
 #include "quest_hooks.hpp"
 
+#include "quest_offsets.hpp"
+
 Aco_DX8_Direct3D* tw::game::try_find_directX_channel(EngineInterface* engine_interface)
 {
     auto channel_count = engine_interface->GetChannelGroupCount();
@@ -21,4 +23,10 @@ Aco_DX8_Direct3D* tw::game::try_find_directX_channel(EngineInterface* engine_int
     }
 
     return nullptr;
+}
+
+void* tw::game::get_engine_graphics_channel(Aco_DX8_Direct3D* channel)
+{
+    void* direct_graphics = *reinterpret_cast<void**>(reinterpret_cast<char*>(channel) + tw::offsets::ACO_DX8_DIRECT3D_GRAPHICS_OFFSET);
+    return direct_graphics;
 }
