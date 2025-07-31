@@ -3,15 +3,16 @@
 
 // === C++ STD LIB ===
 
-#include <vector>
-#include <string>
 #include <optional>
+#include <ranges>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <ranges>
+#include <vector>
 
 // === Quest 3D ===
 
+// clang-format off
 #include <A3d_List.h>
 #include <d3dx9math.h>
 #include <A3d_Channels.h>
@@ -28,6 +29,8 @@
 
 #include <Aco_DX8_Direct3D.h>
 #include <Aco_DX8_D3DDeviceUse.h>
+
+// clang-format on
 
 // === Detours ===
 
