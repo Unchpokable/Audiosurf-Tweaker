@@ -33,7 +33,7 @@
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -97,6 +97,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -141,22 +143,23 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="aco_direct_graphics.cpp" />
     <ClCompile Include="device.cpp" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="native_hooks.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="plugin.cpp" />
-    <ClCompile Include="quest_hooks.cpp" />
-    <ClCompile Include="symbols_find.cpp" />
+    <ClCompile Include="quest_wrappers.cpp" />
     <ClCompile Include="ui.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="aco_direct_graphics.hpp" />
     <ClInclude Include="device.hpp" />
     <ClInclude Include="native_hooks.hpp" />
     <ClInclude Include="pch.hpp" />
     <ClInclude Include="plugin.hpp" />
-    <ClInclude Include="quest_hooks.hpp" />
-    <ClInclude Include="symbols_find.hpp" />
+    <ClInclude Include="quest_wrappers.hpp" />
+    <ClInclude Include="quest_offsets.hpp" />
     <ClInclude Include="ui.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

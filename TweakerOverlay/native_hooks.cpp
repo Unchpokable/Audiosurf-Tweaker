@@ -2,6 +2,7 @@
 
 #include "native_hooks.hpp"
 
+
 HRESULT __stdcall tw::native::detour_attach_hook(void** pointer, void* detour)
 {
     DetourTransactionBegin();
