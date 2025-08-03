@@ -35,4 +35,5 @@ namespace tw::native
 {
 HookResult set_hook(DxFunction function, void* hook);
 HookResult remove_hook(DxFunction function);
+HookResult remove_all_hooks();
 } // namespace tw::native

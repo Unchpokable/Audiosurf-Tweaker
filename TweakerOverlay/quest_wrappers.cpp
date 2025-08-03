@@ -32,39 +32,6 @@ using channel_get_group_func = void*(__thiscall*)(void* this_);
 channel_get_group_func channel_get_group;
 } // namespace
 
-void tw::game::initialize()
-{
-    static constexpr char module[] = "HighPoly.dll";
-
-    engine_interface_get_channel_group_idx = reinterpret_cast<engine_interface_get_channel_group_idx_func>(
-        DetourFindFunction(module, "?GetChannelGroup@EngineInterface@@UAEPAVA3d_ChannelGroup@@H@Z"));
-
-    engine_interface_get_channel_group_count = reinterpret_cast<engine_interface_get_channel_group_count_func>(
-        DetourFindFunction(module, "?GetChannelGroupCount@EngineInterface@@UAEHXZ"));
-
-    channel_group_get_filename = reinterpret_cast<channel_group_get_filename_func>(
-        DetourFindFunction(module, "?GetChannelGroupFileName@A3d_ChannelGroup@@UAEPBDXZ"));
-
-    channel_group_get_pool_name = reinterpret_cast<channel_group_get_pool_name_func>(
-        DetourFindFunction(module, "?GetPoolName@A3d_ChannelGroup@@UAEPBDXZ"));
-
-    channel_group_get_channel = reinterpret_cast<channel_group_get_channel_func>(
-        DetourFindFunction(module, "?GetChannel@A3d_ChannelGroup@@UAEPAVA3d_Channel@@PBD@Z"));
-
-    channel_get_name = reinterpret_cast<channel_get_name_func>(DetourFindFunction(module, "?GetChannelName@A3d_Channel@@QAEPBDXZ"));
-    
-    channel_get_group = reinterpret_cast<channel_get_group_func>(
-        DetourFindFunction(module, "?GetChannelGroup@A3d_Channel@@QAEPAVA3d_ChannelGroup@@XZ"));
-
-    assert(engine_interface_get_channel_group_idx);
-    assert(engine_interface_get_channel_group_count);
-    assert(channel_group_get_filename);
-    assert(channel_group_get_pool_name);
-    assert(channel_group_get_channel);
-    assert(channel_get_name);
-    assert(channel_get_group);
-}
-
 tw::game::AcoChannel::AcoChannel(void* ptr)
 {
     assert(ptr);
@@ -127,4 +94,37 @@ tw::game::AcoChannelGroup tw::game::AcoEngineInterface::get_channel_group(std::i
 std::int32_t tw::game::AcoEngineInterface::get_channel_group_count() const
 {
     return engine_interface_get_channel_group_count(m_ptr);
+}
+
+void tw::game::initialize()
+{
+    static constexpr char module[] = "HighPoly.dll";
+
+    engine_interface_get_channel_group_idx = reinterpret_cast<engine_interface_get_channel_group_idx_func>(
+        DetourFindFunction(module, "?GetChannelGroup@EngineInterface@@UAEPAVA3d_ChannelGroup@@H@Z"));
+
+    engine_interface_get_channel_group_count = reinterpret_cast<engine_interface_get_channel_group_count_func>(
+        DetourFindFunction(module, "?GetChannelGroupCount@EngineInterface@@UAEHXZ"));
+
+    channel_group_get_filename = reinterpret_cast<channel_group_get_filename_func>(
+        DetourFindFunction(module, "?GetChannelGroupFileName@A3d_ChannelGroup@@UAEPBDXZ"));
+
+    channel_group_get_pool_name =
+        reinterpret_cast<channel_group_get_pool_name_func>(DetourFindFunction(module, "?GetPoolName@A3d_ChannelGroup@@UAEPBDXZ"));
+
+    channel_group_get_channel = reinterpret_cast<channel_group_get_channel_func>(
+        DetourFindFunction(module, "?GetChannel@A3d_ChannelGroup@@UAEPAVA3d_Channel@@PBD@Z"));
+
+    channel_get_name = reinterpret_cast<channel_get_name_func>(DetourFindFunction(module, "?GetChannelName@A3d_Channel@@QAEPBDXZ"));
+
+    channel_get_group =
+        reinterpret_cast<channel_get_group_func>(DetourFindFunction(module, "?GetChannelGroup@A3d_Channel@@QAEPAVA3d_ChannelGroup@@XZ"));
+
+    assert(engine_interface_get_channel_group_idx);
+    assert(engine_interface_get_channel_group_count);
+    assert(channel_group_get_filename);
+    assert(channel_group_get_pool_name);
+    assert(channel_group_get_channel);
+    assert(channel_get_name);
+    assert(channel_get_group);
 }

@@ -2,10 +2,11 @@
 
 namespace tw::game
 {
-struct AcoChannelGroup;
+class AcoChannelGroup;
 
-struct AcoChannel
+class AcoChannel
 {
+public:
     AcoChannel(void* ptr);
     std::string_view get_name() const;
     AcoChannelGroup get_group() const;
@@ -17,8 +18,9 @@ private:
     void* m_ptr { nullptr };
 };
 
-struct AcoChannelGroup
+class AcoChannelGroup
 {
+public:
     AcoChannelGroup(void* ptr);
     std::string_view get_file_name() const;
     std::string_view get_pool_name() const;
@@ -28,8 +30,9 @@ private:
     void* m_ptr { nullptr };
 };
 
-struct AcoEngineInterface
+class AcoEngineInterface
 {
+public:
     AcoEngineInterface(void* ptr);
     AcoChannelGroup get_channel_group(std::int32_t id) const;
     std::int32_t get_channel_group_count() const;

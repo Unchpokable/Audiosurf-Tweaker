@@ -60,8 +60,21 @@ tw::native::HookResult tw::native::remove_hook(DxFunction function)
 
     auto result = detour_detach_hook(&static_cast<PVOID&>(vptr), hook);
 
-    if(!result != NO_ERROR) {
+    if(result != NO_ERROR) {
         return GenericFailure;
+    }
+
+    return Success;
+}
+
+tw::native::HookResult tw::native::remove_all_hooks()
+{
+    for(auto hook : active_hooks | std::views::keys) {
+        auto result = remove_hook(hook);
+
+        if(result != Success) {
+            return result;
+        }
     }
 
     return Success;

@@ -10,6 +10,8 @@
 #include <unordered_set>
 #include <vector>
 #include <memory>
+#include <stdexcept>
+
 
 #include <assert.h>
 
