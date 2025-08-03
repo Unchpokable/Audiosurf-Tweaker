@@ -12,6 +12,7 @@
 #include <memory>
 #include <stdexcept>
 
+#include <process.h>
 
 #include <assert.h>
 

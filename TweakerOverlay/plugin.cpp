@@ -68,12 +68,17 @@ void __fastcall aco_true_call_channel(void* this_, DWORD edx)
 
 
 // ReSharper disable once CppParameterMayBeConstPtrOrRef
-DWORD __stdcall tw::plugin::load(void* thread_parameter)
+unsigned __stdcall tw::plugin::load(void* thread_parameter)
 {
     (void)thread_parameter;
 
     game::graphics::initialize();
     game::initialize();
 
+    return 0;
+}
+
+unsigned __stdcall tw::plugin::unload(void* thread_parameter)
+{
     return 0;
 }
