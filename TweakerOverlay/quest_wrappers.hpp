@@ -25,6 +25,8 @@ public:
     std::string_view get_file_name() const;
     std::string_view get_pool_name() const;
     AcoChannel get_channel(const char* name) const;
+    AcoChannel get_unique_channel(std::int32_t id) const;
+    std::int32_t get_unique_channel_count() const;
 
 private:
     void* m_ptr { nullptr };

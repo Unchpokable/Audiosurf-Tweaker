@@ -36,6 +36,9 @@
 //#include <Aco_DX8_Direct3D.h>
 //#include <Aco_DX8_D3DDeviceUse.h>
 
+#include <A3d_EngineInterface.h>
+#include <Aco_DX8_Texture.h>
+
 // clang-format on
 
 // === Detours ===

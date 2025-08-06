@@ -21,6 +21,12 @@ channel_group_get_pool_name_func channel_group_get_pool_name;
 
 using channel_group_get_channel_func = void*(__thiscall*)(void* this_, const char* name);
 channel_group_get_channel_func channel_group_get_channel;
+
+using channel_group_get_channel_count_func = std::int32_t(__thiscall*)(void* this_);
+channel_group_get_channel_count_func channel_group_get_channel_count;
+
+using channel_group_get_unique_channel_func = void*(__thiscall*)(void* this_, std::int32_t id);
+channel_group_get_unique_channel_func channel_group_get_unique_channel;
 } // namespace
 
 namespace
@@ -34,7 +40,6 @@ channel_get_group_func channel_get_group;
 
 tw::game::AcoChannel::AcoChannel(void* ptr)
 {
-    assert(ptr);
     m_ptr = ptr;
 }
 
@@ -78,9 +83,21 @@ tw::game::AcoChannel tw::game::AcoChannelGroup::get_channel(const char* name) co
     return { ptr };
 }
 
+tw::game::AcoChannel tw::game::AcoChannelGroup::get_unique_channel(std::int32_t id) const
+{
+    auto ptr = channel_group_get_unique_channel(m_ptr, id);
+
+    return { ptr };
+}
+
+std::int32_t tw::game::AcoChannelGroup::get_unique_channel_count() const
+{
+    return channel_group_get_channel_count(m_ptr);
+}
+
 tw::game::AcoEngineInterface::AcoEngineInterface(void* ptr)
 {
-    assert(ptr);
+    //assert(ptr);
     m_ptr = ptr;
 }
 
@@ -114,6 +131,12 @@ void tw::game::initialize()
 
     channel_group_get_channel = reinterpret_cast<channel_group_get_channel_func>(
         DetourFindFunction(module, "?GetChannel@A3d_ChannelGroup@@UAEPAVA3d_Channel@@PBD@Z"));
+
+    channel_group_get_unique_channel = reinterpret_cast<channel_group_get_unique_channel_func>(
+        DetourFindFunction(module, "?GetUniqueChannel@A3d_ChannelGroup@@UAEPAVA3d_Channel@@H@Z"));
+
+    channel_group_get_channel_count = reinterpret_cast<channel_group_get_channel_count_func>(
+        DetourFindFunction(module, "?GetUniqueChannelCount@A3d_ChannelGroup@@UAEHXZ"));
 
     channel_get_name = reinterpret_cast<channel_get_name_func>(DetourFindFunction(module, "?GetChannelName@A3d_Channel@@QAEPBDXZ"));
 

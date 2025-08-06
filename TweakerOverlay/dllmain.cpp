@@ -13,6 +13,11 @@ BOOL APIENTRY DllMain(HMODULE module, DWORD reason, LPVOID reserved)
             tw::plugin::load(nullptr);
             return TRUE;
         }
+        case DLL_PROCESS_DETACH: {
+            tw::plugin::unload(nullptr);
+            return TRUE;
+        }
+        default: ;
     }
     return TRUE;
 }
