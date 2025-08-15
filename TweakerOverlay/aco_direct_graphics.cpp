@@ -19,6 +19,7 @@ invalidate_device_objects_func invalidate_device_objects {};
 set_device_type_func set_device_type {};
 set_present_window_func set_present_window {};
 create_d3d_func create_d3d {};
+get_present_window_func get_present_window {};
 } // namespace tw::game::graphics
 
 void tw::game::graphics::initialize()
@@ -67,6 +68,9 @@ void tw::game::graphics::initialize()
 
     create_d3d = reinterpret_cast<create_d3d_func>(DetourFindFunction(module, "?CreateD3D@Aco_DX8_DirectGraphicsChannel@@UAE_NXZ"));
 
+    get_present_window = reinterpret_cast<get_present_window_func>(
+        DetourFindFunction(module, "?GetPresentWindow@Aco_DX8_DirectGraphicsChannel@@UAEPAUHWND__@@XZ"));
+
     assert(get_direct3d);
     assert(get_device);
     assert(reset_device);
@@ -82,6 +86,7 @@ void tw::game::graphics::initialize()
     assert(set_device_type);
     assert(set_present_window);
     assert(create_d3d);
+    assert(get_present_window);
 }
 
 bool tw::game::graphics::is_fine()

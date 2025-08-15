@@ -46,6 +46,9 @@ extern set_present_window_func set_present_window;
 
 using create_d3d_func = bool(__thiscall*)(void* this_);
 extern create_d3d_func create_d3d;
+
+using get_present_window_func = HWND(__thiscall*)(void* this_);
+extern get_present_window_func get_present_window;
 } // namespace
 
 namespace tw::game::graphics

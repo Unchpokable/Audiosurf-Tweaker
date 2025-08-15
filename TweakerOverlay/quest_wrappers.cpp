@@ -27,6 +27,9 @@ channel_group_get_channel_count_func channel_group_get_channel_count;
 
 using channel_group_get_unique_channel_func = void*(__thiscall*)(void* this_, std::int32_t id);
 channel_group_get_unique_channel_func channel_group_get_unique_channel;
+
+using channel_group_get_channel_guid_func = void*(__thiscall*)(void* this_, GUID guid);
+channel_group_get_channel_guid_func channel_group_get_guid_channel;
 } // namespace
 
 namespace
@@ -62,7 +65,6 @@ void* tw::game::AcoChannel::offset_field(std::ptrdiff_t field_offset) const
 
 tw::game::AcoChannelGroup::AcoChannelGroup(void* ptr)
 {
-    assert(ptr);
     m_ptr = ptr;
 }
 
@@ -86,6 +88,13 @@ tw::game::AcoChannel tw::game::AcoChannelGroup::get_channel(const char* name) co
 tw::game::AcoChannel tw::game::AcoChannelGroup::get_unique_channel(std::int32_t id) const
 {
     auto ptr = channel_group_get_unique_channel(m_ptr, id);
+
+    return { ptr };
+}
+
+tw::game::AcoChannel tw::game::AcoChannelGroup::get_unique_channel(GUID guid) const
+{
+    auto ptr = channel_group_get_guid_channel(m_ptr, guid);
 
     return { ptr };
 }
@@ -142,6 +151,9 @@ void tw::game::initialize()
 
     channel_get_group =
         reinterpret_cast<channel_get_group_func>(DetourFindFunction(module, "?GetChannelGroup@A3d_Channel@@QAEPAVA3d_ChannelGroup@@XZ"));
+
+    channel_group_get_guid_channel = reinterpret_cast<channel_group_get_channel_guid_func>(
+        DetourFindFunction(module, "?GetUniqueChannel@A3d_ChannelGroup@@UAEPAVA3d_Channel@@U_GUID@@@Z"));
 
     assert(engine_interface_get_channel_group_idx);
     assert(engine_interface_get_channel_group_count);
