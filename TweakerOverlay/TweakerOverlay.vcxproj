@@ -172,6 +172,7 @@
     <ClCompile Include="aco_direct_graphics.cpp" />
     <ClCompile Include="device.cpp" />
     <ClCompile Include="dllmain.cpp" />
+    <ClCompile Include="logging.cpp" />
     <ClCompile Include="native_hooks.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="plugin.cpp" />
@@ -181,6 +182,7 @@
   <ItemGroup>
     <ClInclude Include="aco_direct_graphics.hpp" />
     <ClInclude Include="device.hpp" />
+    <ClInclude Include="logging.hpp" />
     <ClInclude Include="native_hooks.hpp" />
     <ClInclude Include="pch.hpp" />
     <ClInclude Include="plugin.hpp" />

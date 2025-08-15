@@ -72,6 +72,9 @@
     <ClCompile Include="..\3rd\imgui\imgui_demo.cpp">
       <Filter>3rd\imgui</Filter>
     </ClCompile>
+    <ClCompile Include="logging.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="quest_wrappers.hpp">
@@ -96,6 +99,9 @@
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
     <ClInclude Include="aco_direct_graphics.hpp">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
+    <ClInclude Include="logging.hpp">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
   </ItemGroup>
