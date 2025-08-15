@@ -5,12 +5,70 @@
 #include "native_hooks.hpp"
 
 #include "aco_direct_graphics.hpp"
+#include "logging.hpp"
 #include "quest_offsets.hpp"
 #include "quest_wrappers.hpp"
 
 #include "ui.hpp"
 
-#include <iostream>
+#include "utils.hpp"
+
+namespace
+{
+void alloc_console();
+
+#ifndef PRODUCTION
+void alloc_console()
+{
+    if(GetConsoleWindow() != nullptr) {
+        return;
+    }
+
+    if(!AllocConsole()) {
+        return;
+    }
+
+    auto console_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+
+    if(console_handle == INVALID_HANDLE_VALUE) {
+        return;
+    }
+
+    DWORD console_mode {};
+
+    GetConsoleMode(console_handle, &console_mode);
+    console_mode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+
+    SetConsoleMode(console_handle, console_mode);
+
+    FILE* cout;
+
+    std::ignore = freopen_s(&cout, "CONOUT$", "w", stdout);
+
+    FILE* cerr;
+    std::ignore = freopen_s(&cerr, "CONOUT$", "w", stderr);
+
+    FILE* cin;
+    std::ignore = freopen_s(&cin, "CONIN$", "r", stdin);
+
+    std::ios::sync_with_stdio(true);
+
+    std::cin.clear();
+    std::cout.clear();
+    std::cerr.clear();
+
+    SetConsoleTitleA("Tweaker plugin console output");
+}
+
+#else
+void alloc_console()
+{
+    // Allocating console in release build is not needed
+    // and will cause a crash if the plugin is loaded in a game without a console.
+}
+#endif
+}
+
 
 namespace
 {
@@ -64,6 +122,8 @@ bool plugin_update_device(void* aco_graphics_channel)
     auto device = tw::game::graphics::get_device(aco_graphics_channel);
 
     if(device != tw::native::current_device) {
+        LOG_INFO("Updating device from {} to {}", utils::offset_view(tw::native::current_device), utils::offset_view(device));
+
         tw::native::change_device(device);
 
         auto present_handle = tw::game::graphics::get_present_window(aco_graphics_channel);
@@ -79,8 +139,10 @@ bool plugin_update_device(void* aco_graphics_channel)
 bool __fastcall aco_reset_device(void* this_)
 {
     if(this_ != direct_graphics_channel) {
-        // todo: panic
-        return false;
+        LOG_WARNING("Suspicious changed pointer to Aco_DirectGraphicsChannel which is specified as global and unique by Quest3D");
+        LOG_WARNING("Expected pointer: {}, got pointer: {}", utils::offset_view(direct_graphics_channel), utils::offset_view(this_));
+        LOG_WARNING("Updating pointer...");
+        direct_graphics_channel = this_;
     }
 
     ui::backend_invalidate_objects();
@@ -101,8 +163,10 @@ bool __fastcall aco_reset_device(void* this_)
 void __fastcall aco_set_window_mode(void* this_, bool value)
 {
     if(this_ != direct_graphics_channel) {
-        // todo: panic
-        return;
+        LOG_WARNING("Suspicious changed pointer to Aco_DirectGraphicsChannel which is specified as global and unique by Quest3D");
+        LOG_WARNING("Expected pointer: {}, got pointer: {}", utils::offset_view(direct_graphics_channel), utils::offset_view(this_));
+        LOG_WARNING("Updating pointer...");
+        direct_graphics_channel = this_;
     }
 
     tw::game::graphics::set_window_mode(this_, value);
@@ -113,8 +177,10 @@ void __fastcall aco_set_window_mode(void* this_, bool value)
 void __fastcall aco_set_fullscreen_device_mode(void* this_)
 {
     if(this_ != direct_graphics_channel) {
-        // todo: panic
-        return;
+        LOG_WARNING("Suspicious changed pointer to Aco_DirectGraphicsChannel which is specified as global and unique by Quest3D");
+        LOG_WARNING("Expected pointer: {}, got pointer: {}", utils::offset_view(direct_graphics_channel), utils::offset_view(this_));
+        LOG_WARNING("Updating pointer...");
+        direct_graphics_channel = this_;
     }
 
     tw::game::graphics::set_fullscreen_device_mode(this_);
@@ -127,8 +193,10 @@ void __fastcall aco_set_view_port(void* this_, DWORD edx, D3DVIEWPORT9 viewport)
     (void)edx; // unused parameter, but required by the function signature
 
     if(this_ != direct_graphics_channel) {
-        // todo: panic
-        return;
+        LOG_WARNING("Suspicious changed pointer to Aco_DirectGraphicsChannel which is specified as global and unique by Quest3D");
+        LOG_WARNING("Expected pointer: {}, got pointer: {}", utils::offset_view(direct_graphics_channel), utils::offset_view(this_));
+        LOG_WARNING("Updating pointer...");
+        direct_graphics_channel = this_;
     }
 
     tw::game::graphics::set_view_port(this_, viewport);
@@ -139,8 +207,10 @@ void __fastcall aco_set_view_port(void* this_, DWORD edx, D3DVIEWPORT9 viewport)
 void __fastcall aco_set_device_type(void* this_, _D3DDEVTYPE dev_type)
 {
     if(this_ != direct_graphics_channel) {
-        // todo: panic
-        return;
+        LOG_WARNING("Suspicious changed pointer to Aco_DirectGraphicsChannel which is specified as global and unique by Quest3D");
+        LOG_WARNING("Expected pointer: {}, got pointer: {}", utils::offset_view(direct_graphics_channel), utils::offset_view(this_));
+        LOG_WARNING("Updating pointer...");
+        direct_graphics_channel = this_;
     }
 
     tw::game::graphics::set_device_type(this_, dev_type);
@@ -163,8 +233,10 @@ void __fastcall aco_invalidate_device_objects(void* this_)
 void __fastcall aco_set_present_window(void* this_, HWND window_handle)
 {
     if(this_ != direct_graphics_channel) {
-        // todo: panic
-        return;
+        LOG_WARNING("Suspicious changed pointer to Aco_DirectGraphicsChannel which is specified as global and unique by Quest3D");
+        LOG_WARNING("Expected pointer: {}, got pointer: {}", utils::offset_view(direct_graphics_channel), utils::offset_view(this_));
+        LOG_WARNING("Updating pointer...");
+        direct_graphics_channel = this_;
     }
 
     tw::game::graphics::set_present_window(this_, window_handle);
@@ -177,8 +249,10 @@ void __fastcall aco_set_present_window(void* this_, HWND window_handle)
 bool __fastcall aco_create_d3d(void* this_)
 {
     if(this_ != direct_graphics_channel) {
-        // todo: panic;
-        return false;
+        LOG_WARNING("Suspicious changed pointer to Aco_DirectGraphicsChannel which is specified as global and unique by Quest3D");
+        LOG_WARNING("Expected pointer: {}, got pointer: {}", utils::offset_view(direct_graphics_channel), utils::offset_view(this_));
+        LOG_WARNING("Updating pointer...");
+        direct_graphics_channel = this_;
     }
 
     auto created = tw::game::graphics::create_d3d(this_);
@@ -225,6 +299,8 @@ void __fastcall aco_true_call_channel(void* this_, DWORD edx)
         break;
     }
 
+    LOG_INFO("Found Aco_DirectGraphicsChannel at {}", utils::offset_view(direct_graphics_channel));
+
     auto device = tw::game::graphics::get_device(direct_graphics_channel);
     tw::native::change_device(device);
 
@@ -255,6 +331,8 @@ void __fastcall aco_true_call_channel(void* this_, DWORD edx)
 unsigned __stdcall tw::plugin::load(void* thread_parameter)
 {
     (void)thread_parameter;
+
+    alloc_console();
 
     tw::game::graphics::initialize();
     tw::game::initialize();

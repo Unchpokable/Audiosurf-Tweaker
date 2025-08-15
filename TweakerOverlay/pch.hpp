@@ -11,6 +11,12 @@
 #include <vector>
 #include <memory>
 #include <stdexcept>
+#include <source_location>
+#include <mutex>
+#include <format>
+#include <filesystem>
+#include <iostream>
+#include <array>
 
 #include <process.h>
 

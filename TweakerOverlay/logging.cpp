@@ -1,6 +1,6 @@
-#include "rkcmm/precompiled.hpp"
+#include "pch.hpp"
 
-#include "rkcmm/logging.hpp"
+#include "logging.hpp"
 
 namespace
 {

@@ -178,6 +178,7 @@
     <ClCompile Include="plugin.cpp" />
     <ClCompile Include="quest_wrappers.cpp" />
     <ClCompile Include="ui.cpp" />
+    <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="aco_direct_graphics.hpp" />
@@ -189,6 +190,7 @@
     <ClInclude Include="quest_wrappers.hpp" />
     <ClInclude Include="quest_offsets.hpp" />
     <ClInclude Include="ui.hpp" />
+    <ClInclude Include="utils.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
