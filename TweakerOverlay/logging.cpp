@@ -17,7 +17,7 @@ enum class LogLevel { Debug, Info, Warning, Error, Critical };
 namespace
 {
 template<LogLevel level>
-constexpr const char* LOG_ANSI;
+constexpr const char* LOG_ANSI = nullptr;
 template<>
 constexpr const char* LOG_ANSI<LogLevel::Debug> = "1;34";       ///< Bold, blue text
 template<>
@@ -33,7 +33,7 @@ constexpr const char* LOG_ANSI<LogLevel::Critical> = "1;37;41"; ///< Bold, white
 namespace
 {
 template<LogLevel level>
-constexpr const char* LOG_PREFIX;
+constexpr const char* LOG_PREFIX = nullptr;
 template<>
 constexpr const char* LOG_PREFIX<LogLevel::Debug> = "[D]";
 template<>
