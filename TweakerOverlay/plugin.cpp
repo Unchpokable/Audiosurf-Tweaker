@@ -277,7 +277,8 @@ namespace
 {
 void __fastcall aco_true_call_channel(void* this_, DWORD edx)
 {
-    if(auto state = initialization_state.load(std::memory_order_acquire); state == Ready) {
+    auto state = initialization_state.load(std::memory_order_acquire);
+    if(state == Ready) {
         return;
     }
 
