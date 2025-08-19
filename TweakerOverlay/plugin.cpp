@@ -1,3 +1,4 @@
+// ReSharper disable CppClangTidyClangDiagnosticMicrosoftCast
 #include "pch.hpp"
 
 #include "plugin.hpp"
@@ -42,7 +43,6 @@ void alloc_console()
     SetConsoleMode(console_handle, console_mode);
 
     FILE* cout;
-
     std::ignore = freopen_s(&cout, "CONOUT$", "w", stdout);
 
     FILE* cerr;
@@ -63,8 +63,7 @@ void alloc_console()
 #else
 void alloc_console()
 {
-    // Allocating console in release build is not needed
-    // and will cause a crash if the plugin is loaded in a game without a console.
+    // Allocating console in production build is not needed
 }
 #endif
 }
@@ -83,13 +82,20 @@ struct DllInterfaceLayout
     HINSTANCE dll_instance;
     void* engine_interface;
 };
-
-constexpr std::ptrdiff_t engine_field_offset = offsetof(DllInterfaceLayout, engine_interface);
 }
 
 namespace
 {
-std::atomic_bool initialized { false };
+enum InitializationState
+{
+    Idling,
+    Detouring,
+    WaitHooking,
+    Hooking,
+    Ready
+};
+
+std::atomic initialization_state { Idling };
 }
 
 namespace
@@ -271,9 +277,11 @@ namespace
 {
 void __fastcall aco_true_call_channel(void* this_, DWORD edx)
 {
-    if(initialized.load(std::memory_order_acquire)) {
+    if(auto state = initialization_state.load(std::memory_order_acquire); state == Ready) {
         return;
     }
+
+    initialization_state.store(Hooking, std::memory_order_release);
 
     // Actually we don't give a fuck what is this_ pointer because base DllInterface class placed at the top of the object anyway:
     auto engine_interface_ptr = static_cast<DllInterfaceLayout*>(this_)->engine_interface;
@@ -304,8 +312,6 @@ void __fastcall aco_true_call_channel(void* this_, DWORD edx)
     auto device = tw::game::graphics::get_device(direct_graphics_channel);
     tw::native::change_device(device);
 
-    std::atomic_thread_fence(std::memory_order_seq_cst);
-
     set_hook(tw::native::EndScene, directx_end_scene);
 
     // Set up a hooks to any device reconfiguration functions
@@ -315,7 +321,7 @@ void __fastcall aco_true_call_channel(void* this_, DWORD edx)
     DetourAttach(&reinterpret_cast<PVOID&>(tw::game::graphics::reset_device), aco_reset_device);
     DetourAttach(&reinterpret_cast<PVOID&>(tw::game::graphics::set_window_mode), aco_set_window_mode);
     DetourAttach(&reinterpret_cast<PVOID&>(tw::game::graphics::set_fullscreen_device_mode), aco_set_fullscreen_device_mode);
-    DetourAttach(&reinterpret_cast<PVOID&>(tw::game::graphics::set_view_port), aco_set_view_port);
+    DetourAttach(&reinterpret_cast<PVOID&>(tw::game::graphics::set_view_port), aco_set_view_port);  
     DetourAttach(&reinterpret_cast<PVOID&>(tw::game::graphics::set_device_type), aco_set_device_type);
     DetourAttach(&reinterpret_cast<PVOID&>(tw::game::graphics::invalidate_device_objects), aco_invalidate_device_objects);
     DetourAttach(&reinterpret_cast<PVOID&>(tw::game::graphics::set_present_window), aco_set_present_window);
@@ -323,7 +329,11 @@ void __fastcall aco_true_call_channel(void* this_, DWORD edx)
 
     DetourTransactionCommit();
 
-    initialized.store(true, std::memory_order_release);
+    auto present_window = tw::game::graphics::get_present_window(direct_graphics_channel);
+
+    ui::setup_imgui(present_window, device);
+
+    initialization_state.store(Ready, std::memory_order_release);
 }
 } // namespace
 
@@ -334,10 +344,12 @@ unsigned __stdcall tw::plugin::load(void* thread_parameter)
 
     alloc_console();
 
+    initialization_state.store(Detouring, std::memory_order_release);
+
     tw::game::graphics::initialize();
     tw::game::initialize();
 
-    std::atomic_thread_fence(std::memory_order_seq_cst);
+    initialization_state.store(WaitHooking, std::memory_order_release);
 
     auto call_channel = DetourFindFunction("HighPoly.dll", "?CallChannel@A3d_Channel@@UAEXXZ");
 

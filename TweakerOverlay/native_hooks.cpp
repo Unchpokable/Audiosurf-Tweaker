@@ -10,7 +10,12 @@ HRESULT __stdcall tw::native::detour_attach_hook(void** pointer, void* detour)
 
     auto result = DetourAttach(pointer, detour);
 
-    DetourTransactionCommit();
+    if(result == E_FAIL) {
+        DetourTransactionAbort();
+    } else {
+        DetourTransactionCommit();
+    }
+
     return result;
 }
 
@@ -21,6 +26,11 @@ HRESULT __stdcall tw::native::detour_detach_hook(void** pointer, void* detour)
 
     auto result = DetourDetach(pointer, detour);
 
-    DetourTransactionCommit();
+    if(result == E_FAIL) {
+        DetourTransactionAbort();
+    } else {
+        DetourTransactionCommit();
+    }
+
     return result;
 }
