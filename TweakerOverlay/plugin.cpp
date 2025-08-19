@@ -111,6 +111,11 @@ HRESULT(__stdcall* directx_end_scene_original)(IDirect3DDevice9* device);
 
 namespace
 {
+void(__thiscall* aco_call_channel_original)(void* this_);
+}
+
+namespace
+{
 HRESULT __stdcall directx_end_scene(IDirect3DDevice9* device)
 {
     ui::render_ui(device);
@@ -279,7 +284,7 @@ void __fastcall aco_true_call_channel(void* this_, DWORD edx)
 {
     auto state = initialization_state.load(std::memory_order_acquire);
     if(state == Ready) {
-        return;
+        return aco_call_channel_original(this_);
     }
 
     initialization_state.store(Hooking, std::memory_order_release);
@@ -352,9 +357,9 @@ unsigned __stdcall tw::plugin::load(void* thread_parameter)
 
     initialization_state.store(WaitHooking, std::memory_order_release);
 
-    auto call_channel = DetourFindFunction("HighPoly.dll", "?CallChannel@A3d_Channel@@UAEXXZ");
+    aco_call_channel_original = reinterpret_cast<void(__thiscall*)(void*)>(DetourFindFunction("HighPoly.dll", "?CallChannel@A3d_Channel@@UAEXXZ"));
 
-    tw::native::detour_attach_hook(&static_cast<PVOID&>(call_channel), aco_true_call_channel);
+    tw::native::detour_attach_hook(&reinterpret_cast<PVOID&>(aco_call_channel_original), aco_true_call_channel);
 
     return 0;
 }
