@@ -1,15 +1,39 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <UseWPF>true</UseWPF>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net9.0-windows7.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<UseWPF>true</UseWPF>
+		<PlatformTarget>x64</PlatformTarget>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-  </ItemGroup>
+	<ItemGroup>
+		<Compile Remove="Controls - Копировать\**" />
+		<Compile Remove="Core - Копировать\**" />
+		<Compile Remove="Forms - Копировать\**" />
+		<Compile Remove="Models - Копировать\**" />
+		<Compile Remove="Views - Копировать\**" />
+		<EmbeddedResource Remove="Controls - Копировать\**" />
+		<EmbeddedResource Remove="Core - Копировать\**" />
+		<EmbeddedResource Remove="Forms - Копировать\**" />
+		<EmbeddedResource Remove="Models - Копировать\**" />
+		<EmbeddedResource Remove="Views - Копировать\**" />
+		<None Remove="Controls - Копировать\**" />
+		<None Remove="Core - Копировать\**" />
+		<None Remove="Forms - Копировать\**" />
+		<None Remove="Models - Копировать\**" />
+		<None Remove="Views - Копировать\**" />
+		<Page Remove="Controls - Копировать\**" />
+		<Page Remove="Core - Копировать\**" />
+		<Page Remove="Forms - Копировать\**" />
+		<Page Remove="Models - Копировать\**" />
+		<Page Remove="Views - Копировать\**" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+	</ItemGroup>
 
 </Project>

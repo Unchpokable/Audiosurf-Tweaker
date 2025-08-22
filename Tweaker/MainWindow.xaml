@@ -4,9 +4,70 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:Tweaker"
+        xmlns:vm="clr-namespace:Tweaker.ViewModels"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
-    <Grid>
-
-    </Grid>
+        Title="Audiosurf Tweaker" Height="450" Width="800"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent">
+    
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Themes/TopBarStyles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    
+    <Window.DataContext>
+        <vm:MainWindowViewModel/>
+    </Window.DataContext>
+    
+    <Border Background="White" CornerRadius="5">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="30"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            
+            <!-- Custom Top Bar -->
+            <Grid Grid.Row="0" x:Name="TopBar" Style="{StaticResource TopBarStyle}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                
+                <!-- Application Icon -->
+                <Image Grid.Column="0" 
+                       Style="{StaticResource AppIconStyle}"
+                       Source="{Binding ApplicationIcon}"/>
+                
+                <!-- App Title -->
+                <TextBlock Grid.Column="1" 
+                           Text="Audiosurf Tweaker" 
+                           Style="{StaticResource TitleTextStyle}"/>
+                
+                <!-- Window Control Buttons -->
+                <Button Grid.Column="3" 
+                        x:Name="MinimizeButton"
+                        Content="−"
+                        Style="{StaticResource MinimizeButtonStyle}"
+                        Click="MinimizeButton_Click"/>
+                
+                <Button Grid.Column="4" 
+                        x:Name="CloseButton"
+                        Content="✕"
+                        Style="{StaticResource CloseButtonStyle}"
+                        Click="CloseButton_Click"/>
+            </Grid>
+            
+            <!-- Main Content Area -->
+            <Grid Grid.Row="1" Background="White">
+                
+            </Grid>
+        </Grid>
+    </Border>
 </Window>
