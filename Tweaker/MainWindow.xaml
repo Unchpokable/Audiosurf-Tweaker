@@ -9,27 +9,32 @@
         Title="Audiosurf Tweaker" Height="450" Width="800"
         WindowStyle="None"
         AllowsTransparency="True"
-        Background="Transparent">
-    
+        Background="Transparent"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        RenderOptions.BitmapScalingMode="HighQuality"
+        RenderOptions.EdgeMode="Unspecified">
+
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="Themes/TopBarStyles.xaml"/>
+                <ResourceDictionary Source="Themes/Menu.xaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Window.Resources>
-    
+
     <Window.DataContext>
         <vm:MainWindowViewModel/>
     </Window.DataContext>
-    
+
     <Border Background="White" CornerRadius="5">
         <Grid>
             <Grid.RowDefinitions>
                 <RowDefinition Height="30"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
-            
+
             <!-- Custom Top Bar -->
             <Grid Grid.Row="0" x:Name="TopBar" Style="{StaticResource TopBarStyle}">
                 <Grid.ColumnDefinitions>
@@ -39,34 +44,65 @@
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                
+
                 <!-- Application Icon -->
                 <Image Grid.Column="0" 
                        Style="{StaticResource AppIconStyle}"
                        Source="{Binding ApplicationIcon}"/>
-                
+
                 <!-- App Title -->
                 <TextBlock Grid.Column="1" 
                            Text="Audiosurf Tweaker" 
-                           Style="{StaticResource TitleTextStyle}"/>
-                
+                           Style="{StaticResource TitleTextStyle}"
+                           FontFamily="Tahoma"
+                           FontWeight="SemiBold"
+                           FontSize="13"/>
+
                 <!-- Window Control Buttons -->
                 <Button Grid.Column="3" 
                         x:Name="MinimizeButton"
                         Content="−"
                         Style="{StaticResource MinimizeButtonStyle}"
                         Click="MinimizeButton_Click"/>
-                
+
                 <Button Grid.Column="4" 
                         x:Name="CloseButton"
                         Content="✕"
                         Style="{StaticResource CloseButtonStyle}"
                         Click="CloseButton_Click"/>
             </Grid>
-            
+
             <!-- Main Content Area -->
             <Grid Grid.Row="1" Background="White">
-                
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width=".15*"/>
+                    <ColumnDefinition Width=".85*"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- Left Panel -->
+                <Border Grid.Column="0" Background="LightGray">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height=".9*"/>
+                            <RowDefinition Height=".1*"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- RadioButtons Area -->
+                        <StackPanel Grid.Row="0" Orientation="Vertical" Margin="10">
+                            <RadioButton Name="RadioButton1" Content="Skins" Style="{StaticResource NavigationRadioButtonStyle}"/>
+                            <RadioButton Name="RadioButton2" Content="Colors" Style="{StaticResource NavigationRadioButtonStyle}"/>
+                            <RadioButton Name="RadioButton3" Content="Tweaks" Style="{StaticResource NavigationRadioButtonStyle}"/>
+                        </StackPanel>
+
+                        <!-- Bottom Empty Block -->
+                        <Border Grid.Row="1" Background="Transparent">
+
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!-- Content Area -->
+                <ContentPresenter Grid.Column="1" Content="{Binding CurrentPage}"/>
             </Grid>
         </Grid>
     </Border>

@@ -304,24 +304,6 @@
     <Resource Include="Resources\logo.png" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ASCommander\ASCommander.csproj">
-      <Project>{d22fb897-36dc-4a33-8c79-fe9a50543773}</Project>
-      <Name>ASCommander</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\ChangerAPI\ChangerAPI.csproj">
-      <Project>{81019294-ff0f-4df9-b6b2-8fd4f073c253}</Project>
-      <Name>ChangerAPI</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\textpackctrl\textpackctrl.csproj">
-      <Project>{27231428-42a6-43ec-8f0a-9f71726b2934}</Project>
-      <Name>textpackctrl</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\TweakerScriptsInterpreter\TweakerScriptInterpreter.csproj">
-      <Project>{b3e90ad5-b42f-4472-a3bf-98cc8a2faace}</Project>
-      <Name>TweakerScriptInterpreter</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
     <None Include="Resources\ChangerSplashScreen.png" />
   </ItemGroup>
   <ItemGroup>
