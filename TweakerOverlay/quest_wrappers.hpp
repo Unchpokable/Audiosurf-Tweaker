@@ -52,6 +52,15 @@ public:
     AcoChannelGroup get_channel_group(std::int32_t id) const;
     std::int32_t get_channel_group_count() const;
 };
+
+class AcoList : public AcoChannelBase
+{
+public:
+    AcoList(void* ptr);
+
+    void* get(int index);
+
+};
 } // namespace tw::game
 
 namespace tw::game
