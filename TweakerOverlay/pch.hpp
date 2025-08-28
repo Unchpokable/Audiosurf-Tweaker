@@ -17,9 +17,9 @@
 #include <filesystem>
 #include <iostream>
 #include <array>
+#include <cstddef>
 
 #include <process.h>
-
 #include <assert.h>
 
 // === Quest 3D ===
@@ -48,6 +48,7 @@
 //#include <A3d_EngineInterface.h>
 //#include <A3d_ChannelGroup.h>
 
+#include <A3d_List.h>
 #include <A3d_ChannelGroup.h>
 
 // clang-format on

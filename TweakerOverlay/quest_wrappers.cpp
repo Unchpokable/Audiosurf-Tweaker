@@ -4,6 +4,24 @@
 
 namespace
 {
+struct ChannelGroupLayout
+{
+    void* vptr;
+    bool unused;
+
+    char list; // we only need an offset so let it be a char
+};
+
+struct A3dListLayout
+{
+    void** data;
+    int count;
+    int buffer_size;
+};
+}
+
+namespace
+{
 using engine_interface_get_channel_group_idx_func = void*(__thiscall*)(void* this_, std::int32_t idx);
 engine_interface_get_channel_group_idx_func engine_interface_get_channel_group_idx;
 
@@ -78,11 +96,32 @@ std::string_view tw::game::AcoChannelGroup::get_pool_name() const
     return channel_group_get_pool_name(m_ptr);
 }
 
+std::int32_t tw::game::AcoChannelGroup::get_channel_count() const
+{
+    auto list_addr = &static_cast<ChannelGroupLayout*>(m_ptr)->list;
+
+    auto list = reinterpret_cast<A3dListLayout*>(list_addr);
+
+    return list->count;
+}
+
 tw::game::AcoChannel tw::game::AcoChannelGroup::get_channel(const char* name) const
 {
     auto ptr = channel_group_get_channel(m_ptr, name);
 
     return { ptr };
+}
+
+tw::game::AcoChannel tw::game::AcoChannelGroup::get_channel(std::int32_t id) const
+{
+    using get_channel_at_func = void*(__thiscall*)(void*, std::int32_t);
+    // v5 = (A3d_Channel *)(*(int (__thiscall **)(A3d_ChannelGroup *, int))(*(_DWORD *)this + 72))(this, v4);
+    // Actually - I have no fucking idea what is going on here, but it looks like a virtual call
+    // Why this function is private - The Question are greater than a question about meaning of live, universe and things
+    // Quest3D. Quest3D never changes.
+    auto get_channel_at = reinterpret_cast<get_channel_at_func>(*static_cast<void**>(m_ptr) + 18);
+
+    return get_channel_at(m_ptr, id);
 }
 
 tw::game::AcoChannel tw::game::AcoChannelGroup::get_unique_channel(std::int32_t id) const
