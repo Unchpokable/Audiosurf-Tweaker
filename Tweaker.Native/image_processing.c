@@ -8,6 +8,8 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
 
+#define DONT_CARE(value) (void)value
+
 static Result stbi_convert_error(void)
 {
     const char* err = stbi_failure_reason();
@@ -67,6 +69,35 @@ Result encode_jpeg(const char* file_path, const unsigned char* data, int32_t wid
     }
 
     return Success;
+}
+
+NativeFormat get_image_format_native(const char* file_path)
+{
+    int width, height, channels;
+
+    if(stbi_info(file_path, &width, &height, &channels)) {
+        FILE* file = fopen(file_path, "rb");
+        if(file == NULL) {
+            return Unsupported;
+        }
+
+        unsigned char header[8];
+        if(fread(header, 1, 8, file) != 8) {
+            DONT_CARE(fclose(file));
+            return Unsupported;
+        }
+        DONT_CARE(fclose(file));
+
+        if(header[0] == 0xFF && header[1] == 0xD8) {
+            return Jpeg;
+        }
+
+        if(header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47) {
+            return Png;
+        }
+    }
+
+    return Unsupported;
 }
 
 void free_image(unsigned char* buffer)

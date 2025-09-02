@@ -13,6 +13,13 @@ public enum Result : int
     UnknownError
 }
 
+public enum NativeFormat
+{
+    Jpeg,
+    Png,
+    Unsupported
+}
+
 public static class ImageUtils
 {
     private const string DllName = "Tweaker.Native.dll"; // Замени на имя своей библиотеки
@@ -44,4 +51,7 @@ public static class ImageUtils
 
     [DllImport(DllName, EntryPoint = "free_image", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
     public static extern Result FreeImage(IntPtr data);
+
+    [DllImport(DllName, EntryPoint = "get_image_format_native", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+    public static extern NativeFormat GetImageFormatNative([MarshalAs(UnmanagedType.LPStr)] string filename);
 }

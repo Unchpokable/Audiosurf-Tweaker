@@ -23,9 +23,18 @@ typedef enum
     UnknownError
 } Result;
 
+typedef enum
+{
+    Jpeg,
+    Png,
+    Unsupported,
+} NativeFormat;
+
 TW_NATIVE_API Result generic_decode(const char* file_path, unsigned char** data, int32_t* width, int32_t* height, int32_t* channels);
 
 TW_NATIVE_API Result encode_png(const char* file_path, const unsigned char* data, int32_t width, int32_t height, int32_t channels);
 TW_NATIVE_API Result encode_jpeg(const char* file_path, const unsigned char* data, int32_t width, int32_t height, int32_t channels, int32_t quality);
+
+TW_NATIVE_API NativeFormat get_image_format_native(const char* file_path);
 
 TW_NATIVE_API void free_image(unsigned char* buffer);
