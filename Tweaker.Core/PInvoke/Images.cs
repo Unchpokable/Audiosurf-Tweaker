@@ -22,7 +22,7 @@ public enum NativeFormat
 
 public static class ImageUtils
 {
-    private const string DllName = "Tweaker.Native.dll"; // Замени на имя своей библиотеки
+    private const string DllName = "Tweaker.Native.dll";
 
     [DllImport(DllName, EntryPoint = "generic_decode", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
     public static extern Result GenericDecode(

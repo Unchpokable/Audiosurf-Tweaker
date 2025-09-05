@@ -74,28 +74,20 @@ TW_NATIVE_API Result encode_jpeg(
 
 TW_NATIVE_API NativeFormat get_image_format_native(const char* file_path)
 {
-    int width, height, channels;
+    FILE* file = fopen(file_path, "rb");
+    if(file == NULL) {
+        return Unsupported;
+    }
 
-    if(stbi_info(file_path, &width, &height, &channels)) {
-        FILE* file = fopen(file_path, "rb");
-        if(file == NULL) {
-            return Unsupported;
-        }
+    stbi__context stb_context;
+    stbi__start_file(&stb_context, file);
 
-        unsigned char header[8];
-        if(fread(header, 1, 8, file) != 8) {
-            DONT_CARE(fclose(file));
-            return Unsupported;
-        }
-        DONT_CARE(fclose(file));
+    if(stbi__png_test(&stb_context)) {
+        return Png;
+    }
 
-        if(header[0] == 0xFF && header[1] == 0xD8) {
-            return Jpeg;
-        }
-
-        if(header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47) {
-            return Png;
-        }
+    if(stbi__jpeg_test(&stb_context)) {
+        return Jpeg;
     }
 
     return Unsupported;
