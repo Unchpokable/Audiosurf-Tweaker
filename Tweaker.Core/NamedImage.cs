@@ -1,7 +1,6 @@
 ﻿using System.IO;
 using System.IO.Compression;
 using System.Runtime.InteropServices;
-using System.Windows;
 using Tweaker.Core.Errors;
 using Tweaker.Core.PInvoke;
 
@@ -22,9 +21,9 @@ public sealed class NamedImage
 
     public string Name { get; set; }
     public string Description { get; set; }
-    public Format Type { get; private set; }
-    public Vec2<int> Geometry { get; private set; }
-    public int ChannelsCount { get; private set; }
+    public Format Type { get; }
+    public Vec2<int> Geometry { get; }
+    public int ChannelsCount { get; }
 
     private readonly byte[] _data;
 
@@ -40,14 +39,14 @@ public sealed class NamedImage
 
         if (result != Result.Success)
         {
-            return new Failure<NamedImage>(new Error($"Can not load image: { result }"));
+            return new Failure<NamedImage>(new Error($"Can not load image: {result}"));
         }
 
-        int totalBytes = width * height * channelsCount;
-        byte[] imageData = new byte[totalBytes];
-        
+        var totalBytes = width * height * channelsCount;
+        var imageData = new byte[totalBytes];
+
         Marshal.Copy(bufferPtr, imageData, 0, totalBytes);
-        
+
         FreeImage(bufferPtr);
 
         var compressedData = CompressData(imageData);
@@ -64,6 +63,23 @@ public sealed class NamedImage
 
         _data = data;
         Description = description;
+    }
+
+    public Result<bool> SaveTo(string filePath, Format format)
+    {
+        if (!Directory.Exists(filePath))
+        {
+            return "Given directory does not exists!".ToFailure<bool>();
+        }
+
+        return FormatToExtension(Type).Match(
+            onSuccess: extension =>
+            {
+                var completedFileName = Path.Combine(filePath, Name, extension);
+
+                return WriteInternal(completedFileName, format);
+            },
+            onError: error => $"Unsupported image type! Internal message: {error.Message}".ToFailure<bool>());
     }
 
     private static byte[] CompressData(byte[] data)
@@ -84,5 +100,41 @@ public sealed class NamedImage
         using var output = new MemoryStream();
         zip.CopyTo(output);
         return output.ToArray();
+    }
+
+    private static Result<string> FormatToExtension(Format format)
+    {
+        return format switch
+        {
+            Format.Png => ".png".ToSuccess(),
+            Format.Jpeg => ".png".ToSuccess(),
+            _ => "unknown".ToFailure<string>()
+        };
+    }
+
+    private Result<bool> WriteInternal(string filePath, Format format)
+    {
+        var decompressedData = DecompressData(_data);
+
+        if (decompressedData == null || decompressedData.Length == 0)
+        {
+            return "Can not decompress data".ToFailure<bool>();
+        }
+
+        IntPtr unmanagedBufferPtr = Marshal.AllocHGlobal(decompressedData.Length);
+        Marshal.Copy(decompressedData, 0, unmanagedBufferPtr, decompressedData.Length);
+
+        var nativeCode = format switch
+        {
+            Format.Png => EncodePng(filePath, unmanagedBufferPtr, Geometry.X, Geometry.Y, ChannelsCount),
+            Format.Jpeg => EncodeJpeg(filePath, unmanagedBufferPtr, Geometry.X, Geometry.Y, ChannelsCount, 95),
+            _ => Result.Success
+        };
+
+        return nativeCode switch
+        {
+            Result.Success => true.ToSuccess(),
+            _ => $"Failed to save image! Whats happened: {nativeCode}".ToFailure<bool>()
+        };
     }
 }

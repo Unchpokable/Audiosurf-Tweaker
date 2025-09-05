@@ -9,6 +9,6 @@ public class AppSettings
 
 public class FileFormats
 {
-    public string[] SupportedArchives { get; set; } = Array.Empty<string>();
-    public string[] SupportedImages { get; set; } = Array.Empty<string>();
+    public string[] SupportedArchives { get; set; } = [];
+    public string[] SupportedImages { get; set; } = [];
 }

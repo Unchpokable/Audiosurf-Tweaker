@@ -8,7 +8,7 @@ public static class Masks
     {
         "cliff1-1.png", "cliff1-2.png", "cliff2-1.png", "cliff2-2.png",
         "hit1.png", "hit2.jpg", "particles1.png", "particles2.jpg", "particles3.jpg", "ring1A.png",
-        "ring1B.png", "ring2A.jpg", "ring2B.jpg", "tileslyup.png", "tiles.png"
+        "ring1B.png", "ring2A.jpg", "ring2B.jpg", "tilesflyup.png", "tiles.png"
     };
 
     public static readonly string[] OptionalFiles = new[]
@@ -16,6 +16,6 @@ public static class Masks
         "Skysphere_Black.png", "Skysphere_Grey.png", "Skysphere_White.png"
     };
 
-    public static readonly Regex PeviewScreenshots = new Regex(@"^PreviewScreenshot.*\.(png|jpg|jpeg)$");
+    public static readonly Regex PreviewScreenshots = new Regex(@"^PreviewScreenshot.*\.(png|jpg|jpeg)$");
 }
 

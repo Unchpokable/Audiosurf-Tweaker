@@ -32,7 +32,7 @@ static Result stbi_convert_error(void)
     return UnknownError;
 }
 
-Result generic_decode(const char* file_path, unsigned char** data, int32_t* width, int32_t* height, int32_t* channels)
+TW_NATIVE_API Result generic_decode(const char* file_path, unsigned char** data, int32_t* width, int32_t* height, int32_t* channels)
 {
     stbi_uc* img = stbi_load(file_path, width, height, channels, 0);
 
@@ -47,7 +47,7 @@ Result generic_decode(const char* file_path, unsigned char** data, int32_t* widt
     return Success;
 }
 
-Result encode_png(const char* file_path, const unsigned char* data, int32_t width, int32_t height, int32_t channels)
+TW_NATIVE_API Result encode_png(const char* file_path, const unsigned char* data, int32_t width, int32_t height, int32_t channels)
 {
     stbi_write_png_compression_level = 8;
 
@@ -60,7 +60,8 @@ Result encode_png(const char* file_path, const unsigned char* data, int32_t widt
     return Success;
 }
 
-Result encode_jpeg(const char* file_path, const unsigned char* data, int32_t width, int32_t height, int32_t channels, int32_t quality)
+TW_NATIVE_API Result encode_jpeg(
+    const char* file_path, const unsigned char* data, int32_t width, int32_t height, int32_t channels, int32_t quality)
 {
     int failed = stbi_write_jpg(file_path, width, height, channels, data, quality);
 
@@ -71,7 +72,7 @@ Result encode_jpeg(const char* file_path, const unsigned char* data, int32_t wid
     return Success;
 }
 
-NativeFormat get_image_format_native(const char* file_path)
+TW_NATIVE_API NativeFormat get_image_format_native(const char* file_path)
 {
     int width, height, channels;
 
@@ -100,7 +101,7 @@ NativeFormat get_image_format_native(const char* file_path)
     return Unsupported;
 }
 
-void free_image(unsigned char* buffer)
+TW_NATIVE_API void free_image(unsigned char* buffer)
 {
     stbi_image_free(buffer);
 }
