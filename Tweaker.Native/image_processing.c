@@ -90,6 +90,8 @@ TW_NATIVE_API NativeFormat get_image_format_native(const char* file_path)
         return Jpeg;
     }
 
+    DONT_CARE(fclose(file));
+
     return Unsupported;
 }
 
