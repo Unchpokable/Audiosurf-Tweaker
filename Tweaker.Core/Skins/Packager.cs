@@ -1,9 +1,7 @@
 ﻿using System.IO;
-using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Text;
 using Tweaker.Core.Errors;
-using Tweaker.Core.PInvoke;
 
 namespace Tweaker.Core.Skins;
 
@@ -33,7 +31,7 @@ public static class Packager
     {
         if (!File.Exists(path))
         {
-            return "File not Found!".ToFailure<TexturePackData>("NO_FILE", new FileNotFoundException());
+            return new FileNotFoundException().ToFailure<TexturePackData>();
         }
 
         var stream = File.OpenRead(path);
@@ -41,9 +39,14 @@ public static class Packager
         return ReadStruct<Header>(stream).Match(
             onSuccess: header =>
             {
-                return new TexturePackData().ToSuccess();
+                if (!IsFileCompatible(header))
+                {
+                    return "Incompatible save!".ToFailure<TexturePackData>();
+                }
+
+                return LoadInternal(stream);
             },
-            onError: error => $"Can not read file. Whats happened: {error.Message}".ToFailure<TexturePackData>());
+            onError: error => $"Can not read file. Whats happened: {error.Message}".ToFailure<TexturePackData>(error.InnerException));
     }
 
     public static Result<bool> Save(string path, TexturePackData data)
@@ -58,32 +61,36 @@ public static class Packager
 
         WriteStruct(stream, header);
 
-        using var inlineStream = new MemoryStream();
-        using var deflateStream = new DeflateStream(inlineStream, CompressionLevel.Optimal);
-
-
+        return SaveInternal(stream, data);
     }
 
     private static Result<T> ReadStruct<T>(Stream stream) where T : struct
     {
-        var size = Marshal.SizeOf<T>();
-        byte[] buffer = new byte[size];
-
-        var bytesRead = stream.Read(buffer, 0, size);
-        if (bytesRead != size)
-        {
-            return "Can not read stream - less bytes than header struct awaits".ToFailure<T>();
-        }
-
-        var handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
-
         try
         {
-            return Marshal.PtrToStructure<T>(handle.AddrOfPinnedObject()).ToSuccess();
+            var size = Marshal.SizeOf<T>();
+            byte[] buffer = new byte[size];
+            var bytesRead = stream.Read(buffer, 0, size);
+
+            if (bytesRead != size)
+            {
+                return "Can not read stream - less bytes than header struct awaits".ToFailure<T>();
+            }
+
+            var handle = GCHandle.Alloc(buffer, GCHandleType.Pinned);
+
+            try
+            {
+                return Marshal.PtrToStructure<T>(handle.AddrOfPinnedObject()).ToSuccess();
+            }
+            finally
+            {
+                handle.Free();
+            }
         }
-        finally
+        catch (Exception ex)
         {
-            handle.Free();
+            return ex.ToFailure<T>();
         }
     }
 
@@ -116,5 +123,92 @@ public static class Packager
         compatible = compatible || header.Major == RequiredHeader.Major;
 
         return compatible;
+    }
+
+    private static unsafe Result<bool> SaveInternal(Stream stream, TexturePackData data)
+    {
+        ulong requiredPartsCount = (ulong)data.RequiredParts.Count;
+        stream.Write(new ReadOnlySpan<byte>(&requiredPartsCount, sizeof(ulong)));
+
+        foreach (var image in data.RequiredParts)
+        {
+            var written = image.WriteToStream(stream);
+            if (written.Failed())
+            {
+                return written.Reason()?.ToFailure<bool>() ?? "WTF Failure".ToFailure<bool>();
+            }
+        }
+
+        ulong optionalPartsCount = (ulong)data.OptionalParts.Count;
+        stream.Write(new ReadOnlySpan<byte>(&optionalPartsCount, sizeof(ulong)));
+
+        foreach (var image in data.OptionalParts)
+        {
+            var written = image.WriteToStream(stream);
+            if (written.Failed())
+            {
+                return written.Reason()?.ToFailure<bool>() ?? "WTF Failure".ToFailure<bool>();
+            }
+        }
+
+        ulong previewsCount = (ulong)data.Previews.Count;
+        stream.Write(new ReadOnlySpan<byte>(&previewsCount, sizeof(ulong)));
+
+        foreach (var image in data.Previews)
+        {
+            var written = image.WriteToStream(stream);
+            if (written.Failed())
+            {
+                return written.Reason()?.ToFailure<bool>() ?? "WTF Failure".ToFailure<bool>();
+            }
+        }
+
+        return true.ToSuccess();
+    }
+
+    private static unsafe Result<TexturePackData> LoadInternal(Stream stream)
+    {
+        var data = new TexturePackData();
+
+        ulong requiredPartsCount;
+        stream.ReadExactly(new Span<byte>(&requiredPartsCount, sizeof(ulong)));
+
+        for (ulong i = 0; i < requiredPartsCount; i++)
+        {
+            NamedImage image = new();
+            var read = image.ReadFromStream(stream);
+            if (read.Failed())
+            {
+                return read.Reason()?.ToFailure<TexturePackData>() ?? "WTF Failure".ToFailure<TexturePackData>();
+            }
+        }
+
+        ulong optionalPartsCount;
+        stream.ReadExactly(new Span<byte>(&optionalPartsCount, sizeof(ulong)));
+
+        for (ulong i = 0; i < optionalPartsCount; i++)
+        {
+            NamedImage image = new();
+            var read = image.ReadFromStream(stream);
+            if (read.Failed())
+            {
+                return read.Reason()?.ToFailure<TexturePackData>() ?? "WTF Failure".ToFailure<TexturePackData>();
+            }
+        }
+
+        ulong previewsCount;
+        stream.ReadExactly(new Span<byte>(&previewsCount, sizeof(ulong)));
+
+        for (ulong i = 0; i <= previewsCount; i++)
+        {
+            NamedImage image = new();
+            var read = image.ReadFromStream(stream);
+            if (read.Failed())
+            {
+                return read.Reason()?.ToFailure<TexturePackData>() ?? "WTF Failure".ToFailure<TexturePackData>();
+            }
+        }
+
+        return data.ToSuccess();
     }
 }

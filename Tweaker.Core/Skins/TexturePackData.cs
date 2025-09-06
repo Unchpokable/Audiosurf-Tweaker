@@ -2,7 +2,7 @@
 
 public class TexturePackData
 {
-    public List<NamedImage> RequiredParts { get; }
-    public List<NamedImage> OptionalParts { get; }
-    public List<NamedImage> Previews { get; }
+    public List<NamedImage> RequiredParts { get; } = new();
+    public List<NamedImage> OptionalParts { get; } = new();
+    public List<NamedImage> Previews { get; } = new();
 }

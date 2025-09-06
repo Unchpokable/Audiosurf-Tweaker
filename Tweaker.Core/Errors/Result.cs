@@ -1,6 +1,6 @@
 namespace Tweaker.Core.Errors;
 
-public record Error(string Message, string? Code = null, Exception? InnerException = null);
+public record Error(string? Message = null, string? Code = null, Exception? InnerException = null);
 
 public abstract record Result<T>;
 public sealed record Success<T>(T Value) : Result<T>;
@@ -12,6 +12,11 @@ public static class ResultImpl
     public static Result<T> ToFailure<T>(this string message, string code) => new Failure<T>(new Error(message, code));
     public static Result<T> ToFailure<T>(this string message, string code, Exception exception)
         => new Failure<T>(new Error(message, code, exception));
+    public static Result<T> ToFailure<T>(this string message, Exception? exception) =>
+        new Failure<T>(new Error(message, InnerException: exception));
+
+    public static Result<T> ToFailure<T>(this Exception exception) =>
+        new Failure<T>(new Error(InnerException: exception));
 
     public static Result<T> ToSuccess<T>(this T value) => new Success<T>(value);
 
@@ -44,7 +49,7 @@ public static class ResultImpl
         {
             Success<T>(var value) => onSuccess(value),
             Failure<T>(var error) => onError(error),
-            _ => throw new InvalidOperationException(),
+            _ => throw new InvalidOperationException()
         };
     }
 
@@ -62,5 +67,25 @@ public static class ResultImpl
             default:
                 throw new InvalidOperationException();
         }
+    }
+
+    public static bool Failed<T>(this Result<T> result)
+    {
+        return result switch
+        {
+            Success<T>(_) => true,
+            Failure<T>(_) => false,
+            _ => false
+        };
+    }
+
+    public static Exception? Reason<T>(this Result<T> result)
+    {
+        return result switch
+        {
+            Success<T>(_) => null,
+            Failure<T>(var error) => error.InnerException,
+            _ => null
+        };
     }
 }
