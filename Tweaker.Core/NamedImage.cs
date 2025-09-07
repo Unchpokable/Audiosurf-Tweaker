@@ -217,29 +217,37 @@ public sealed class NamedImage
 
     private Result<bool> WriteToFileInternal(string filePath, Format format)
     {
-        var decompressedData = DecompressData(_data);
-
-        if (decompressedData == null || decompressedData.Length == 0)
+        try
         {
-            return "Can not decompress data".ToFailure<bool>();
+            var decompressedData = DecompressData(_data);
+
+            if (decompressedData == null || decompressedData.Length == 0)
+            {
+                return "Can not decompress data".ToFailure<bool>();
+            }
+
+            IntPtr unmanagedBufferPtr = Marshal.AllocHGlobal(decompressedData.Length);
+            Marshal.Copy(decompressedData, 0, unmanagedBufferPtr, decompressedData.Length);
+
+            var nativeCode = format switch
+            {
+                Format.Png => EncodePng(filePath, unmanagedBufferPtr, Geometry.X, Geometry.Y, ChannelsCount),
+                Format.Jpeg => EncodeJpeg(filePath, unmanagedBufferPtr, Geometry.X, Geometry.Y, ChannelsCount, 95),
+                _ => Result.UnknownFormat
+            };
+
+            Marshal.FreeHGlobal(unmanagedBufferPtr);
+
+            return nativeCode switch
+            {
+                Result.Success => true.ToSuccess(),
+                _ => $"Failed to save image! Whats happened: {nativeCode}".ToFailure<bool>()
+            };
         }
-
-        IntPtr unmanagedBufferPtr = Marshal.AllocHGlobal(decompressedData.Length);
-        Marshal.Copy(decompressedData, 0, unmanagedBufferPtr, decompressedData.Length);
-
-        var nativeCode = format switch
+        catch (Exception ex)
         {
-            Format.Png => EncodePng(filePath, unmanagedBufferPtr, Geometry.X, Geometry.Y, ChannelsCount),
-            Format.Jpeg => EncodeJpeg(filePath, unmanagedBufferPtr, Geometry.X, Geometry.Y, ChannelsCount, 95),
-            _ => Result.UnknownFormat
-        };
-
-        Marshal.FreeHGlobal(unmanagedBufferPtr);
-
-        return nativeCode switch
-        {
-            Result.Success => true.ToSuccess(),
-            _ => $"Failed to save image! Whats happened: {nativeCode}".ToFailure<bool>()
-        };
+            return ex.ToFailure<bool>();
+        }
+        
     }
 }
