@@ -1,0 +1,75 @@
+{
+	"backtrace" : 0,
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : 
+		[
+			"NativeImage/CMakeLists.txt"
+		],
+		"nodes" : 
+		[
+			{
+				"file" : 0
+			}
+		]
+	},
+	"dependencies" : 
+	[
+		{
+			"id" : "NativeImage_autogen_timestamp_deps::@a6e948643bce0246c8d7"
+		}
+	],
+	"folder" : 
+	{
+		"name" : "QtInternalTargets"
+	},
+	"id" : "NativeImage_autogen::@a6e948643bce0246c8d7",
+	"isGeneratorProvided" : true,
+	"name" : "NativeImage_autogen",
+	"paths" : 
+	{
+		"build" : "NativeImage",
+		"source" : "NativeImage"
+	},
+	"sourceGroups" : 
+	[
+		{
+			"name" : "",
+			"sourceIndexes" : 
+			[
+				0
+			]
+		},
+		{
+			"name" : "CMake Rules",
+			"sourceIndexes" : 
+			[
+				1,
+				2
+			]
+		}
+	],
+	"sources" : 
+	[
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "QTweaker/build/Desktop_Qt_6_9_2-Debug/NativeImage/CMakeFiles/NativeImage_autogen",
+			"sourceGroupIndex" : 0
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "QTweaker/build/Desktop_Qt_6_9_2-Debug/NativeImage/CMakeFiles/NativeImage_autogen.rule",
+			"sourceGroupIndex" : 1
+		},
+		{
+			"backtrace" : 0,
+			"isGenerated" : true,
+			"path" : "QTweaker/build/Desktop_Qt_6_9_2-Debug/NativeImage/NativeImage_autogen/timestamp.rule",
+			"sourceGroupIndex" : 1
+		}
+	],
+	"type" : "UTILITY"
+}

@@ -1,0 +1,6 @@
+module QTweaker
+typeinfo appQTweaker.qmltypes
+prefer :/qt/qml/QTweaker/
+Main 1.0 Main.qml
+depends QtQuick
+

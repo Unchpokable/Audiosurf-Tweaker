@@ -1,0 +1,6 @@
+<RCC>
+  <qresource prefix="/qt/qml/QTweaker">
+    <file alias="qmldir">/home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/QTweaker/qmldir</file>
+  </qresource>
+</RCC>
+

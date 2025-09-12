@@ -1,0 +1,7 @@
+module QTweaker
+typeinfo appQTweaker.qmltypes
+prefer :/qt/qml/QTweaker/
+Main 1.0 Main.qml
+SkinChanger 1.0 QML/SkinChanger.qml
+depends QtQuick
+

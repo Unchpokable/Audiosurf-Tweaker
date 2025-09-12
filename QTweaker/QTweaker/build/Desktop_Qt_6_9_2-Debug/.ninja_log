@@ -1,0 +1,7 @@
+# ninja log v6
+3	19	1757661267361983230	NativeImage/NativeImage_autogen/timestamp	ff3c1454e00c0bf2
+3	19	1757661267361983230	NativeImage/NativeImage_autogen/mocs_compilation.cpp	ff3c1454e00c0bf2
+3	19	1757661267361983230	/home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/NativeImage/NativeImage_autogen/timestamp	ff3c1454e00c0bf2
+3	19	1757661267361983230	/home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/NativeImage/NativeImage_autogen/mocs_compilation.cpp	ff3c1454e00c0bf2
+19	29	1757661267365101408	NativeImage/CMakeFiles/NativeImage.dir/NativeImage_autogen/mocs_compilation.cpp.o	441aa55dd57ec16f
+29	49	1757661267374302687	NativeImage/libNativeImage.a	9c471881a2fc1c36

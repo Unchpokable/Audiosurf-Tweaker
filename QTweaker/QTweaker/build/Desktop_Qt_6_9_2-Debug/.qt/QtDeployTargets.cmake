@@ -1,0 +1,6 @@
+set(__QT_DEPLOY_TARGET_NativeImage_FILE /home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/NativeImage/libNativeImage.a)
+set(__QT_DEPLOY_TARGET_NativeImage_TYPE STATIC_LIBRARY)
+set(__QT_DEPLOY_TARGET_Core_FILE /home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core/libCore.a)
+set(__QT_DEPLOY_TARGET_Core_TYPE STATIC_LIBRARY)
+set(__QT_DEPLOY_TARGET_appQTweaker_FILE /home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/appQTweaker)
+set(__QT_DEPLOY_TARGET_appQTweaker_TYPE EXECUTABLE)
