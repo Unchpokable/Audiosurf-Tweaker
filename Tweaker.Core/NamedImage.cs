@@ -66,7 +66,7 @@ public sealed class NamedImage
         Description = description;
     }
 
-    public NamedImage() {  }
+    public NamedImage() { }
 
     public Result<bool> SaveTo(string filePath, Format format)
     {
@@ -248,6 +248,6 @@ public sealed class NamedImage
         {
             return ex.ToFailure<bool>();
         }
-        
+
     }
 }
