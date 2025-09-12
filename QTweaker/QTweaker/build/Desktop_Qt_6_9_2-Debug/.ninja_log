@@ -1,7 +1,16 @@
 # ninja log v6
-3	19	1757661267361983230	NativeImage/NativeImage_autogen/timestamp	ff3c1454e00c0bf2
-3	19	1757661267361983230	NativeImage/NativeImage_autogen/mocs_compilation.cpp	ff3c1454e00c0bf2
-3	19	1757661267361983230	/home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/NativeImage/NativeImage_autogen/timestamp	ff3c1454e00c0bf2
-3	19	1757661267361983230	/home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/NativeImage/NativeImage_autogen/mocs_compilation.cpp	ff3c1454e00c0bf2
-19	29	1757661267365101408	NativeImage/CMakeFiles/NativeImage.dir/NativeImage_autogen/mocs_compilation.cpp.o	441aa55dd57ec16f
-29	49	1757661267374302687	NativeImage/libNativeImage.a	9c471881a2fc1c36
+3	22	1757666353375494245	/home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/NativeImage/NativeImage_autogen/mocs_compilation.cpp	ff3c1454e00c0bf2
+3	22	1757666353375494245	NativeImage/NativeImage_autogen/timestamp	ff3c1454e00c0bf2
+3	22	1757666353375494245	NativeImage/NativeImage_autogen/mocs_compilation.cpp	ff3c1454e00c0bf2
+58	91	1757666353430494243	/home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core/Core_autogen/mocs_compilation.cpp	a1c4d61fbccf7a2e
+605	629	1757666353977494221	Core/CMakeFiles/Core.dir/Core_autogen/mocs_compilation.cpp.o	343ea6a3e13a3bac
+32	58	1757666353405111553	NativeImage/libNativeImage.a	9c471881a2fc1c36
+860	982	1757666354232494211	Core/libCore.so	f6e306d01d12893e
+58	91	1757666353430494243	Core/Core_autogen/mocs_compilation.cpp	a1c4d61fbccf7a2e
+22	32	1757666353395627148	NativeImage/CMakeFiles/NativeImage.dir/NativeImage_autogen/mocs_compilation.cpp.o	3d2280f7877b44f8
+605	860	1757666353978698147	Core/CMakeFiles/Core.dir/raw_image.cxx.o	656d3dd01d7ee498
+3	22	1757666353375494245	/home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/NativeImage/NativeImage_autogen/timestamp	ff3c1454e00c0bf2
+58	91	1757666353430494243	/home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core/Core_autogen/timestamp	a1c4d61fbccf7a2e
+91	605	1757666353463494241	Core/CMakeFiles/Core.dir/cmake_pch.hxx.gch	9a8629272c18411d
+493	531	1757665333317534917	Core/libCore.a	fee4b38de8e95657
+58	91	1757666353430494243	Core/Core_autogen/timestamp	a1c4d61fbccf7a2e

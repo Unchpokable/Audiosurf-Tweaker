@@ -1,0 +1,11 @@
+#ifndef MASKS_H
+#define MASKS_H
+
+namespace core
+{
+extern std::vector<const char*> required_files;
+extern std::vector<const char*> optional_files;
+extern QRegularExpression preview_screenshots;
+}
+
+#endif // MASKS_H

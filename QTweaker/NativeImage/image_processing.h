@@ -25,7 +25,7 @@ typedef enum
 
 typedef enum
 {
-    Jpeg,
+    Jpeg = 0,
     Png,
     Unsupported,
 } NativeFormat;
@@ -34,6 +34,7 @@ typedef enum
 extern "C" {
 #endif
 
+TW_NATIVE_API Result image_info(const char* file_path, int32_t* width, int32_t* height, int32_t* channels);
 
 TW_NATIVE_API Result generic_decode(const char* file_path, unsigned char** data, int32_t* width, int32_t* height, int32_t* channels);
 

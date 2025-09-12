@@ -1,0 +1,310 @@
+{
+	"configurations" : 
+	[
+		{
+			"directories" : 
+			[
+				{
+					"build" : ".",
+					"childIndexes" : 
+					[
+						1,
+						2
+					],
+					"hasInstallRule" : true,
+					"jsonFile" : "directory-.-Debug-a5b049f6150cbe8f11c2.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"projectIndex" : 0,
+					"source" : ".",
+					"targetIndexes" : 
+					[
+						6,
+						7,
+						8,
+						9,
+						10,
+						11,
+						12,
+						13,
+						14,
+						15,
+						16,
+						17,
+						18,
+						19,
+						20,
+						21
+					]
+				},
+				{
+					"build" : "NativeImage",
+					"jsonFile" : "directory-NativeImage-Debug-060739556eb9d6dca6d6.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 1,
+					"source" : "NativeImage",
+					"targetIndexes" : 
+					[
+						3,
+						4,
+						5
+					]
+				},
+				{
+					"build" : "Core",
+					"jsonFile" : "directory-Core-Debug-611b2c2e495e6cca7ce5.json",
+					"minimumCMakeVersion" : 
+					{
+						"string" : "3.16"
+					},
+					"parentIndex" : 0,
+					"projectIndex" : 2,
+					"source" : "Core",
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"name" : "Debug",
+			"projects" : 
+			[
+				{
+					"childIndexes" : 
+					[
+						1,
+						2
+					],
+					"directoryIndexes" : 
+					[
+						0
+					],
+					"name" : "QTweaker",
+					"targetIndexes" : 
+					[
+						6,
+						7,
+						8,
+						9,
+						10,
+						11,
+						12,
+						13,
+						14,
+						15,
+						16,
+						17,
+						18,
+						19,
+						20,
+						21
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						1
+					],
+					"name" : "NativeImage",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						3,
+						4,
+						5
+					]
+				},
+				{
+					"directoryIndexes" : 
+					[
+						2
+					],
+					"name" : "Core",
+					"parentIndex" : 0,
+					"targetIndexes" : 
+					[
+						0,
+						1,
+						2
+					]
+				}
+			],
+			"targets" : 
+			[
+				{
+					"directoryIndex" : 2,
+					"id" : "Core::@94795ff35dabbbd3a8ca",
+					"jsonFile" : "target-Core-Debug-0e98909fad1a3c1aa262.json",
+					"name" : "Core",
+					"projectIndex" : 2
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "Core_autogen::@94795ff35dabbbd3a8ca",
+					"jsonFile" : "target-Core_autogen-Debug-44b217320bbd7d8eb00c.json",
+					"name" : "Core_autogen",
+					"projectIndex" : 2
+				},
+				{
+					"directoryIndex" : 2,
+					"id" : "Core_autogen_timestamp_deps::@94795ff35dabbbd3a8ca",
+					"jsonFile" : "target-Core_autogen_timestamp_deps-Debug-4a6763f94d47744cf175.json",
+					"name" : "Core_autogen_timestamp_deps",
+					"projectIndex" : 2
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "NativeImage::@a6e948643bce0246c8d7",
+					"jsonFile" : "target-NativeImage-Debug-2075943496149acd753c.json",
+					"name" : "NativeImage",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "NativeImage_autogen::@a6e948643bce0246c8d7",
+					"jsonFile" : "target-NativeImage_autogen-Debug-b2fef78f167d555e9aac.json",
+					"name" : "NativeImage_autogen",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 1,
+					"id" : "NativeImage_autogen_timestamp_deps::@a6e948643bce0246c8d7",
+					"jsonFile" : "target-NativeImage_autogen_timestamp_deps-Debug-524f93ca5472b11b457c.json",
+					"name" : "NativeImage_autogen_timestamp_deps",
+					"projectIndex" : 1
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "all_aotstats::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-all_aotstats-Debug-4cb04be4191b810b8cee.json",
+					"name" : "all_aotstats",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "all_qmllint::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-all_qmllint-Debug-a5f7453ac5eb4f478542.json",
+					"name" : "all_qmllint",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "all_qmllint_json::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-all_qmllint_json-Debug-56370d80d6e2668bbc99.json",
+					"name" : "all_qmllint_json",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "all_qmllint_module::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-all_qmllint_module-Debug-c99bf786db024ae0f279.json",
+					"name" : "all_qmllint_module",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "all_qmltyperegistrations::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-all_qmltyperegistrations-Debug-5f5770c059f886b604ac.json",
+					"name" : "all_qmltyperegistrations",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "appQTweaker::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-appQTweaker-Debug-255c1ef36413e6ec440c.json",
+					"name" : "appQTweaker",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "appQTweaker_autogen::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-appQTweaker_autogen-Debug-6a8d9eaccc0a59176109.json",
+					"name" : "appQTweaker_autogen",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "appQTweaker_autogen_timestamp_deps::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-appQTweaker_autogen_timestamp_deps-Debug-b345e661494729085d6d.json",
+					"name" : "appQTweaker_autogen_timestamp_deps",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "appQTweaker_copy_qml::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-appQTweaker_copy_qml-Debug-0e5906ef4579a838bd23.json",
+					"name" : "appQTweaker_copy_qml",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "appQTweaker_copy_res::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-appQTweaker_copy_res-Debug-7956a031b8bd40c7e1d9.json",
+					"name" : "appQTweaker_copy_res",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "appQTweaker_qmlimportscan::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-appQTweaker_qmlimportscan-Debug-274a7e9b732e4a8e0817.json",
+					"name" : "appQTweaker_qmlimportscan",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "appQTweaker_qmllint::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-appQTweaker_qmllint-Debug-4e98bd2840cfc1835acb.json",
+					"name" : "appQTweaker_qmllint",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "appQTweaker_qmllint_json::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-appQTweaker_qmllint_json-Debug-4e762b4a6e263926b93f.json",
+					"name" : "appQTweaker_qmllint_json",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "appQTweaker_qmllint_module::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-appQTweaker_qmllint_module-Debug-a6da35308313705fb0d8.json",
+					"name" : "appQTweaker_qmllint_module",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "appQTweaker_qmltyperegistration::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-appQTweaker_qmltyperegistration-Debug-a75f3b6b9465f48fd266.json",
+					"name" : "appQTweaker_qmltyperegistration",
+					"projectIndex" : 0
+				},
+				{
+					"directoryIndex" : 0,
+					"id" : "module_appQTweaker_aotstats_target::@6890427a1f51a3e7e1df",
+					"jsonFile" : "target-module_appQTweaker_aotstats_target-Debug-605ba71dd3227ddcf510.json",
+					"name" : "module_appQTweaker_aotstats_target",
+					"projectIndex" : 0
+				}
+			]
+		}
+	],
+	"kind" : "codemodel",
+	"paths" : 
+	{
+		"build" : "/home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug",
+		"source" : "/home/biba/projects/Audiosurf-Tweaker/QTweaker"
+	},
+	"version" : 
+	{
+		"major" : 2,
+		"minor" : 7
+	}
+}

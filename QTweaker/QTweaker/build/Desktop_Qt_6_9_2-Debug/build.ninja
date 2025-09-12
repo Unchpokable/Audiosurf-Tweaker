@@ -634,45 +634,64 @@ build NativeImage/CMakeFiles/NativeImage_autogen | ${cmake_ninja_workdir}NativeI
 # =============================================================================
 
 # =============================================================================
-# Object build statements for STATIC_LIBRARY target Core
+# Object build statements for SHARED_LIBRARY target Core
 
 
 #############################################
 # Order-only phony target for Core
 
-build cmake_object_order_depends_target_Core: phony || Core/Core_autogen Core/Core_autogen/mocs_compilation.cpp Core/Core_autogen/timestamp Core/Core_autogen_timestamp_deps
+build cmake_object_order_depends_target_Core: phony || Core/Core_autogen Core/Core_autogen/mocs_compilation.cpp Core/Core_autogen/timestamp Core/Core_autogen_timestamp_deps cmake_object_order_depends_target_NativeImage
 
-build Core/CMakeFiles/Core.dir/Core_autogen/mocs_compilation.cpp.o: CXX_COMPILER__Core_unscanned_Debug /home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core/Core_autogen/mocs_compilation.cpp || cmake_object_order_depends_target_Core
-  DEFINES = -DCORE_LIBRARY
+build Core/CMakeFiles/Core.dir/cmake_pch.hxx.gch: CXX_COMPILER__Core_unscanned_Debug /home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core/CMakeFiles/Core.dir/cmake_pch.hxx.cxx | Core/CMakeFiles/Core.dir/cmake_pch.hxx || cmake_object_order_depends_target_Core
+  DEFINES = -DCORE_LIBRARY -DCore_EXPORTS -DQT_CORE_LIB
+  DEP_FILE = Core/CMakeFiles/Core.dir/cmake_pch.hxx.gch.d
+  FLAGS = -DQT_QML_DEBUG -g -std=gnu++17 -fPIC -fdiagnostics-color=always -fPIC -Winvalid-pch -x c++-header -include /home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core/CMakeFiles/Core.dir/cmake_pch.hxx
+  INCLUDES = -I/home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core/Core_autogen/include -I/home/biba/projects/Audiosurf-Tweaker/QTweaker/Core/../NativeImage -isystem /home/biba/Qt/6.9.2/gcc_64/include/QtCore -isystem /home/biba/Qt/6.9.2/gcc_64/include -isystem /home/biba/Qt/6.9.2/gcc_64/mkspecs/linux-g++
+  OBJECT_DIR = Core/CMakeFiles/Core.dir
+  OBJECT_FILE_DIR = Core/CMakeFiles/Core.dir
+
+build Core/CMakeFiles/Core.dir/Core_autogen/mocs_compilation.cpp.o: CXX_COMPILER__Core_unscanned_Debug /home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core/Core_autogen/mocs_compilation.cpp | Core/CMakeFiles/Core.dir/cmake_pch.hxx Core/CMakeFiles/Core.dir/cmake_pch.hxx.gch || cmake_object_order_depends_target_Core
+  DEFINES = -DCORE_LIBRARY -DCore_EXPORTS -DQT_CORE_LIB
   DEP_FILE = Core/CMakeFiles/Core.dir/Core_autogen/mocs_compilation.cpp.o.d
-  FLAGS = -DQT_QML_DEBUG -g -std=gnu++20 -fdiagnostics-color=always
-  INCLUDES = -I/home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core/Core_autogen/include
+  FLAGS = -DQT_QML_DEBUG -g -std=gnu++17 -fPIC -fdiagnostics-color=always -fPIC -Winvalid-pch -include /home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core/CMakeFiles/Core.dir/cmake_pch.hxx
+  INCLUDES = -I/home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core/Core_autogen/include -I/home/biba/projects/Audiosurf-Tweaker/QTweaker/Core/../NativeImage -isystem /home/biba/Qt/6.9.2/gcc_64/include/QtCore -isystem /home/biba/Qt/6.9.2/gcc_64/include -isystem /home/biba/Qt/6.9.2/gcc_64/mkspecs/linux-g++
   OBJECT_DIR = Core/CMakeFiles/Core.dir
   OBJECT_FILE_DIR = Core/CMakeFiles/Core.dir/Core_autogen
 
-build Core/CMakeFiles/Core.dir/raw_image.cxx.o: CXX_COMPILER__Core_unscanned_Debug /home/biba/projects/Audiosurf-Tweaker/QTweaker/Core/raw_image.cxx || cmake_object_order_depends_target_Core
-  DEFINES = -DCORE_LIBRARY
+build Core/CMakeFiles/Core.dir/raw_image.cxx.o: CXX_COMPILER__Core_unscanned_Debug /home/biba/projects/Audiosurf-Tweaker/QTweaker/Core/raw_image.cxx | Core/CMakeFiles/Core.dir/cmake_pch.hxx Core/CMakeFiles/Core.dir/cmake_pch.hxx.gch || cmake_object_order_depends_target_Core
+  DEFINES = -DCORE_LIBRARY -DCore_EXPORTS -DQT_CORE_LIB
   DEP_FILE = Core/CMakeFiles/Core.dir/raw_image.cxx.o.d
-  FLAGS = -DQT_QML_DEBUG -g -std=gnu++20 -fdiagnostics-color=always
-  INCLUDES = -I/home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core/Core_autogen/include
+  FLAGS = -DQT_QML_DEBUG -g -std=gnu++17 -fPIC -fdiagnostics-color=always -fPIC -Winvalid-pch -include /home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core/CMakeFiles/Core.dir/cmake_pch.hxx
+  INCLUDES = -I/home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core/Core_autogen/include -I/home/biba/projects/Audiosurf-Tweaker/QTweaker/Core/../NativeImage -isystem /home/biba/Qt/6.9.2/gcc_64/include/QtCore -isystem /home/biba/Qt/6.9.2/gcc_64/include -isystem /home/biba/Qt/6.9.2/gcc_64/mkspecs/linux-g++
+  OBJECT_DIR = Core/CMakeFiles/Core.dir
+  OBJECT_FILE_DIR = Core/CMakeFiles/Core.dir
+
+build Core/CMakeFiles/Core.dir/masks.cxx.o: CXX_COMPILER__Core_unscanned_Debug /home/biba/projects/Audiosurf-Tweaker/QTweaker/Core/masks.cxx | Core/CMakeFiles/Core.dir/cmake_pch.hxx Core/CMakeFiles/Core.dir/cmake_pch.hxx.gch || cmake_object_order_depends_target_Core
+  DEFINES = -DCORE_LIBRARY -DCore_EXPORTS -DQT_CORE_LIB
+  DEP_FILE = Core/CMakeFiles/Core.dir/masks.cxx.o.d
+  FLAGS = -DQT_QML_DEBUG -g -std=gnu++17 -fPIC -fdiagnostics-color=always -fPIC -Winvalid-pch -include /home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core/CMakeFiles/Core.dir/cmake_pch.hxx
+  INCLUDES = -I/home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core/Core_autogen/include -I/home/biba/projects/Audiosurf-Tweaker/QTweaker/Core/../NativeImage -isystem /home/biba/Qt/6.9.2/gcc_64/include/QtCore -isystem /home/biba/Qt/6.9.2/gcc_64/include -isystem /home/biba/Qt/6.9.2/gcc_64/mkspecs/linux-g++
   OBJECT_DIR = Core/CMakeFiles/Core.dir
   OBJECT_FILE_DIR = Core/CMakeFiles/Core.dir
 
 
 # =============================================================================
-# Link build statements for STATIC_LIBRARY target Core
+# Link build statements for SHARED_LIBRARY target Core
 
 
 #############################################
-# Link the static library Core/libCore.a
+# Link the shared library Core/libCore.so
 
-build Core/libCore.a: CXX_STATIC_LIBRARY_LINKER__Core_Debug Core/CMakeFiles/Core.dir/Core_autogen/mocs_compilation.cpp.o Core/CMakeFiles/Core.dir/raw_image.cxx.o || Core/Core_autogen Core/Core_autogen_timestamp_deps
+build Core/libCore.so: CXX_SHARED_LIBRARY_LINKER__Core_Debug Core/CMakeFiles/Core.dir/Core_autogen/mocs_compilation.cpp.o Core/CMakeFiles/Core.dir/raw_image.cxx.o Core/CMakeFiles/Core.dir/masks.cxx.o | /home/biba/Qt/6.9.2/gcc_64/lib/libQt6Core.so.6.9.2 NativeImage/libNativeImage.a || Core/Core_autogen Core/Core_autogen_timestamp_deps NativeImage/libNativeImage.a
   LANGUAGE_COMPILE_FLAGS = -DQT_QML_DEBUG -g
+  LINK_LIBRARIES = -Wl,-rpath,/home/biba/Qt/6.9.2/gcc_64/lib  /home/biba/Qt/6.9.2/gcc_64/lib/libQt6Core.so.6.9.2  NativeImage/libNativeImage.a
   OBJECT_DIR = Core/CMakeFiles/Core.dir
   POST_BUILD = :
   PRE_LINK = :
-  TARGET_FILE = Core/libCore.a
-  TARGET_PDB = Core.a.dbg
+  SONAME = libCore.so
+  SONAME_FLAG = -Wl,-soname,
+  TARGET_FILE = Core/libCore.so
+  TARGET_PDB = Core.so.dbg
 
 
 #############################################
@@ -744,7 +763,7 @@ build Core/install/strip: phony Core/CMakeFiles/install/strip.util
 #############################################
 # Utility command for Core_autogen_timestamp_deps
 
-build Core/Core_autogen_timestamp_deps: phony
+build Core/Core_autogen_timestamp_deps: phony NativeImage/libNativeImage.a
 
 
 #############################################
@@ -756,7 +775,7 @@ build Core/Core_autogen: phony Core/CMakeFiles/Core_autogen Core/Core_autogen/ti
 #############################################
 # Custom command for Core/Core_autogen/timestamp
 
-build Core/Core_autogen/timestamp Core/Core_autogen/mocs_compilation.cpp | ${cmake_ninja_workdir}Core/Core_autogen/timestamp ${cmake_ninja_workdir}Core/Core_autogen/mocs_compilation.cpp: CUSTOM_COMMAND /home/biba/Qt/6.9.2/gcc_64/libexec/moc || Core/Core_autogen_timestamp_deps
+build Core/Core_autogen/timestamp Core/Core_autogen/mocs_compilation.cpp | ${cmake_ninja_workdir}Core/Core_autogen/timestamp ${cmake_ninja_workdir}Core/Core_autogen/mocs_compilation.cpp: CUSTOM_COMMAND /home/biba/Qt/6.9.2/gcc_64/libexec/moc || Core/Core_autogen_timestamp_deps NativeImage/NativeImage_autogen NativeImage/NativeImage_autogen_timestamp_deps NativeImage/libNativeImage.a
   COMMAND = cd /home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core && /home/biba/Qt/Tools/CMake/bin/cmake -E cmake_autogen /home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core/CMakeFiles/Core_autogen.dir/AutogenInfo.json Debug && /home/biba/Qt/Tools/CMake/bin/cmake -E touch /home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core/Core_autogen/timestamp && /home/biba/Qt/Tools/CMake/bin/cmake -E cmake_transform_depfile Ninja gccdepfile /home/biba/projects/Audiosurf-Tweaker/QTweaker /home/biba/projects/Audiosurf-Tweaker/QTweaker/Core /home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug /home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core /home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core/Core_autogen/deps /home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/CMakeFiles/d/d1a876b3a74917bdaac6cb48d8dcf5304e212b20198f1baa9095f9aa15a08b4b.d
   DESC = Automatic MOC and UIC for target Core
   depfile = CMakeFiles/d/d1a876b3a74917bdaac6cb48d8dcf5304e212b20198f1baa9095f9aa15a08b4b.d
@@ -767,12 +786,12 @@ build Core/Core_autogen/timestamp Core/Core_autogen/mocs_compilation.cpp | ${cma
 #############################################
 # Phony custom command for Core/CMakeFiles/Core_autogen
 
-build Core/CMakeFiles/Core_autogen | ${cmake_ninja_workdir}Core/CMakeFiles/Core_autogen: phony Core/Core_autogen/timestamp || Core/Core_autogen_timestamp_deps
+build Core/CMakeFiles/Core_autogen | ${cmake_ninja_workdir}Core/CMakeFiles/Core_autogen: phony Core/Core_autogen/timestamp || Core/Core_autogen_timestamp_deps NativeImage/NativeImage_autogen NativeImage/NativeImage_autogen_timestamp_deps NativeImage/libNativeImage.a
 
 # =============================================================================
 # Target aliases.
 
-build Core: phony Core/libCore.a
+build Core: phony Core/libCore.so
 
 build Core_autogen: phony Core/Core_autogen
 
@@ -784,7 +803,7 @@ build NativeImage_autogen: phony NativeImage/NativeImage_autogen
 
 build NativeImage_autogen_timestamp_deps: phony NativeImage/NativeImage_autogen_timestamp_deps
 
-build libCore.a: phony Core/libCore.a
+build libCore.so: phony Core/libCore.so
 
 build libNativeImage.a: phony NativeImage/libNativeImage.a
 
@@ -803,7 +822,7 @@ build all: phony appQTweaker NativeImage/all Core/all
 #############################################
 # Folder: /home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/Core
 
-build Core/all: phony Core/libCore.a
+build Core/all: phony Core/libCore.so
 
 # =============================================================================
 
