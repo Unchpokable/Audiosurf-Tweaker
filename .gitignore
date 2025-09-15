@@ -357,3 +357,8 @@ InternalOverlayRenderer/imgui/
 /InternalOverlayRenderer/imgui/imstb_truetype.h
 /InternalOverlayRenderer/detours.h
 /InternalOverlayRenderer/detours.lib
+
+# Qt Creator build directories
+QTweaker/QTweaker/
+QTweaker/QTweaker/build
+QTweaker/build/

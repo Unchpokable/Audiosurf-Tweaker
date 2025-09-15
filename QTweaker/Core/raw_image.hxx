@@ -19,11 +19,13 @@ public:
 public:
     static std::optional<RawImage> from_file(std::string_view path, CompressionLevel compression = ZLib_Default);
 
-    void stream_insert(const QDataStream& stream);
-    void stream_exctract(const QDataStream& stream);
+    void stream_insert(QDataStream& stream);
+    void stream_exctract(QDataStream& stream);
+
+    bool write(std::string_view path, ImageFormat format);
 
 private:
-    RawImage(QByteArray data, ImageFormat format, std::int32_t width, std::int32_t height, std::int32_t channels_count);
+    RawImage(QByteArray data, ImageFormat format, QString name, std::int32_t width, std::int32_t height, std::int32_t channels_count);
 
 private:
     ImageFormat m_format;
@@ -31,7 +33,10 @@ private:
     std::int32_t m_height;
     std::int32_t m_channels_count;
 
+    QString m_name;
+
     QByteArray m_data;
+    QHash<QString, QString> m_meta_info;
 };
 }
 

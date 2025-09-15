@@ -1,8 +1,0 @@
-NativeImage_autogen/timestamp: \
-	/home/biba/projects/Audiosurf-Tweaker/QTweaker/NativeImage/CMakeLists.txt \
-	/home/biba/projects/Audiosurf-Tweaker/QTweaker/NativeImage/image_processing.c \
-	/home/biba/projects/Audiosurf-Tweaker/QTweaker/NativeImage/image_processing.h \
-	/home/biba/projects/Audiosurf-Tweaker/QTweaker/NativeImage/stb_image.h \
-	/home/biba/projects/Audiosurf-Tweaker/QTweaker/NativeImage/stb_image_write.h \
-	/home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/.qtc/package-manager/auto-setup.cmake \
-	/home/biba/Qt/Tools/CMake/bin/cmake

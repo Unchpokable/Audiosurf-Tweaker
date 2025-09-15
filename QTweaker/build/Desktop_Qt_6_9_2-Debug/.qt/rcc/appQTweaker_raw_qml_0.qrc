@@ -1,6 +1,0 @@
-<RCC>
-  <qresource prefix="/qt/qml/QTweaker/">
-    <file alias="Main.qml">/home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/Main.qml</file>
-  </qresource>
-</RCC>
-

@@ -1,7 +1,0 @@
-<RCC>
-  <qresource prefix="/qt/qml/QTweaker/">
-    <file alias="Main.qml">/home/biba/projects/Audiosurf-Tweaker/QTweaker/Main.qml</file>
-    <file alias="QML/SkinChanger.qml">/home/biba/projects/Audiosurf-Tweaker/QTweaker/QML/SkinChanger.qml</file>
-  </qresource>
-</RCC>
-

@@ -3,7 +3,7 @@
 
 namespace core
 {
-enum ImageFormat
+enum ImageFormat : std::int32_t
 {
     Jpeg = 0,
     Png,

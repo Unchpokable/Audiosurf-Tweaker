@@ -4,12 +4,13 @@
 
 #include "image_processing.h"
 
-
 std::optional<core::RawImage> core::RawImage::from_file(std::string_view path, CompressionLevel compression)
 {
     if(!std::filesystem::exists(path)) {
         return std::nullopt;
     }
+
+    auto name = std::filesystem::path(path).filename();
 
     auto format = get_image_format_native(path.data());
 
@@ -26,30 +27,80 @@ std::optional<core::RawImage> core::RawImage::from_file(std::string_view path, C
         return std::nullopt;
     }
 
-    auto data = new unsigned char[width * height * channels];
+    unsigned char* data;
 
     result = generic_decode(path.data(), &data, &width, &height, &channels);
 
     if(result != Success) {
-        delete[] data;
+        free_image(data);
         return std::nullopt;
     }
 
     auto compressed = qCompress(QByteArray(reinterpret_cast<char*>(data), width * height * channels), static_cast<int>(compression));
 
-    delete[] data;
-    return RawImage(compressed, my_format, width, height, channels);
+    free_image(data);
+    return RawImage(compressed, my_format, QString::fromStdString(name), width, height, channels);
 }
 
-void core::RawImage::stream_insert(const QDataStream &stream)
+void core::RawImage::stream_insert(QDataStream &stream)
 {
+    stream << static_cast<std::int32_t>(m_format);
+    stream << m_width;
+    stream << m_height;
+    stream << m_channels_count;
 
+    stream << m_name;
+
+    stream << m_data;
+    stream << m_meta_info;
 }
 
-void core::RawImage::stream_exctract(const QDataStream &stream)
+void core::RawImage::stream_exctract(QDataStream &stream)
 {
+    std::int32_t raw_format {};
+    stream >> raw_format;
+    m_format = static_cast<ImageFormat>(raw_format);
 
+    stream >> m_width;
+    stream >> m_height;
+    stream >> m_channels_count;
+
+    stream >> m_name;
+
+    stream >> m_data;
+    stream >> m_meta_info;
 }
 
-core::RawImage::RawImage(QByteArray data, ImageFormat format, int32_t width, int32_t height, int32_t channels_count)
-    : m_data(std::move(data)), m_format(format), m_width(width), m_height(height), m_channels_count(channels_count) {  }
+bool core::RawImage::write(std::string_view path, ImageFormat format)
+{
+    if(!std::filesystem::exists(path)) {
+        std::error_code errc;
+        if(!std::filesystem::create_directories(path, errc)){
+            return false;
+        }
+    }
+
+    std::filesystem::path file(std::string(path) + m_name.toStdString());
+
+    auto decompressed = qUncompress(m_data);
+
+    Result result;
+
+    switch(format) {
+        case Jpeg:
+            result = encode_jpeg(file.c_str(), reinterpret_cast<unsigned char*>(decompressed.data()), m_width, m_height, m_channels_count, 90);
+            break;
+
+        case Png:
+            result = encode_png(file.c_str(), reinterpret_cast<unsigned char*>(decompressed.data()), m_width, m_height, m_channels_count);
+            break;
+
+        case Unsupported:
+            return false;
+    }
+
+    return result == Success;
+}
+
+core::RawImage::RawImage(QByteArray data, ImageFormat format, QString name, int32_t width, int32_t height, int32_t channels_count)
+    : m_data(std::move(data)), m_format(format), m_name(std::move(name)), m_width(width), m_height(height), m_channels_count(channels_count) {  }

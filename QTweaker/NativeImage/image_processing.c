@@ -49,9 +49,7 @@ TW_NATIVE_API Result generic_decode(const char* file_path, unsigned char** data,
         return stbi_convert_error();
     }
 
-    memcpy(*data, img, (size_t)(*width) * (*height));
-
-    free(img);
+    *data = img;
 
     return Success;
 }

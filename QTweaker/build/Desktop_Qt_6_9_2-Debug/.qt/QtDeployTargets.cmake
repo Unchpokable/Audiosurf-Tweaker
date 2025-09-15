@@ -1,2 +1,0 @@
-set(__QT_DEPLOY_TARGET_appQTweaker_FILE /home/biba/projects/Audiosurf-Tweaker/QTweaker/QTweaker/build/Desktop_Qt_6_9_2-Debug/appQTweaker)
-set(__QT_DEPLOY_TARGET_appQTweaker_TYPE EXECUTABLE)
