@@ -7,6 +7,8 @@ namespace core
 {
 struct PackData
 {
+    std::string name;
+
     std::vector<RawImage> required_parts;
     std::vector<RawImage> optional_parts;
     std::vector<RawImage> previews;

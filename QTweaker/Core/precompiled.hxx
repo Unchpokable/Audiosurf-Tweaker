@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <string_view>
 #include <filesystem>
+#include <fstream>
+#include <ostream>
 
 #include <QDataStream>
 #include <QString>

@@ -10,6 +10,7 @@ namespace
 {
 static constexpr char required_header[] = "TWEAKER_SKIN0000";
 static constexpr std::uint16_t version[3] = { 1, 0, 0 };
+static constexpr char file_extension[] = "tpack";
 }
 
 std::optional<core::PackData> core::read_package(std::string_view path)
@@ -26,6 +27,10 @@ bool core::write_package(const PackData &data, std::string_view output_path)
     QByteArray block;
 
     QDataStream stream(&block, QIODevice::OpenModeFlag::WriteOnly);
+
+    QByteArray package_name(data.name.c_str(), data.name.size());
+
+    stream << package_name;
 
     std::size_t required_parts_count = data.required_parts.size();
 
@@ -84,5 +89,18 @@ bool core::write_package(const PackData &data, std::string_view output_path)
         stream << 0; // no previews presented;
     }
 
-    return stream.status() == QDataStream::Ok;
+    if(stream.status() == QDataStream::Ok) {
+        std::ofstream write_stream;
+
+        auto file = std::filesystem::path(data.name);
+        file.replace_extension(file_extension);
+
+        auto full_path = std::filesystem::path(output_path) / file;
+
+        write_stream.open(full_path.string(), std::ios::binary | std::ios::out | std::ios::trunc);
+
+        write_stream.write(block.data(), block.size());
+    }
+
+    return false;
 }
