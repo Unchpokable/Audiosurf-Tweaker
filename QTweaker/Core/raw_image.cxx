@@ -4,7 +4,7 @@
 
 #include "image_processing.h"
 
-std::optional<core::RawImage> core::RawImage::from_file(std::string_view path, CompressionLevel compression)
+std::optional<core::RawImage> core::RawImage::read(std::string_view path, CompressionLevel compression)
 {
     if(!std::filesystem::exists(path)) {
         return std::nullopt;
@@ -42,7 +42,20 @@ std::optional<core::RawImage> core::RawImage::from_file(std::string_view path, C
     return RawImage(compressed, my_format, QString::fromStdString(name), width, height, channels);
 }
 
-void core::RawImage::stream_insert(QDataStream &stream)
+core::RawImage::RawImage()
+{ }
+
+core::RawImage::RawImage(const RawImage &other)
+    : m_data(other.m_data), m_format(other.m_format), m_name(other.m_name), m_width(other.m_width), m_height(other.m_height),
+      m_channels_count(other.m_channels_count), m_meta_info(other.m_meta_info)
+{ }
+
+core::RawImage::RawImage(RawImage &&other)
+    : m_data(std::move(other.m_data)), m_format(other.m_format), m_name(std::move(other.m_name)), m_width(other.m_width),
+      m_height(other.m_height), m_channels_count(other.m_channels_count), m_meta_info(std::move(other.m_meta_info))
+{ }
+
+void core::RawImage::stream_insert(QDataStream &stream) const
 {
     stream << static_cast<std::int32_t>(m_format);
     stream << m_width;

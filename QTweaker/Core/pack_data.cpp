@@ -1,5 +1,8 @@
-#include "pack_data.h"
+#include "precompiled.hxx"
 
-PackData::PackData(QObject* parent) : QObject { parent }
+#include "pack_data.hxx"
+
+PackData::PackData() : QObject(nullptr)
 {
+
 }

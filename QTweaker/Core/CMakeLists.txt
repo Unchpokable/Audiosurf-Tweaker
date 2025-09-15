@@ -16,12 +16,12 @@ find_package(Qt6 REQUIRED COMPONENTS Core)
 
 add_library(Core SHARED
   Core_global.h
-  raw_image.hxx raw_image.cxx image_formats.hxx
+  raw_image.hxx raw_image.cxx
   precompiled.hxx
   masks.hxx
   masks.cxx
-  packager.h packager.cpp
-  pack_data.h pack_data.cpp
+  packager.hxx packager.cpp
+  pack_data.hxx pack_data.cpp
 
 
 

@@ -1,8 +1,6 @@
 #ifndef RAW_IMAGE_HXX
 #define RAW_IMAGE_HXX
 
-#include "image_formats.hxx"
-
 #include "Core_global.h"
 
 namespace core
@@ -16,10 +14,21 @@ public:
         Highest = 9
     };
 
-public:
-    static std::optional<RawImage> from_file(std::string_view path, CompressionLevel compression = ZLib_Default);
+    enum ImageFormat : std::int32_t
+    {
+        Jpeg = 0,
+        Png,
+        Unsupported
+    };
 
-    void stream_insert(QDataStream& stream);
+public:
+    explicit RawImage();
+    RawImage(const RawImage& other);
+    RawImage(RawImage&& other);
+
+    static std::optional<RawImage> read(std::string_view path, CompressionLevel compression = ZLib_Default);
+
+    void stream_insert(QDataStream& stream) const;
     void stream_exctract(QDataStream& stream);
 
     bool write(std::string_view path, ImageFormat format);
