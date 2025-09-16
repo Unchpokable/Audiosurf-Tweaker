@@ -7,6 +7,9 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Quick)
 
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOMOC ON)
+
 qt_standard_project_setup(REQUIRES 6.8)
 
 qt_add_executable(appQTweaker
@@ -22,6 +25,10 @@ qt_add_qml_module(appQTweaker
     QML_FILES Main.qml
     QML_FILES QML/SkinChanger.qml
     SOURCES
+    QML_FILES QML/TopBarButton.qml
+    QML_FILES QML/SideMenuRadioButton.qml
+
+    RESOURCES appresources.qrc
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
