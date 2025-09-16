@@ -23,7 +23,7 @@ qt_add_qml_module(appQTweaker
 
     QML_FILES
     QML_FILES Main.qml
-    QML_FILES QML/SkinChanger.qml
+    QML_FILES
     SOURCES
     QML_FILES QML/TopBarButton.qml
     QML_FILES QML/SideMenuRadioButton.qml

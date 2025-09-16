@@ -9,28 +9,84 @@
 namespace
 {
 static constexpr char required_header[] = "TWEAKER_SKIN0000";
-static constexpr std::uint16_t version[3] = { 1, 0, 0 };
+static constexpr std::uint16_t serializer_version_major = 1;
+static constexpr std::uint16_t serializer_version_minor = 0;
+static constexpr std::uint16_t serializer_version_patch = 0;
 static constexpr char file_extension[] = "tpack";
 }
 
-std::optional<core::PackData> core::read_package(std::string_view path)
+std::optional<core::PackData> core::read_package(std::string_view path, QList<Error>& errors)
 {
     if(!std::filesystem::exists(path)) {
         return std::nullopt;
     }
 
     PackData data;
+
+    QFile file(path.data());
+
+    file.open(QIODevice::OpenModeFlag::ReadOnly);
+
+    if(file.size() < sizeof(required_header) + sizeof(std::uint16_t) * 3) {
+        return std::nullopt;
+    }
+
+    QDataStream stream(&file);
+
+    char header[sizeof(required_header)];
+
+    stream.readRawData(header, sizeof(header));
+
+    if(std::strcmp(header, required_header) != 0) {
+        errors << make_error(core::Severe, "Incompatible file!", "Unable to recognize header. File incompatible or corrupted");
+        return std::nullopt;
+    }
+
+    std::uint16_t maj_ver, min_ver, patch_ver;
+
+    stream >> maj_ver;
+    stream >> min_ver;
+    stream >> patch_ver;
+
+    if(maj_ver != serializer_version_major) {
+        errors << make_error(core::Severe, "Incompatible file!", "Major serializer versions are different. File format not supported by current serializer version");
+        return std::nullopt;
+    }
+
+    if(min_ver != serializer_version_minor) {
+        errors << make_error(core::Minor, "Potantially incompatible!", "Different minor version. File may be saved in older or newer program version!");
+    }
+
+    if(patch_ver != serializer_version_patch) {
+        errors << make_error(core::Minor, "Potantially incompatible!", "Different patch version. File may be saved in older or newer program version!");
+    }
+
+    QByteArray package_name;
+
+    stream >> data.name;
+
+    std::size_t required_parts_count {};
+
+    stream.readRawData(reinterpret_cast<char*>(&required_parts_count), sizeof(std::size_t));
+
+    QByteArray required_block;
+
+    stream >> required_block;
 }
 
 bool core::write_package(const PackData &data, std::string_view output_path)
 {
-    QByteArray block;
+    QByteArray content;
 
-    QDataStream stream(&block, QIODevice::OpenModeFlag::WriteOnly);
+    QDataStream stream(&content, QIODevice::OpenModeFlag::WriteOnly);
 
-    QByteArray package_name(data.name.c_str(), data.name.size());
+    stream.writeRawData(required_header, sizeof(required_header));
 
-    stream << package_name;
+    stream << serializer_version_major;
+    stream << serializer_version_minor;
+    stream << serializer_version_patch;
+
+    stream << data.name;
 
     std::size_t required_parts_count = data.required_parts.size();
 
@@ -90,16 +146,22 @@ bool core::write_package(const PackData &data, std::string_view output_path)
     }
 
     if(stream.status() == QDataStream::Ok) {
-        std::ofstream write_stream;
-
-        auto file = std::filesystem::path(data.name);
+        auto file = std::filesystem::path(data.name.toStdString());
         file.replace_extension(file_extension);
 
         auto full_path = std::filesystem::path(output_path) / file;
 
-        write_stream.open(full_path.string(), std::ios::binary | std::ios::out | std::ios::trunc);
+        QFile output(full_path.c_str());
 
-        write_stream.write(block.data(), block.size());
+        output.open(QIODevice::OpenModeFlag::WriteOnly | QIODevice::OpenModeFlag::Truncate);
+
+        QDataStream output_stream(&output);
+
+        output_stream << content;
+
+        output.close();
+
+        return true;
     }
 
     return false;

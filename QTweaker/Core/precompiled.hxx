@@ -7,6 +7,9 @@
 #include <filesystem>
 #include <fstream>
 #include <ostream>
+#include <stdexcept>
+#include <exception>
+#include <memory>
 
 #include <QDataStream>
 #include <QString>

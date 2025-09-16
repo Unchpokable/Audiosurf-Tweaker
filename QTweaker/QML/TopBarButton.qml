@@ -19,61 +19,38 @@ Rectangle {
     Rectangle {
         id: gradientBackground
         anchors.fill: parent
-        visible: hovered
 
         gradient: Gradient {
             GradientStop {
                 position: 0.0
-                color: pressed ? "#26008ba0" : "#4c00eded"
+                color: pressed ? "#5022ba" : "#8b5cf6"
             }
             GradientStop {
                 position: 1.0
-                color: pressed ? "#7a2c7a" : "#9932cc"
+                color: pressed ? "#4c00bdbd" : "#4c00eded"
             }
         }
 
         opacity: 0
-
-        Behavior on opacity {
-            NumberAnimation {
-                duration: 200
-                easing.type: Easing.OutCubic
-            }
-        }
     }
 
     Text {
         id: textLabel
         anchors.centerIn: parent
         text: buttonText
-        color: hovered ? "#ffffff" : "#555555"
+        color: "#555555"
         font.pixelSize: Math.max(12, buttonSize * 0.15)
-
-        Behavior on color {
-            ColorAnimation {
-                duration: 150
-                easing.type: pressed ? Easing.InOutQuad : Easing.OutCubic
-            }
-        }
     }
 
     Rectangle {
         id: marker
         width: parent.width * 0.6
         height: 2
-        color: "#9932cc"
+        color: "#8b5cf6"
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 4
-
-        opacity: hovered ? 0 : 1
-
-        Behavior on opacity {
-            NumberAnimation {
-                duration: 200
-                easing.type: Easing.OutCubic
-            }
-        }
+        opacity: 1
     }
 
     MouseArea {
@@ -88,51 +65,149 @@ Rectangle {
         State {
             name: "idle"
             when: !hovered && !pressed
-            PropertyChanges { target: gradientBackground; opacity: 0 }
+            PropertyChanges {
+                target: gradientBackground
+                opacity: 0
+            }
+            PropertyChanges {
+                target: textLabel
+                color: "#555555"
+            }
+            PropertyChanges {
+                target: marker
+                opacity: 1
+            }
         },
         State {
             name: "hovered"
             when: hovered && !pressed
-            PropertyChanges { target: gradientBackground; opacity: 1 }
+            PropertyChanges {
+                target: gradientBackground
+                opacity: 1
+            }
+            PropertyChanges {
+                target: textLabel
+                color: "#ffffff"
+            }
+            PropertyChanges {
+                target: marker
+                opacity: 0
+            }
         },
         State {
             name: "pressed"
             when: pressed
-            PropertyChanges { target: gradientBackground; opacity: 1 }
+            PropertyChanges {
+                target: gradientBackground
+                opacity: 1
+            }
+            PropertyChanges {
+                target: textLabel
+                color: "#ffffff"
+            }
+            PropertyChanges {
+                target: marker
+                opacity: 0
+            }
         }
     ]
 
     transitions: [
         Transition {
-            from: "idle"; to: "hovered"
-            NumberAnimation {
-                properties: "opacity"
-                duration: 200
-                easing.type: Easing.OutCubic
+            from: "idle"
+            to: "hovered"
+            ParallelAnimation {
+                NumberAnimation {
+                    target: gradientBackground
+                    properties: "opacity"
+                    duration: 250
+                    easing.type: Easing.OutCubic
+                }
+                ColorAnimation {
+                    target: textLabel
+                    properties: "color"
+                    duration: 250
+                    easing.type: Easing.OutCubic
+                }
+                NumberAnimation {
+                    target: marker
+                    properties: "opacity"
+                    duration: 250
+                    easing.type: Easing.OutCubic
+                }
             }
         },
+
         Transition {
-            from: "hovered"; to: "idle"
-            NumberAnimation {
-                properties: "opacity"
-                duration: 200
-                easing.type: Easing.OutCubic
+            from: "hovered"
+            to: "idle"
+            ParallelAnimation {
+                NumberAnimation {
+                    target: gradientBackground
+                    properties: "opacity"
+                    duration: 250
+                    easing.type: Easing.OutCubic
+                }
+                ColorAnimation {
+                    target: textLabel
+                    properties: "color"
+                    duration: 250
+                    easing.type: Easing.OutCubic
+                }
+                NumberAnimation {
+                    target: marker
+                    properties: "opacity"
+                    duration: 250
+                    easing.type: Easing.OutCubic
+                }
             }
         },
+
         Transition {
             to: "pressed"
-            NumberAnimation {
-                properties: "opacity"
-                duration: 130
-                easing.type: Easing.InOutQuad
+            ParallelAnimation {
+                NumberAnimation {
+                    target: gradientBackground
+                    properties: "opacity"
+                    duration: 180
+                    easing.type: Easing.InOutQuad
+                }
+                ColorAnimation {
+                    target: textLabel
+                    properties: "color"
+                    duration: 180
+                    easing.type: Easing.InOutQuad
+                }
+                NumberAnimation {
+                    target: marker
+                    properties: "opacity"
+                    duration: 180
+                    easing.type: Easing.InOutQuad
+                }
             }
         },
+
         Transition {
             from: "pressed"
-            NumberAnimation {
-                properties: "opacity"
-                duration: 130
-                easing.type: Easing.InOutQuad
+            ParallelAnimation {
+                NumberAnimation {
+                    target: gradientBackground
+                    properties: "opacity"
+                    duration: 180
+                    easing.type: Easing.InOutQuad
+                }
+                ColorAnimation {
+                    target: textLabel
+                    properties: "color"
+                    duration: 180
+                    easing.type: Easing.InOutQuad
+                }
+                NumberAnimation {
+                    target: marker
+                    properties: "opacity"
+                    duration: 180
+                    easing.type: Easing.InOutQuad
+                }
             }
         }
     ]

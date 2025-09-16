@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls;
+import QtQuick.Layouts;
 
 import "QML"
 
@@ -86,24 +87,37 @@ Window {
 
         ButtonGroup {
             id: navMenu
+
+            onCheckedButtonChanged: {
+                if (checkedButton === nav_SkinChanger) {
+                    contentLayout.currentIndex = 0
+                } else if (checkedButton === nav_Colors) {
+                    contentLayout.currentIndex = 1
+                } else if (checkedButton === nav_Tweaker) {
+                    contentLayout.currentIndex = 2
+                }
+            }
         }
 
         Column {
             anchors.fill: parent
+            anchors.topMargin: 20;
 
             SideMenuRadioButton {
                 id: nav_SkinChanger;
                 text: "Skin Changer";
                 font.bold: true;
-                font.pixelSize: 14;
+                font.pointSize: 14;
                 ButtonGroup.group: navMenu
+
+                checked: true;
             }
 
             SideMenuRadioButton {
                 id: nav_Colors;
                 text: "Colors";
                 font.bold: true;
-                font.pixelSize: 14;
+                font.pointSize: 14;
                 ButtonGroup.group: navMenu
             }
 
@@ -111,9 +125,13 @@ Window {
                 id: nav_Tweaker;
                 text: "Tweaks";
                 font.bold: true;
-                font.pixelSize: 14;
+                font.pointSize: 14;
                 ButtonGroup.group: navMenu
             }
         }
+    }
+
+    StackLayout {
+        id: contentLayout;
     }
 }

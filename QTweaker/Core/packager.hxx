@@ -1,6 +1,8 @@
 #ifndef PACKAGER_H
 #define PACKAGER_H
 
+#include "error.h"
+
 namespace core
 {
 struct PackData;
@@ -8,7 +10,7 @@ struct PackData;
 
 namespace core
 {
-std::optional<core::PackData> read_package(std::string_view path);
+std::optional<core::PackData> read_package(std::string_view path, QList<Error>& errors);
 }
 
 namespace core

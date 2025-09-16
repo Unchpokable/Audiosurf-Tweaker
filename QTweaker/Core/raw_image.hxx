@@ -8,7 +8,7 @@ namespace core
 class CORE_EXPORT RawImage
 {
 public:
-    enum CompressionLevel : int {
+    enum CompressionLevel : std::int32_t {
         Raw = 0,
         ZLib_Default = 6,
         Highest = 9
