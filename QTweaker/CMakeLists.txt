@@ -13,7 +13,7 @@ set(CMAKE_AUTOMOC ON)
 qt_standard_project_setup(REQUIRES 6.8)
 
 qt_add_executable(appQTweaker
-    main.cpp
+    main.cxx
 )
 
 qt_add_qml_module(appQTweaker
@@ -29,6 +29,8 @@ qt_add_qml_module(appQTweaker
     QML_FILES QML/SideMenuRadioButton.qml
 
     RESOURCES appresources.qrc
+    SOURCES skin_item.hxx skin_item.cxx
+    SOURCES precompiled.hxx
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
@@ -41,6 +43,8 @@ set_target_properties(appQTweaker PROPERTIES
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
 )
+
+target_precompile_headers(appQTweaker PRIVATE precompiled.hxx)
 
 target_link_libraries(appQTweaker
     PRIVATE Qt6::Quick

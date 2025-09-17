@@ -20,9 +20,9 @@ add_library(Core SHARED
   precompiled.hxx
   masks.hxx
   masks.cxx
-  packager.hxx packager.cpp
-  pack_data.hxx pack_data.cpp
-  error.h error.cpp
+  packager.hxx packager.cxx
+  pack_data.hxx pack_data.cxx
+  error.hxx error.cxx
 
 
 

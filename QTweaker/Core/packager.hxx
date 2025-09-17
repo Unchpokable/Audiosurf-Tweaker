@@ -1,7 +1,7 @@
 #ifndef PACKAGER_H
 #define PACKAGER_H
 
-#include "error.h"
+#include "error.hxx"
 
 namespace core
 {

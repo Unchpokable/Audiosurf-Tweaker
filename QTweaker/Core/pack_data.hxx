@@ -9,6 +9,7 @@ namespace core
 struct PackData
 {
     QString name;
+    QString author;
 
     std::vector<RawImage> required_parts;
     std::vector<RawImage> optional_parts;

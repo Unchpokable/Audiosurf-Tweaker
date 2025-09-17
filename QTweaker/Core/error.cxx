@@ -1,6 +1,6 @@
 #include "precompiled.hxx"
 
-#include "error.h"
+#include "error.hxx"
 
 core::Error make_error(
     core::Rank rank, const QString& what, const QString& details)
