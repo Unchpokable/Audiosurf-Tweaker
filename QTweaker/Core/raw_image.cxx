@@ -4,7 +4,8 @@
 
 #include "image_processing.h"
 
-std::optional<core::RawImage> core::RawImage::read(std::string_view path, CompressionLevel compression)
+std::optional<core::RawImage> core::RawImage::read(
+    std::string_view path, CompressionLevel compression)
 {
     if(!std::filesystem::exists(path)) {
         return std::nullopt;
@@ -43,19 +44,35 @@ std::optional<core::RawImage> core::RawImage::read(std::string_view path, Compre
 }
 
 core::RawImage::RawImage()
-{ }
+{
+}
 
-core::RawImage::RawImage(const RawImage &other)
-    : m_data(other.m_data), m_format(other.m_format), m_name(other.m_name), m_width(other.m_width), m_height(other.m_height),
-      m_channels_count(other.m_channels_count), m_meta_info(other.m_meta_info)
-{ }
+core::RawImage::RawImage(
+    const RawImage& other)
+    : m_data(other.m_data),
+      m_format(other.m_format),
+      m_name(other.m_name),
+      m_width(other.m_width),
+      m_height(other.m_height),
+      m_channels_count(other.m_channels_count),
+      m_meta_info(other.m_meta_info)
+{
+}
 
-core::RawImage::RawImage(RawImage &&other)
-    : m_data(std::move(other.m_data)), m_format(other.m_format), m_name(std::move(other.m_name)), m_width(other.m_width),
-      m_height(other.m_height), m_channels_count(other.m_channels_count), m_meta_info(std::move(other.m_meta_info))
-{ }
+core::RawImage::RawImage(
+    RawImage&& other)
+    : m_data(std::move(other.m_data)),
+      m_format(other.m_format),
+      m_name(std::move(other.m_name)),
+      m_width(other.m_width),
+      m_height(other.m_height),
+      m_channels_count(other.m_channels_count),
+      m_meta_info(std::move(other.m_meta_info))
+{
+}
 
-void core::RawImage::stream_insert(QDataStream &stream) const
+void core::RawImage::stream_insert(
+    QDataStream& stream) const
 {
     stream << static_cast<std::int32_t>(m_format);
     stream << m_width;
@@ -68,7 +85,8 @@ void core::RawImage::stream_insert(QDataStream &stream) const
     stream << m_meta_info;
 }
 
-void core::RawImage::stream_exctract(QDataStream &stream)
+void core::RawImage::stream_exctract(
+    QDataStream& stream)
 {
     std::int32_t raw_format {};
     stream >> raw_format;
@@ -84,11 +102,12 @@ void core::RawImage::stream_exctract(QDataStream &stream)
     stream >> m_meta_info;
 }
 
-bool core::RawImage::write(std::string_view path, ImageFormat format)
+bool core::RawImage::write(
+    std::string_view path, ImageFormat format)
 {
     if(!std::filesystem::exists(path)) {
         std::error_code errc;
-        if(!std::filesystem::create_directories(path, errc)){
+        if(!std::filesystem::create_directories(path, errc)) {
             return false;
         }
     }
@@ -101,7 +120,8 @@ bool core::RawImage::write(std::string_view path, ImageFormat format)
 
     switch(format) {
         case Jpeg:
-            result = encode_jpeg(file.c_str(), reinterpret_cast<unsigned char*>(decompressed.data()), m_width, m_height, m_channels_count, 90);
+            result = encode_jpeg(
+                file.c_str(), reinterpret_cast<unsigned char*>(decompressed.data()), m_width, m_height, m_channels_count, 90);
             break;
 
         case Png:
@@ -115,5 +135,13 @@ bool core::RawImage::write(std::string_view path, ImageFormat format)
     return result == Success;
 }
 
-core::RawImage::RawImage(QByteArray data, ImageFormat format, QString name, int32_t width, int32_t height, int32_t channels_count)
-    : m_data(std::move(data)), m_format(format), m_name(std::move(name)), m_width(width), m_height(height), m_channels_count(channels_count) {  }
+core::RawImage::RawImage(
+    QByteArray data, ImageFormat format, QString name, int32_t width, int32_t height, int32_t channels_count)
+    : m_data(std::move(data)),
+      m_format(format),
+      m_name(std::move(name)),
+      m_width(width),
+      m_height(height),
+      m_channels_count(channels_count)
+{
+}

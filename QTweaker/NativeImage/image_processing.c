@@ -32,7 +32,7 @@ static Result stbi_convert_error(void)
     return UnknownError;
 }
 
-Result image_info(const char *file_path, int32_t *width, int32_t *height, int32_t *channels)
+Result image_info(const char* file_path, int32_t* width, int32_t* height, int32_t* channels)
 {
     if(stbi_info(file_path, width, height, channels)) {
         return UnknownError;
