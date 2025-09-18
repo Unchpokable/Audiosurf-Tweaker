@@ -28,6 +28,11 @@ public:
     RawImage(const RawImage& other);
     RawImage(RawImage&& other);
 
+    RawImage& operator=(const RawImage& other) = default;
+    RawImage& operator=(RawImage&& other) = default;
+
+    ~RawImage();
+
     static std::optional<RawImage> read(std::string_view path, CompressionLevel compression = ZLib_Default);
 
     void stream_insert(QDataStream& stream) const;

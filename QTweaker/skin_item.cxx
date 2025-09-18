@@ -11,6 +11,10 @@ void SkinItem::rename(
 {
 }
 
+void SkinItem::set_author(const QString &author)
+{
+}
+
 QDataStream& operator<<(QDataStream& stream, const QList<QImage>& list)
 {
     stream << list.size();

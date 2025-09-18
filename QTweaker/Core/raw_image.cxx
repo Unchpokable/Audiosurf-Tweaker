@@ -71,6 +71,10 @@ core::RawImage::RawImage(
 {
 }
 
+core::RawImage::~RawImage()
+{
+}
+
 void core::RawImage::stream_insert(
     QDataStream& stream) const
 {

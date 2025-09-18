@@ -48,6 +48,7 @@ target_precompile_headers(appQTweaker PRIVATE precompiled.hxx)
 
 target_link_libraries(appQTweaker
     PRIVATE Qt6::Quick
+    PRIVATE Core
 )
 
 include(GNUInstallDirs)

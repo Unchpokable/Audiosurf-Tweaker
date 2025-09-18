@@ -13,11 +13,13 @@ class SkinItem : public QObject
         QString name READ name WRITE rename NOTIFY renamed)
     Q_PROPERTY(
         QString authro READ author WRITE set_author NOTIFY author_changed)
-    Q_PROPERTY(
-        QImageList previews READ previews CONSTANT)
+    //Q_PROPERTY(
+    //    QImageList previews READ previews CONSTANT)
 
 public:
     explicit SkinItem(QObject* parent = nullptr);
+
+    virtual ~SkinItem() override = default;
 
     Q_INVOKABLE const QString& name() const noexcept
     {

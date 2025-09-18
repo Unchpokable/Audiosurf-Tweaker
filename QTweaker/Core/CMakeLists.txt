@@ -30,10 +30,7 @@ add_library(Core SHARED
 
 target_precompile_headers(Core PRIVATE precompiled.hxx)
 
-target_link_libraries(Core PRIVATE Qt${QT_VERSION_MAJOR}::Core NativeImage)
+target_link_libraries(Core PUBLIC NativeImage)
 target_link_libraries(Core PRIVATE Qt6::Core)
-target_link_libraries(Core PRIVATE Qt6::Core)
-
-target_include_directories(Core PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../NativeImage)
 
 target_compile_definitions(Core PRIVATE CORE_LIBRARY)
