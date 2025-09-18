@@ -40,7 +40,7 @@ std::optional<core::RawImage> core::RawImage::read(
     auto compressed = qCompress(QByteArray(reinterpret_cast<char*>(data), width * height * channels), static_cast<int>(compression));
 
     free_image(data);
-    return RawImage(compressed, my_format, QString::fromStdString(name), width, height, channels);
+    return RawImage(compressed, my_format, QString::fromStdString(name.string()), width, height, channels);
 }
 
 core::RawImage::RawImage()
@@ -121,11 +121,11 @@ bool core::RawImage::write(
     switch(format) {
         case Jpeg:
             result = encode_jpeg(
-                file.c_str(), reinterpret_cast<unsigned char*>(decompressed.data()), m_width, m_height, m_channels_count, 90);
+                file.string().c_str(), reinterpret_cast<unsigned char*>(decompressed.data()), m_width, m_height, m_channels_count, 90);
             break;
 
         case Png:
-            result = encode_png(file.c_str(), reinterpret_cast<unsigned char*>(decompressed.data()), m_width, m_height, m_channels_count);
+            result = encode_png(file.string().c_str(), reinterpret_cast<unsigned char*>(decompressed.data()), m_width, m_height, m_channels_count);
             break;
 
         case Unsupported:

@@ -18,5 +18,6 @@
 #include <QRegularExpression>
 #include <QString>
 #include <QStringView>
+#include <QImage>
 
 #endif // PRECOMPILED_HXX
