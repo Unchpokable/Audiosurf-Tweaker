@@ -1,11 +1,15 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 
-#include "skin_item.hxx"
+#include "Backend/skin_item.hxx"
+
+#include "qmetacompat.hxx"
 
 int main(int argc, char* argv[])
 {
     QGuiApplication app(argc, argv);
+
+    qt::dirty::compat_init();
 
     qRegisterMetaType<QImageList>();
 

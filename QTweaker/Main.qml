@@ -85,6 +85,34 @@ Window {
 
         width: parent.width * 0.2;
 
+        Label {
+                id: menuTitle;
+
+                anchors.top: parent.top;
+                anchors.left: parent.left;
+                anchors.right: parent.right;
+                anchors.margins: 15;
+
+                text: "Menu"
+                font.pointSize: 16;
+                font.family: "Tahoma";
+            }
+
+        Rectangle {
+            id: separator;
+
+            anchors.top: menuTitle.bottom;
+            anchors.left: parent.left;
+            anchors.right: parent.right;
+            anchors.leftMargin: 10;
+            anchors.rightMargin: 10;
+            anchors.topMargin: 10;
+
+            height: 2;
+            radius: 1;
+            color: "#acacac";
+        }
+
         ButtonGroup {
             id: navMenu
 
@@ -100,9 +128,11 @@ Window {
         }
 
         Column {
-            anchors.fill: parent
-            anchors.topMargin: 20;
-
+            anchors.top: separator.bottom;
+            anchors.left: parent.left;
+            anchors.right: parent.right;
+            anchors.bottom: parent.bottom;
+            anchors.topMargin: 15;
             SideMenuRadioButton {
                 id: nav_SkinChanger;
                 text: "Skin Changer";

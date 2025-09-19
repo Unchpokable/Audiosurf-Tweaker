@@ -1,19 +1,7 @@
-#include "skin_item.hxx"
+#include "precompiled.hxx"
 
-SkinItem::SkinItem(
-    QObject* parent)
-    : QObject(parent)
-{
-}
+#include "qmetacompat.hxx"
 
-void SkinItem::rename(
-    const QString& name)
-{
-}
-
-void SkinItem::set_author(const QString &author)
-{
-}
 
 QDataStream& operator<<(QDataStream& stream, const QList<QImage>& list)
 {
@@ -36,4 +24,9 @@ QDataStream& operator>>(QDataStream& stream, QList<QImage>& list)
         list.append(image);
     }
     return stream;
+}
+
+void qt::dirty::compat_init()
+{
+    qRegisterMetaType<SkinItem>();
 }

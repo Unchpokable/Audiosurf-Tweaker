@@ -139,6 +139,26 @@ bool core::RawImage::write(
     return result == Success;
 }
 
+QByteArray& core::RawImage::data()
+{
+    return m_data;
+}
+
+int32_t core::RawImage::width() const
+{
+    return m_width;
+}
+
+int32_t core::RawImage::height() const
+{
+    return m_height;
+}
+
+int32_t core::RawImage::channels_count() const
+{
+    return m_channels_count;
+}
+
 core::RawImage::RawImage(
     QByteArray data, ImageFormat format, QString name, int32_t width, int32_t height, int32_t channels_count)
     : m_data(std::move(data)),

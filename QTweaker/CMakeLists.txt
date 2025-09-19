@@ -19,18 +19,14 @@ qt_add_executable(appQTweaker
 qt_add_qml_module(appQTweaker
     URI QTweaker
     VERSION 1.0
-    QML_FILES
-
-    QML_FILES
     QML_FILES Main.qml
-    QML_FILES
-    SOURCES
     QML_FILES QML/TopBarButton.qml
     QML_FILES QML/SideMenuRadioButton.qml
 
     RESOURCES appresources.qrc
-    SOURCES skin_item.hxx skin_item.cxx
     SOURCES precompiled.hxx
+    SOURCES qmetacompat.cxx
+    SOURCES qmetacompat.hxx
 )
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
@@ -59,3 +55,4 @@ install(TARGETS appQTweaker
 )
 add_subdirectory(NativeImage)
 add_subdirectory(Core)
+add_subdirectory(Backend)

@@ -33,4 +33,6 @@ target_precompile_headers(Core PRIVATE precompiled.hxx)
 target_link_libraries(Core PUBLIC NativeImage)
 target_link_libraries(Core PRIVATE Qt6::Core)
 
+target_include_directories(Core PUBLIC "${CMAKE_CURRENT_LIST_DIR}")
+
 target_compile_definitions(Core PRIVATE CORE_LIBRARY)
