@@ -1,8 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
-set(VCPKG_TARGET_TRIPLET "x64-windows-static")
-
 if(WIN32)
+  set(VCPKG_TARGET_TRIPLET "x64-windows-static")
   set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/vcpkg/scripts/buildsystems/vcpkg.cmake")
 endif()
 
