@@ -4,8 +4,7 @@
 
 #include "image_processing.h"
 
-std::optional<core::RawImage> core::RawImage::read(
-    std::string_view path, CompressionLevel compression)
+std::optional<core::RawImage> core::RawImage::read(std::string_view path, CompressionLevel compression)
 {
     if(!std::filesystem::exists(path)) {
         return std::nullopt;
@@ -41,6 +40,24 @@ std::optional<core::RawImage> core::RawImage::read(
 
     free_image(data);
     return RawImage(compressed, my_format, QString::fromStdString(name.string()), width, height, channels);
+}
+
+std::optional<core::RawImage> core::RawImage::from_raw(const QByteArray& bytes, CompressionLevel compression)
+{
+    if(bytes.size() <= 0) {
+        return std::nullopt;
+    }
+
+    auto format = get_image_format_native_from_mem(reinterpret_cast<const unsigned char*>(bytes.data()), bytes.size());
+
+    if(format == NativeFormat::Unsupported) {
+        return std::nullopt;
+    }
+
+    auto my_format = static_cast<ImageFormat>(format);
+
+    std::int32_t width, height, channels;
+
 }
 
 core::RawImage::RawImage()
@@ -158,6 +175,12 @@ int32_t core::RawImage::channels_count() const
 {
     return m_channels_count;
 }
+
+void core::RawImage::set_name(const QString& name)
+{
+    m_name = name;
+}
+
 
 core::RawImage::RawImage(
     QByteArray data, ImageFormat format, QString name, int32_t width, int32_t height, int32_t channels_count)

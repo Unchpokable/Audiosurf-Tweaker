@@ -5,18 +5,17 @@
 
 #include "pack_data.hxx"
 
+#include "Backend_global.h"
+
 using QImageList = QList<QImage>;
 
-class SkinItem : public QObject
+class BACKEND_EXPORT SkinItem : public QObject
 {
     Q_OBJECT
 
-    Q_PROPERTY(
-        QString name READ name WRITE rename NOTIFY renamed)
-    Q_PROPERTY(
-        QString author READ author WRITE set_author NOTIFY author_changed)
-    Q_PROPERTY(
-        QImageList previews READ previews CONSTANT)
+    Q_PROPERTY(QString name READ name WRITE rename NOTIFY renamed)
+    Q_PROPERTY(QString author READ author WRITE set_author NOTIFY author_changed)
+    Q_PROPERTY(QImageList previews READ previews CONSTANT)
 
 public:
     explicit SkinItem(QObject* parent = nullptr);

@@ -1,384 +1,386 @@
-# Claude Code Instructions - WPF .NET 9 Desktop Utility
+# Claude Code Instructions - Qt6/QML Desktop Utility
 
 ## Project Overview
-This is a .NET 9 WPF desktop utility for managing game resource packages. The application focuses on file operations, archive handling, image processing, and basic Windows process interaction using the MVVM pattern with CommunityToolkit.Mvvm.
+This is a Qt6/QML desktop utility for managing game resource packages. The application focuses on file operations, archive handling, image processing, and basic process interaction using a hybrid architecture with QML frontend and C++ backend.
 
-## Architecture & Patterns
-
-### MVVM Implementation
-- Use classic MVVM pattern for all UI-related logic
-- ViewModels handle all business logic and UI state management
-- Models represent data structures and business entities
-- Views contain only UI-specific code and data binding
+## Architecture & Organization
 
 ### Project Structure
+The project is organized as multiple CMake subprojects:
+
 ```
-/Views/          - XAML views and code-behind
-/ViewModels/     - MVVM ViewModels with CommunityToolkit.Mvvm
-/Models/         - Data models and business entities
-/Core/           - Core business logic and utilities
-/Themes/         - Custom ResourceDictionaries and styles
-/Controls/       - Custom UserControls
-/Forms/          - Dialog windows and forms
+QTweaker/                 - Main project root
+├── Backend/              - Qt bindings for QML-Core integration
+├── Core/                 - Internal application logic (Qt-independent)
+├── NativeImage/          - STB wrapper C library
+└── [other modules]/      - Additional CMake subprojects as needed
 ```
 
-## Technology Stack
+### Architectural Philosophy
 
-### Core Framework
-- **Target**: .NET 9, Windows Desktop
-- **UI Framework**: WPF with CommunityToolkit.Mvvm
-- **Icons**: MaterialDesignInXAML (icons ONLY, no controls/styles)
-- **Configuration**: appsettings.json
+#### Core Module ("C with Classes")
+- **Classes**: Only for state encapsulation, NO inheritance trees or virtual functions
+- **Polymorphism**: Static polymorphism via templates and free template functions
+- **Structures**: Preferred for simple data without complex state management
+- **Qt Usage**: Can use Qt Core classes (QString, QDataStream, etc.) when they simplify logic and provide better API than STL equivalents
 
-### Key Dependencies
-```xml
-<PackageReference Include="CommunityToolkit.Mvvm" />
-<PackageReference Include="MaterialDesignThemes" />
-<PackageReference Include="Microsoft.Extensions.Configuration.Json" />
-```
+#### Backend Module (Qt-Idiomatic)
+- **QML Integration**: Each QML component should have a corresponding backend object
+- **Qt Framework Integration**: Use Qt patterns (QObject, signals/slots, Q_PROPERTY) for optimal QML integration
+- **Architecture Pattern**: QML-focused variant of MVVM where backend objects bridge QML and Core
+
+### Technology Stack
+
+#### Core Framework
+- **Target**: Qt6 (QtCore, QtGui), C++20
+- **UI**: Pure QML (no Qt Widgets, no Qt Designer)
+- **Build System**: CMake (primary)
+- **External Libraries**: Currently none (STB via NativeImage wrapper)
+- **Core Dependencies**: Qt Core classes allowed when they provide superior API (QDataStream, QString, etc.)
 
 ## Coding Standards
 
 ### Naming Conventions
-- **Private fields**: `_underscoredCamelCase`
-- **ViewModels**: `...ViewModel` suffix
-- **Models**: `...Model` suffix
-- **Public members**: `PascalCase`
-- **Commands/DependencyProperties**: Use CommunityToolkit.Mvvm source generators (no special naming required)
+- **enum/enum class/struct/class**: `PascalCase`
+- **Functions/methods/variables/parameters**: `snake_case`
+- **Private class members**: `m_snake_case`
 
-### Class Structure Example
-```csharp
-public partial class MainViewModel : ObservableObject
+### Code Organization Patterns
+
+#### Core Module Example
+```cpp
+// Prefer structures and template functions
+struct FileProcessor 
 {
-    private string _currentFilePath;
-    private bool _isProcessing;
-    
-    [ObservableProperty]
-    private string displayText;
-    
-    [RelayCommand]
-    private async Task ProcessFileAsync()
-    {
-        // Implementation
-    }
+    QString input_path;  // Qt classes allowed for better API
+    QByteArray buffer;   // More convenient than std::vector<uint8_t>
+};
+
+template<typename Processor>
+Error process_file(Processor& processor, const QString& path)
+{
+    // Template-based static polymorphism
+    return processor.process_data(path);
 }
+
+// Classes only for state encapsulation, no inheritance
+class BinaryDataSerializer 
+{
+public:
+    Error save_data(const QString& file_path, const CustomDataFormat& data);
+    Error load_data(const QString& file_path, CustomDataFormat& data);
+
+private:
+    QDataStream m_stream;  // Qt classes for simpler API
+    QByteArray m_buffer;
+    // No virtual functions, no inheritance
+};
+
+// Example using QDataStream for binary serialization
+Error BinaryDataSerializer::save_data(const QString& file_path, const CustomDataFormat& data) 
+{
+    QFile file(file_path);
+    if (!file.open(QIODevice::WriteOnly)) 
+    {
+        return make_error(Rank::Severe, "Cannot open file", 
+                         "Failed to open '{}' for writing", file_path.toStdString());
+    }
+    
+    QDataStream stream(&file);
+    stream.setByteOrder(QDataStream::LittleEndian);
+    
+    // Much cleaner than std::ofstream for binary data
+    stream << data.version << data.header << data.payload;
+    
+    return Error{}; // Success
+}
+```
+
+#### Backend Module Example
+```cpp
+// Qt-idiomatic approach for QML integration
+class FileProcessorBackend : public QObject
+{
+    Q_OBJECT
+    Q_PROPERTY(QString currentFile READ currentFile NOTIFY currentFileChanged)
+    Q_PROPERTY(bool isProcessing READ isProcessing NOTIFY isProcessingChanged)
+
+public:
+    explicit FileProcessorBackend(QObject* parent = nullptr);
+    
+    QString currentFile() const { return m_current_file; }
+    bool isProcessing() const { return m_is_processing; }
+
+public slots:
+    void processFile(const QString& filePath);
+
+signals:
+    void currentFileChanged();
+    void isProcessingChanged();
+    void processingCompleted(bool success, const QString& errorMessage);
+
+private:
+    QString m_current_file;
+    bool m_is_processing = false;
+    
+    // Bridge to Core module
+    std::unique_ptr<core::FileProcessor> m_core_processor;
+};
 ```
 
 ## Error Handling Strategy
 
-### Exception Philosophy
-- **User code**: Avoid throwing exceptions except in truly exceptional cases
-- **Library exceptions**: Use try-catch blocks to convert to Result<T>
-- **Error propagation**: Use Result<T> pattern instead of exceptions
-- **UI feedback**: ViewModels handle Result<T> and provide user feedback
+### Error Philosophy
+- **Non-critical errors**: Return `core::Error` struct with error information
+- **Critical errors**: Use `panic()` function to throw exceptions
+- **External API**: Use try-catch blocks only for external libraries that throw exceptions
+- **User code**: Never throws exceptions (except via `panic()` for unrecoverable errors)
 
-### Result<T> Pattern
-The project uses a custom Result<T> pattern for error handling:
-
-```csharp
-namespace Tweaker.Core;
-
-public record Error(string Message, string? Code = null, Exception? InnerException = null);
-
-public abstract record Result<T>;
-public sealed record Success<T>(T Value) : Result<T>;
-public sealed record Failure<T>(Error Value) : Result<T>;
-
-public static class Impl
+### Error Structure Usage
+```cpp
+namespace core 
 {
-    public static Result<T> ToFailure<T>(this string message) => new Failure<T>(new Error(message));
-    public static Result<T> ToFailure<T>(this string message, string code) => new Failure<T>(new Error(message, code));
-    public static Result<T> ToFailure<T>(this string message, string code, Exception exception)
-        => new Failure<T>(new Error(message, code, exception));
-
-    public static Result<T> ToSuccess<T>(this T value) => new Success<T>(value);
-
-    public static Result<TOut> Map<TIn, TOut>(
-        this Result<TIn> result, Func<TIn, TOut> mapper)
+    // Use the provided Error struct and utility functions
+    Error process_archive(const std::string& path) 
     {
-        return result switch
+        if (!std::filesystem::exists(path)) 
         {
-            Success<TIn>(var value) => new Success<TOut>(mapper(value)),
-            Failure<TIn>(var error) => new Failure<TOut>(error),
-            _ => throw new InvalidOperationException()
-        };
+            return make_error(Rank::Severe, "File not found", 
+                             "Archive file '{}' does not exist", path);
+        }
+        
+        try 
+        {
+            // External library call that might throw
+            auto result = external_lib::extract(path);
+            return Error{}; // Success (empty Error indicates no error)
+        }
+        catch (const external_lib::exception& e) 
+        {
+            return make_error(Rank::Moderate, "Extraction failed", 
+                             "External library error: {}", e.what());
+        }
     }
-
-    public static Result<TOut> Bind<TIn, TOut>(
-        this Result<TIn> result, Func<TIn, Result<TOut>> binder)
+    
+    // For unrecoverable errors
+    void critical_operation() 
     {
-        return result switch
+        auto error = validate_system_state();
+        if (error.error_rank == Rank::Fatal) 
         {
-            Success<TIn>(var value) => binder(value),
-            Failure<TIn>(var error) => new Failure<TOut>(error),
-            _ => throw new InvalidOperationException()
-        };
-    }
-
-    public static TResult Match<T, TResult>(
-        this Result<T> result, Func<T, TResult> onSuccess, Func<Error, TResult> onError)
-    {
-        return result switch
-        {
-            Success<T>(var value) => onSuccess(value),
-            Failure<T>(var error) => onError(error),
-            _ => throw new InvalidOperationException(),
-        };
+            panic<std::runtime_error>(error);
+        }
     }
 }
 ```
 
-### Error Handling Pattern
-**Always use Result<T> for operations that can fail:**
-
-```csharp
-public async Task<Result<string>> ProcessFileAsync(string filePath)
+### Backend Error Handling
+```cpp
+// Convert Core errors to QML-friendly signals
+void FileProcessorBackend::processFile(const QString& filePath) 
 {
-    try
-    {
-        // Library calls that might throw
-        var content = await File.ReadAllTextAsync(filePath);
-        var processedContent = ProcessContent(content);
-        
-        return new Success<string>(processedContent);
-    }
-    catch (FileNotFoundException ex)
-    {
-        return "File not found".ToFailure<string>("FILE_NOT_FOUND", ex);
-    }
-    catch (UnauthorizedAccessException ex)
-    {
-        return "Access denied".ToFailure<string>("ACCESS_DENIED", ex);
-    }
-    catch (Exception ex)
-    {
-        return "Unexpected error occurred".ToFailure<string>("UNEXPECTED_ERROR", ex);
-    }
-}
-
-// Usage in ViewModels
-[RelayCommand]
-private async Task LoadFileAsync()
-{
-    var result = await ProcessFileAsync(_selectedFilePath);
+    m_is_processing = true;
+    emit isProcessingChanged();
     
-    result.Match(
-        onSuccess: content => 
-        {
-            FileContent = content;
-            StatusMessage = "File loaded successfully";
-        },
-        onError: error =>
-        {
-            FileContent = string.Empty;
-            StatusMessage = $"Error: {error.Message}";
-            // Log error details if needed
-        }
-    );
+    auto std_path = filePath.toStdString();
+    auto result = m_core_processor->process(std_path);
+    
+    m_is_processing = false;
+    emit isProcessingChanged();
+    
+    if (result.error_rank != Rank::Trivial) // Non-empty error
+    {
+        emit processingCompleted(false, result.short_description);
+    } 
+    else 
+    {
+        emit processingCompleted(true, QString());
+    }
 }
 ```
 
 ## Asynchronous Programming
 
-### Async/Await Guidelines
-- Use `async`/`await` for any long-running operations
-- Use `Task` mechanism for background operations
-- Return results to Dependency Properties for UI binding
-- Always use `ConfigureAwait(false)` in non-UI code
+### Async Strategy
+- **Simple operations**: Use `std::async` for straightforward cases
+- **Qt integration**: Use `QFuture`/`QtConcurrent` when better Qt integration needed
+- **QML updates**: Always emit signals on main thread for QML property updates
 
-### Background Task Pattern
-```csharp
-[RelayCommand]
-private async Task LoadDataAsync()
+### Async Patterns
+```cpp
+// Backend async operation with QFuture
+void FileProcessorBackend::processLargeFileAsync(const QString& filePath) 
 {
-    IsLoading = true;
-    
-    var result = await Task.Run(async () => 
-    {
-        // Background work
-        return await ProcessLargeFileAsync();
-    }).ConfigureAwait(false);
-    
-    // Update UI on UI thread
-    await Application.Current.Dispatcher.InvokeAsync(() =>
-    {
-        ProcessedData = result;
-        IsLoading = false;
+    auto future = QtConcurrent::run([this, filePath]() -> core::Error {
+        auto std_path = filePath.toStdString();
+        return m_core_processor->process_large_file(std_path);
     });
+
+    auto watcher = new QFutureWatcher<core::Error>(this);
+    connect(watcher, &QFutureWatcher<core::Error>::finished, [this, watcher]() {
+        auto result = watcher->result();
+        emit processingCompleted(result.error_rank == Rank::Trivial, 
+                               result.short_description);
+        watcher->deleteLater();
+    });
+    
+    watcher->setFuture(future);
 }
-```
 
-## UI Guidelines
-
-### Styling
-- **NEVER** use MaterialDesignInXAML controls or styles
-- **ALWAYS** use custom styles from `Themes/` ResourceDictionaries
-- **ONLY** use MaterialDesignInXAML for icons: `<materialDesign:PackIcon Kind="..." />`
-
-### ResourceDictionary Structure
-```xml
-<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation">
-    <!-- Custom button styles -->
-    <Style x:Key="PrimaryButton" TargetType="Button">
-        <!-- Custom implementation -->
-    </Style>
-</ResourceDictionary>
-```
-
-### Data Binding
-- Use `{Binding}` with proper PropertyChanged notifications
-- Leverage CommunityToolkit.Mvvm's `[ObservableProperty]` attribute
-- Use `RelayCommand` for command binding
-
-## File Operations
-
-### Core Functionality Areas
-- File system operations (copy, move, delete, rename)
-- Archive handling (zip, rar, custom formats)
-- Image processing and manipulation
-- Windows process interaction
-
-### File Operation Pattern
-```csharp
-public async Task<OperationResult> ExtractArchiveAsync(string archivePath, string destinationPath)
+// Core module with std::async
+namespace core 
 {
-    try
+    std::future<Error> process_file_async(const std::string& path) 
     {
-        IsProcessing = true;
-        
-        var result = await Task.Run(() =>
-        {
-            // Archive extraction logic
-            return ExtractArchiveCore(archivePath, destinationPath);
+        return std::async(std::launch::async, [path]() -> Error {
+            return process_file_sync(path);
         });
+    }
+}
+```
+
+## QML Integration Guidelines
+
+### Backend Registration
+```cpp
+// main.cpp
+#include <QQmlApplicationEngine>
+#include <QGuiApplication>
+
+int main(int argc, char *argv[])
+{
+    QGuiApplication app(argc, argv);
+    
+    // Register backend types for QML
+    qmlRegisterType<FileProcessorBackend>("Tweaker.Backend", 1, 0, "FileProcessor");
+    qmlRegisterType<ArchiveManagerBackend>("Tweaker.Backend", 1, 0, "ArchiveManager");
+    
+    QQmlApplicationEngine engine;
+    engine.load(QUrl(QStringLiteral("qrc:/main.qml")));
+    
+    return app.exec();
+}
+```
+
+### QML Usage Pattern
+```qml
+// FileProcessorView.qml
+import QtQuick 2.15
+import Tweaker.Backend 1.0
+
+Item {
+    FileProcessor {
+        id: fileProcessor
         
-        return result;
-    }
-    catch (Exception ex)
-    {
-        // Log error, return appropriate error code
-        return OperationResult.ExtractionFailed;
-    }
-    finally
-    {
-        IsProcessing = false;
-    }
-}
-```
-
-## Configuration Management
-
-### appsettings.json Structure
-```json
-{
-  "AppSettings": {
-    "DefaultGamePath": "",
-    "MaxConcurrentOperations": 4,
-    "TempDirectory": "%TEMP%\\GameResourceManager"
-  },
-  "FileFormats": {
-    "SupportedArchives": [".zip", ".rar", ".7z"],
-    "SupportedImages": [".png", ".jpg", ".bmp", ".dds"]
-  }
-}
-```
-
-### Configuration Loading
-```csharp
-public class ConfigurationService
-{
-    private readonly IConfiguration _configuration;
-    
-    public ConfigurationService()
-    {
-        _configuration = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.json", optional: false)
-            .Build();
+        onProcessingCompleted: function(success, errorMessage) {
+            if (success) {
+                statusText.text = "Processing completed successfully"
+            } else {
+                statusText.text = "Error: " + errorMessage
+            }
+        }
     }
     
-    public T GetSection<T>(string sectionName) where T : new()
-    {
-        var section = new T();
-        _configuration.GetSection(sectionName).Bind(section);
-        return section;
+    Button {
+        text: "Process File"
+        enabled: !fileProcessor.isProcessing
+        onClicked: fileProcessor.processFile(selectedFilePath)
+    }
+    
+    Text {
+        id: statusText
+        text: fileProcessor.isProcessing ? "Processing..." : "Ready"
     }
 }
 ```
 
 ## Best Practices
 
-### ViewModel Responsibilities
-- Manage UI state and user interactions
-- Coordinate between Models and Views
-- Handle error codes and provide user feedback
-- Execute commands and background operations
+### Core Module Guidelines
+- Use Qt Core classes when they provide superior API (QDataStream vs std::ofstream for binary data)
+- Architectural constraint: NO class inheritance hierarchies or virtual functions
+- Use templates liberally for static polymorphism
+- Prefer composition over inheritance
+- Use free functions when possible
+- Return `core::Error` for all operations that can fail
 
-### Model Responsibilities
-- Represent business data and entities
-- Contain validation logic
-- Implement INotifyPropertyChanged when needed
-
-### View Responsibilities
-- Display data through data binding
-- Handle user input via commands
-- Contain minimal code-behind (ideally none)
+### Backend Module Guidelines
+- One backend class per major QML component
+- Use Q_PROPERTY for all data that QML needs to access
+- Emit signals for all state changes QML should know about
+- Keep backend objects lightweight - delegate heavy work to Core
+- Use Qt's threading facilities when integrating with QML
 
 ### Performance Considerations
-- Use `ObservableCollection<T>` for dynamic lists
-- Implement virtualization for large datasets
-- Use background threads for I/O operations
-- Cache frequently accessed data
+- Core operations should be efficient and minimal
+- Use move semantics extensively in Core
+- Consider object pooling for frequently created/destroyed objects
+- Profile before optimizing, especially Core/Backend boundary
 
-## Common Patterns
+### Error Handling Best Practices
+- Always check `core::Error` return values in Backend
+- Convert Core errors to user-friendly messages for QML
+- Use appropriate `Rank` levels for different error severities
+- Log detailed error information while showing simplified messages to users
 
-### Progress Reporting
-```csharp
-[ObservableProperty]
-private double progressValue;
+## File Operations Patterns
 
-[ObservableProperty]
-private string progressText;
-
-private async Task ProcessWithProgressAsync()
+### Core File Processing
+```cpp
+namespace core 
 {
-    var progress = new Progress<(double value, string text)>(p =>
+    struct FileMetadata 
     {
-        ProgressValue = p.value;
-        ProgressText = p.text;
-    });
-    
-    await ProcessFileWithProgressAsync(progress);
-}
-```
-
-### Dialog Interaction
-```csharp
-[RelayCommand]
-private async Task OpenFileAsync()
-{
-    var dialog = new OpenFileDialog
-    {
-        Filter = "Archive files (*.zip;*.rar)|*.zip;*.rar"
+        QString path;     // Qt types for better string handling
+        qint64 size;      // Qt integer types
+        QDateTime modified_time;  // More convenient than std::chrono
     };
     
-    if (dialog.ShowDialog() == true)
+    template<typename Handler>
+    Error process_files_batch(const QStringList& paths, Handler&& handler) 
     {
-        var result = await LoadFileAsync(dialog.FileName);
-        HandleLoadResult(result);
+        for (const auto& path : paths) 
+        {
+            auto result = handler(path);
+            if (result.error_rank > Rank::Minor) 
+            {
+                return result;
+            }
+        }
+        return Error{}; // Success
     }
+    
+    // Example of using Qt classes for cleaner API
+    class ConfigurationManager 
+    {
+    public:
+        Error save_config(const QString& file_path, const QJsonObject& config);
+        Error load_config(const QString& file_path, QJsonObject& config);
+        
+    private:
+        QSettings m_settings;  // Qt provides better config handling than raw file I/O
+        // No inheritance, no virtual functions
+    };
 }
 ```
 
-## Dependencies and NuGet Packages
+### Backend File Operations
+```cpp
+class FileManagerBackend : public QObject 
+{
+    Q_OBJECT
+    Q_PROPERTY(QStringList recentFiles READ recentFiles NOTIFY recentFilesChanged)
+    
+public slots:
+    void processFiles(const QStringList& files);
+    
+signals:
+    void fileProcessed(const QString& fileName, bool success);
+    void allFilesProcessed();
 
-Always include these core packages:
-- `CommunityToolkit.Mvvm` - MVVM helpers and source generators
-- `MaterialDesignThemes` - For icons only
-- `Microsoft.Extensions.Configuration.Json` - Configuration management
+private:
+    QStringList m_recent_files;
+};
+```
 
-When working with files and archives, suggest appropriate packages:
-- `System.IO.Compression` - Built-in ZIP support
-- `SharpCompress` - Multi-format archive support
-- `ImageSharp` - Image processing
-
-Remember: No dependency injection container is used - instantiate services directly or use static classes where appropriate.
+Remember: The goal is clean separation between Qt-agnostic Core logic and Qt-specific Backend integration, with QML as the presentation layer.

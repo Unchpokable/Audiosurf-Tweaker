@@ -1,8 +1,6 @@
 #include "skin_item.hxx"
 
-SkinItem::SkinItem(
-    QObject* parent)
-    : QObject(parent)
+SkinItem::SkinItem(QObject* parent) : QObject(parent)
 {
 }
 

@@ -34,6 +34,7 @@ public:
     ~RawImage();
 
     static std::optional<RawImage> read(std::string_view path, CompressionLevel compression = ZLib_Default);
+    static std::optional<RawImage> from_raw(const QByteArray& bytes, CompressionLevel compression = ZLib_Default);
 
     void stream_insert(QDataStream& stream) const;
     void stream_exctract(QDataStream& stream);
@@ -45,6 +46,8 @@ public:
     std::int32_t width() const;
     std::int32_t height() const;
     std::int32_t channels_count() const;
+
+    void set_name(const QString& name);
 
 private:
     RawImage(QByteArray data, ImageFormat format, QString name, std::int32_t width, std::int32_t height, std::int32_t channels_count);
