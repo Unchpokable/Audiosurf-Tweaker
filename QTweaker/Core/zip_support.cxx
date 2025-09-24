@@ -3,6 +3,9 @@
 #include "zip_handle.hxx"
 #include "zip_support.hxx"
 #include "logging.hxx"
+#include "image_processing.h"
+
+#include "masks.hxx"
 
 #include "zip.h"
 
@@ -16,11 +19,15 @@ std::filesystem::path full_path(core::zip::ZipEntry& entry)
     return root / file;
 }
 
-bool quick_compare_pattern(std::string_view source, std::vector<const char*> patterns)
+bool compare_pattern(std::string_view source, std::vector<const char*> patterns)
 {
     for(std::string_view pattern : patterns) {
-
+        if(source.find(pattern) != std::string_view::npos) {
+            return true;
+        }
     }
+
+    return false;
 }
 }
 
@@ -74,7 +81,7 @@ core::Error core::zip::read_archive(QStringView path, core::PackData& result)
         return zip.error();
     }
 
-    core::PackData data;
+    core::Rank error_severity { core::Nothing };
 
     for(auto& entry : files) {
         auto path = full_path(entry);
@@ -82,12 +89,14 @@ core::Error core::zip::read_archive(QStringView path, core::PackData& result)
         auto index = zip_name_locate(zip, path.string().c_str(), 0);
         if(index < 0) {
             LOG_WARNING("Unable to locate entry: {}", path.string());
+            error_severity = core::Moderate;
             continue;
         }
 
         auto file = zip_fopen_index(zip, index, 0);
         if(!file) {
             LOG_WARNING("Unable to open file {} at index {}", path.string(), index);
+            error_severity = core::Moderate;
         }
 
         std::vector<std::uint8_t> output;
@@ -96,12 +105,44 @@ core::Error core::zip::read_archive(QStringView path, core::PackData& result)
         auto bytes_read = zip_fread(file, output.data(), entry.total_size);
         if(bytes_read != entry.total_size) {
             LOG_WARNING("Unable to read file. Declared size: {}, bytes read: {}", entry.total_size, bytes_read);
+            error_severity = core::Moderate;
+
+            continue;
         }
 
-
+        auto ftype = image_format_from_mem(output.data(), output.size());
+        if(ftype == Unsupported) {
+            LOG_INFO("Archive contains a non-image data, skipping: {}", entry.name.toStdString());
+            continue;
+        }
 
         auto image = RawImage::from_raw(QByteArray(reinterpret_cast<const char*>(output.data()), output.size()));
+
+        if(!image) {
+            LOG_WARNING("Unable to read Image: {}", entry.name.toStdString());
+            error_severity = core::Moderate;
+
+            continue;
+        }
+
+        image->set_name(entry.name);
+
+        if(compare_pattern(path.string(), core::masks::required_files)) {
+            result.required_parts.append(*image);
+        }
+        else if(compare_pattern(path.string(), core::masks::optional_files)) {
+            result.optional_parts.append(*image);
+        }
+        else if(core::masks::preview_screenshots.match(QString::fromStdString(path.string())).hasMatch()) {
+            result.previews.append(*image);
+        }
     }
+
+    if(error_severity != core::Nothing) {
+        return core::make_error(error_severity, "Archive reading error!", "Errors occured during reading an archive, check the results!");
+    }
+
+    return core::Error{};
 }
 
 QString core::zip::write_archive(const PackData& data, QStringView path_to_save)

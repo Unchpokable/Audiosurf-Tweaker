@@ -104,7 +104,7 @@ TW_NATIVE_API Result encode_jpeg(
     return Success;
 }
 
-TW_NATIVE_API NativeFormat get_image_format_native(const char* file_path)
+TW_NATIVE_API NativeFormat image_format(const char* file_path)
 {
     FILE* file = fopen(file_path, "rb");
     if(file == NULL) {
@@ -129,7 +129,7 @@ TW_NATIVE_API NativeFormat get_image_format_native(const char* file_path)
     return format;
 }
 
-NativeFormat get_image_format_native_from_mem(const unsigned char* data, int32_t data_size)
+NativeFormat image_format_from_mem(const unsigned char* data, int32_t data_size)
 {
     if(data == NULL || data_size <= 0) {
         return Unsupported;

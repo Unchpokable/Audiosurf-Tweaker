@@ -3,7 +3,7 @@
 
 #include "Core_global.h"
 
-namespace core
+namespace core::masks
 {
 
 CORE_EXPORT extern std::vector<const char*> required_files;

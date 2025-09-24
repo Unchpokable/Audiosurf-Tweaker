@@ -2,7 +2,7 @@
 
 #include "masks.hxx"
 
-std::vector<const char*> core::required_files {
+std::vector<const char*> core::masks::required_files {
     "cliff1-1.png",
     "cliff1-2.png",
     "cliff2-1.png",
@@ -20,11 +20,11 @@ std::vector<const char*> core::required_files {
     "tiles.png",
 };
 
-std::vector<const char*> core::optional_files {
+std::vector<const char*> core::masks::optional_files {
     "Skysphere_Black.png",
     "Skysphere_Grey.png",
     "Skysphere_White.png",
 };
 
-QRegularExpression core::preview_screenshots = QRegularExpression(R"(^PreviewScreenshot.*\.(png|jpg|jpeg)$)",
+QRegularExpression core::masks::preview_screenshots = QRegularExpression(R"(^PreviewScreenshot.*\.(png|jpg|jpeg)$)",
     QRegularExpression::CaseInsensitiveOption);

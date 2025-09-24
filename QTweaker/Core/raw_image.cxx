@@ -12,7 +12,7 @@ std::optional<core::RawImage> core::RawImage::read(std::string_view path, Compre
 
     auto name = std::filesystem::path(path).filename();
 
-    auto format = get_image_format_native(path.data());
+    auto format = image_format(path.data());
 
     if(format == NativeFormat::Unsupported) {
         return std::nullopt;
@@ -32,7 +32,6 @@ std::optional<core::RawImage> core::RawImage::read(std::string_view path, Compre
     result = generic_decode(path.data(), &data, &width, &height, &channels);
 
     if(result != Success) {
-        free_image(data);
         return std::nullopt;
     }
 
@@ -48,7 +47,7 @@ std::optional<core::RawImage> core::RawImage::from_raw(const QByteArray& bytes, 
         return std::nullopt;
     }
 
-    auto format = get_image_format_native_from_mem(reinterpret_cast<const unsigned char*>(bytes.data()), bytes.size());
+    auto format = image_format_from_mem(reinterpret_cast<const unsigned char*>(bytes.data()), bytes.size());
 
     if(format == NativeFormat::Unsupported) {
         return std::nullopt;
@@ -58,6 +57,25 @@ std::optional<core::RawImage> core::RawImage::from_raw(const QByteArray& bytes, 
 
     std::int32_t width, height, channels;
 
+    auto result = image_info_from_mem(reinterpret_cast<const unsigned char*>(bytes.data()), bytes.size(), &width, &height, &channels);
+
+    if(result != Success) {
+        return std::nullopt;
+    }
+
+    unsigned char* data;
+
+    result = decode_from_mem(reinterpret_cast<const unsigned char*>(bytes.data()), bytes.size(), &data, &width, &height, &channels);
+
+    if(result != Success) {
+        return std::nullopt;
+    }
+
+    auto compressed = qCompress(QByteArray(reinterpret_cast<char*>(data), width * height * channels), static_cast<int>(compression));
+
+    free_image(data);
+
+    return RawImage(compressed, my_format, "", width, height, channels);
 }
 
 core::RawImage::RawImage()

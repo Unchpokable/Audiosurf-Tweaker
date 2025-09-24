@@ -42,8 +42,8 @@ TW_NATIVE_API Result encode_png(const char* file_path, const unsigned char* data
 TW_NATIVE_API Result encode_jpeg(
     const char* file_path, const unsigned char* data, int32_t width, int32_t height, int32_t channels, int32_t quality);
 
-TW_NATIVE_API NativeFormat get_image_format_native(const char* file_path);
-TW_NATIVE_API NativeFormat get_image_format_native_from_mem(const unsigned char* data, int32_t data_size);
+TW_NATIVE_API NativeFormat image_format(const char* file_path);
+TW_NATIVE_API NativeFormat image_format_from_mem(const unsigned char* data, int32_t data_size);
 
 TW_NATIVE_API void free_image(unsigned char* buffer);
 
