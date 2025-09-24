@@ -57,6 +57,8 @@ core::Error core::zip::ZipHandle::finalize()
 
             return error;
         }
+
+        m_finalized = true;
     }
 
     return core::Error{};
@@ -66,6 +68,8 @@ void core::zip::ZipHandle::finalize_discard()
 {
     if(m_archive) {
         zip_discard(m_archive);
+
+        m_finalized = true;
     }
 }
 
