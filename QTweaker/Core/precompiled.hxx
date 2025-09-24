@@ -10,6 +10,9 @@
 #include <stdexcept>
 #include <string_view>
 #include <vector>
+#include <source_location>
+#include <mutex>
+#include <iostream>
 
 #include <QDataStream>
 #include <QFile>

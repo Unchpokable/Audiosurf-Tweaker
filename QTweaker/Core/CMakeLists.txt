@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.16)
 
 if(WIN32)
   set(VCPKG_TARGET_TRIPLET "x64-windows-static")
-  set(CMAKE_TOOLCHAIN_FILE "C:/vcpkg/vcpkg/scripts/buildsystems/vcpkg.cmake")
+  set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
 endif()
 
 project(Core LANGUAGES CXX)
@@ -32,7 +32,8 @@ add_library(Core SHARED
   error.hxx error.cxx
   zip_support.hxx
   zip_support.cxx
-
+  zip_handle.hxx zip_handle.cxx
+  logging.hxx logging.cxx
 
 
 )

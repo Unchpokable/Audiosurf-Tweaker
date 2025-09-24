@@ -47,7 +47,7 @@ namespace core
 template<typename... Args>
 Error make_error(Rank rank, const QString& what, const std::format_string<Args...> details, Args... format_args);
 
-bool is_fine(core::Error& err)
+inline bool is_fine(const core::Error& err)
 {
     return err.error_rank == Nothing;
 }
