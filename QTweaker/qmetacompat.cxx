@@ -2,6 +2,7 @@
 
 #include "qmetacompat.hxx"
 
+#include "Backend/skin_item.hxx"
 
 QDataStream& operator<<(QDataStream& stream, const QList<QImage>& list)
 {
@@ -29,4 +30,5 @@ QDataStream& operator>>(QDataStream& stream, QList<QImage>& list)
 void qt::dirty::compat_init()
 {
     qRegisterMetaType<SkinItem>();
+    qRegisterMetaType<QImageList>();
 }

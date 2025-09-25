@@ -147,12 +147,12 @@ core::Error core::zip::read_archive(QStringView path, core::PackData& result)
 
 QString core::zip::write_archive(const PackData& data, QStringView path_to_save)
 {
-    ZipHandle zip(path_to_save, ZIP_CREATE | ZIP_TRUNCATE);
-
+    // todo: currently unsupported
     return {};
 }
 
 QString core::zip::write_archive_raw(const QList<ZipEntry>& entries, QStringView path_to_save)
 {
+    // todo: currently unsupported
     return {};
 }

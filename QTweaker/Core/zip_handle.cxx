@@ -26,19 +26,46 @@ core::zip::ZipHandle::ZipHandle(QStringView path, LZ_ModeType mode, DefaultFinal
     m_finalize_strategy = finalize;
 }
 
+core::zip::ZipHandle::ZipHandle(ZipHandle&& other)
+{
+    m_archive = other.m_archive;
+    other.m_archive = nullptr;
+
+    m_finalize_strategy = other.m_finalize_strategy;
+    m_path = std::move(other.m_path);
+    m_error = other.m_error;
+
+    other.m_finalized = true;
+}
+
+core::zip::ZipHandle& core::zip::ZipHandle::operator=(ZipHandle&& other)
+{
+    if(this != &other) {
+        if(!m_finalized && m_archive) {
+            finalize_impl();
+        }
+
+        m_archive = other.m_archive;
+        other.m_archive = nullptr;
+
+        m_finalize_strategy = other.m_finalize_strategy;
+        m_path = std::move(other.m_path);
+        m_error = other.m_error;
+
+        other.m_finalized = true;
+    }
+
+    return *this;
+}
+
 core::zip::ZipHandle::~ZipHandle()
 {
-    if(!m_finalized) {
+    if(!m_archive) {
+        return;
+    }
 
-        if(m_finalize_strategy == DefaultFinalize::Save) {
-            auto error = finalize();
-            if(error.error_rank != Nothing) {
-                LOG_ERROR("{} : {}", error.short_description.toStdString(), error.detailed_description.toStdString());
-            }
-        }
-        else if(m_finalize_strategy == DefaultFinalize::Discard) {
-            finalize_discard();
-        }
+    if(!m_finalized) {
+        finalize_impl();
     }
 }
 
@@ -80,4 +107,43 @@ core::Error core::zip::ZipHandle::error() const
 QStringView core::zip::ZipHandle::path() const
 {
     return m_path;
+}
+
+core::zip::ZipHandle::operator zip_t*()
+{
+    if(m_error.error_rank != Nothing) {
+        LOG_WARNING("Tried to use invalid archive!! Which one: {}", m_path.toStdString());
+
+        return nullptr;
+    }
+
+    return m_archive;
+}
+
+core::zip::ZipHandle::operator const zip_t*()
+{
+    if(m_error.error_rank != Nothing) {
+        LOG_WARNING("Tried to use invalid archive!! Which one: {}", m_path.toStdString());
+
+        return nullptr;
+    }
+
+    return m_archive;
+}
+
+void core::zip::ZipHandle::finalize_impl()
+{
+    switch(m_finalize_strategy) {
+        case DefaultFinalize::Discard:
+            finalize_discard();
+            break;
+
+        case DefaultFinalize::Save: {
+            auto error = finalize();
+            if(error.error_rank != Nothing) {
+                LOG_ERROR("{} : {}", error.short_description.toStdString(), error.detailed_description.toStdString());
+            }
+            break;
+        }
+    }
 }

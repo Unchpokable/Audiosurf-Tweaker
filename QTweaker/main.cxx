@@ -1,7 +1,6 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
-
-#include "Backend/skin_item.hxx"
+#include <QQuickStyle>
 
 #include "qmetacompat.hxx"
 
@@ -11,7 +10,7 @@ int main(int argc, char* argv[])
 
     qt::dirty::compat_init();
 
-    qRegisterMetaType<QImageList>();
+    QQuickStyle::setStyle("Material");
 
     QQmlApplicationEngine engine;
     QObject::connect(

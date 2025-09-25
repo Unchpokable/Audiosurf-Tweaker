@@ -27,6 +27,12 @@ public:
 
     ZipHandle(QStringView path, LZ_ModeType mode, DefaultFinalize finalize = DefaultFinalize::Save);
 
+    ZipHandle(const ZipHandle& other) = delete;
+    ZipHandle& operator=(const ZipHandle& other) = delete;
+
+    ZipHandle(ZipHandle&& other);
+    ZipHandle& operator=(ZipHandle&& other);
+
     ~ZipHandle();
 
     core::Error finalize();
@@ -36,15 +42,13 @@ public:
 
     QStringView path() const;
 
-    operator zip_t*() {
-        return m_archive;
-    }
+    operator zip_t*();
 
-    operator const zip_t*() const {
-        return m_archive;
-    }
+    operator const zip_t*();
 
 private:
+    void finalize_impl();
+
     zip_t* m_archive;
     core::Error m_error;
     QString m_path;
