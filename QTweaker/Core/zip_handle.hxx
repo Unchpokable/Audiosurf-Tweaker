@@ -2,6 +2,7 @@
 #define ZIP_HANDLE_HXX
 
 #include "error.hxx"
+#include <zip.h>
 
 struct zip;
 struct zip_file;
@@ -15,14 +16,16 @@ namespace core::zip
 {
 class ZipHandle
 {
+    using LZ_ModeType = decltype(ZIP_RDONLY);
+
 public:
-    enum DefaultFinalize
+    enum class DefaultFinalize
     {
         Save,
         Discard,
     };
 
-    ZipHandle(QStringView path, DefaultFinalize finalize = Save);
+    ZipHandle(QStringView path, LZ_ModeType mode, DefaultFinalize finalize = DefaultFinalize::Save);
 
     ~ZipHandle();
 

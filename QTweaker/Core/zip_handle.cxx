@@ -3,12 +3,10 @@
 #include "zip_handle.hxx"
 #include "logging.hxx"
 
-#include <zip.h>
-
-core::zip::ZipHandle::ZipHandle(QStringView path, DefaultFinalize finalize)
+core::zip::ZipHandle::ZipHandle(QStringView path, LZ_ModeType mode, DefaultFinalize finalize)
 {
     int errp;
-    auto zip = zip_open(path.toUtf8().constData(), ZIP_RDONLY, &errp);
+    auto zip = zip_open(path.toUtf8().constData(), mode, &errp);
 
     if(zip == nullptr) {
         zip_error_t libzip_error;
@@ -23,6 +21,7 @@ core::zip::ZipHandle::ZipHandle(QStringView path, DefaultFinalize finalize)
     }
 
     m_archive = zip;
+    m_path = QString(path);
 
     m_finalize_strategy = finalize;
 }
@@ -31,13 +30,13 @@ core::zip::ZipHandle::~ZipHandle()
 {
     if(!m_finalized) {
 
-        if(m_finalize_strategy == Save) {
+        if(m_finalize_strategy == DefaultFinalize::Save) {
             auto error = finalize();
             if(error.error_rank != Nothing) {
                 LOG_ERROR("{} : {}", error.short_description.toStdString(), error.detailed_description.toStdString());
             }
         }
-        else if(m_finalize_strategy == Discard) {
+        else if(m_finalize_strategy == DefaultFinalize::Discard) {
             finalize_discard();
         }
     }

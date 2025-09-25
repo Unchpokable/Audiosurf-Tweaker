@@ -33,7 +33,7 @@ bool compare_pattern(std::string_view source, std::vector<const char*> patterns)
 
 core::Error core::zip::read_archive_raw(QStringView path, QList<core::zip::ZipEntry>& result)
 {
-    auto zip = ZipHandle(path, ZipHandle::Discard);
+    ZipHandle zip(path, ZIP_RDONLY, ZipHandle::DefaultFinalize::Discard);
 
     if(!core::is_fine(zip.error())) {
         return zip.error();
@@ -75,7 +75,7 @@ core::Error core::zip::read_archive(QStringView path, core::PackData& result)
         return error;
     }
 
-    auto zip = ZipHandle(path, ZipHandle::Discard);
+    ZipHandle zip(path, ZIP_RDONLY, ZipHandle::DefaultFinalize::Discard);
 
     if(!core::is_fine(zip.error())) {
         return zip.error();
@@ -147,6 +147,8 @@ core::Error core::zip::read_archive(QStringView path, core::PackData& result)
 
 QString core::zip::write_archive(const PackData& data, QStringView path_to_save)
 {
+    ZipHandle zip(path_to_save, ZIP_CREATE | ZIP_TRUNCATE);
+
     return {};
 }
 
