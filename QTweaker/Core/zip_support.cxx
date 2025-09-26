@@ -19,10 +19,10 @@ std::filesystem::path full_path(core::zip::ZipEntry& entry)
     return root / file;
 }
 
-bool compare_pattern(std::string_view source, std::vector<const char*> patterns)
+bool ends_with_any(std::string_view source, std::vector<const char*> patterns)
 {
     for(std::string_view pattern : patterns) {
-        if(source.find(pattern) != std::string_view::npos) {
+        if(source.ends_with(pattern)) {
             return true;
         }
     }
@@ -84,6 +84,10 @@ core::Error core::zip::read_archive(QStringView path, core::PackData& result)
     core::Rank error_severity { core::Nothing };
 
     for(auto& entry : files) {
+        if(entry.is_directory) {
+            continue;
+        }
+
         auto path = full_path(entry);
 
         auto index = zip_name_locate(zip, path.string().c_str(), 0);
@@ -97,6 +101,7 @@ core::Error core::zip::read_archive(QStringView path, core::PackData& result)
         if(!file) {
             LOG_WARNING("Unable to open file {} at index {}", path.string(), index);
             error_severity = core::Moderate;
+            continue;
         }
 
         std::vector<std::uint8_t> output;
@@ -106,9 +111,10 @@ core::Error core::zip::read_archive(QStringView path, core::PackData& result)
         if(bytes_read != entry.total_size) {
             LOG_WARNING("Unable to read file. Declared size: {}, bytes read: {}", entry.total_size, bytes_read);
             error_severity = core::Moderate;
-
+            zip_fclose(file);
             continue;
         }
+        zip_fclose(file);
 
         auto ftype = image_format_from_mem(output.data(), output.size());
         if(ftype == Unsupported) {
@@ -127,14 +133,17 @@ core::Error core::zip::read_archive(QStringView path, core::PackData& result)
 
         image->set_name(entry.name);
 
-        if(compare_pattern(path.string(), core::masks::required_files)) {
+        if(ends_with_any(path.string(), core::masks::required_files)) {
             result.required_parts.append(*image);
         }
-        else if(compare_pattern(path.string(), core::masks::optional_files)) {
+        else if(ends_with_any(path.string(), core::masks::optional_files)) {
             result.optional_parts.append(*image);
         }
         else if(core::masks::preview_screenshots.match(QString::fromStdString(path.string())).hasMatch()) {
             result.previews.append(*image);
+        }
+        else {
+            LOG_WARNING("Unknown file: {}, can not match with any known files", entry.name.toStdString());
         }
     }
 

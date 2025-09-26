@@ -37,20 +37,20 @@ static Result stbi_convert_error(void)
 TW_NATIVE_API Result image_info(const char* file_path, int32_t* width, int32_t* height, int32_t* channels)
 {
     if(stbi_info(file_path, width, height, channels)) {
-        return stbi_convert_error();
+        return Success;
     }
 
-    return Success;
+    return stbi_convert_error();
 }
 
 
 TW_NATIVE_API Result image_info_from_mem(const unsigned char* data, int32_t data_size, int32_t* width, int32_t* height, int32_t* channels)
 {
     if(stbi_info_from_memory(data, data_size, width, height, channels)) {
-        return stbi_convert_error();
+        return Success;
     }
 
-    return Success;
+    return stbi_convert_error();
 }
 
 TW_NATIVE_API Result generic_decode(const char* file_path, unsigned char** data, int32_t* width, int32_t* height, int32_t* channels)
@@ -85,7 +85,7 @@ TW_NATIVE_API Result encode_png(const char* file_path, const unsigned char* data
 
     int failed = stbi_write_png(file_path, width, height, channels, data, 0);
 
-    if(failed) {
+    if(!failed) {
         return OutOfMemory;
     }
 
@@ -97,7 +97,7 @@ TW_NATIVE_API Result encode_jpeg(
 {
     int failed = stbi_write_jpg(file_path, width, height, channels, data, quality);
 
-    if(failed) {
+    if(!failed) {
         return UnknownError;
     }
 
