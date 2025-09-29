@@ -19,5 +19,7 @@
 #include <QString>
 #include <QStringView>
 #include <QImage>
+#include <QAbstractNativeEventFilter>
+#include <QAbstractItemModel>
 
 #endif // PRECOMPILED_HXX

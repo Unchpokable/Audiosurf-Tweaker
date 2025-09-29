@@ -50,6 +50,8 @@ private:
     QImage::Format deduce_format(const core::RawImage& image) const;
 
     core::PackData m_data;
+
+    QImageList m_previews_cache;
 };
 
 #endif

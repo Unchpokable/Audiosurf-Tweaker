@@ -15,16 +15,16 @@ void SkinItem::set_author(const QString &author)
 
 QImageList SkinItem::previews()
 {
-    QList<QImage> result;
+    if(m_previews_cache.empty()) {
+        for(auto& image: m_data.previews) {
+            auto unpacked = qUncompress(image.data());
+            QImage qimage(reinterpret_cast<uchar*>(unpacked.data()), image.width(), image.height(), deduce_format(image));
 
-    for(auto& image: m_data.previews) {
-        auto unpacked = qUncompress(image.data());
-        QImage qimage(reinterpret_cast<uchar*>(unpacked.data()), image.width(), image.height(), deduce_format(image));
-
-        result.append(qimage.copy());
+            m_previews_cache.append(qimage.copy());
+        }
     }
 
-    return result;
+    return m_previews_cache;
 }
 
 QImage::Format SkinItem::deduce_format(const core::RawImage &image) const

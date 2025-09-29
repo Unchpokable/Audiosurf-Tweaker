@@ -18,6 +18,11 @@ add_library(Backend SHARED
   precompiled.hxx
   backend_factory.hxx
   backend_factory.cxx
+  skin_changer.hxx skin_changer.cxx
+  color_configurator.hxx color_configurator.cxx
+  tweaker.hxx tweaker.cxx
+  wndproc_handler.h wndproc_handler.cpp
+  skins_view_model.hxx skins_view_model.cxx
 )
 
 target_link_libraries(Backend PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Gui)
