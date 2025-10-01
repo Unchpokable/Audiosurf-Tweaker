@@ -16,8 +16,8 @@ add_library(Backend SHARED
   skin_item.hxx
   skin_item.cxx
   precompiled.hxx
-  backend_factory.hxx
-  backend_factory.cxx
+  engine.hxx
+  engine.cxx
   skin_changer.hxx skin_changer.cxx
   color_configurator.hxx color_configurator.cxx
   tweaker.hxx tweaker.cxx

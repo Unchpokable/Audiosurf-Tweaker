@@ -4,6 +4,11 @@
 
 #include "Backend/skin_item.hxx"
 
+#include "Backend/color_configurator.hxx"
+#include "Backend/skin_changer.hxx"
+#include "Backend/tweaker.hxx"
+#include "Backend/engine.hxx"
+
 QDataStream& operator<<(QDataStream& stream, const QList<QImage>& list)
 {
     stream << list.size();
@@ -31,4 +36,17 @@ void qt::dirty::compat_init()
 {
     qRegisterMetaType<SkinItem>();
     qRegisterMetaType<QImageList>();
+
+    qRegisterMetaType<ColorConfiguratorBackend>();
+    qRegisterMetaType<SkinChangerBackend>();
+    qRegisterMetaType<TweakerBackend>();
+    qRegisterMetaType<Engine>();
+
+    qRegisterMetaType<SkinItem*>();
+    qRegisterMetaType<QImageList*>();
+
+    qRegisterMetaType<ColorConfiguratorBackend*>();
+    qRegisterMetaType<SkinChangerBackend*>();
+    qRegisterMetaType<TweakerBackend*>();
+    qRegisterMetaType<Engine*>();
 }

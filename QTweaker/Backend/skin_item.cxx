@@ -1,3 +1,5 @@
+#include "precompiled.hxx"
+
 #include "skin_item.hxx"
 
 SkinItem::SkinItem(QObject* parent) : QObject(parent)
@@ -13,7 +15,7 @@ void SkinItem::set_author(const QString &author)
 {
 }
 
-QImageList SkinItem::previews()
+const QImageList* SkinItem::previews()
 {
     if(m_previews_cache.empty()) {
         for(auto& image: m_data.previews) {
@@ -24,7 +26,7 @@ QImageList SkinItem::previews()
         }
     }
 
-    return m_previews_cache;
+    return &m_previews_cache;
 }
 
 QImage::Format SkinItem::deduce_format(const core::RawImage &image) const

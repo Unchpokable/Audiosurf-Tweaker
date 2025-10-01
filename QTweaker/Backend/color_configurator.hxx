@@ -1,7 +1,9 @@
 #ifndef COLOR_CONFIGURATOR_HXX
 #define COLOR_CONFIGURATOR_HXX
 
-class ColorConfiguratorBackend : public QObject
+#include "Backend_global.h"
+
+class BACKEND_EXPORT ColorConfiguratorBackend : public QObject
 {
     Q_OBJECT
 public:
@@ -9,5 +11,8 @@ public:
 
 signals:
 };
+
+Q_DECLARE_METATYPE(ColorConfiguratorBackend);
+Q_DECLARE_METATYPE(ColorConfiguratorBackend*);
 
 #endif // COLOR_CONFIGURATOR_HXX

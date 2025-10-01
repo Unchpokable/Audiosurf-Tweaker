@@ -21,5 +21,7 @@
 #include <QImage>
 #include <QAbstractNativeEventFilter>
 #include <QAbstractItemModel>
+#include <QAbstractListModel>
+#include <QModelIndex>
 
 #endif // PRECOMPILED_HXX

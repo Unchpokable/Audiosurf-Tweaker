@@ -1,5 +1,7 @@
+#include "precompiled.hxx"
+
 #include "color_configurator.hxx"
 
-ColorConfiguratorBackend::ColorConfiguratorBackend(QObject* parent) : QObject { parent }
+ColorConfiguratorBackend::ColorConfiguratorBackend(QObject* parent) : QObject(parent)
 {
 }

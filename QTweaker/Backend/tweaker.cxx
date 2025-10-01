@@ -1,5 +1,7 @@
+#include "precompiled.hxx"
+
 #include "tweaker.hxx"
 
-TweakerBackend::TweakerBackend()
+TweakerBackend::TweakerBackend(QObject* parent) : QObject(parent)
 {
 }
