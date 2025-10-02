@@ -1,13 +1,13 @@
 #ifndef WNDPROC_HANDLER_H
 #define WNDPROC_HANDLER_H
 
+#include "Backend_global.h"
+
 #ifdef _WIN32
 #include <Windows.h>
 #endif
 
 #ifdef _WIN32
-
-#include "Backend_global.h"
 
 class BACKEND_EXPORT CopyDataWrapper
 {
