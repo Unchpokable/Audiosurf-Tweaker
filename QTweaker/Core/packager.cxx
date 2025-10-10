@@ -8,17 +8,13 @@
 
 namespace
 {
-
 static constexpr char required_header[] = "TWEAKER_SKIN0000";
 static constexpr std::uint16_t serializer_version_major = 1;
 static constexpr std::uint16_t serializer_version_minor = 0;
 static constexpr std::uint16_t serializer_version_patch = 0;
-static constexpr char file_extension[] = "tpack";
+} // namespace
 
-}
-
-std::optional<core::PackData> core::read_package(
-    std::string_view path, QList<Error>& errors)
+std::optional<core::PackData> core::read_package(std::string_view path, QList<Error>& errors)
 {
     if(!std::filesystem::exists(path)) {
         return std::nullopt;
@@ -137,8 +133,7 @@ std::optional<core::PackData> core::read_package(
     return data;
 }
 
-bool core::write_package(
-    const PackData& data, std::string_view output_path)
+bool core::write_package(const PackData& data, std::string_view output_path)
 {
     QByteArray content;
 
@@ -174,8 +169,7 @@ bool core::write_package(
     std::size_t optional_parts_count = data.optional_parts.size();
 
     if(optional_parts_count > 0) {
-        stream
-            << static_cast<std::int32_t>(1);
+        stream << static_cast<std::int32_t>(1);
         stream.writeRawData(reinterpret_cast<char*>(&optional_parts_count), sizeof(std::size_t));
 
         QByteArray optional_data_block;
@@ -208,8 +202,7 @@ bool core::write_package(
         stream << previews_data_block;
     }
     else {
-        stream << static_cast<
-            std::int32_t>(0);
+        stream << static_cast<std::int32_t>(0);
     }
 
     if(stream.status() == QDataStream::Ok) {

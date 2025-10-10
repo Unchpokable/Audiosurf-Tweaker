@@ -6,6 +6,8 @@
 #include "skin_item.hxx"
 #include "skins_view_model.hxx"
 
+class Engine;
+
 class BACKEND_EXPORT SkinChangerBackend : public QObject
 {
     Q_OBJECT
@@ -20,11 +22,11 @@ class BACKEND_EXPORT SkinChangerBackend : public QObject
     Q_PROPERTY(QImageList* selected_previews MEMBER m_selected_previews NOTIFY user_selection_changed);
 
 public:
-    Q_INVOKABLE explicit SkinChangerBackend(QObject* parent = nullptr);
+    Q_INVOKABLE explicit SkinChangerBackend(Engine* engine, QObject* parent = nullptr);
 
     Q_INVOKABLE SkinsViewModel* model();
 
-    Q_INVOKABLE void add_skin(const SkinItem* item);
+    Q_INVOKABLE void add_skin(SkinItem* item);
 
     Q_INVOKABLE void remove_skin(const QString& name);
     Q_INVOKABLE void remove_skin(int index);
@@ -35,12 +37,14 @@ public:
     Q_INVOKABLE void config_install_particles(bool value);
     Q_INVOKABLE void config_install_skyspheres(bool value);
 
-    Q_INVOKABLE void install_configured();
-    Q_INVOKABLE void install_full();
+    Q_INVOKABLE void install_configured(int index);
+    Q_INVOKABLE void install_full(int index);
 
 signals:
     void configuration_changed();
     void user_selection_changed();
+    void skin_added();
+    void skin_removed();
 
 private:
     // Configuration
@@ -53,6 +57,9 @@ private:
     // UI binds
     SkinsViewModel* m_skins_list_model;
     QImageList* m_selected_previews;
+
+    // Back-to-root
+    Engine* m_engine;
 };
 
 Q_DECLARE_METATYPE(SkinChangerBackend);

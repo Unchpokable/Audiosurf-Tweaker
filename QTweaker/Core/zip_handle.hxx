@@ -14,13 +14,11 @@ typedef zip_source zip_source_t;
 
 namespace core::zip
 {
-class ZipHandle
-{
+class ZipHandle {
     using LZ_ModeType = decltype(ZIP_RDONLY);
 
 public:
-    enum class DefaultFinalize
-    {
+    enum class DefaultFinalize {
         Save,
         Discard,
     };
@@ -56,5 +54,5 @@ private:
     DefaultFinalize m_finalize_strategy;
     bool m_finalized { false };
 };
-}
+} // namespace core::zip
 #endif // ZIP_HANDLE_HXX

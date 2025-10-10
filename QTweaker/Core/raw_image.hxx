@@ -6,21 +6,18 @@
 namespace core
 {
 
-class CORE_EXPORT RawImage
-{
+class CORE_EXPORT RawImage {
 public:
-    enum CompressionLevel : std::int32_t
-    {
+    enum CompressionLevel : std::int32_t {
         Raw = 0,
         ZLib_Default = 6,
-        Highest = 9
+        Highest = 9,
     };
 
-    enum ImageFormat : std::int32_t
-    {
+    enum ImageFormat : std::int32_t {
         Jpeg = 0,
         Png,
-        Unsupported
+        Unsupported,
     };
 
 public:
@@ -64,6 +61,6 @@ private:
     QHash<QString, QString> m_meta_info;
 };
 
-}
+} // namespace core
 
 #endif

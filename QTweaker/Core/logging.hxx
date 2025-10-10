@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Core_global.h"
+
 namespace logging
 {
 enum class Level : unsigned int {
@@ -18,28 +20,28 @@ using SinkFunction = void (*)(Level level, const std::source_location& location,
 
 namespace logging::sinks
 {
-void stderr_ansi(Level level, const std::source_location& location, const std::string& message);
+CORE_EXPORT void stderr_ansi(Level level, const std::source_location& location, const std::string& message);
 } // namespace logging::sinks
 
 namespace logging::detail
 {
-void info(const std::source_location& location, const std::string& message);
-void warning(const std::source_location& location, const std::string& message);
-void error(const std::source_location& location, const std::string& message);
-void critical(const std::source_location& location, const std::string& message);
+CORE_EXPORT void info(const std::source_location& location, const std::string& message);
+CORE_EXPORT void warning(const std::source_location& location, const std::string& message);
+CORE_EXPORT void error(const std::source_location& location, const std::string& message);
+CORE_EXPORT void critical(const std::source_location& location, const std::string& message);
 } // namespace logging::detail
 
 namespace logging::detail
 {
 #ifndef NDEBUG
-void debug(const std::source_location& location, const std::string& message);
+CORE_EXPORT void debug(const std::source_location& location, const std::string& message);
 #endif
 } // namespace logging::detail
 
 namespace logging
 {
-void add_sink(SinkFunction sink);
-void remove_sink(SinkFunction sink);
+CORE_EXPORT void add_sink(SinkFunction sink);
+CORE_EXPORT void remove_sink(SinkFunction sink);
 } // namespace logging
 
 namespace logging

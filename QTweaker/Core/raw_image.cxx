@@ -82,27 +82,15 @@ core::RawImage::RawImage()
 {
 }
 
-core::RawImage::RawImage(
-    const RawImage& other)
-    : m_data(other.m_data),
-      m_format(other.m_format),
-      m_name(other.m_name),
-      m_width(other.m_width),
-      m_height(other.m_height),
-      m_channels_count(other.m_channels_count),
-      m_meta_info(other.m_meta_info)
+core::RawImage::RawImage(const RawImage& other)
+    : m_data(other.m_data), m_format(other.m_format), m_name(other.m_name), m_width(other.m_width), m_height(other.m_height),
+      m_channels_count(other.m_channels_count), m_meta_info(other.m_meta_info)
 {
 }
 
-core::RawImage::RawImage(
-    RawImage&& other)
-    : m_data(std::move(other.m_data)),
-      m_format(other.m_format),
-      m_name(std::move(other.m_name)),
-      m_width(other.m_width),
-      m_height(other.m_height),
-      m_channels_count(other.m_channels_count),
-      m_meta_info(std::move(other.m_meta_info))
+core::RawImage::RawImage(RawImage&& other)
+    : m_data(std::move(other.m_data)), m_format(other.m_format), m_name(std::move(other.m_name)), m_width(other.m_width),
+      m_height(other.m_height), m_channels_count(other.m_channels_count), m_meta_info(std::move(other.m_meta_info))
 {
 }
 
@@ -110,8 +98,7 @@ core::RawImage::~RawImage()
 {
 }
 
-void core::RawImage::stream_insert(
-    QDataStream& stream) const
+void core::RawImage::stream_insert(QDataStream& stream) const
 {
     stream << static_cast<std::int32_t>(m_format);
     stream << m_width;
@@ -124,8 +111,7 @@ void core::RawImage::stream_insert(
     stream << m_meta_info;
 }
 
-void core::RawImage::stream_exctract(
-    QDataStream& stream)
+void core::RawImage::stream_exctract(QDataStream& stream)
 {
     std::int32_t raw_format {};
     stream >> raw_format;
@@ -141,8 +127,7 @@ void core::RawImage::stream_exctract(
     stream >> m_meta_info;
 }
 
-bool core::RawImage::write(
-    std::string_view path, ImageFormat format)
+bool core::RawImage::write(std::string_view path, ImageFormat format)
 {
     if(!std::filesystem::exists(path)) {
         std::error_code errc;
@@ -164,7 +149,8 @@ bool core::RawImage::write(
             break;
 
         case Png:
-            result = encode_png(file.string().c_str(), reinterpret_cast<unsigned char*>(decompressed.data()), m_width, m_height, m_channels_count);
+            result = encode_png(
+                file.string().c_str(), reinterpret_cast<unsigned char*>(decompressed.data()), m_width, m_height, m_channels_count);
             break;
 
         case Unsupported:
@@ -199,14 +185,7 @@ void core::RawImage::set_name(const QString& name)
     m_name = name;
 }
 
-
-core::RawImage::RawImage(
-    QByteArray data, ImageFormat format, QString name, int32_t width, int32_t height, int32_t channels_count)
-    : m_data(std::move(data)),
-      m_format(format),
-      m_name(std::move(name)),
-      m_width(width),
-      m_height(height),
-      m_channels_count(channels_count)
+core::RawImage::RawImage(QByteArray data, ImageFormat format, QString name, int32_t width, int32_t height, int32_t channels_count)
+    : m_data(std::move(data)), m_format(format), m_name(std::move(name)), m_width(width), m_height(height), m_channels_count(channels_count)
 {
 }

@@ -1,0 +1,26 @@
+{
+    "version": 4,
+    "configurations": [
+        {
+            "name": "Audiosurf-Tweaker",
+            "cppStandard": "c++20",
+            "intelliSenseMode": "windows-msvc-x64",
+            "defines": [
+                "_INTELLISENSE",
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE",
+                "BUILD_STATIC"
+            ],
+            "includePath": [
+                "${default}",
+                "${workspaceFolder}",
+                "${workspaceFolder}/Core",
+                "${workspaceFolder}/Backend",
+                "${workspaceFolder}/NativeImage",
+                "${env:QTDIR}/include/**",
+                "${env:VCPKG_ROOT}/installed/x64-windows-static/include"
+            ]
+        }
+    ]
+}

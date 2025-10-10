@@ -27,7 +27,7 @@ constexpr const char* tiles_flyup = "tilesflyup.png";
 constexpr const char* skysphere_black = "Skysphere_Black.png";
 constexpr const char* skysphere_grey = "Skysphere_Grey.png";
 constexpr const char* skysphere_white = "Skysphere_White.png";
-}
+} // namespace
 
 std::vector<const char*> core::masks::required_files {
     cliff11,
@@ -53,8 +53,8 @@ std::vector<const char*> core::masks::optional_files {
     skysphere_white,
 };
 
-QRegularExpression core::masks::preview_screenshots = QRegularExpression(R"(^PreviewScreenshot.*\.(png|jpg|jpeg)$)",
-    QRegularExpression::CaseInsensitiveOption);
+QRegularExpression core::masks::preview_screenshots =
+    QRegularExpression(R"(^PreviewScreenshot.*\.(png|jpg|jpeg)$)", QRegularExpression::CaseInsensitiveOption);
 
 std::vector<const char*> core::masks::cliffs {
     cliff11,

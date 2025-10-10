@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <string_view>
 #include <vector>
+#include <source_location>
 
 #include <QDataStream>
 #include <QFile>
@@ -19,5 +20,8 @@
 #include <QString>
 #include <QStringView>
 #include <QImage>
+#include <QGuiApplication>
+#include <QQmlApplicationEngine>
+#include <QQuickStyle>
 
 #endif // PRECOMPILED_HXX

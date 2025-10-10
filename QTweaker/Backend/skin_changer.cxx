@@ -2,7 +2,9 @@
 
 #include "skin_changer.hxx"
 
-SkinChangerBackend::SkinChangerBackend(QObject* parent) : QObject(parent)
+#include "engine.hxx"
+
+SkinChangerBackend::SkinChangerBackend(Engine* engine, QObject* parent) : QObject(parent), m_engine(engine)
 {
 }
 
@@ -11,16 +13,19 @@ SkinsViewModel* SkinChangerBackend::model()
     return m_skins_list_model;
 }
 
-void SkinChangerBackend::add_skin(const SkinItem* item)
+void SkinChangerBackend::add_skin(SkinItem* item)
 {
+    m_skins_list_model->addSkin(item);
 }
 
 void SkinChangerBackend::remove_skin(const QString& name)
 {
+    m_skins_list_model->removeSkin(name);
 }
 
 void SkinChangerBackend::remove_skin(int index)
 {
+    m_skins_list_model->removeSkin(index);
 }
 
 void SkinChangerBackend::config_install_tiles(bool value)
@@ -63,10 +68,10 @@ void SkinChangerBackend::config_install_skyspheres(bool value)
     }
 }
 
-void SkinChangerBackend::install_configured()
+void SkinChangerBackend::install_configured(int index)
 {
 }
 
-void SkinChangerBackend::install_full()
+void SkinChangerBackend::install_full(int index)
 {
 }

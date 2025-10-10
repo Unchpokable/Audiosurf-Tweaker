@@ -1,5 +1,20 @@
 cmake_minimum_required(VERSION 3.16)
 
+if(WIN32)
+    set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "")
+    file(TO_NATIVE_PATH "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" Cmake_toolchain_native)
+    set(CMAKE_TOOLCHAIN_FILE "${Cmake_toolchain_native}" CACHE FILEPATH "")
+    message("${CMAKE_TOOLCHAIN_FILE}")
+    message("${VCPKG_TARGET_TRIPLET}")
+endif()
+
+if(DEFINED ENV{QTDIR})
+    set(Qt6_DIR "$ENV{QTDIR}/lib/cmake/Qt6" CACHE PATH "Qt6 directory")
+    list(PREPEND CMAKE_PREFIX_PATH "$ENV{QTDIR}")
+    message(STATUS "Using Qt from QTDIR: $ENV{QTDIR}")
+    message(STATUS "Qt6_DIR set to: ${Qt6_DIR}")
+endif()
+
 project(tweaker VERSION 0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -34,7 +49,8 @@ qt_add_qml_module(tweaker
 # If you are developing for iOS or macOS you should consider setting an
 # explicit, fixed bundle identifier manually though.
 set_target_properties(tweaker PROPERTIES
-#    MACOSX_BUNDLE_GUI_IDENTIFIER com.example.tweaker
+
+    # MACOSX_BUNDLE_GUI_IDENTIFIER com.example.tweaker
     MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
     MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}
     MACOSX_BUNDLE TRUE
@@ -60,3 +76,26 @@ install(TARGETS tweaker
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
+# Автоматическое развёртывание Qt DLL после сборки
+if(WIN32)
+    # Найти windeployqt
+    find_program(WINDEPLOYQT_EXECUTABLE windeployqt HINTS "${Qt6_DIR}/../../../bin")
+
+    if(WINDEPLOYQT_EXECUTABLE)
+        message(STATUS "Found windeployqt: ${WINDEPLOYQT_EXECUTABLE}")
+
+        # Добавить пост-билд команду для копирования Qt DLL
+        add_custom_command(TARGET tweaker POST_BUILD
+            COMMAND "${WINDEPLOYQT_EXECUTABLE}"
+                --qmldir "${CMAKE_SOURCE_DIR}"
+                --no-translations
+                --no-system-d3d-compiler
+                --no-compiler-runtime
+                "$<TARGET_FILE:tweaker>"
+            COMMENT "Deploying Qt dependencies to output directory..."
+        )
+    else()
+        message(WARNING "windeployqt not found. Qt dependencies will not be automatically deployed.")
+    endif()
+endif()

@@ -11,6 +11,7 @@
 #include <string_view>
 #include <vector>
 #include <source_location>
+#include <ranges>
 
 #include <QDataStream>
 #include <QFile>

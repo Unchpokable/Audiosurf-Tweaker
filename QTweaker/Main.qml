@@ -123,8 +123,6 @@ Window {
                     contentLayout.currentIndex = 1
                 } else if (checkedButton === nav_Tweaker) {
                     contentLayout.currentIndex = 2
-                } else {
-                    contentLayout.currentIndex = 3
                 }
             }
         }

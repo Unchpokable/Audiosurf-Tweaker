@@ -29,6 +29,11 @@ const QImageList* SkinItem::previews()
     return &m_previews_cache;
 }
 
+const core::PackData& SkinItem::data() const
+{
+    return m_data;
+}
+
 QImage::Format SkinItem::deduce_format(const core::RawImage &image) const
 {
     QImage::Format format;

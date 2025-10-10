@@ -42,6 +42,8 @@ public:
 
     const QImageList* previews();
 
+    const core::PackData& data() const;
+
 signals:
     void renamed(QString new_name);
     void author_changed(QString new_author);

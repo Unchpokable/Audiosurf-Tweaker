@@ -1,9 +1,9 @@
 #include "precompiled.hxx"
 
+#include "image_processing.h"
+#include "logging.hxx"
 #include "zip_handle.hxx"
 #include "zip_support.hxx"
-#include "logging.hxx"
-#include "image_processing.h"
 
 #include "masks.hxx"
 
@@ -29,7 +29,7 @@ bool ends_with_any(std::string_view source, std::vector<const char*> patterns)
 
     return false;
 }
-}
+} // namespace
 
 core::Error core::zip::read_archive_raw(QStringView path, QList<core::zip::ZipEntry>& result)
 {
@@ -63,7 +63,7 @@ core::Error core::zip::read_archive_raw(QStringView path, QList<core::zip::ZipEn
         }
     }
 
-    return core::Error{};
+    return core::Error {};
 }
 
 core::Error core::zip::read_archive(QStringView path, core::PackData& result)
@@ -151,7 +151,7 @@ core::Error core::zip::read_archive(QStringView path, core::PackData& result)
         return core::make_error(error_severity, "Archive reading error!", "Errors occured during reading an archive, check the results!");
     }
 
-    return core::Error{};
+    return core::Error {};
 }
 
 QString core::zip::write_archive(const PackData& data, QStringView path_to_save)

@@ -1,6 +1,7 @@
 #include "precompiled.hxx"
 
 #include "zip_handle.hxx"
+
 #include "logging.hxx"
 
 core::zip::ZipHandle::ZipHandle(QStringView path, LZ_ModeType mode, DefaultFinalize finalize)
@@ -12,8 +13,11 @@ core::zip::ZipHandle::ZipHandle(QStringView path, LZ_ModeType mode, DefaultFinal
         zip_error_t libzip_error;
         zip_error_init_with_code(&libzip_error, errp);
 
-        auto error = core::make_error(core::Minor, "Archive reading error!", "Unable to open archive {}, libzip failed: {}",
-            path.toString().toStdString(), zip_error_strerror(&libzip_error));
+        auto error = core::make_error(core::Minor,
+            "Archive reading error!",
+            "Unable to open archive {}, libzip failed: {}",
+            path.toString().toStdString(),
+            zip_error_strerror(&libzip_error));
 
         zip_error_fini(&libzip_error);
 
@@ -77,7 +81,8 @@ core::Error core::zip::ZipHandle::finalize()
         if(code == -1) {
             auto lz_err = zip_get_error(m_archive);
 
-            auto error = core::make_error(core::Moderate, "Archive saving error!", "Unable to write archive: {}", zip_error_strerror(lz_err));
+            auto error =
+                core::make_error(core::Moderate, "Archive saving error!", "Unable to write archive: {}", zip_error_strerror(lz_err));
 
             m_error = error;
 
@@ -87,7 +92,7 @@ core::Error core::zip::ZipHandle::finalize()
         m_finalized = true;
     }
 
-    return core::Error{};
+    return core::Error {};
 }
 
 void core::zip::ZipHandle::finalize_discard()
@@ -138,12 +143,13 @@ void core::zip::ZipHandle::finalize_impl()
             finalize_discard();
             break;
 
-        case DefaultFinalize::Save: {
-            auto error = finalize();
-            if(error.error_rank != Nothing) {
-                LOG_ERROR("{} : {}", error.short_description.toStdString(), error.detailed_description.toStdString());
+        case DefaultFinalize::Save:
+            {
+                auto error = finalize();
+                if(error.error_rank != Nothing) {
+                    LOG_ERROR("{} : {}", error.short_description.toStdString(), error.detailed_description.toStdString());
+                }
+                break;
             }
-            break;
-        }
     }
 }

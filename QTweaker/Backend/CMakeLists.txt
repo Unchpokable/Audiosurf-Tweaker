@@ -23,6 +23,8 @@ add_library(Backend SHARED
   tweaker.hxx tweaker.cxx
   wndproc_handler.h wndproc_handler.cpp
   skins_view_model.hxx skins_view_model.cxx
+  image_utils.hxx
+  image_utils.cxx
 )
 
 target_link_libraries(Backend PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Gui)

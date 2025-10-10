@@ -5,15 +5,16 @@
 #include <exception>
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 #include <memory>
+#include <mutex>
 #include <ostream>
+#include <source_location>
 #include <stdexcept>
 #include <string_view>
 #include <vector>
-#include <source_location>
-#include <mutex>
-#include <iostream>
 
+#include <QCryptographicHash>
 #include <QDataStream>
 #include <QFile>
 #include <QFileInfo>
@@ -21,5 +22,8 @@
 #include <QRegularExpression>
 #include <QString>
 #include <QStringView>
+#include <QtConcurrent/QtConcurrent>
+
+#include <xxhash.h>
 
 #endif
