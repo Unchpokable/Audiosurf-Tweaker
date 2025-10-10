@@ -26,6 +26,7 @@ add_library(Core SHARED
   zip_handle.hxx zip_handle.cxx
   logging.hxx logging.cxx
   installer.hxx installer.cxx
+  snapshot.hxx snapshot.cxx
 )
 
 target_precompile_headers(Core PRIVATE precompiled.hxx)
