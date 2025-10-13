@@ -56,6 +56,8 @@ core::ContentVerifyResult core::verify(const QString& destination, ContentSnapsh
             return ContentVerifyResult::FilenameMissmatch;
         }
     }
+
+    return ContentVerifyResult::Ok;
 }
 
 core::ContentSnapshot core::make_snapshot(const QString& destination, const QByteArray& unique_name)
@@ -99,6 +101,8 @@ core::ContentSnapshot core::make_snapshot(const QString& destination, const QByt
     });
 
     auto result = future.results();
+
+    return {};
 }
 
 bool core::write_snapshot(const QString& destination, ContentSnapshot snapshot)

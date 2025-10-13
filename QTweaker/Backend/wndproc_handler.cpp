@@ -2,12 +2,16 @@
 
 #include "wndproc_handler.h"
 
+#ifdef _WIN32
+
 CopyDataWrapper::CopyDataWrapper(const COPYDATASTRUCT* cds)
 {
     m_data_id = cds->dwData;
 
     m_data = std::vector(static_cast<uint8_t*>(cds->lpData), static_cast<uint8_t*>(cds->lpData) + cds->cbData);
 }
+
+#endif
 
 WndProcHandler::WndProcHandler(QObject* parent) : QObject(parent)
 {

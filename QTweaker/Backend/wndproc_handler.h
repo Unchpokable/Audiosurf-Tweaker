@@ -9,8 +9,7 @@
 
 #ifdef _WIN32
 
-class BACKEND_EXPORT CopyDataWrapper
-{
+class BACKEND_EXPORT CopyDataWrapper {
 public:
     CopyDataWrapper(const COPYDATASTRUCT* cds);
 
@@ -34,10 +33,16 @@ private:
     std::vector<std::uint8_t> m_data;
 };
 
+#else
+
+class BACKEND_EXPORT CopyDataWrapper {
+public:
+    CopyDataWrapper() {};
+};
+
 #endif
 
-class BACKEND_EXPORT WndProcHandler : public QObject, public QAbstractNativeEventFilter
-{
+class BACKEND_EXPORT WndProcHandler : public QObject, public QAbstractNativeEventFilter {
     Q_OBJECT
 
 public:
