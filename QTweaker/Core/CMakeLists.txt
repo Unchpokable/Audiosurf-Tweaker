@@ -12,7 +12,13 @@ find_package(Qt6 REQUIRED COMPONENTS Core)
 find_package(Qt6 REQUIRED COMPONENTS Concurrent)
 
 find_package(libzip CONFIG REQUIRED)
+
+if(WIN32)
 find_package(xxHash CONFIG REQUIRED)
+else()
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(xxHash REQUIRED IMPORTED_TARGET libxxhash)
+endif()
 
 add_library(Core SHARED
   Core_global.h
@@ -35,7 +41,12 @@ target_link_libraries(Core PUBLIC NativeImage)
 target_link_libraries(Core PRIVATE Qt6::Core)
 target_link_libraries(Core PRIVATE Qt6::Concurrent)
 target_link_libraries(Core PRIVATE libzip::zip)
+
+if(WIN32)
 target_link_libraries(Core PRIVATE xxHash::xxhash)
+else()
+target_link_libraries(Core PRIVATE PkgConfig::xxHash)
+endif()
 
 target_include_directories(Core PUBLIC "${CMAKE_CURRENT_LIST_DIR}")
 

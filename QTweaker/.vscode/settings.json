@@ -1,7 +1,29 @@
 {
     "editor.formatOnSave": true,
+    "terminal.integrated.fontFamily": "NotoMono Nerd Font Mono",
     "files.associations": {
         "filesystem": "cpp",
         "xstring": "cpp"
+    },
+    "editor.semanticTokenColorCustomizations": {
+        "enabled": true,
+        "rules": {
+            "enumMember": "#B5CEA8",
+            "namespace": "#90cfc3",
+            "parameter": "#8DB4D3",
+            "property": "#D7A0D1",
+            "operatorOverload": "#4EC9B0"
+        }
+    },
+    "editor.tokenColorCustomizations": {
+        "textMateRules": [
+            {
+                "scope": "variable.other.enummmember.cpp",
+                "settings": {
+                    "foreground": "#B5CEA8",
+                    "fontStyle": "bold"
+                }
+            }
+        ]
     },
 }
