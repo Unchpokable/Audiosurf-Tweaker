@@ -4,6 +4,11 @@
 
 namespace core
 {
+constexpr const char snapshot_extension[] = "hinf";
+} // namespace core
+
+namespace core
+{
 // Wrapper for 128-bit unsigned hashes to avoid including <xxhash> everywhere
 struct Unsigned128 {
     std::uint64_t low64 {};

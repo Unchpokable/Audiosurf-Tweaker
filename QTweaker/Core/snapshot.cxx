@@ -76,6 +76,9 @@ core::ContentSnapshot core::make_snapshot(const QString& destination, const QByt
         if(file_info.isDir()) {
             continue;
         }
+        if(file_info.suffix() == snapshot_extension) { // skin .hinf files with stored state
+            continue;
+        }
 
         files.append(file);
     }
@@ -102,15 +105,62 @@ core::ContentSnapshot core::make_snapshot(const QString& destination, const QByt
 
     auto result = future.results();
 
-    return {};
+    ContentSnapshot snapshot;
+    snapshot.hashes = result;
+    snapshot.unique_name = unique_name;
+
+    return snapshot;
 }
 
 bool core::write_snapshot(const QString& destination, ContentSnapshot snapshot)
 {
-    return false;
+    QFileInfo info(destination);
+    if(!info.exists()) {
+        LOG_WARNING("Path {} is not exists!!!", destination.toStdString());
+        return false;
+    }
+
+    if(!info.isDir()) {
+        LOG_WARNING("Path {} is not a directory!!!", destination.toStdString());
+        return false;
+    }
+
+    auto raw_path = destination + "/" + QString("%1.%2").arg("current").arg(snapshot_extension);
+    auto path = QDir::cleanPath(QDir::toNativeSeparators(raw_path));
+
+    QFile file(path);
+    if(!file.open(QIODevice::OpenModeFlag::ReadOnly)) {
+        LOG_WARNING("Unable to open device to write!: {}", destination.toStdString());
+        return false;
+    }
+
+    QDataStream stream(&file);
+
+    stream << snapshot.unique_name;
+    stream << snapshot.hashes.count();
+
+    for(auto hash : snapshot.hashes) {
+        stream << hash.file_name;
+        stream << static_cast<quint64>(hash.hash.low64);
+        stream << static_cast<quint64>(hash.hash.high64);
+
+        if(stream.status() != QDataStream::Status::Ok) {
+            LOG_WARNING("Writer died! Status code: {}", stream.status());
+            file.close();
+            return false;
+        }
+    }
+
+    file.close();
+
+    return true;
 }
 
 std::optional<core::ContentSnapshot> core::load_snapshot(const QString& destination)
 {
-    return std::nullopt;
+    QFileInfo info(destination);
+    if(!info.exists()) {
+        LOG_WARNING("Path {} is not exists!!!", destination.toStdString());
+        return std::nullopt;
+    }
 }

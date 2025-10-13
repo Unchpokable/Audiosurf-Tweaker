@@ -2,8 +2,8 @@
 
 #include "packager.hxx"
 
+#include "logging.hxx"
 #include "pack_data.hxx"
-
 #include "raw_image.hxx"
 
 namespace
@@ -24,7 +24,10 @@ std::optional<core::PackData> core::read_package(std::string_view path, QList<Er
 
     QFile file(path.data());
 
-    file.open(QIODevice::OpenModeFlag::ReadOnly);
+    if(!file.open(QIODevice::OpenModeFlag::ReadOnly)) {
+        LOG_WARNING("Failed to open {}", path);
+        return std::nullopt;
+    }
 
     if(file.size() < sizeof(required_header) + sizeof(std::uint16_t) * 3) {
         return std::nullopt;
@@ -213,7 +216,10 @@ bool core::write_package(const PackData& data, std::string_view output_path)
 
         QFile output(full_path.string().c_str());
 
-        output.open(QIODevice::OpenModeFlag::WriteOnly | QIODevice::OpenModeFlag::Truncate);
+        if(!output.open(QIODevice::OpenModeFlag::WriteOnly | QIODevice::OpenModeFlag::Truncate)) {
+            LOG_WARNING("Failed to open {}", output.fileName());
+            return false;
+        }
 
         QDataStream output_stream(&output);
 
