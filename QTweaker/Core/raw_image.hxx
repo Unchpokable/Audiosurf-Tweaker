@@ -37,6 +37,7 @@ public:
     void stream_exctract(QDataStream& stream);
 
     bool write(std::string_view path, ImageFormat format);
+    bool write(std::string_view path);
 
     QByteArray& data();
 

@@ -3,7 +3,8 @@
     "terminal.integrated.fontFamily": "NotoMono Nerd Font Mono",
     "files.associations": {
         "filesystem": "cpp",
-        "xstring": "cpp"
+        "xstring": "cpp",
+        "xutility": "cpp"
     },
     "editor.semanticTokenColorCustomizations": {
         "enabled": true,

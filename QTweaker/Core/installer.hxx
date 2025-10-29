@@ -21,8 +21,19 @@ struct InstallFilter {
 
 namespace core
 {
-CORE_EXPORT bool install_skin(const QString& destination, const PackData& data);
-CORE_EXPORT bool install_skin(const QString& destination, const PackData& data, InstallFilter filter);
+enum class InstallResult {
+    DestinationNotExists,
+    DestinationNotDirectory,
+    ReadWriteError,
+    GenericFailure,
+    Ok,
+};
+} // namespace core
+
+namespace core
+{
+CORE_EXPORT InstallResult install_skin(const QString& destination, const PackData& data);
+CORE_EXPORT InstallResult install_skin(const QString& destination, const PackData& data, InstallFilter filter);
 } // namespace core
 
 #endif // INSTALLER_H

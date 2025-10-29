@@ -2,9 +2,12 @@
 
 #include "Core_global.h"
 
+#include "error.hxx"
+
 namespace core
 {
 constexpr const char snapshot_extension[] = "hinf";
+constexpr const char snapshot_filename[] = "current";
 } // namespace core
 
 namespace core
@@ -45,7 +48,7 @@ bool u128_same(const Unsigned128& lhs, const Unsigned128& rhs);
 namespace core
 {
 CORE_EXPORT ContentVerifyResult verify(const QString& destination, ContentSnapshot snapshot);
-CORE_EXPORT ContentSnapshot make_snapshot(const QString& destination, const QByteArray& unique_name);
+CORE_EXPORT std::optional<ContentSnapshot> make_snapshot(const QString& destination, const QByteArray& unique_name);
 CORE_EXPORT bool write_snapshot(const QString& destination, ContentSnapshot snapshot);
 CORE_EXPORT std::optional<ContentSnapshot> load_snapshot(const QString& destination);
 } // namespace core

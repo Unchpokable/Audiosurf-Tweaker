@@ -217,7 +217,7 @@ bool core::write_package(const PackData& data, std::string_view output_path)
         QFile output(full_path.string().c_str());
 
         if(!output.open(QIODevice::OpenModeFlag::WriteOnly | QIODevice::OpenModeFlag::Truncate)) {
-            LOG_WARNING("Failed to open {}", output.fileName());
+            LOG_WARNING("Failed to open {}", output.fileName().toStdString());
             return false;
         }
 

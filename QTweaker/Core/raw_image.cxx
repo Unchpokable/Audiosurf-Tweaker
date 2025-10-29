@@ -160,6 +160,11 @@ bool core::RawImage::write(std::string_view path, ImageFormat format)
     return result == Success;
 }
 
+bool core::RawImage::write(std::string_view path)
+{
+    return write(path, m_format);
+}
+
 QByteArray& core::RawImage::data()
 {
     return m_data;
