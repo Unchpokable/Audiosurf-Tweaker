@@ -8,11 +8,21 @@
 namespace
 {
 // todo: compile shl32.masm and replace it
-std::vector<std::uint8_t> shellcode_blob_32 = {
-    0x0,
-    0x0,
-    0x0,
-    0x0,
+const std::uint8_t shellcode_blob_32[] = {
+    0x60,
+    0x8B,
+    0xF0,
+    0x56,
+    0x8B,
+    0x1E,
+    0xFF,
+    0xD3,
+    0x61,
+    0x8B,
+    0x46,
+    0x08,
+    0xFF,
+    0xE0,
 };
 } // namespace
 
