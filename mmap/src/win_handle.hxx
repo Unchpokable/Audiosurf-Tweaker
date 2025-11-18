@@ -4,7 +4,7 @@ namespace mmap::raii
 {
 struct WinHandle final {
     template<auto TFunc, typename... TArgs>
-    static WinHandle create(TArgs... args);
+    static WinHandle create(TArgs... args) noexcept;
 
     WinHandle(HANDLE handle) noexcept;
     WinHandle() noexcept;
@@ -32,7 +32,7 @@ private:
 } // namespace mmap::raii
 
 template<auto TFunc, typename... TArgs>
-mmap::raii::WinHandle mmap::raii::WinHandle::create(TArgs... args)
+mmap::raii::WinHandle mmap::raii::WinHandle::create(TArgs... args) noexcept
 {
     auto handle = TFunc(std::forward<TArgs>(args)...);
 

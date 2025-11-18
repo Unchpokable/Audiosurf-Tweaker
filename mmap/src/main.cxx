@@ -40,7 +40,7 @@ struct ParseResult {
 
 namespace
 {
-std::optional<std::string_view> extract_value(std::string_view arg, std::string_view prefix)
+std::optional<std::string_view> extract_value(std::string_view arg, std::string_view prefix) noexcept
 {
     if(!arg.starts_with(prefix))
         return std::nullopt;
@@ -59,7 +59,7 @@ std::optional<std::string_view> extract_value(std::string_view arg, std::string_
     return value;
 }
 
-ParseResult parse_args(int argc, char* argv[])
+ParseResult parse_args(int argc, char* argv[]) noexcept
 {
     ParseResult result;
 
@@ -109,7 +109,7 @@ ParseResult parse_args(int argc, char* argv[])
 
 namespace
 {
-bool elevate_access_to_debug()
+bool elevate_access_to_debug() noexcept
 {
     mmap::raii::WinHandle token;
 
@@ -138,7 +138,7 @@ bool elevate_access_to_debug()
     return true;
 }
 
-bool is_admin()
+bool is_admin() noexcept
 {
     mmap::raii::WinHandle token;
 
@@ -160,10 +160,6 @@ bool is_admin()
 
     return is_elevated;
 }
-} // namespace
-
-namespace
-{
 } // namespace
 
 int main(int argc, char* argv[])
