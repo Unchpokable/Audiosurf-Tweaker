@@ -1,9 +1,18 @@
+.386
+.model flat, stdcall
+
+option casemap:none
+
+OPTION PROLOGUE:NONE
+OPTION EPILOGUE:NONE
+
+.code
+
 ; EAX = pointer to CONTEXT32
 
-Shellcode32 PROC
+MMAP_SHELL:
 
     pushad                      ; save all GP registers
-
     mov  esi, eax               ; esi = context*
 
     ; prepare call
@@ -16,4 +25,4 @@ Shellcode32 PROC
     mov  eax, [esi + 08h]       ; ret_addr
     jmp  eax
 
-Shellcode32 ENDP
+END
