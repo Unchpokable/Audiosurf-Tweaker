@@ -1,0 +1,8 @@
+{
+	"InstallScripts" : 
+	[
+		"C:/Users/DEACMM-PC/source/repos/Audiosurf-Tweaker/mmap/build32/cmake_install.cmake",
+		"C:/Users/DEACMM-PC/source/repos/Audiosurf-Tweaker/mmap/build32/src/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

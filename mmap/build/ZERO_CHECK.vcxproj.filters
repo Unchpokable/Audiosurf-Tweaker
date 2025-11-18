@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\DEACMM-PC\source\repos\Audiosurf-Tweaker\mmap\build\CMakeFiles\92805d75ecd292949ab3bf12ae2a65b0\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{CA8430A0-2071-3ED6-BAB1-3EED5351CE80}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
