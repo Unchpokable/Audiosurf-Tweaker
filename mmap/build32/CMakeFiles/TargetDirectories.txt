@@ -1,3 +1,0 @@
-C:/Users/DEACMM-PC/source/repos/Audiosurf-Tweaker/mmap/build32/CMakeFiles/ALL_BUILD.dir
-C:/Users/DEACMM-PC/source/repos/Audiosurf-Tweaker/mmap/build32/CMakeFiles/ZERO_CHECK.dir
-C:/Users/DEACMM-PC/source/repos/Audiosurf-Tweaker/mmap/build32/src/CMakeFiles/mmap.dir

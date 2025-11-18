@@ -61,5 +61,13 @@ configure_file(
 # Make config.h available to subdirectories
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
+add_compile_definitions(_MBCS)
+
+# Disable default exception handling flags for MSVC
+if(MSVC)
+    string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    string(REPLACE "/GR" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+endif()
+
 # Add source subdirectory
 add_subdirectory(src)
