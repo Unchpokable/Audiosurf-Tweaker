@@ -11,18 +11,27 @@ OPTION EPILOGUE:NONE
 ; EAX = pointer to CONTEXT32
 
 MMAP_SHELL:
-
+    pushfd
     pushad                      ; save all GP registers
-    mov  esi, eax               ; esi = context*
+    mov esi, eax               ; esi = context*
+    mov edi, esp
+
+    ; align stack
+    and esp, 0FFFFFFF0h
+    sub esp, 12
 
     ; prepare call
     push esi                    ; Init(context)
     mov  ebx, [esi + 00h]       ; init_addr
     call ebx
 
-    popad                       ; restore registers
+    mov esp, edi
 
-    mov  eax, [esi + 08h]       ; ret_addr
-    jmp  eax
+    popad                       ; restore registers
+    popfd
+
+    mov eax, esi
+    mov eax, [esi + 08h]       ; ret_addr
+    jmp eax
 
 END

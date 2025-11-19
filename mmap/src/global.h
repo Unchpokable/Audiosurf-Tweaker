@@ -1,9 +1,12 @@
 #pragma once
 
+#include <algorithm>
+#include <array>
 #include <cstdint>
 #include <format>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -13,6 +16,7 @@
 #define NOMINMAX
 #include <Windows.h>
 
+#include <Psapi.h>
 #include <TlHelp32.h>
 
 #include "config.h"

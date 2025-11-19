@@ -4,6 +4,9 @@ namespace mmap::memory
 {
 template<std::size_t Size>
 struct StaticString {
+    static_assert(Size >= 1, "Size of string buffer should be a non zero!");
+
+    StaticString() noexcept;
     StaticString(const char* c_str) noexcept;
     StaticString(const StaticString& other) noexcept;
     StaticString(StaticString&& other) noexcept;
@@ -15,11 +18,15 @@ struct StaticString {
     std::size_t strlen() const noexcept;
 
     void clear() noexcept;
-
     bool empty() const noexcept;
+
+    char* data() noexcept;
 
     char operator[](std::size_t offset) const noexcept;
     char operator[](std::size_t offset) noexcept;
+
+    bool operator==(const StaticString& other) noexcept;
+    bool operator!=(const StaticString& other) noexcept;
 
     operator const char*() const noexcept;
 
@@ -33,6 +40,12 @@ template<std::size_t Size>
 mmap::memory::StaticString<Size>::operator const char*() const noexcept
 {
     return bytes;
+}
+
+template<std::size_t Size>
+mmap::memory::StaticString<Size>::StaticString() noexcept
+{
+    std::memset(bytes, 0, Size);
 }
 
 template<std::size_t Size>
@@ -101,8 +114,13 @@ void mmap::memory::StaticString<Size>::clear() noexcept
 template<std::size_t Size>
 bool mmap::memory::StaticString<Size>::empty() const noexcept
 {
-    static thread_local ZERO[Size] = { 0 };
-    return std::memcmp(bytes, ZERO, Size) == 0;
+    return bytes[0] == '\0';
+}
+
+template<std::size_t Size>
+char* mmap::memory::StaticString<Size>::data() noexcept
+{
+    return bytes;
 }
 
 template<std::size_t Size>
@@ -123,4 +141,16 @@ char mmap::memory::StaticString<Size>::operator[](std::size_t offset) noexcept
     }
 
     return bytes[offset];
+}
+
+template<std::size_t Size>
+bool mmap::memory::StaticString<Size>::operator==(const StaticString& other) noexcept
+{
+    return std::strcmp(bytes, other.bytes) == 0;
+}
+
+template<std::size_t Size>
+bool mmap::memory::StaticString<Size>::operator!=(const StaticString& other) noexcept
+{
+    return std::strcmp(bytes, other.bytes) != 0;
 }
