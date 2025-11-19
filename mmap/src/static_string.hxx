@@ -34,6 +34,8 @@ private:
     char bytes[Size];
 };
 
+using WinPathString = StaticString<260>;
+
 } // namespace mmap::memory
 
 template<std::size_t Size>

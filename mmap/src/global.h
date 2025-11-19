@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <filesystem>
 #include <format>
 #include <memory>
 #include <optional>

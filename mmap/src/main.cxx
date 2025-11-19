@@ -185,8 +185,9 @@ int main(int argc, char* argv[])
     }
 
     if(debug_access) {
-        mmap::mmap_load_dll(dll_path, target_proc);
+        return mmap::mmap_load_dll(dll_path, target_proc);
     }
 
-    return 0;
+    std::cerr << "No debug access granted, unable to manual map payload";
+    return -1;
 }

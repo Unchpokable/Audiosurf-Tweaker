@@ -29,3 +29,18 @@ std::uint64_t mmap::tools::get_proc_id(std::string_view proc_name) noexcept
 
     return 0;
 }
+
+mmap::memory::StaticString<MAX_PATH> mmap::tools::get_proc_root(std::string_view proc_name) noexcept
+{
+    auto proc_id = get_proc_id(proc_name);
+
+    auto proc = raii::WinHandle::create<&OpenProcess>(PROCESS_QUERY_LIMITED_INFORMATION, 0, proc_id);
+
+    mmap::memory::StaticString<MAX_PATH> path;
+
+    DWORD size = MAX_PATH;
+
+    bool success = QueryFullProcessImageNameA(proc, 0, path.data(), &size);
+
+    return { std::filesystem::path(path.c_str()).parent_path().string().c_str() };
+}

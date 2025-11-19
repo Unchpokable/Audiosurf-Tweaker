@@ -26,7 +26,7 @@ const std::uint8_t shellcode_blob_32[] = {
 };
 } // namespace
 
-bool mmap::mmap_load_dll(std::string_view dll_path, std::uint64_t proc_id) noexcept
+mmap::MmapResult mmap::mmap_load_dll(std::string_view dll_path, std::uint64_t proc_id) noexcept
 {
     using NtSuspendProcess = NTSTATUS(NTAPI*)(HANDLE);
     using NtResumeProcess = NTSTATUS(NTAPI*)(HANDLE);
@@ -42,5 +42,5 @@ bool mmap::mmap_load_dll(std::string_view dll_path, std::uint64_t proc_id) noexc
 
     nt_resume(proc_handle);
 
-    return true;
+    return MMAP_OK;
 }
