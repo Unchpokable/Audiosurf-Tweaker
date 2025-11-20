@@ -190,6 +190,11 @@ void core::RawImage::set_name(const QString& name)
     m_name = name;
 }
 
+QStringView core::RawImage::name() const
+{
+    return m_name;
+}
+
 core::RawImage::RawImage(QByteArray data, ImageFormat format, QString name, int32_t width, int32_t height, int32_t channels_count)
     : m_data(std::move(data)), m_format(format), m_name(std::move(name)), m_width(width), m_height(height), m_channels_count(channels_count)
 {

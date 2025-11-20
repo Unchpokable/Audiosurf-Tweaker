@@ -21,7 +21,7 @@ constexpr const char* ring1B = "ring1B.png";
 constexpr const char* ring2A = "ring2A.jpg";
 constexpr const char* ring2B = "ring2B.jpg";
 //
-constexpr const char* tiles = "tiles.png";
+constexpr const char* board_tiles = "tiles.png";
 constexpr const char* tiles_flyup = "tilesflyup.png";
 //
 constexpr const char* skysphere_black = "Skysphere_Black.png";
@@ -44,7 +44,7 @@ std::vector<const char*> core::masks::required_files {
     ring2A,
     ring2B,
     tiles_flyup,
-    tiles,
+    board_tiles,
 };
 
 std::vector<const char*> core::masks::optional_files {
@@ -86,3 +86,18 @@ std::vector<const char*> core::masks::skyspheres {
     skysphere_grey,
     skysphere_white,
 };
+
+std::vector<const char*> core::masks::tiles {
+    board_tiles,
+    tiles_flyup,
+};
+
+bool core::masks::contains_any(QStringView string, const std::vector<const char*>& templates)
+{
+    return bool();
+}
+
+bool core::masks::contains_any(std::string_view string, const std::vector<const char*>& templates)
+{
+    return bool();
+}

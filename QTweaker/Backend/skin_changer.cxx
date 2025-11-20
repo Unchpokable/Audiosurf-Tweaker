@@ -4,6 +4,8 @@
 
 #include "engine.hxx"
 
+#include "installer.hxx"
+
 SkinChangerBackend::SkinChangerBackend(Engine* engine, QObject* parent) : QObject(parent), m_engine(engine)
 {
 }
@@ -70,6 +72,7 @@ void SkinChangerBackend::config_install_skyspheres(bool value)
 
 void SkinChangerBackend::install_configured(int index)
 {
+    auto skin = m_skins_list_model->getSkinItem(index);
 }
 
 void SkinChangerBackend::install_full(int index)

@@ -16,6 +16,7 @@ struct InstallFilter {
     bool install_hits;
     bool install_particles;
     bool install_skyspheres;
+    bool install_cliffs;
 };
 } // namespace core
 

@@ -46,6 +46,7 @@ public:
     std::int32_t channels_count() const;
 
     void set_name(const QString& name);
+    QStringView name() const;
 
 private:
     RawImage(QByteArray data, ImageFormat format, QString name, std::int32_t width, std::int32_t height, std::int32_t channels_count);
