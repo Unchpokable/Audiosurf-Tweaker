@@ -23,3 +23,8 @@ ColorConfiguratorBackend* Engine::color_configurator()
 {
     return m_color_configurator;
 }
+
+Q_INVOKABLE AppSettingsBackend* Engine::settings()
+{
+    return m_settings;
+}

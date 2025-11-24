@@ -7,23 +7,26 @@
 #include <fstream>
 #include <memory>
 #include <ostream>
+#include <ranges>
+#include <source_location>
 #include <stdexcept>
 #include <string_view>
 #include <vector>
-#include <source_location>
-#include <ranges>
 
+#include <QAbstractItemModel>
+#include <QAbstractListModel>
+#include <QAbstractNativeEventFilter>
 #include <QDataStream>
 #include <QFile>
 #include <QFileInfo>
+#include <QHash>
 #include <QIODevice>
+#include <QImage>
+#include <QMetaType>
+#include <QModelIndex>
+#include <QQuickImageProvider>
 #include <QRegularExpression>
 #include <QString>
 #include <QStringView>
-#include <QImage>
-#include <QAbstractNativeEventFilter>
-#include <QAbstractItemModel>
-#include <QAbstractListModel>
-#include <QModelIndex>
 
 #endif // PRECOMPILED_HXX

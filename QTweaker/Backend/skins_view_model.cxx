@@ -2,9 +2,9 @@
 
 #include "skins_view_model.hxx"
 
+#include "image_utils.hxx"
 #include "logging.hxx"
 #include "skin_item.hxx"
-#include "image_utils.hxx"
 
 SkinsViewModel::SkinsViewModel(QObject* parent) : QAbstractListModel(parent)
 {
@@ -38,7 +38,6 @@ QVariant SkinsViewModel::data(const QModelIndex& index, int role) const
 
     return {};
 }
-
 
 int SkinsViewModel::rowCount(const QModelIndex& parent) const
 {
@@ -76,7 +75,7 @@ bool SkinsViewModel::setData(const QModelIndex& index, const QVariant& value, in
 
 Qt::ItemFlags SkinsViewModel::flags(const QModelIndex& index) const
 {
-    if (!index.isValid())
+    if(!index.isValid())
         return Qt::NoItemFlags;
 
     auto base_flags = Qt::ItemIsEnabled | Qt::ItemIsSelectable;
@@ -86,6 +85,8 @@ Qt::ItemFlags SkinsViewModel::flags(const QModelIndex& index) const
 
 void SkinsViewModel::addSkin(SkinItem* skin)
 {
+    assert(skin);
+
     skin->setParent(this);
     auto position = m_skins.size();
 

@@ -8,8 +8,7 @@
 
 class Engine;
 
-class BACKEND_EXPORT SkinChangerBackend : public QObject
-{
+class BACKEND_EXPORT SkinChangerBackend : public QObject {
     Q_OBJECT
     Q_PROPERTY(SkinsViewModel* model READ model CONSTANT)
     // Configuration properties

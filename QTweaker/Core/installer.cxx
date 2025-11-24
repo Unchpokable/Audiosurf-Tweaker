@@ -95,5 +95,6 @@ core::InstallResult core::install_skin(const QString& destination, const PackDat
         HANDLE_RET(ret, core::InstallResult::Ok);
 
         ret = handle_write_image(destination, image, masks::skyspheres, filter.install_skyspheres);
+        HANDLE_RET(ret, core::InstallResult::Ok);
     }
 }

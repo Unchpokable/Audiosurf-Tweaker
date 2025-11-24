@@ -9,8 +9,7 @@
 
 using QImageList = QList<QImage>;
 
-class BACKEND_EXPORT SkinItem : public QObject
-{
+class BACKEND_EXPORT SkinItem : public QObject {
     Q_OBJECT
 
     Q_PROPERTY(QString name READ name WRITE rename NOTIFY renamed)

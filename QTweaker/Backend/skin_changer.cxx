@@ -72,9 +72,31 @@ void SkinChangerBackend::config_install_skyspheres(bool value)
 
 void SkinChangerBackend::install_configured(int index)
 {
+    assert(m_skins_list_model);
+    assert(m_engine);
+
     auto skin = m_skins_list_model->getSkinItem(index);
+    auto path = m_engine->settings()->textures_root();
+
+    core::InstallFilter filter;
+
+    filter.install_cliffs = true;
+    filter.install_hits = m_install_hits;
+    filter.install_particles = m_install_particles;
+    filter.install_rings = m_install_rings;
+    filter.install_tiles = m_install_tiles;
+    filter.install_skyspheres = m_install_skyspheres;
+
+    core::install_skin(path, skin->data(), filter);
 }
 
 void SkinChangerBackend::install_full(int index)
 {
+    assert(m_skins_list_model);
+    assert(m_engine);
+
+    auto skin = m_skins_list_model->getSkinItem(index);
+    auto path = m_engine->settings()->textures_root();
+
+    core::install_skin(path, skin->data());
 }

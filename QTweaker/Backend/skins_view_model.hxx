@@ -7,8 +7,7 @@
 
 class SkinItem;
 
-class BACKEND_EXPORT SkinsViewModel : public QAbstractListModel
-{
+class BACKEND_EXPORT SkinsViewModel : public QAbstractListModel {
     Q_OBJECT
 
 public:
@@ -20,8 +19,8 @@ public:
 
     explicit SkinsViewModel(QObject* parent = nullptr);
 
-    virtual QVariant data(const QModelIndex &index, int role = NameRole) const override;
-    virtual int rowCount(const QModelIndex &parent = QModelIndex()) const override;
+    virtual QVariant data(const QModelIndex& index, int role = NameRole) const override;
+    virtual int rowCount(const QModelIndex& parent = QModelIndex()) const override;
 
     virtual QHash<int, QByteArray> roleNames() const override;
 

@@ -3,8 +3,7 @@
 
 #include "Backend_global.h"
 
-class BACKEND_EXPORT ColorConfiguratorBackend : public QObject
-{
+class BACKEND_EXPORT ColorConfiguratorBackend : public QObject {
     Q_OBJECT
 public:
     explicit ColorConfiguratorBackend(QObject* parent = nullptr);

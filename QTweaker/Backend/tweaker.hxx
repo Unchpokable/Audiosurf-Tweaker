@@ -3,8 +3,7 @@
 
 #include "Backend_global.h"
 
-class BACKEND_EXPORT TweakerBackend : public QObject
-{
+class BACKEND_EXPORT TweakerBackend : public QObject {
     Q_OBJECT
 
 public:
