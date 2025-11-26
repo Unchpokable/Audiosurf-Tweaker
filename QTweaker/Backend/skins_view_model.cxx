@@ -24,17 +24,6 @@ QVariant SkinsViewModel::data(const QModelIndex& index, int role) const
     else if(role == AuthorRole) {
         return object->author();
     }
-    else if(role == BackgroundRole) {
-        auto all_backgrounds = object->previews();
-        if(!all_backgrounds->empty()) {
-            auto bg = all_backgrounds->first();
-            auto scaled = utils::image::resize(bg, 400, 200);
-            return scaled;
-        }
-        else {
-            return QImage();
-        }
-    }
 
     return {};
 }
@@ -49,7 +38,6 @@ QHash<int, QByteArray> SkinsViewModel::roleNames() const
     return {
         { NameRole, "name" },
         { AuthorRole, "author" },
-        { BackgroundRole, "background" },
     };
 }
 

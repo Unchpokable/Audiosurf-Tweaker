@@ -6,8 +6,9 @@
 
 #include "installer.hxx"
 
-SkinChangerBackend::SkinChangerBackend(Engine* engine, QObject* parent) : QObject(parent), m_engine(engine)
+SkinChangerBackend::SkinChangerBackend(Engine* engine) : QObject(engine), m_engine(engine)
 {
+    assert(m_engine);
 }
 
 SkinsViewModel* SkinChangerBackend::model()
@@ -99,4 +100,10 @@ void SkinChangerBackend::install_full(int index)
     auto path = m_engine->settings()->textures_root();
 
     core::install_skin(path, skin->data());
+}
+
+void SkinChangerBackend::add_skin(core::PackData& skin_data)
+{
+    auto skin = new SkinItem(skin_data);
+    m_skins_list_model->addSkin(skin);
 }

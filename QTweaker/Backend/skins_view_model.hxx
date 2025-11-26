@@ -14,7 +14,6 @@ public:
     enum Roles {
         NameRole = Qt::UserRole + 1,
         AuthorRole,
-        BackgroundRole,
     };
 
     explicit SkinsViewModel(QObject* parent = nullptr);

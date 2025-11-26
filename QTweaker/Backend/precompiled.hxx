@@ -17,8 +17,12 @@
 #include <QAbstractListModel>
 #include <QAbstractNativeEventFilter>
 #include <QDataStream>
+#include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
+#include <QFuture>
+#include <QFutureWatcher>
 #include <QHash>
 #include <QIODevice>
 #include <QImage>
@@ -28,5 +32,8 @@
 #include <QRegularExpression>
 #include <QString>
 #include <QStringView>
+#include <QProgressBar>
+
+#include <QtConcurrent/QtConcurrent>
 
 #endif // PRECOMPILED_HXX

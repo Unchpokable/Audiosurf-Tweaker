@@ -14,15 +14,15 @@ static constexpr std::uint16_t serializer_version_minor = 0;
 static constexpr std::uint16_t serializer_version_patch = 0;
 } // namespace
 
-std::optional<core::PackData> core::read_package(std::string_view path, QList<Error>& errors)
+std::optional<core::PackData> core::read_package(const QString& path, QList<Error>& errors)
 {
-    if(!std::filesystem::exists(path)) {
+    if(!QFile::exists(path)) {
         return std::nullopt;
     }
 
     PackData data;
 
-    QFile file(path.data());
+    QFile file(path);
 
     if(!file.open(QIODevice::OpenModeFlag::ReadOnly)) {
         LOG_WARNING("Failed to open {}", path);
@@ -136,7 +136,7 @@ std::optional<core::PackData> core::read_package(std::string_view path, QList<Er
     return data;
 }
 
-bool core::write_package(const PackData& data, std::string_view output_path)
+bool core::write_package(const PackData& data, const QString& output_path)
 {
     QByteArray content;
 
@@ -209,12 +209,13 @@ bool core::write_package(const PackData& data, std::string_view output_path)
     }
 
     if(stream.status() == QDataStream::Ok) {
-        auto file = std::filesystem::path(data.name.toStdString());
-        file.replace_extension(file_extension);
+        QFileInfo file_info(data.name);
+        QString file_name = file_info.completeBaseName() + "." + file_extension;
 
-        auto full_path = std::filesystem::path(output_path) / file;
+        QDir output_dir(output_path);
+        QString full_path = output_dir.filePath(file_name);
 
-        QFile output(full_path.string().c_str());
+        QFile output(full_path);
 
         if(!output.open(QIODevice::OpenModeFlag::WriteOnly | QIODevice::OpenModeFlag::Truncate)) {
             LOG_WARNING("Failed to open {}", output.fileName().toStdString());

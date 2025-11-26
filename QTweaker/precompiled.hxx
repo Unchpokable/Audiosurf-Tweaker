@@ -7,21 +7,24 @@
 #include <fstream>
 #include <memory>
 #include <ostream>
+#include <source_location>
 #include <stdexcept>
 #include <string_view>
 #include <vector>
-#include <source_location>
 
 #include <QDataStream>
 #include <QFile>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QIODevice>
+#include <QImage>
+#include <QQmlApplicationEngine>
+#include <QQmlContext>
+#include <QQmlImageProviderBase>
+#include <QQuickImageProvider>
+#include <QQuickStyle>
 #include <QRegularExpression>
 #include <QString>
 #include <QStringView>
-#include <QImage>
-#include <QGuiApplication>
-#include <QQmlApplicationEngine>
-#include <QQuickStyle>
 
 #endif // PRECOMPILED_HXX

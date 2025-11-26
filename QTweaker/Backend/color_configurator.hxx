@@ -3,12 +3,17 @@
 
 #include "Backend_global.h"
 
+class Engine;
+
 class BACKEND_EXPORT ColorConfiguratorBackend : public QObject {
     Q_OBJECT
 public:
-    explicit ColorConfiguratorBackend(QObject* parent = nullptr);
+    explicit ColorConfiguratorBackend(Engine* engine);
 
 signals:
+
+private:
+    Engine* m_engine;
 };
 
 Q_DECLARE_METATYPE(ColorConfiguratorBackend);

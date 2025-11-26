@@ -8,8 +8,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 REQUIRED COMPONENTS Core Gui)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui)
+find_package(QT NAMES Qt6 REQUIRED COMPONENTS Core Gui Concurrent)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Concurrent)
 
 add_library(Backend SHARED
   Backend_global.h
@@ -27,7 +27,7 @@ add_library(Backend SHARED
   image_utils.cxx
 )
 
-target_link_libraries(Backend PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Gui)
+target_link_libraries(Backend PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Gui Qt${QT_VERSION_MAJOR}::Concurrent)
 target_link_libraries(Backend PUBLIC Core)
 
 target_precompile_headers(Backend PRIVATE precompiled.hxx)

@@ -15,6 +15,13 @@ class BACKEND_EXPORT Engine : public QObject {
     Q_PROPERTY(ColorConfiguratorBackend* color_configurator READ color_configurator CONSTANT)
     Q_PROPERTY(AppSettingsBackend* settings READ settings CONSTANT)
 
+    struct LoadedSkin {
+        std::optional<core::PackData> result;
+        QList<core::Error> errors;
+    };
+
+    using LoadingWatcher = QFutureWatcher<LoadedSkin>;
+
 public:
     Q_INVOKABLE explicit Engine(QObject* parent = nullptr);
 
@@ -23,11 +30,31 @@ public:
     Q_INVOKABLE ColorConfiguratorBackend* color_configurator();
     Q_INVOKABLE AppSettingsBackend* settings();
 
+    Q_INVOKABLE void startup();
+
+signals:
+    /// Emits when Tweaker loads successfully
+    void startup_success();
+
+    /// Emits when Tweaker unable to load - missing required resources, wrong configuration, etc.
+    void startup_failed(QString reason);
+
+    // Daisy-chainged signals for loading
+
+    void loading_range_updated(int min, int max);
+    void loading_value_changed(int val);
+    void loading_finished(std::size_t loaded_count, std::size_t failed_count, QList<core::Error> errors);
+
+private slots:
+    void on_loading_completed();
+
 private:
     SkinChangerBackend* m_skin_changer;
     TweakerBackend* m_tweaker;
     ColorConfiguratorBackend* m_color_configurator;
     AppSettingsBackend* m_settings;
+
+    LoadingWatcher m_loading_watcher;
 };
 
 Q_DECLARE_METATYPE(Engine);

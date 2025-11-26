@@ -7,7 +7,7 @@
 
 namespace core
 {
-static constexpr char file_extension[] = "tpack";
+constexpr char file_extension[] = "tpack";
 } // namespace core
 
 namespace core
@@ -17,12 +17,12 @@ struct PackData;
 
 namespace core
 {
-CORE_EXPORT std::optional<core::PackData> read_package(std::string_view path, QList<Error>& errors);
+CORE_EXPORT std::optional<core::PackData> read_package(const QString& path, QList<Error>& errors);
 } // namespace core
 
 namespace core
 {
-CORE_EXPORT bool write_package(const core::PackData& data, std::string_view output_path);
+CORE_EXPORT bool write_package(const core::PackData& data, const QString& output_path);
 } // namespace core
 
 #endif

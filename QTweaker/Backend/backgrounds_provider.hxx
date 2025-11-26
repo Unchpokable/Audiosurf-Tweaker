@@ -1,8 +1,10 @@
 #pragma once
 
+#include "Backend_global.h"
+
 class Engine;
 
-class BackgroundsProvider : public QQuickImageProvider {
+class BACKEND_EXPORT BackgroundsProvider : public QQuickImageProvider {
     Q_OBJECT
 
 public:
@@ -16,5 +18,5 @@ public slots:
 private:
     Engine* m_engine;
 
-    QHash<QString&, QImage> m_cached;
+    QHash<QString, QImage> m_cached;
 };

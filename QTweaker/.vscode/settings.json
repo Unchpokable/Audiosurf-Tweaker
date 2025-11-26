@@ -4,7 +4,8 @@
     "files.associations": {
         "filesystem": "cpp",
         "xstring": "cpp",
-        "xutility": "cpp"
+        "xutility": "cpp",
+        "memory": "cpp"
     },
     "editor.semanticTokenColorCustomizations": {
         "enabled": true,

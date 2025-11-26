@@ -21,7 +21,7 @@ class BACKEND_EXPORT SkinChangerBackend : public QObject {
     Q_PROPERTY(QImageList* selected_previews MEMBER m_selected_previews NOTIFY user_selection_changed);
 
 public:
-    Q_INVOKABLE explicit SkinChangerBackend(Engine* engine, QObject* parent = nullptr);
+    Q_INVOKABLE explicit SkinChangerBackend(Engine* engine);
 
     Q_INVOKABLE SkinsViewModel* model();
 
@@ -38,6 +38,10 @@ public:
 
     Q_INVOKABLE void install_configured(int index);
     Q_INVOKABLE void install_full(int index);
+
+    /* internal API */
+
+    void add_skin(core::PackData& skin_data);
 
 signals:
     void configuration_changed();

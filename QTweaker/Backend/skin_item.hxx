@@ -14,10 +14,9 @@ class BACKEND_EXPORT SkinItem : public QObject {
 
     Q_PROPERTY(QString name READ name WRITE rename NOTIFY renamed)
     Q_PROPERTY(QString author READ author WRITE set_author NOTIFY author_changed)
-    Q_PROPERTY(const QImageList* previews READ previews CONSTANT)
 
 public:
-    explicit SkinItem(QObject* parent = nullptr);
+    explicit SkinItem(core::PackData& data, QObject* parent = nullptr);
 
     virtual ~SkinItem() override = default;
 
@@ -39,7 +38,7 @@ public:
     void rename(const QString& name);
     void set_author(const QString& author);
 
-    const QImageList* previews();
+    const QImageList& previews();
 
     const core::PackData& data() const;
 

@@ -3,11 +3,16 @@
 
 #include "Backend_global.h"
 
+class Engine;
+
 class BACKEND_EXPORT TweakerBackend : public QObject {
     Q_OBJECT
 
 public:
-    Q_INVOKABLE explicit TweakerBackend(QObject* parent = nullptr);
+    Q_INVOKABLE explicit TweakerBackend(Engine* engine);
+
+private:
+    Engine* m_engine;
 };
 
 Q_DECLARE_METATYPE(TweakerBackend);
