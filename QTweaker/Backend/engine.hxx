@@ -5,6 +5,7 @@
 
 #include "appsettings.hxx"
 #include "color_configurator.hxx"
+#include "error.hxx"
 #include "skin_changer.hxx"
 #include "tweaker.hxx"
 
@@ -16,7 +17,7 @@ class BACKEND_EXPORT Engine : public QObject {
     Q_PROPERTY(AppSettingsBackend* settings READ settings CONSTANT)
 
     struct LoadedSkin {
-        std::optional<core::PackData> result;
+        std::optional<core::PackData> data;
         QList<core::Error> errors;
     };
 

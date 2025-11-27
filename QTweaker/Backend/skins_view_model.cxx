@@ -119,3 +119,16 @@ SkinItem* SkinsViewModel::getSkinItem(int index)
     LOG_WARNING("SkinsViewModel: requested index out of range: {}", index);
     return nullptr;
 }
+
+SkinItem* SkinsViewModel::getSkinItem(const QString& name)
+{
+    auto found = std::ranges::find_if(m_skins, [name](const SkinItem* skin) {
+        return skin->name() == name;
+    });
+
+    if(found == std::ranges::end(m_skins)) {
+        return nullptr;
+    }
+
+    return *found;
+}

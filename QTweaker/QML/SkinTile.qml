@@ -1,7 +1,7 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
-import QtGraphicalEffects 1.15
+
+import TweakerEngine 1.0
 
 Component {
     id: skinTileDelegate
@@ -249,7 +249,6 @@ Component {
                     anchors.left: undefined
                 }
             },
-
             State {
                 name: "selected"
                 when: root.isSelected
@@ -356,7 +355,6 @@ Component {
                     easing.type: Easing.InOutQuad
                 }
             },
-
             Transition {
                 from: "selected"
                 to: "normal"

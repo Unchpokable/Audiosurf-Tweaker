@@ -25,7 +25,7 @@ std::optional<core::PackData> core::read_package(const QString& path, QList<Erro
     QFile file(path);
 
     if(!file.open(QIODevice::OpenModeFlag::ReadOnly)) {
-        LOG_WARNING("Failed to open {}", path);
+        LOG_WARNING("Failed to open {}", path.toStdString());
         return std::nullopt;
     }
 

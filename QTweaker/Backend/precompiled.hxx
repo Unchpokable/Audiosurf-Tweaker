@@ -32,7 +32,6 @@
 #include <QRegularExpression>
 #include <QString>
 #include <QStringView>
-#include <QProgressBar>
 
 #include <QtConcurrent/QtConcurrent>
 

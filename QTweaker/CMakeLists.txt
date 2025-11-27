@@ -25,6 +25,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Quick QuickControls2)
 
+set(QT_QML_GENERATE_QMLLS_INI ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOMOC ON)
 
@@ -91,11 +92,11 @@ if(WIN32)
         # Добавить пост-билд команду для копирования Qt DLL
         add_custom_command(TARGET tweaker POST_BUILD
             COMMAND "${WINDEPLOYQT_EXECUTABLE}"
-                --qmldir "${CMAKE_SOURCE_DIR}"
-                --no-translations
-                --no-system-d3d-compiler
-                --no-compiler-runtime
-                "$<TARGET_FILE:tweaker>"
+            --qmldir "${CMAKE_SOURCE_DIR}"
+            --no-translations
+            --no-system-d3d-compiler
+            --no-compiler-runtime
+            "$<TARGET_FILE:tweaker>"
             COMMENT "Deploying Qt dependencies to output directory..."
         )
     else()

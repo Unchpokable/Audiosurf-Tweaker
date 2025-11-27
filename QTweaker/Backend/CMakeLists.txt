@@ -8,8 +8,8 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 REQUIRED COMPONENTS Core Gui Concurrent)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Concurrent)
+find_package(QT NAMES Qt6 REQUIRED COMPONENTS Core Gui Concurrent Quick QuickControls2)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Core Gui Concurrent Quick QuickControls2)
 
 add_library(Backend SHARED
   Backend_global.h
@@ -25,9 +25,12 @@ add_library(Backend SHARED
   skins_view_model.hxx skins_view_model.cxx
   image_utils.hxx
   image_utils.cxx
+  appsettings.hxx appsettings.cxx
+  backgrounds_provider.hxx backgrounds_provider.cxx
+  icons_provider.hxx icons_provider.cxx
 )
 
-target_link_libraries(Backend PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Gui Qt${QT_VERSION_MAJOR}::Concurrent)
+target_link_libraries(Backend PRIVATE Qt${QT_VERSION_MAJOR}::Core Qt${QT_VERSION_MAJOR}::Gui Qt${QT_VERSION_MAJOR}::Concurrent Qt${QT_VERSION_MAJOR}::Quick Qt${QT_VERSION_MAJOR}::QuickControls2)
 target_link_libraries(Backend PUBLIC Core)
 
 target_precompile_headers(Backend PRIVATE precompiled.hxx)

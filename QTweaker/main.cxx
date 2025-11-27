@@ -32,6 +32,8 @@ int main(int argc, char* argv[])
     engine.addImageProvider("icons", new IconsProvider());
     engine.addImageProvider("backgrounds", new BackgroundsProvider(tweaker_engine.get()));
 
+    qmlRegisterSingletonInstance("TweakerEngine", 1, 0, "Engine", tweaker_engine.get());
+
     engine.loadFromModule("QTweaker", "Main");
 
     return app.exec();

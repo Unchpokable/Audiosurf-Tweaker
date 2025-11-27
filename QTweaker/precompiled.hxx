@@ -15,6 +15,7 @@
 #include <QDataStream>
 #include <QFile>
 #include <QFileInfo>
+#include <QFutureWatcher>
 #include <QGuiApplication>
 #include <QIODevice>
 #include <QImage>

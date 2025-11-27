@@ -8,7 +8,7 @@ class BACKEND_EXPORT AppSettingsBackend : public QObject {
     Q_OBJECT
 
     Q_PROPERTY(QString textures_root READ textures_root WRITE set_textures_root NOTIFY textures_root_changed)
-    Q_PROPERTY(bool use_hot_reload READ use_hot_realod WRITE set_use_hot_reload NOTIFY use_hot_reload_changed)
+    Q_PROPERTY(bool use_hot_reload READ use_hot_reload WRITE set_use_hot_reload NOTIFY use_hot_reload_changed)
     Q_PROPERTY(bool use_safe_install READ use_safe_install WRITE set_use_safe_install NOTIFY use_safe_install_changed)
     Q_PROPERTY(bool use_texture_tracking READ use_texture_tracking WRITE set_use_texture_tracking NOTIFY use_texture_tracking_changed)
 

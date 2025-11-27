@@ -4,6 +4,7 @@
 
 #include "pack_data.hxx"
 #include "packager.hxx"
+#include "zip_support.hxx"
 
 Engine::Engine(QObject* parent) : QObject(parent)
 {
@@ -49,7 +50,11 @@ Q_INVOKABLE void Engine::startup()
 
     QStringList found_skins;
 
-    QDirIterator dir_iterator(local_skins_folder, QStringList() << core::file_extension, QDir::Files);
+    QStringList filters;
+    filters << QString::fromStdString(std::format(".{}", core::file_extension));
+    filters << ".zip";
+
+    QDirIterator dir_iterator(local_skins_folder, filters, QDir::Files);
 
     while(dir_iterator.hasNext()) {
         auto next = dir_iterator.next();
@@ -58,7 +63,29 @@ Q_INVOKABLE void Engine::startup()
 
     auto future = QtConcurrent::mapped(found_skins, [](const QString& path) -> LoadedSkin {
         QList<core::Error> errors;
-        auto result = core::read_package(path, errors);
+
+        auto ext = QFileInfo(path).suffix();
+
+        std::optional<core::PackData> result { std::nullopt };
+
+        if(ext.contains(core::file_extension)) {
+            result = core::read_package(path, errors);
+        }
+        else if(ext.contains("zip")) {
+            core::PackData tmp;
+            auto err = core::zip::read_archive(path, tmp);
+
+            if(err.error_rank == core::Nothing) {
+                result = tmp;
+            }
+            else {
+                errors.append(err);
+            }
+        }
+        else {
+            errors.append(core::make_error(
+                core::Rank::Minor, "Unsaupported file!", "File {} unable to read because it is unsupported", path.toStdString()));
+        }
 
         return { result, errors };
     });
@@ -75,13 +102,13 @@ void Engine::on_loading_completed()
 
     QList<core::Error> errors;
     for(auto result : results) {
-        if(!result.result.has_value()) {
+        if(!result.data.has_value()) {
             failed_count++;
             errors.append(result.errors);
             continue;
         }
 
-        auto value = result.result.value();
+        auto value = result.data.value();
 
         m_skin_changer->add_skin(value);
 
