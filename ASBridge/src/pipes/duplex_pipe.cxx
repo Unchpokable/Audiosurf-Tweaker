@@ -1,6 +1,6 @@
 #include <vd.hxx>
 
-#include "htcore/system/duplex_pipe.hxx"
+#include "pipes/duplex_pipe.hxx"
 
 #include <chrono>
 #include <thread>
@@ -90,7 +90,7 @@ void drain_locked(std::vector<as::overlapped_ptr>& ops) noexcept
 }
 } // namespace
 
-namespace ht
+namespace as
 {
 duplex_pipe::duplex_pipe(as::file_handle handle, as::system_path fname, bool is_server, std::size_t buffer_size) noexcept
     : m_fname(fname), m_file(handle), m_readwrite_length(buffer_size), m_is_server(is_server),
@@ -349,9 +349,9 @@ bool duplex_pipe::wait_for_can_read(int timeout)
         std::this_thread::sleep_for(poll_interval);
     }
 }
-} // namespace ht
+} // namespace as
 
-namespace ht
+namespace as
 {
 duplex_pipe create_duplex_pipe(as::system_path name, std::size_t buffer_size)
 {
@@ -394,4 +394,4 @@ duplex_pipe open_duplex_pipe(as::system_path name, int timeout)
         }
     }
 }
-} // namespace ht
+} // namespace as

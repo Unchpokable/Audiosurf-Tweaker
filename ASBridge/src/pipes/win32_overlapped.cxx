@@ -1,13 +1,13 @@
 #include <vd.hxx>
 
-#include "htcore/system/win32_overlapped.hxx"
+#include "pipes/win32_overlapped.hxx"
 
-namespace ht
+namespace as
 {
 win32_overlapped::win32_overlapped(HANDLE file) : m_file(file)
 {
     m_overlapped.hEvent = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
-    vd::require(m_overlapped.hEvent != nullptr, "ht::win32_overlapped: CreateEventW failed, GetLastError={}", ::GetLastError());
+    vd::require(m_overlapped.hEvent != nullptr, "as::win32_overlapped: CreateEventW failed, GetLastError={}", ::GetLastError());
 }
 
 win32_overlapped::~win32_overlapped()
@@ -70,4 +70,4 @@ std::size_t win32_overlapped::bytes_transferred() const noexcept
 {
     return m_bytes_transferred;
 }
-} // namespace ht
+} // namespace as

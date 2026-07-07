@@ -8,4 +8,4 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(Validate)
 
-target_link_libraries(asbridge INTERFACE Validate::vd)
+target_link_libraries(asbridge PRIVATE Validate::vd)
