@@ -1,4 +1,5 @@
 ﻿using NUnit.Framework;
+using System;
 using System.Collections.Generic;
 using TweakerScripts;
 using TweakerScripts.Exceptions;
@@ -17,6 +18,23 @@ SECTION REMOVE:
 DELETE Wavebreaker-Hook.ini %AS%\engine\
 DELETE Wavebreaker-Hook.dll %AS%\engine\channels\
 ROLLBACK %BACKUP_PATH%\RadioBrowser.cgr %AS%\engine\SongSelector\
+END-SECTION
+";
+
+        private static string _scriptMissingEndSection = @"
+SECTION INSTALL:
+BACKUP RadioBrowser.cgr %AS%\engine\SongSelector\
+";
+
+        private static string _scriptWithUnrecognizedInstruction = @"
+SECTION INSTALL:
+NUKE RadioBrowser.cgr %AS%\engine\SongSelector\
+END-SECTION
+";
+
+        private static string _scriptWithWrongParamCount = @"
+SECTION INSTALL:
+DELETE OnlyOneParam
 END-SECTION
 ";
 
@@ -44,6 +62,27 @@ END-SECTION
         {
             var scriptReder = new ScriptParser();
             Assert.Throws<UnresolvedSymbolException>(() => scriptReder.ParseScript(_defaultScriptToTests)) ;
+        }
+
+        [Test]
+        public void TestParserThrowsExceptionWhenSectionIsMissingEndSection()
+        {
+            var scriptReader = new ScriptParser();
+            Assert.Throws<ScriptParsingException>(() => scriptReader.ParseScript(_scriptMissingEndSection));
+        }
+
+        [Test]
+        public void TestParserThrowsExceptionWhenInstructionIsUnrecognized()
+        {
+            var scriptReader = new ScriptParser();
+            Assert.Throws<ScriptParsingException>(() => scriptReader.ParseScript(_scriptWithUnrecognizedInstruction));
+        }
+
+        [Test]
+        public void TestParserThrowsExceptionWhenInstructionHasWrongParamCount()
+        {
+            var scriptReader = new ScriptParser();
+            Assert.Throws<ArgumentException>(() => scriptReader.ParseScript(_scriptWithWrongParamCount));
         }
     }
 }

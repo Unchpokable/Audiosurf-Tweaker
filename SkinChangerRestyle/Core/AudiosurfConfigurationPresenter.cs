@@ -25,9 +25,9 @@ namespace SkinChangerRestyle.Core
 
             set
             {
-                if (_configurations.ContainsKey(section))
-                    _configurations[section] = value;
-                throw new ArgumentException($"No such section: {section}");
+                if (!_configurations.ContainsKey(section))
+                    throw new ArgumentException($"No such section: {section}");
+                _configurations[section] = value;
             }
         }
 

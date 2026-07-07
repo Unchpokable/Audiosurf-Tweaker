@@ -17,6 +17,7 @@ namespace SkinChangerRestyle.Core
         public List<LoadedSkinData> Data { get; private set; }
 
         private static string _fileName = "load.cache";
+        private static readonly Logger _logger = new Logger();
         private bool _disposedValue;
 
         public bool Serialize(string path)
@@ -30,8 +31,9 @@ namespace SkinChangerRestyle.Core
                     return true;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.Log("LoadingCache", $"Failed to save loading cache to '{path}': {ex}");
                 return false;
             }
         }
@@ -60,8 +62,9 @@ namespace SkinChangerRestyle.Core
                 }
                 return false;
             }
-            catch (SerializationException)
+            catch (SerializationException ex)
             {
+                _logger.Log("LoadingCache", $"Failed to load loading cache from '{path}': {ex}");
                 return false;
             }
         }

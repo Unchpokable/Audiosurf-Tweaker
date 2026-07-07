@@ -15,6 +15,8 @@ namespace ChangerAPI.Engine
         public static readonly string SkinExtension = @".tasp";
         public static string OutputPath { get; set; }
 
+        public static event Action<string, Exception> OperationFailed;
+
         private static string[] _texturesNames;
 
         private static readonly string _defaultOutput = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
@@ -23,8 +25,8 @@ namespace ChangerAPI.Engine
         {
             _texturesNames = new[]
             {
-                "cliff-1.png", "cliff-2.png", "cliff2-1.png", "cliff2-1.png", "hit1.png", "hit2.png",
-                "particles1.png", "particles2.png", "particles3.png", "ring1A.png", "ring1B.png", "ring2A.jpg", "ring2B",
+                "cliff-1.png", "cliff-2.png", "cliff2-1.png", "hit1.png", "hit2.png",
+                "particles1.png", "particles2.png", "particles3.png", "ring1A.png", "ring1B.png", "ring2A.jpg", "ring2B.jpg",
                 "Skyshpere_Black.png", "Skysphere_Grey.png", "Skyshphere_White.png",
                 "tileflyup.png", "tiles.png"
             };
@@ -42,8 +44,9 @@ namespace ChangerAPI.Engine
                 }
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                OperationFailed?.Invoke($"Failed to compile skin '{skin?.Name}'", ex);
                 return false;
             }
         }
@@ -64,8 +67,9 @@ namespace ChangerAPI.Engine
                 }
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                OperationFailed?.Invoke($"Failed to compile skin '{skin?.Name}' to '{file}'", ex);
                 return false;
             }
         }
@@ -81,8 +85,9 @@ namespace ChangerAPI.Engine
                 }
                 return true;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                OperationFailed?.Invoke($"Failed to rewrite skin '{skin?.Name}' to '{path}'", ex);
                 return false;
             }
         }
@@ -106,14 +111,9 @@ namespace ChangerAPI.Engine
                 }
                 return result.Clone();
             }
-
-            catch (IOException)
+            catch (Exception ex)
             {
-                return null;
-            }
-
-            catch (Exception)
-            {
+                OperationFailed?.Invoke($"Failed to decompile skin from '{path}'", ex);
                 return null;
             }
         }

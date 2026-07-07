@@ -1,7 +1,5 @@
-﻿using System;
-using SkinChangerRestyle.Core;
+﻿using SkinChangerRestyle.Core;
 using System.Diagnostics;
-using System.Runtime.ExceptionServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -15,16 +13,12 @@ namespace SkinChangerRestyle
     /// </summary>
     public partial class MainWindow : Window
     {
-        private Logger _logger;
-
         public static Dispatcher WindowDispatcher => Application.Current.Dispatcher;
 
         public MainWindow()
         {
-            //AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
             InitializeComponent();
             Focus();
-            _logger = new Logger();
             ApplicationNotificationManager.Manager.RegisterContext(this.DataContext);
         }
 
@@ -56,21 +50,5 @@ namespace SkinChangerRestyle
         {
            Process.Start(SettingsProvider.GameTexturesPath ?? @"C:/");
         }
-#if !DEBUG
-        private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
-        {
-            var exception = e.ExceptionObject as Exception;
-            var formattedMessage = $"Ooops! An unhandled exception occurred!\n{exception.Message}\nStack Trace: {exception.StackTrace}\n";
-            MessageBox.Show(formattedMessage, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            _logger.Log("Initialization fault", formattedMessage);
-        }
-
-        private void OnFirstChanceUnhandledException(object sender, FirstChanceExceptionEventArgs e)
-        {
-            var exception = e.Exception;
-            var formattedMessage = $"Ooops! An unhandled exception occurred!\n{exception.Message}\nStack Trace: {exception.StackTrace}\n";
-            MessageBox.Show(formattedMessage, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-#endif
     }
 }

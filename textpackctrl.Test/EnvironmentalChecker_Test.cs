@@ -1,25 +1,37 @@
-﻿namespace textpackctrl.Test
+namespace textpackctrl.Test
 {
     using FolderChecker;
     using NUnit.Framework;
     using System.IO;
     using System;
-    using System.Threading;
-    using System.Threading.Tasks;
 
     [TestFixture]
     public class EnvironmentalChecker_Test
     {
         public static Random r = new Random();
 
+        private static readonly string TestFolderPath = Path.Combine(Path.GetTempPath(), "AudiosurfTweakerTests", "FolderChecker");
+
+        [SetUp]
+        public void SetUp()
+        {
+            Directory.CreateDirectory(TestFolderPath);
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            if (Directory.Exists(TestFolderPath))
+                Directory.Delete(TestFolderPath, recursive: true);
+        }
+
         [Test]
         [Repeat(50)]
         public void EnvironmentalCheckerDetectChanges()
         {
-            var pathToFolder = @"C:\Users\IAfon\OneDrive\Документы\Test folder";
-            var control = FolderHashInfo.Create(pathToFolder);
-            File.WriteAllText(pathToFolder + @"\Test1.txt", r.NextDouble().ToString());
-            var afterChange = FolderHashInfo.Create(pathToFolder);
+            var control = FolderHashInfo.Create(TestFolderPath);
+            File.WriteAllText(Path.Combine(TestFolderPath, "Test1.txt"), r.NextDouble().ToString());
+            var afterChange = FolderHashInfo.Create(TestFolderPath);
             Assert.IsFalse(control.Equals(afterChange));
         }
 
@@ -27,27 +39,23 @@
         [Repeat(10)]
         public void FolderHashInfoCanDetectSerializedFile()
         {
-            var pathToFolder = @"C:\Users\IAfon\OneDrive\Документы\Test folder";
-            var state = FolderHashInfo.Create(pathToFolder);
-            state.Save(pathToFolder);
-            Assert.IsTrue(FolderHashInfo.TryFind(pathToFolder, out FolderHashInfo result));
+            var state = FolderHashInfo.Create(TestFolderPath);
+            state.Save(TestFolderPath);
+            Assert.IsTrue(FolderHashInfo.TryFind(TestFolderPath, out FolderHashInfo result));
         }
 
         [Test]
         [Repeat(10)]
         public void EnvironmentalCheckerCanDetectChangerViaHINFFile()
         {
-            var pathToFolder = @"C:\Users\IAfon\OneDrive\Документы\Test folder";
-            if (FolderHashInfo.TryFind(pathToFolder, out FolderHashInfo control))
-            {
-                File.WriteAllText(pathToFolder + @"\Test1.txt", r.NextDouble().ToString());
-                var changedState = FolderHashInfo.Create(pathToFolder);
-                Assert.IsFalse(control.Equals(changedState));
-            }
-            else
-            {
-                Assert.Fail("FolderHashInfo can not detect existing HINF file");
-            }
+            var control = FolderHashInfo.Create(TestFolderPath);
+            control.Save(TestFolderPath);
+
+            Assert.IsTrue(FolderHashInfo.TryFind(TestFolderPath, out FolderHashInfo found));
+
+            File.WriteAllText(Path.Combine(TestFolderPath, "Test1.txt"), r.NextDouble().ToString());
+            var changedState = FolderHashInfo.Create(TestFolderPath);
+            Assert.IsFalse(found.Equals(changedState));
         }
     }
 }

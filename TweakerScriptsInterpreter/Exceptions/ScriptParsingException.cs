@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace TweakerScripts.Exceptions
 {
-    internal class ScriptParsingException : Exception
+    public class ScriptParsingException : Exception
     {
         public ScriptParsingException()
         {

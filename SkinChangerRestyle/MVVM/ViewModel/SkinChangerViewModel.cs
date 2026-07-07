@@ -395,12 +395,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 if (SettingsProvider.HotReload)
                     AudiosurfHandle.Instance.Command("ascommand reloadtextures");
 
-                string installedSkinName;
-                unsafe
-                {
-                    fixed (char* pName = skin.Name)
-                        installedSkinName = new string(pName);
-                }
+                string installedSkinName = skin.Name;
 
                 skin.Dispose();
                 GC.Collect();

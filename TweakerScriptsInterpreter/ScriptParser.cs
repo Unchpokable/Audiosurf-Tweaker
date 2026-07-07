@@ -76,19 +76,24 @@ namespace TweakerScripts
             foreach (var line in rawCode)
             {
                 lineCounter++;
-                var cl = line.Trim('\n', '\t', ' ');    
+                var cl = line.Trim('\n', '\t', ' ');
+                if (string.IsNullOrEmpty(cl))
+                    continue;
+
+                var matchedToken = false;
                 foreach (var avaiableToken in (ActionTokens.Enum[])Enum.GetValues(typeof(ActionTokens.Enum)))
                 {
                     if (cl.StartsWith(avaiableToken.ToString()))
                     {
-                        var action = _instructionExecutionMethods[avaiableToken]?.Invoke(cl.Substring(avaiableToken.ToString().Length));
-
-                        if (action == null)
-                            throw new ScriptParsingException($"Script Parsing failure. Line {lineCounter} - invalid syntax");
-
+                        matchedToken = true;
+                        var action = _instructionExecutionMethods[avaiableToken].Invoke(cl.Substring(avaiableToken.ToString().Length));
                         script.Operations.Add(action);
+                        break;
                     }
                 }
+
+                if (!matchedToken)
+                    throw new ScriptParsingException($"Script Parsing failure. Line {lineCounter} - unrecognized instruction: \"{cl}\"");
             }
 
             return script;
@@ -109,6 +114,10 @@ namespace TweakerScripts
                 var section = new InstructionSection { Title = title, Content = content };
                 sections.Add(section);
             }
+
+            var openerCount = Regex.Matches(script, @"SECTION\s+[^\s:]+\s*:").Count;
+            if (openerCount != sections.Count)
+                throw new ScriptParsingException("Script Parsing failure. One or more sections are missing a matching END-SECTION");
 
             return sections;
         }
