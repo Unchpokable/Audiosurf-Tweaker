@@ -1,0 +1,68 @@
+---
+# clang-tidy config for Validate! — C++20 header library
+Checks: >-
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-macro-parentheses,
+  modernize-use-nullptr,
+  modernize-use-override,
+  modernize-use-default-member-init,
+  modernize-use-emplace,
+  modernize-use-nodiscard,
+  modernize-redundant-void-arg,
+  modernize-use-using,
+  modernize-concat-nested-namespaces,
+  performance-*,
+  cppcoreguidelines-avoid-goto,
+  cppcoreguidelines-avoid-non-const-global-variables,
+  cppcoreguidelines-pro-type-member-init,
+  readability-identifier-naming,
+  readability-const-return-type,
+  readability-avoid-const-params-in-decls,
+  readability-redundant-member-init,
+  readability-redundant-smartptr-get
+
+WarningsAsErrors: ""
+HeaderFilterRegex: "src/.*"
+
+
+CheckOptions:
+  # Naming: everything lower_case (matching the project's vd:: convention)
+  - key: readability-identifier-naming.NamespaceCase
+    value: lower_case
+  - key: readability-identifier-naming.ClassCase
+    value: lower_case
+  - key: readability-identifier-naming.StructCase
+    value: lower_case
+  - key: readability-identifier-naming.FunctionCase
+    value: lower_case
+  - key: readability-identifier-naming.MethodCase
+    value: lower_case
+  - key: readability-identifier-naming.VariableCase
+    value: lower_case
+  - key: readability-identifier-naming.ParameterCase
+    value: lower_case
+  - key: readability-identifier-naming.TypeAliasCase
+    value: lower_case
+  - key: readability-identifier-naming.EnumCase
+    value: lower_case
+  - key: readability-identifier-naming.EnumConstantCase
+    value: lower_case
+  # Member variables use m_ prefix for privates, no prefix for public
+  - key: readability-identifier-naming.MemberPrivateCase
+    value: lower_case
+  - key: readability-identifier-naming.MemberPrivatePrefix
+    value: "m_"
+  - key: readability-identifier-naming.MemberPublicCase
+    value: lower_case
+  - key: readability-identifier-naming.MemberPublicPrefix
+    value: ""
+    - key: readability-identifier-naming.MemberProtectedCase
+    value: lower_case
+  - key: readability-identifier-naming.MemberProtectedPrefix
+    value: "m_"
+  # Template parameters are CamelCase (T, TValue, TResult, etc.)
+  - key: readability-identifier-naming.TemplateParameterCase
+    value: CamelCase
+  - key: readability-identifier-naming.TemplateTemplateParameterCase
+    value: CamelCase
