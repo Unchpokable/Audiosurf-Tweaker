@@ -18,11 +18,19 @@ namespace SkinChangerRestyle.Core
     {
         internal static event ExternExceptionHandler InitializationFaultCallback;
 
+        // OpenExeConfiguration(path) looks for "<path>.config". AppDomain.CurrentDomain.FriendlyName
+        // was "audiosurftweaker.exe" on .NET Framework (matching the shipped audiosurftweaker.exe.config),
+        // but on modern .NET it's just "audiosurftweaker" with no extension - which doesn't match the
+        // config file the SDK actually produces (audiosurftweaker.dll.config), so every read/write here
+        // silently missed the real config. The assembly's own on-disk path always matches the config
+        // file's name on both runtimes, so use that instead.
+        private static string ExePath => System.Reflection.Assembly.GetExecutingAssembly().Location;
+
         public static void SetUpDefaultSettings()
         {
             try
             {
-                Configuration cfg = System.Configuration.ConfigurationManager.OpenExeConfiguration(AppDomain.CurrentDomain.FriendlyName);
+                Configuration cfg = System.Configuration.ConfigurationManager.OpenExeConfiguration(ExePath);
 
                 if (cfg.AppSettings == null)
                 {
@@ -60,24 +68,30 @@ namespace SkinChangerRestyle.Core
         {
             try
             {
-                Settings.GameTexturesPath = System.Configuration.ConfigurationManager.AppSettings.Get("TexturesPath");
-                Settings.SkinsFolderPath = System.Configuration.ConfigurationManager.AppSettings.Get("AddSkinsPath");
-                Settings.ControlSystemActive = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("DCSActive"));
-                Settings.HotReload = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("HotReload"));
-                Settings.SafeInstall = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("SafeInstall"));
-                Settings.WatcherTempFile = System.Configuration.ConfigurationManager.AppSettings.Get("WatcherTempFile");
-                Settings.WatcherShouldStoreTextures = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("WatcherShouldStoreTextures"));
-                Settings.WatcherTempFileOverrided = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("WatcherTempFileOverrided"));
-                Settings.WatcherEnabled = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("WatcherEnabled"));
-                Settings.UseFastPreview = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("UseFastPreview"));
-                Settings.IsUWPNotificationsAllowed = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("UWPNotificationsAllowed"));
-                Settings.IsUWPNotificationSilent = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("UWPNotificationSilent"));
-                Settings.IsOverlayEnabled = bool.Parse(System.Configuration.ConfigurationManager.AppSettings.Get("OverlayEnabled"));
-                Settings.InfopanelFontColor = System.Configuration.ConfigurationManager.AppSettings.Get("InfopanelFontColor");
-                Settings.InfopanelFontSize = System.Configuration.ConfigurationManager.AppSettings.Get("InfopanelFontSize");
-                Settings.InfopanelXOffset = System.Configuration.ConfigurationManager.AppSettings.Get("InfopanelXOffset");
-                Settings.InfopanelYOffset = System.Configuration.ConfigurationManager.AppSettings.Get("InfopanelYOffset");
-                Settings.InstalledServerPackageName = System.Configuration.ConfigurationManager.AppSettings.Get("InstalledServerPackageName");
+                // Explicit OpenExeConfiguration(ExePath), not the static implicit ConfigurationManager.AppSettings -
+                // the implicit resolution mirrors the same FriendlyName-based lookup that's broken on modern .NET
+                // (see ExePath comment above), so it misses the real config file the same way.
+                var settings = System.Configuration.ConfigurationManager.OpenExeConfiguration(ExePath).AppSettings.Settings;
+                string Get(string key) => settings[key]?.Value;
+
+                Settings.GameTexturesPath = Get("TexturesPath");
+                Settings.SkinsFolderPath = Get("AddSkinsPath");
+                Settings.ControlSystemActive = bool.Parse(Get("DCSActive"));
+                Settings.HotReload = bool.Parse(Get("HotReload"));
+                Settings.SafeInstall = bool.Parse(Get("SafeInstall"));
+                Settings.WatcherTempFile = Get("WatcherTempFile");
+                Settings.WatcherShouldStoreTextures = bool.Parse(Get("WatcherShouldStoreTextures"));
+                Settings.WatcherTempFileOverrided = bool.Parse(Get("WatcherTempFileOverrided"));
+                Settings.WatcherEnabled = bool.Parse(Get("WatcherEnabled"));
+                Settings.UseFastPreview = bool.Parse(Get("UseFastPreview"));
+                Settings.IsUWPNotificationsAllowed = bool.Parse(Get("UWPNotificationsAllowed"));
+                Settings.IsUWPNotificationSilent = bool.Parse(Get("UWPNotificationSilent"));
+                Settings.IsOverlayEnabled = bool.Parse(Get("OverlayEnabled"));
+                Settings.InfopanelFontColor = Get("InfopanelFontColor");
+                Settings.InfopanelFontSize = Get("InfopanelFontSize");
+                Settings.InfopanelXOffset = Get("InfopanelXOffset");
+                Settings.InfopanelYOffset = Get("InfopanelYOffset");
+                Settings.InstalledServerPackageName = Get("InstalledServerPackageName");
             }
             catch (Exception e)
             {
@@ -89,7 +103,7 @@ namespace SkinChangerRestyle.Core
         {
             try
             {
-                Configuration cfg = System.Configuration.ConfigurationManager.OpenExeConfiguration(AppDomain.CurrentDomain.FriendlyName);
+                Configuration cfg = System.Configuration.ConfigurationManager.OpenExeConfiguration(ExePath);
                 cfg.AppSettings.Settings["TexturesPath"].Value = Settings.GameTexturesPath;
                 cfg.AppSettings.Settings["AddSkinsPath"].Value = Settings.SkinsFolderPath;
                 cfg.AppSettings.Settings["HotReload"].Value = Settings.HotReload.ToString();
@@ -120,7 +134,7 @@ namespace SkinChangerRestyle.Core
         {
             try
             {
-                var cfg = System.Configuration.ConfigurationManager.OpenExeConfiguration(AppDomain.CurrentDomain.FriendlyName);
+                var cfg = System.Configuration.ConfigurationManager.OpenExeConfiguration(ExePath);
 
                 if (cfg.AppSettings.Settings.AllKeys.Contains(key))
                 {

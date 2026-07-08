@@ -1,7 +1,7 @@
 using System;
 using System.Windows;
 using System.Windows.Threading;
-using ChangerAPI.Engine;
+using TweakerCore.Engine;
 using SkinChangerRestyle.Core;
 
 namespace SkinChangerRestyle

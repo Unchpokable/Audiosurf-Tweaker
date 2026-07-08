@@ -1,0 +1,15 @@
+<Project>
+  <!--
+    LegacyDataConverter is deliberately frozen on .NET Framework 4.8.1 (needs BinaryFormatter,
+    which net10 removes) and must not inherit these SDK-style/net10 settings even though this
+    file auto-imports into every project under this directory, old-style csproj included.
+  -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' != 'LegacyDataConverter'">
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+</Project>

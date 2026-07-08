@@ -1,4 +1,4 @@
-﻿using ChangerAPI.Engine;
+﻿using TweakerCore.Engine;
 using SkinChangerRestyle.Core;
 using SkinChangerRestyle.Core.Extensions;
 using SkinChangerRestyle.MVVM.ViewModel;
@@ -159,7 +159,7 @@ namespace SkinChangerRestyle.MVVM.Model
             if (skinObject == null) return;
             skinObject.Name = newName;
             Name = newName;
-            var newFile = $@"Skins\{newName}{ChangerAPI.EnvironmentalVeriables.ActualSkinExtention}";
+            var newFile = $@"Skins\{newName}{TweakerCore.EnvironmentalVeriables.ActualSkinExtention}";
             var oldFile = $"{_pathToOriginFile}";
             _pathToOriginFile = newFile;
             RenameActive = false;
@@ -229,7 +229,7 @@ namespace SkinChangerRestyle.MVVM.Model
                     if (output.ShowDialog() == DialogResult.OK)
                     {
                         var targetFile = Path.Combine(output.SelectedPath,
-                            _name + ChangerAPI.EnvironmentalVeriables.ActualSkinExtention); // kinda skin.tasp (skin.askin2)
+                            _name + TweakerCore.EnvironmentalVeriables.ActualSkinExtention); // kinda skin.tasp (skin.askin2)
 
                         File.Copy(_pathToOriginFile, targetFile);
                         ApplicationNotificationManager.Manager.ShowSuccess("Done!", "Copy of skin file successfully exported to selected destination");

@@ -1,4 +1,4 @@
-﻿using ChangerAPI.Engine;
+﻿using TweakerCore.Engine;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -7,9 +7,13 @@ using SkinChangerRestyle.Core.Extensions;
 
 namespace SkinChangerRestyle.Core
 {
-    [Serializable]
     internal class LoadedSkinData : IDisposable
     {
+        // Used by LoadingCache when reconstructing entries from the on-disk cache.
+        internal LoadedSkinData()
+        {
+        }
+
         public LoadedSkinData(AudiosurfSkinExtended origin, string pathToOrigin)
         {
             var screenshots = new List<Bitmap>();

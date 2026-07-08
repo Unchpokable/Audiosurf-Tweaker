@@ -4,15 +4,15 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Media;
-using ChangerAPI.Engine;
+using TweakerCore.Engine;
 using SkinChangerRestyle.Core;
 using SkinChangerRestyle.Core.Extensions;
 using SkinChangerRestyle.MVVM.Model;
 using System.Windows.Data;
-using FolderChecker;
+using TweakerCore.FolderChecker;
 using System.Windows.Forms;
 using System.Reflection;
-using ASCommander;
+using AudiosurfInterface;
 using System.Drawing;
 using System.Collections.Generic;
 using Notification.Wpf;
@@ -342,7 +342,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
                 return;
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
-                var files = ((string[])e.Data.GetData(DataFormats.FileDrop)).Where(f => new[] { ChangerAPI.EnvironmentalVeriables.LegacySkinExtention, ChangerAPI.EnvironmentalVeriables.ActualSkinExtention }.Any(ext => ext == Path.GetExtension(f)));
+                var files = ((string[])e.Data.GetData(DataFormats.FileDrop)).Where(f => new[] { TweakerCore.EnvironmentalVeriables.LegacySkinExtention, TweakerCore.EnvironmentalVeriables.ActualSkinExtention }.Any(ext => ext == Path.GetExtension(f)));
                 foreach (var file in files)
                 {
                     AddNewSkinAsync(file);
@@ -427,7 +427,7 @@ namespace SkinChangerRestyle.MVVM.ViewModel
         {
             var path = new OpenFileDialog();
             path.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Personal) + @"\Downloads";
-            path.Filter = $"Tweaker Skin Package|*{ChangerAPI.EnvironmentalVeriables.ActualSkinExtention};*{ChangerAPI.EnvironmentalVeriables.LegacySkinExtention}";
+            path.Filter = $"Tweaker Skin Package|*{TweakerCore.EnvironmentalVeriables.ActualSkinExtention};*{TweakerCore.EnvironmentalVeriables.LegacySkinExtention}";
 
             if (path.ShowDialog() == DialogResult.OK)
             {

@@ -2,7 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using ASCommander;
+using AudiosurfInterface;
 using SkinChangerRestyle.Core;
 using SkinChangerRestyle.Core.Extensions;
 using System.Windows.Media;

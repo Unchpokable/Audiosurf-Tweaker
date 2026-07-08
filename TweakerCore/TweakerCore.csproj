@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- System.Drawing.Common is Windows-only on modern .NET; TweakerCore.NamedBitmap/ImageGroup
+         still wrap System.Drawing.Bitmap here - the SkiaSharp swap is a later, separate phase (3b). -->
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Drawing.Common" Version="8.0.10" />
+  </ItemGroup>
+
+</Project>

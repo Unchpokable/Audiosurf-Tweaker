@@ -132,9 +132,6 @@
                 </Border>
 
                 <Grid Grid.Row="1" Margin="10">
-                    <Grid.ColumnDefinitions>
-                    </Grid.ColumnDefinitions>
-
                     <Grid.RowDefinitions>
                         <RowDefinition Height="0.3*"/>
                         <RowDefinition/>
