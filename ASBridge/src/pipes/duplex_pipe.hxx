@@ -10,9 +10,10 @@
 #include <span>
 #include <vector>
 
-#include "pipes/file.hxx"
-#include "pipes/handle.hxx"
 #include "pipes/win32_overlapped.hxx"
+
+#include "system/file.hxx"
+#include "system/handle.hxx"
 
 namespace as
 {
@@ -36,7 +37,7 @@ public:
     duplex_pipe(duplex_pipe&& other) noexcept;
 
     duplex_pipe& operator=(const duplex_pipe&) = delete;
-    duplex_pipe& operator=(duplex_pipe&& other);
+    duplex_pipe& operator=(duplex_pipe&& other) noexcept;
 
     bool valid() const noexcept;
     bool connected() const noexcept;

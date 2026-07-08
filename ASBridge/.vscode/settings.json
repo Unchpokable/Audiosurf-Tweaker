@@ -22,7 +22,6 @@
         "--compile-commands-dir=build",
         "--background-index",
         "-j=4",
-        "--query-driver=**\\cl.exe",
         "--fallback-style=LLVM"
     ],
     "cmake.buildEnvironment": {

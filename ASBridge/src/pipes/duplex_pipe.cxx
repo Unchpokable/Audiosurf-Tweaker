@@ -115,7 +115,7 @@ duplex_pipe::duplex_pipe(duplex_pipe&& other) noexcept
     other.m_connected = false;
 }
 
-duplex_pipe& duplex_pipe::operator=(duplex_pipe&& other)
+duplex_pipe& duplex_pipe::operator=(duplex_pipe&& other) noexcept
 {
     if(this == &other) {
         return *this;

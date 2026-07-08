@@ -57,7 +57,7 @@ CheckOptions:
     value: lower_case
   - key: readability-identifier-naming.MemberPublicPrefix
     value: ""
-    - key: readability-identifier-naming.MemberProtectedCase
+  - key: readability-identifier-naming.MemberProtectedCase
     value: lower_case
   - key: readability-identifier-naming.MemberProtectedPrefix
     value: "m_"
