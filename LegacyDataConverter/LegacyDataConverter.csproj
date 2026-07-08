@@ -1,20 +1,20 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{81019294-FF0F-4DF9-B6B2-8FD4F073C253}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>ChangerAPI</RootNamespace>
-    <AssemblyName>ChangerAPI</AssemblyName>
+    <ProjectGuid>{6B3F9F3E-4D8F-4B1A-9D3A-9D8A2B7F0C1A}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>LegacyDataConverter</RootNamespace>
+    <AssemblyName>LegacyDataConverter</AssemblyName>
     <TargetFrameworkVersion>v4.8.1</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
-    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
@@ -24,6 +24,7 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\Release\</OutputPath>
@@ -51,7 +52,6 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.IO.Compression" />
@@ -63,18 +63,19 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Engine\AudiosurfSkin.cs" />
-    <Compile Include="Engine\AudiosurfSkinExtended.cs" />
-    <Compile Include="Engine\EnvironmentalVeriables.cs" />
-    <Compile Include="Engine\LegacyConverter.cs" />
-    <Compile Include="Engine\SkinManifest.cs" />
-    <Compile Include="Engine\UID.cs" />
-    <Compile Include="Utilities\ImageInfo.cs" />
-    <Compile Include="Engine\NamedBitmap.cs" />
-    <Compile Include="Engine\SkinPackager.cs" />
+    <Compile Include="Legacy\AudiosurfSkin.cs" />
+    <Compile Include="Legacy\AudiosurfSkinExtended.cs" />
+    <Compile Include="Legacy\ColorPalettePrint.cs" />
+    <Compile Include="Legacy\ImageGroup.cs" />
+    <Compile Include="Legacy\LegacyBinder.cs" />
+    <Compile Include="Legacy\NamedBitmap.cs" />
+    <Compile Include="Legacy\PaletteDynamicLoadContainer.cs" />
+    <Compile Include="Legacy\UID.cs" />
+    <Compile Include="NewFormat\PaletteDto.cs" />
+    <Compile Include="NewFormat\SkinManifest.cs" />
+    <Compile Include="NewFormat\SkinWriter.cs" />
+    <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Utilities\Extensions.cs" />
-    <Compile Include="Utilities\ImageGroup.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="System.Text.Json">

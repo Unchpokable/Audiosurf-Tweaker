@@ -77,6 +77,11 @@ namespace ChangerAPI.Utilities
                 action(image);
         }
 
+        public ImageGroup DeepClone()
+        {
+            return new ImageGroup(Name, Group.Where(x => x != null).Select(x => x.DeepClone()));
+        }
+
         public void SetImageByName(string name, Bitmap newImage)
         {
             foreach (var item in Group)

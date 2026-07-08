@@ -1,10 +1,12 @@
-﻿using ChangerAPI.Utilities;
+using ChangerAPI.Utilities;
 using System;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
+using System.Text.Json;
 
 namespace ChangerAPI.Engine
 {
@@ -17,9 +19,13 @@ namespace ChangerAPI.Engine
 
         public static event Action<string, Exception> OperationFailed;
 
+        private const string ManifestEntryName = "manifest.json";
+        private const string TexturesEntryPrefix = "textures/";
+
         private static string[] _texturesNames;
 
         private static readonly string _defaultOutput = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+        private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions { WriteIndented = true };
 
         static SkinPackager()
         {
@@ -32,23 +38,9 @@ namespace ChangerAPI.Engine
             };
         }
 
-
         public static bool Compile(AudiosurfSkinExtended skin)
         {
-            try
-            {
-                IFormatter formatter = new BinaryFormatter();
-                using (Stream filestream = new FileStream((OutputPath ?? _defaultOutput) + @"\\" + skin.Name + SkinExtension, FileMode.OpenOrCreate))
-                {
-                    formatter.Serialize(filestream, skin);
-                }
-                return true;
-            }
-            catch (Exception ex)
-            {
-                OperationFailed?.Invoke($"Failed to compile skin '{skin?.Name}'", ex);
-                return false;
-            }
+            return CompileToFile(skin, (OutputPath ?? _defaultOutput) + @"\\" + skin.Name + SkinExtension);
         }
 
         public static bool CompileToPath(AudiosurfSkinExtended skin, string path)
@@ -60,11 +52,7 @@ namespace ChangerAPI.Engine
         {
             try
             {
-                IFormatter formatter = new BinaryFormatter();
-                using (Stream filestream = new FileStream(file, FileMode.OpenOrCreate))
-                {
-                    formatter.Serialize(filestream, skin);
-                }
+                WriteSkinArchive(skin, file);
                 return true;
             }
             catch (Exception ex)
@@ -76,20 +64,7 @@ namespace ChangerAPI.Engine
 
         public static bool RewriteCompile(AudiosurfSkinExtended skin, string path)
         {
-            try
-            {
-                IFormatter formatter = new BinaryFormatter();
-                using (Stream filestream = new FileStream(path, FileMode.Create))
-                {
-                    formatter.Serialize(filestream, skin);
-                }
-                return true;
-            }
-            catch (Exception ex)
-            {
-                OperationFailed?.Invoke($"Failed to rewrite skin '{skin?.Name}' to '{path}'", ex);
-                return false;
-            }
+            return CompileToFile(skin, path);
         }
 
         public static AudiosurfSkinExtended Decompile(string path)
@@ -102,14 +77,10 @@ namespace ChangerAPI.Engine
 
             try
             {
-                AudiosurfSkinExtended result = null;
-                IFormatter formatter = new BinaryFormatter();
-                using (Stream skinFileStream = new FileStream(path, FileMode.Open))
-                {
-                    result = (AudiosurfSkinExtended)formatter.Deserialize(skinFileStream);
-                    result.Source = path;
-                }
-                return result.Clone();
+                if (!IsZipArchive(path) && !LegacyConverter.TryConvert(path))
+                    return null;
+
+                return ReadSkinArchive(path);
             }
             catch (Exception ex)
             {
@@ -122,7 +93,7 @@ namespace ChangerAPI.Engine
         public static AudiosurfSkinExtended CreateSkinFromFolder(string path)
         {
             var result = new AudiosurfSkinExtended();
-            
+
             string[] allPictures = Directory.GetFiles(path);
             if (!allPictures.Any(fileName => _texturesNames.Contains(Path.GetFileName(fileName))))
                 return null;
@@ -171,5 +142,179 @@ namespace ChangerAPI.Engine
 
             return group;
         }
+
+        #region New archive format (zip + manifest.json)
+
+        private static bool IsZipArchive(string path)
+        {
+            using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read))
+            {
+                if (stream.Length < 4)
+                    return false;
+
+                var header = new byte[4];
+                stream.Read(header, 0, 4);
+                return header[0] == 0x50 && header[1] == 0x4B && (header[2] == 0x03 || header[2] == 0x05 || header[2] == 0x07);
+            }
+        }
+
+        private static void WriteSkinArchive(AudiosurfSkinExtended skin, string file)
+        {
+            var manifest = new SkinManifest
+            {
+                Name = skin.Name,
+                Uid = skin.ID,
+                Tiles = skin.Tiles?.Name,
+                TilesFlyup = skin.TilesFlyup?.Name,
+                Cover = skin.Cover?.Name
+            };
+
+            using (var filestream = new FileStream(file, FileMode.Create))
+            using (var archive = new ZipArchive(filestream, ZipArchiveMode.Create))
+            {
+                var writtenEntries = new System.Collections.Generic.HashSet<string>();
+
+                WriteGroup(archive, skin.Cliffs, manifest.Cliffs, writtenEntries);
+                WriteGroup(archive, skin.Hits, manifest.Hits, writtenEntries);
+                WriteGroup(archive, skin.Particles, manifest.Particles, writtenEntries);
+                WriteGroup(archive, skin.Rings, manifest.Rings, writtenEntries);
+                WriteGroup(archive, skin.SkySpheres, manifest.SkySpheres, writtenEntries);
+                WriteGroup(archive, skin.SkySphereSource, manifest.SkySphereSource, writtenEntries);
+                WriteGroup(archive, skin.Previews, manifest.Previews, writtenEntries);
+                WriteBitmap(archive, skin.Tiles, writtenEntries);
+                WriteBitmap(archive, skin.TilesFlyup, writtenEntries);
+                WriteBitmap(archive, skin.Cover, writtenEntries);
+
+                var manifestEntry = archive.CreateEntry(ManifestEntryName, CompressionLevel.Optimal);
+                using (var entryStream = manifestEntry.Open())
+                using (var writer = new StreamWriter(entryStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
+                {
+                    writer.Write(JsonSerializer.Serialize(manifest, _jsonOptions));
+                }
+            }
+        }
+
+        private static void WriteGroup(ZipArchive archive, ImageGroup group, System.Collections.Generic.List<string> manifestList, System.Collections.Generic.HashSet<string> writtenEntries)
+        {
+            if (group?.Group == null)
+                return;
+
+            foreach (var image in group.Group)
+                WriteBitmap(archive, image, writtenEntries, manifestList);
+        }
+
+        private static void WriteBitmap(ZipArchive archive, NamedBitmap image, System.Collections.Generic.HashSet<string> writtenEntries, System.Collections.Generic.List<string> manifestList = null)
+        {
+            if (image == null || string.IsNullOrEmpty(image.Name))
+                return;
+
+            manifestList?.Add(image.Name);
+
+            var entryName = TexturesEntryPrefix + image.Name;
+            if (!writtenEntries.Add(entryName))
+                return; // same filename already written as part of another group (e.g. shared textures)
+
+            var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
+            using (var memory = new MemoryStream())
+            {
+                // Bitmap.Save() needs a seekable stream (GDI+ writes headers after the data);
+                // a ZipArchiveEntry's stream is not seekable, so buffer through memory first.
+                ((Bitmap)image).Save(memory, GetImageFormat(image.Name));
+                memory.Position = 0;
+                using (var entryStream = entry.Open())
+                {
+                    memory.CopyTo(entryStream);
+                }
+            }
+        }
+
+        private static AudiosurfSkinExtended ReadSkinArchive(string file)
+        {
+            using (var filestream = new FileStream(file, FileMode.Open, FileAccess.Read))
+            using (var archive = new ZipArchive(filestream, ZipArchiveMode.Read))
+            {
+                var manifestEntry = archive.GetEntry(ManifestEntryName);
+                if (manifestEntry == null)
+                    return null;
+
+                SkinManifest manifest;
+                using (var entryStream = manifestEntry.Open())
+                using (var reader = new StreamReader(entryStream, Encoding.UTF8))
+                {
+                    manifest = JsonSerializer.Deserialize<SkinManifest>(reader.ReadToEnd());
+                }
+
+                return new AudiosurfSkinExtended
+                {
+                    Name = manifest.Name,
+                    Source = file,
+                    Cliffs = ReadGroup(archive, "cliffs", manifest.Cliffs),
+                    Hits = ReadGroup(archive, "hits", manifest.Hits),
+                    Particles = ReadGroup(archive, "particles", manifest.Particles),
+                    Rings = ReadGroup(archive, "rings", manifest.Rings),
+                    SkySpheres = ReadGroup(archive, "skysphere", manifest.SkySpheres),
+                    SkySphereSource = ReadGroup(archive, "skysphere source", manifest.SkySphereSource),
+                    Previews = ReadGroup(archive, "Screenshots", manifest.Previews),
+                    Tiles = ReadBitmap(archive, manifest.Tiles),
+                    TilesFlyup = ReadBitmap(archive, manifest.TilesFlyup),
+                    Cover = ReadBitmap(archive, manifest.Cover)
+                };
+            }
+        }
+
+        private static ImageGroup ReadGroup(ZipArchive archive, string groupName, System.Collections.Generic.List<string> fileNames)
+        {
+            var group = new ImageGroup(groupName);
+            if (fileNames == null)
+                return group;
+
+            foreach (var fileName in fileNames)
+            {
+                var bitmap = ReadBitmap(archive, fileName);
+                if (bitmap != null)
+                    group.AddImage(bitmap);
+            }
+
+            return group;
+        }
+
+        private static NamedBitmap ReadBitmap(ZipArchive archive, string fileName)
+        {
+            if (string.IsNullOrEmpty(fileName))
+                return null;
+
+            var entry = archive.GetEntry(TexturesEntryPrefix + fileName);
+            if (entry == null)
+                return null;
+
+            using (var entryStream = entry.Open())
+            using (var memory = new MemoryStream())
+            {
+                entryStream.CopyTo(memory);
+                memory.Position = 0;
+                using (var streamedImage = Image.FromStream(memory))
+                {
+                    return new NamedBitmap(fileName, new Bitmap(streamedImage));
+                }
+            }
+        }
+
+        private static ImageFormat GetImageFormat(string fileName)
+        {
+            switch (Path.GetExtension(fileName).ToLowerInvariant())
+            {
+                case ".png":
+                    return ImageFormat.Png;
+                case ".jpg":
+                case ".jpeg":
+                    return ImageFormat.Jpeg;
+                case ".bmp":
+                    return ImageFormat.Bmp;
+                default:
+                    return ImageFormat.Png;
+            }
+        }
+
+        #endregion
     }
 }

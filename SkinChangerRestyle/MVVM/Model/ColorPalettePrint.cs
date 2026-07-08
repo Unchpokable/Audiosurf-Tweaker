@@ -6,6 +6,10 @@ namespace SkinChangerRestyle.MVVM.Model
     [Serializable]
     internal class ColorPalettePrint : IEquatable<ColorPalettePrint>
     {
+        public ColorPalettePrint()
+        {
+        }
+
         public ColorPalettePrint(ColorPalette origin)
         {
             Purple = new SerializableColor(origin.Purple);

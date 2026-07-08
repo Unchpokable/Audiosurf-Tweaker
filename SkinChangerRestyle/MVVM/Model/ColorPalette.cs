@@ -1,8 +1,9 @@
-﻿using SkinChangerRestyle.Core;
+﻿using ChangerAPI.Engine;
+using SkinChangerRestyle.Core;
 using System;
 using System.IO;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
+using System.Text.Json;
 using System.Windows.Media;
 
 
@@ -124,20 +125,21 @@ namespace SkinChangerRestyle.MVVM.Model
                    && Red == other.Red;
         }
 
+        private static readonly Logger _logger = new Logger();
+        private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions { WriteIndented = true };
+
         public static bool Save(ColorPalette obj, string path)
         {
+            var fullPath = $"{path}\\{obj.Name}{ColorPalettePrint.PaletteFileExtension}";
             try
             {
-                IFormatter formatter = new BinaryFormatter();
-                using (var file = new FileStream($"{path}\\{obj.Name}{ColorPalettePrint.PaletteFileExtension}", FileMode.Create))
-                {
-                    var print = new ColorPalettePrint(obj);
-                    formatter.Serialize(file, print);
-                    return true;
-                }
+                var print = new ColorPalettePrint(obj);
+                File.WriteAllText(fullPath, JsonSerializer.Serialize(print, _jsonOptions), Encoding.UTF8);
+                return true;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.Log("ColorPalette", $"Failed to save palette to '{fullPath}': {ex}");
                 return false;
             }
         }
@@ -146,16 +148,32 @@ namespace SkinChangerRestyle.MVVM.Model
         {
             try
             {
-                IFormatter formatter = new BinaryFormatter();
-                using(var file = new FileStream(path, FileMode.Open))
-                {
-                    var obj = (ColorPalettePrint)formatter.Deserialize(file);
-                    return new ColorPalette(obj);
-                }
+                if (!LooksLikeJson(path) && !LegacyConverter.TryConvert(path))
+                    return null;
+
+                var json = File.ReadAllText(path, Encoding.UTF8);
+                var obj = JsonSerializer.Deserialize<ColorPalettePrint>(json);
+                return new ColorPalette(obj);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.Log("ColorPalette", $"Failed to load palette from '{path}': {ex}");
                 return null;
+            }
+        }
+
+        private static bool LooksLikeJson(string path)
+        {
+            using (var reader = new StreamReader(path))
+            {
+                int ch;
+                while ((ch = reader.Read()) != -1)
+                {
+                    if (char.IsWhiteSpace((char)ch))
+                        continue;
+                    return ch == '{';
+                }
+                return false;
             }
         }
     }

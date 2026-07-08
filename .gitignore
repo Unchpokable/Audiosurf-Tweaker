@@ -3,6 +3,9 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# Local test fixtures - real game texture files, not ours to redistribute
+/Mocks/
+
 # User-specific files
 *.rsuser
 *.suo

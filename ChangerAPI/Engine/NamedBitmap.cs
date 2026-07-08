@@ -67,6 +67,11 @@ namespace ChangerAPI.Engine
             source = transform(source);
         }
 
+        public NamedBitmap DeepClone()
+        {
+            return new NamedBitmap(Name, new Bitmap(source));
+        }
+
         private ImageFormat ProcessImageFormat(string srcFileName)
         {
             return GetImageFormatByExtension(srcFileName.Split('.').Last());

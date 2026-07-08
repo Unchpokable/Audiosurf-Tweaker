@@ -1,8 +1,10 @@
-﻿using System;
+﻿using ChangerAPI.Engine;
+using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
+using System.Text;
+using System.Text.Json;
+using SkinChangerRestyle.Core;
 
 namespace SkinChangerRestyle.MVVM.Model
 {
@@ -16,7 +18,10 @@ namespace SkinChangerRestyle.MVVM.Model
 
         public static string PaletteContainerFileExtension = ".pltc";
 
-        public List<ColorPalettePrint> ColorPalettes { get; private set; }
+        public List<ColorPalettePrint> ColorPalettes { get; set; }
+
+        private static readonly Logger _logger = new Logger();
+        private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions { WriteIndented = true };
 
         public void ReplaceOrAdd(ColorPalette origin, ColorPalette newPalette)
         {
@@ -46,36 +51,51 @@ namespace SkinChangerRestyle.MVVM.Model
 
         public static PaletteDynamicLoadContainer Load(string filename)
         {
-            if (!File.Exists(filename + PaletteContainerFileExtension))
+            var path = filename + PaletteContainerFileExtension;
+            if (!File.Exists(path))
                 return null;
 
             try
             {
-                IFormatter formatter = new BinaryFormatter();
-                using (var file = new FileStream(filename + PaletteContainerFileExtension, FileMode.Open))
-                {
-                    return (PaletteDynamicLoadContainer)formatter.Deserialize(file);
-                }
+                if (!LooksLikeJson(path) && !LegacyConverter.TryConvert(path))
+                    return null;
+
+                var json = File.ReadAllText(path, Encoding.UTF8);
+                return JsonSerializer.Deserialize<PaletteDynamicLoadContainer>(json);
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.Log("PaletteDynamicLoadContainer", $"Failed to load palette storage from '{path}': {ex}");
                 return null;
             }
         }
 
         public static bool Save(PaletteDynamicLoadContainer obj, string path)
         {
+            var fullPath = path + PaletteContainerFileExtension;
             try
             {
-                IFormatter formatter = new BinaryFormatter();
-                using (var file = new FileStream(path + PaletteContainerFileExtension, FileMode.Create))
-                {
-                    formatter.Serialize(file, obj);
-                }
+                File.WriteAllText(fullPath, JsonSerializer.Serialize(obj, _jsonOptions), Encoding.UTF8);
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger.Log("PaletteDynamicLoadContainer", $"Failed to save palette storage to '{fullPath}': {ex}");
+                return false;
+            }
+        }
+
+        private static bool LooksLikeJson(string path)
+        {
+            using (var reader = new StreamReader(path))
+            {
+                int ch;
+                while ((ch = reader.Read()) != -1)
+                {
+                    if (char.IsWhiteSpace((char)ch))
+                        continue;
+                    return ch == '{';
+                }
                 return false;
             }
         }

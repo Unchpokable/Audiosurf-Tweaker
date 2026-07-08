@@ -406,6 +406,9 @@
     <PackageReference Include="PixiEditor.ColorPicker">
       <Version>3.3.1</Version>
     </PackageReference>
+    <PackageReference Include="System.Text.Json">
+      <Version>8.0.5</Version>
+    </PackageReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="Resources\wifi.png" />

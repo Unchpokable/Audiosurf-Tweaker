@@ -1,8 +1,5 @@
 ﻿using System;
-using System.IO;
 using ChangerAPI.Utilities;
-using System.Runtime.Serialization;
-using System.Runtime.Serialization.Formatters.Binary;
 
 namespace ChangerAPI.Engine
 {
@@ -54,13 +51,20 @@ namespace ChangerAPI.Engine
 
         public AudiosurfSkin DeepClone()
         {
-            using (var memory = new MemoryStream())
+            return new AudiosurfSkin
             {
-                IFormatter formatter = new BinaryFormatter();
-                formatter.Serialize(memory, this);
-                memory.Position = 0;
-                return (AudiosurfSkin)formatter.Deserialize(memory);
-            }
+                Source = Source,
+                Name = Name,
+                SkySpheres = SkySpheres?.DeepClone(),
+                SkySphereSource = SkySphereSource?.DeepClone(),
+                Cliffs = Cliffs?.DeepClone(),
+                Hits = Hits?.DeepClone(),
+                Tiles = Tiles?.DeepClone(),
+                TilesFlyup = TilesFlyup?.DeepClone(),
+                Particles = Particles?.DeepClone(),
+                Rings = Rings?.DeepClone(),
+                Previews = Previews?.DeepClone()
+            };
         }
 
         public override string ToString()
