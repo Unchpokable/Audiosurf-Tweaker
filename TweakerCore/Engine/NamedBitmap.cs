@@ -1,47 +1,36 @@
-﻿using System.Drawing;
 using System;
 using System.Linq;
-using System.Drawing.Imaging;
+using SkiaSharp;
 using TweakerCore.Utilities;
 
 namespace TweakerCore.Engine
 {
 
-    [Serializable]
     public class NamedBitmap : IDisposable
     {
         public int Width => source.Width;
         public int Height => source.Height;
-        public Size Size => new Size(Width, Height);
         public string Name;
 
-
-        [NonSerialized] public ImageFormat DefaultFormat = ImageFormat.Png;
         public ImageInfo Info => new ImageInfo(format, Name);
 
-        private Bitmap source;
+        private SKBitmap source;
         private string format;
 
-        
         private bool disposedValue;
+
+        private const int JpegEncodeQuality = 95;
 
         public NamedBitmap()
         {
         }
 
-        public NamedBitmap(Image original)
+        public NamedBitmap(SKBitmap source)
         {
-            source = new Bitmap(original);
+            this.source = source;
         }
 
-        public NamedBitmap(string name, Image source)
-        {
-            Name = name;
-            this.source = new Bitmap(source);
-            format = ProcessImageFormat(name).ToString();
-        }
-
-        public NamedBitmap(string name, Bitmap source)
+        public NamedBitmap(string name, SKBitmap source)
         {
             Name = name;
             this.source = source;
@@ -50,34 +39,34 @@ namespace TweakerCore.Engine
 
         public NamedBitmap(string path, ImageInfo imageInfo)
         {
-            source = (Bitmap)Image.FromFile(path);
+            source = SKBitmap.Decode(path);
             Name = imageInfo.FileName;
             format = imageInfo.Format;
         }
 
-        public NamedBitmap(Image original, ImageInfo imageInfo)
+        public NamedBitmap(SKBitmap original, ImageInfo imageInfo)
         {
-            source = (Bitmap)original;
+            source = original;
             Name = imageInfo.FileName;
             format = imageInfo.Format;
         }
 
-        public void Apply(Func<Bitmap, Bitmap> transform)
+        public void Apply(Func<SKBitmap, SKBitmap> transform)
         {
             source = transform(source);
         }
 
         public NamedBitmap DeepClone()
         {
-            return new NamedBitmap(Name, new Bitmap(source));
+            return new NamedBitmap(Name, source.Copy());
         }
 
-        private ImageFormat ProcessImageFormat(string srcFileName)
+        private SKEncodedImageFormat ProcessImageFormat(string srcFileName)
         {
             return GetImageFormatByExtension(srcFileName.Split('.').Last());
         }
 
-        public void SetImage(Bitmap source)
+        public void SetImage(SKBitmap source)
         {
             this.source = source;
         }
@@ -88,40 +77,44 @@ namespace TweakerCore.Engine
             this.Name = other.Name;
             this.format = other.format;
         }
-        
-        private ImageFormat GetImageFormatByExtension(string extension)
+
+        private SKEncodedImageFormat GetImageFormatByExtension(string extension)
         {
-            switch (extension)
+            switch (extension.ToLowerInvariant())
             {
-                case "bmp":
-                    return ImageFormat.Bmp;
                 case "png":
-                    return ImageFormat.Png;
+                    return SKEncodedImageFormat.Png;
                 case "jpg":
-                    return ImageFormat.Jpeg;
+                case "jpeg":
+                    return SKEncodedImageFormat.Jpeg;
+                // Skia can't encode BMP; the skin file masks only ever admit .png/.jpg,
+                // so anything else falls back to PNG rather than failing.
                 default:
-                    return ImageFormat.Png;
+                    return SKEncodedImageFormat.Png;
             }
         }
 
-        public static explicit operator Bitmap(NamedBitmap obj)
+        public static explicit operator SKBitmap(NamedBitmap obj)
         {
             return obj.source;
         }
 
-        public static implicit operator Image(NamedBitmap obj)
-        {
-            return obj.source;
-        }
-
-        public static implicit operator NamedBitmap(Bitmap obj)
+        public static implicit operator NamedBitmap(SKBitmap obj)
         {
             return new NamedBitmap(obj);
         }
 
         public void Save(string filepath)
         {
-            source?.Save(filepath + @"\\" + Name, GetImageFormatByExtension(format.ToLower()));
+            if (source == null)
+                return;
+
+            using (var image = SKImage.FromBitmap(source))
+            using (var data = image.Encode(GetImageFormatByExtension(format.ToLower()), JpegEncodeQuality))
+            using (var filestream = System.IO.File.Create(filepath + @"\\" + Name))
+            {
+                data.SaveTo(filestream);
+            }
         }
 
         protected virtual void Dispose(bool disposing)

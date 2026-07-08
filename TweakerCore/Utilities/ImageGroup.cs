@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
+using SkiaSharp;
 using TweakerCore.Engine;
 
 namespace TweakerCore.Utilities
 {
 
-    [Serializable]
     public class ImageGroup : IDisposable
     {
         public string Name { get; set; }
@@ -33,7 +32,7 @@ namespace TweakerCore.Utilities
             Group = new List<NamedBitmap>();
         }
 
-        public ImageGroup(params Bitmap[] source)
+        public ImageGroup(params SKBitmap[] source)
         {
             Group = source.Select(x => (NamedBitmap)x).ToList();
         }
@@ -82,7 +81,7 @@ namespace TweakerCore.Utilities
             return new ImageGroup(Name, Group.Where(x => x != null).Select(x => x.DeepClone()));
         }
 
-        public void SetImageByName(string name, Bitmap newImage)
+        public void SetImageByName(string name, SKBitmap newImage)
         {
             foreach (var item in Group)
             {
@@ -95,22 +94,22 @@ namespace TweakerCore.Utilities
             Group.Add(new NamedBitmap(name, newImage));
         }
 
-        public static explicit operator Bitmap(ImageGroup obj)
+        public static explicit operator SKBitmap(ImageGroup obj)
         {
             if (obj.Group.Count == 0)
                 return null;
 
             if (obj.Group.Count == 1)
-                return (Bitmap)obj.Group[0];
-            throw new InvalidCastException("Can't cast ImageGroup with more that 1 picture into Bitmap");
+                return (SKBitmap)obj.Group[0];
+            throw new InvalidCastException("Can't cast ImageGroup with more that 1 picture into SKBitmap");
         }
 
-        public static implicit operator Bitmap[](ImageGroup obj)
+        public static implicit operator SKBitmap[](ImageGroup obj)
         {
-            return obj.Group.Select(x => (Bitmap)x).ToArray();
+            return obj.Group.Select(x => (SKBitmap)x).ToArray();
         }
 
-        public static explicit operator ImageGroup(Bitmap obj)
+        public static explicit operator ImageGroup(SKBitmap obj)
         {
             return new ImageGroup(obj);
         }

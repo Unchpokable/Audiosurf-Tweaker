@@ -1,13 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <!-- System.Drawing.Common is Windows-only on modern .NET; TweakerCore.NamedBitmap/ImageGroup
-         still wrap System.Drawing.Bitmap here - the SkiaSharp swap is a later, separate phase (3b). -->
-    <NoWarn>$(NoWarn);CA1416</NoWarn>
-  </PropertyGroup>
-
   <ItemGroup>
-    <PackageReference Include="System.Drawing.Common" Version="8.0.10" />
+    <!-- 3.119.x rather than 4.x: Avalonia (the phase-4 UI target) ships against SkiaSharp 3.119,
+         and keeping the versions aligned avoids a native-binary conflict later. -->
+    <PackageReference Include="SkiaSharp" Version="3.119.4" />
   </ItemGroup>
 
 </Project>

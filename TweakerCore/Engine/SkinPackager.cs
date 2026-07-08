@@ -1,12 +1,11 @@
 using TweakerCore.Utilities;
 using System;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using SkiaSharp;
 
 namespace TweakerCore.Engine
 {
@@ -21,6 +20,7 @@ namespace TweakerCore.Engine
 
         private const string ManifestEntryName = "manifest.json";
         private const string TexturesEntryPrefix = "textures/";
+        private const int JpegEncodeQuality = 95;
 
         private static string[] _texturesNames;
 
@@ -117,8 +117,8 @@ namespace TweakerCore.Engine
                 return null;
             }
 
-            result.Tiles = new NamedBitmap("tiles.png", (Bitmap)tiles);
-            result.TilesFlyup = new NamedBitmap("tileflyup.png", (Bitmap)tileflyup);
+            result.Tiles = new NamedBitmap("tiles.png", (SKBitmap)tiles);
+            result.TilesFlyup = new NamedBitmap("tileflyup.png", (SKBitmap)tileflyup);
             return result;
         }
 
@@ -135,7 +135,7 @@ namespace TweakerCore.Engine
                 var fileExt = Path.GetExtension(fname);
                 if (fname.Contains(nameMask) && new[] { ".png", ".jpg" }.Any(x => x == fileExt))
                 {
-                    var image = new NamedBitmap(origName, Image.FromFile(file));
+                    var image = new NamedBitmap(origName, SKBitmap.Decode(file));
                     group.AddImage(image);
                 }
             }
@@ -215,16 +215,13 @@ namespace TweakerCore.Engine
                 return; // same filename already written as part of another group (e.g. shared textures)
 
             var entry = archive.CreateEntry(entryName, CompressionLevel.Optimal);
-            using (var memory = new MemoryStream())
+            using (var skImage = SKImage.FromBitmap((SKBitmap)image))
+            using (var data = skImage.Encode(GetImageFormat(image.Name), JpegEncodeQuality))
+            using (var entryStream = entry.Open())
             {
-                // Bitmap.Save() needs a seekable stream (GDI+ writes headers after the data);
-                // a ZipArchiveEntry's stream is not seekable, so buffer through memory first.
-                ((Bitmap)image).Save(memory, GetImageFormat(image.Name));
-                memory.Position = 0;
-                using (var entryStream = entry.Open())
-                {
-                    memory.CopyTo(entryStream);
-                }
+                // SKData is fully materialized in memory, so writing straight into the
+                // non-seekable zip entry stream is fine (unlike GDI+ Bitmap.Save was).
+                data.SaveTo(entryStream);
             }
         }
 
@@ -292,26 +289,22 @@ namespace TweakerCore.Engine
             {
                 entryStream.CopyTo(memory);
                 memory.Position = 0;
-                using (var streamedImage = Image.FromStream(memory))
-                {
-                    return new NamedBitmap(fileName, new Bitmap(streamedImage));
-                }
+                return new NamedBitmap(fileName, SKBitmap.Decode(memory));
             }
         }
 
-        private static ImageFormat GetImageFormat(string fileName)
+        private static SKEncodedImageFormat GetImageFormat(string fileName)
         {
             switch (Path.GetExtension(fileName).ToLowerInvariant())
             {
                 case ".png":
-                    return ImageFormat.Png;
+                    return SKEncodedImageFormat.Png;
                 case ".jpg":
                 case ".jpeg":
-                    return ImageFormat.Jpeg;
-                case ".bmp":
-                    return ImageFormat.Bmp;
+                    return SKEncodedImageFormat.Jpeg;
+                // Skia can't encode BMP; the skin masks only admit .png/.jpg anyway.
                 default:
-                    return ImageFormat.Png;
+                    return SKEncodedImageFormat.Png;
             }
         }
 

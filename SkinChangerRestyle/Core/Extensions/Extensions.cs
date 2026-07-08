@@ -1,4 +1,5 @@
 ﻿using Microsoft.Toolkit.Uwp.Notifications;
+using SkiaSharp;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -23,6 +24,8 @@ namespace SkinChangerRestyle.Core.Extensions
         [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool DeleteObject([In] IntPtr hObject);
 
+        // GDI+ Bitmap path survives only for the resx-embedded UI icons (Properties.Resources.*) -
+        // the resx generator hardcodes System.Drawing.Bitmap. Dies with WPF in the Avalonia phase.
         public static ImageSource ImageSourceFromBitmap(Bitmap bmp)
         {
             var handle = bmp.GetHbitmap();
@@ -30,8 +33,8 @@ namespace SkinChangerRestyle.Core.Extensions
             {
                 return Imaging.CreateBitmapSourceFromHBitmap(handle, IntPtr.Zero, Int32Rect.Empty, BitmapSizeOptions.FromEmptyOptions());
             }
-            finally 
-            { 
+            finally
+            {
                 DeleteObject(handle);
             }
         }
@@ -41,15 +44,25 @@ namespace SkinChangerRestyle.Core.Extensions
             return ImageSourceFromBitmap(bitmapSource);
         }
 
-        public static Bitmap Rescale(this Bitmap source, int newX, int newY)
+        public static ImageSource ToImageSource(this SKBitmap bitmap)
         {
-            var newBmp = new Bitmap(source, newX, newY);
-            return newBmp;
+            using (var image = SKImage.FromBitmap(bitmap))
+            using (var data = image.Encode(SKEncodedImageFormat.Png, 100))
+            using (var memory = new MemoryStream(data.ToArray()))
+            {
+                var bitmapImage = new BitmapImage();
+                bitmapImage.BeginInit();
+                bitmapImage.CacheOption = BitmapCacheOption.OnLoad;
+                bitmapImage.StreamSource = memory;
+                bitmapImage.EndInit();
+                bitmapImage.Freeze();
+                return bitmapImage;
+            }
         }
 
-        public static Bitmap Rescale(this Bitmap source, float scaleX, float scaleY)
+        public static SKBitmap Rescale(this SKBitmap source, int newX, int newY)
         {
-            return new Bitmap(source, (int)(source.Width * scaleX), (int)(source.Height * scaleY));
+            return source.Resize(new SKSizeI(newX, newY), SKSamplingOptions.Default);
         }
 
         public static System.Windows.Size ScaleWidth(this System.Windows.Size origin, float scaleFactor)
@@ -102,16 +115,6 @@ namespace SkinChangerRestyle.Core.Extensions
             return matches.Any(match => match.Equals(item));
         }
 
-        public static System.Windows.Media.Color ToMediaColor(this System.Drawing.Color color)
-        {
-            return new System.Windows.Media.Color() { R = color.R, G = color.G, B = color.B, A = color.A };
-        }
-
-        public static System.Drawing.Color ToNegative(this System.Drawing.Color color)
-        {
-            return System.Drawing.Color.FromArgb(color.A, 255 - color.R, 255 - color.G, 255 - color.B);
-        } 
-        
         public static System.Windows.Media.Color ToNegative(this System.Windows.Media.Color color)
         {
             return System.Windows.Media.Color.FromArgb(color.A, (byte)(255 - color.R), (byte)(255 - color.G), (byte)(255 - color.B));

@@ -1,5 +1,4 @@
-﻿using SkinChangerRestyle.Core.Extensions;
-using System;
+﻿using System;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
@@ -10,8 +9,8 @@ namespace SkinChangerRestyle.Core.Converters
     [ValueConversion(typeof(bool), typeof(Color))]
     public class InversedBooleanToColorConverter : IValueConverter
     {
-        private static Color _redColor = System.Drawing.Color.Red.ToMediaColor();
-        private static Color _greenColor = System.Drawing.Color.LimeGreen.ToMediaColor();
+        private static Color _redColor = Colors.Red;
+        private static Color _greenColor = Colors.LimeGreen;
 
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {

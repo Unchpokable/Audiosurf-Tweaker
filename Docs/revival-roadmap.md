@@ -186,7 +186,46 @@ Audiosurf Tweaker — старый студенческий проект (WPF, .
 12. Коммит и пуш — только по явному подтверждению пользователя, как и в предыдущих фазах.
 
 **3b. Замена работы с изображениями**
-`TweakerCore.NamedBitmap`/`ImageGroup` сейчас держат `System.Drawing.Bitmap` напрямую. `System.Drawing.Common` в современном .NET — Windows-only и не рекомендуется; раз всё равно переезжаем на Avalonia (использует Skia) — сразу переводим работу с изображениями на `SkiaSharp`, вместо того чтобы тащить `System.Drawing` и переписывать это ещё раз в Фазе 4. Заодно `LoadingCache` (см. раунд 4) переводится с `BinaryFormatter` на новый формат — тоже локальный кэш без миграции, но менять его формат раньше смены `Bitmap` на `SkiaSharp` бессмысленно, поэтому делается одним заходом здесь.
+
+**Статус: ✅ Выполнено**
+
+**Итоги по факту реализации:**
+- Выбран `SkiaSharp 3.119.4`, а не свежий 4.x: Avalonia (цель Фазы 4) собрана против SkiaSharp 3.119, выравнивание версий избавляет от конфликта нативных бинарей при переезде UI.
+- Всё прошло по плану без сюрпризов уровня 3a. Приятный побочный эффект: GDI-костыль из Фазы 2 (буферизация `Bitmap.Save()` через `MemoryStream`, т.к. zip-поток не seekable) стал не нужен — `SKData` уже полностью материализован в памяти и пишется в zip-entry напрямую.
+- `NamedBitmap.Save()` переписан с `Bitmap.Save(path)` на явный `File.Create` + `SKData.SaveTo` (JPEG quality 95; BMP-ветка энкода — фолбэк в PNG, Skia не энкодит BMP, ветка и так была мёртвая).
+- В `SkinChangerRestyle.Core.Extensions` добавлены `ToImageSource(this SKBitmap)` (PNG-энкод в память → `BitmapImage` + `Freeze()`) и `Rescale(this SKBitmap, int, int)`; попутно удалены осиротевшие `ToMediaColor`/`ToNegative(System.Drawing.Color)` и неиспользуемая float-перегрузка `Rescale`. GDI-путь `ToImageSource(Bitmap)`+`gdi32!DeleteObject` оставлен строго для resx-иконок (см. "Не трогаем в 3b").
+- Мёртвый `Squarify` удалён; `[Serializable]` снят с `NamedBitmap`/`ImageGroup`; `System.Drawing.Common` и `NoWarn CA1416` убраны из `TweakerCore`/`TweakerCore.Tests`.
+- Проверка: полная сборка решения — 0 ошибок вне замороженного `InternalOverlayRenderer`; тесты 12/12 (`TweakerCore.Tests` 7, `TweakerScriptsInterpreter.Tests` 5); сквозной ручной прогон — реальный `Vintage Works.askin2` подложен в `Skins/`, приложение декодировало его Skia-пайплайном (Decompile → Rescale 860×440 → PNG-энкод), создало валидный `load.cache` (~1.2MB) и на повторном запуске корректно прочитало кэш обратно (`DecodePng`), не пересоздавая файл. Нативная `libSkiaSharp.dll` деплоится в `runtimes\win-x64\` автоматически пакетом.
+
+`TweakerCore.NamedBitmap`/`ImageGroup` сейчас держат `System.Drawing.Bitmap` напрямую. `System.Drawing.Common` в современном .NET — Windows-only и не рекомендуется; раз всё равно переезжаем на Avalonia (использует Skia) — сразу переводим работу с изображениями на `SkiaSharp`, вместо того чтобы тащить `System.Drawing` и переписывать это ещё раз в Фазе 4. `LoadingCache` с `BinaryFormatter` уже переведён на JSON в 3a (вынужденно — компиляционный блокер), здесь докручивается его внутренность: `Bitmap` → Skia-типы.
+
+Разведка (полный список точек касания `System.Drawing` вне замороженных `LegacyDataConverter`/`InternalOverlayRenderer`):
+- `TweakerCore`: `Engine/NamedBitmap.cs` (обёртка над `Bitmap`, операторы каста, `Save` по расширению файла), `Engine/SkinPackager.cs` (`Image.FromFile`/`Image.FromStream`/`Bitmap.Save` в zip), `Utilities/ImageGroup.cs` (касты в `Bitmap`/`Bitmap[]`), `Utilities/Extensions.cs` (`Rescale`; `Squarify` — мёртвый код, нигде не вызывается).
+- `TweakerCore.Tests/SkinPackagerTests.cs` — `CreateTestBitmap` через GDI `Graphics`, пиксельные проверки `GetPixel`/`SetPixel`.
+- `SkinChangerRestyle`: `Core/LoadedSkinData.cs` (`Bitmap[] Screenshots` + `Rescale(860,440)`), `Core/LoadingCache.cs` (PNG↔Base64 через GDI), `MVVM/Model/SkinCard.cs` и `MVVM/ViewModel/SkinChangerViewModel.cs` (паттерн `((Bitmap)screenshot).Rescale(860,440).ToImageSource()`), `Core/Extensions/Extensions.cs` (`ToImageSource` через HBitmap-интероп, `Rescale`-перегрузки, `ToMediaColor`/`ToNegative` на `System.Drawing.Color`), `Core/Converters/InversedBooleanToColorConverter.cs` (`System.Drawing.Color.Red/LimeGreen` → `ToMediaColor`).
+- **Не трогаем в 3b** (умирает целиком в Фазе 4 вместе с WPF): resx-иконки `Properties/Resources.Designer.cs` (тип `System.Drawing.Bitmap` захардкожен генератором resx) и GDI-путь `ToImageSource(Bitmap)`+`DeleteObject` — используются только для UI-иконок (`Properties.Resources.install` и т.п.). До Фазы 4 `SkinChangerRestyle` сохраняет транзитивный `System.Drawing.Common` через `UseWPF`/`UseWindowsForms` — это ок.
+
+План реализации:
+1. **Пакеты**: `SkiaSharp` (актуальный стабильный) в `TweakerCore` и `SkinChangerRestyle` (последний использует `SKBitmap` в коде напрямую — явная ссылка, а не транзитивная). Из `TweakerCore`/`TweakerCore.Tests` убрать `System.Drawing.Common` и `<NoWarn>CA1416</NoWarn>` (станет ненужным).
+2. **`NamedBitmap`** — внутренности на `SKBitmap`:
+   - `source: Bitmap` → `SKBitmap`; конструкторы от `Image`/`Bitmap` → от `SKBitmap` (+ загрузка из файла через `SKBitmap.Decode(path)`);
+   - операторы: `explicit (Bitmap)`/`implicit Image`/`implicit from Bitmap` → Skia-эквиваленты (`explicit SKBitmap`, `implicit from SKBitmap`); `Apply(Func<Bitmap,Bitmap>)` → `Func<SKBitmap,SKBitmap>`;
+   - `Save(filepath)` — энкод по расширению: `SKEncodedImageFormat.Png`/`.Jpeg` (JPEG quality 95); ветка `bmp` — Skia не энкодит BMP, но по факту она мёртвая (маски скинов допускают только `.png`/`.jpg`) → фолбэк в PNG с комментарием;
+   - `DefaultFormat: ImageFormat` (наружу не используется) и `Size: System.Drawing.Size` — убрать (`Width`/`Height` остаются); `[Serializable]`/`[NonSerialized]` атрибуты снять — бинарная сериализация этих типов умерла вместе с Фазой 2;
+   - `ImageInfo`/`format`-строка остаются как есть (строковый формат, ни от чего GDI-шного не зависит).
+3. **`ImageGroup`** — касты `Bitmap`/`Bitmap[]`/`SetImageByName(Bitmap)` → `SKBitmap`-варианты; `[Serializable]` снять; остальное без изменений.
+4. **`SkinPackager`** — `ReadBitmap`: `SKBitmap.Decode` из memory-копии zip-потока; `WriteBitmap`: `SKImage.FromBitmap(...).Encode(fmt, 95).SaveTo(entryStream)` — `SKData` уже полностью в памяти, промежуточный `MemoryStream`-буфер (GDI-костыль из Фазы 2) больше не нужен; `GetAllImagesByNameMask`: `Image.FromFile` → `SKBitmap.Decode`; `GetImageFormat` → `SKEncodedImageFormat`.
+5. **`TweakerCore/Utilities/Extensions.cs`** — `Rescale` → `SKBitmap.Resize`; мёртвый `Squarify` удалить.
+6. **`SkinChangerRestyle`**:
+   - `Core/Extensions/Extensions.cs`: добавить `ToImageSource(this SKBitmap)` (энкод PNG в память → `BitmapImage`, `Freeze()`) и `Rescale(this SKBitmap, int, int)`; GDI-версии оставить для resx-иконок;
+   - `LoadedSkinData.Screenshots`: `Bitmap[]` → `SKBitmap[]`;
+   - `LoadingCache`: `EncodePng`/`DecodePng` через Skia (Base64-контракт кэша не меняется — формат файла тот же, что заведён в 3a);
+   - `SkinCard`/`SkinChangerViewModel`: касты `(Bitmap)` → `(SKBitmap)`, `using System.Drawing` убрать;
+   - `InversedBooleanToColorConverter`: `System.Drawing.Color.Red/LimeGreen.ToMediaColor()` → `Colors.Red`/`Colors.LimeGreen` напрямую; после этого проверить, остались ли пользователи у `ToMediaColor`/`ToNegative(System.Drawing.Color)` — если нет, удалить.
+7. **`TweakerCore.Tests`** — `CreateTestBitmap` через `SKBitmap`+`SKCanvas.Clear`, пиксельные проверки через `SKBitmap.GetPixel`/`SetPixel`, касты `(SKBitmap)`.
+8. Ретаргет `TweakerCore` на чистый `net10.0` (без `-windows`) технически станет возможен после этого шага, но **не делается в 3b** — общий TFM живёт в `Directory.Build.props`, менять его точечно сейчас — лишний churn; вопрос поднимется в Фазе 4 вместе с кросс-платформенностью.
+
+**Проверка**: полная сборка решения (dotnet build + MSBuild для Installer/LegacyDataConverter — оба не затронуты, но регрессия дешёвая); `dotnet test` оба тест-проекта; ручной прогон `audiosurftweaker.exe` — превью реальных скинов из `Mocks/` (новый zip-формат) отображаются в Skin Changer, установка скина в папку (через EditOnDisk/Install путь `NamedBitmap.Save`) пишет валидные PNG/JPG; `load.cache` пересоздаётся и перечитывается.
 
 **3c. Live IPC на `asbridge` — самый крупный кусок фазы**
 Новая архитектура вместо прежнего плана "P/Invoke прямо в managed-коде":

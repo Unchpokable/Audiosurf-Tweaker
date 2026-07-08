@@ -55,6 +55,7 @@
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.1938.49" />
     <PackageReference Include="Notification.Wpf" Version="7.0.0.2" />
     <PackageReference Include="PixiEditor.ColorPicker" Version="3.3.1" />
+    <PackageReference Include="SkiaSharp" Version="3.119.4" />
   </ItemGroup>
 
 </Project>

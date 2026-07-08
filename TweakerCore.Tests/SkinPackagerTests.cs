@@ -2,8 +2,8 @@ namespace TweakerCore.Tests
 {
     using TweakerCore.Engine;
     using NUnit.Framework;
+    using SkiaSharp;
     using System;
-    using System.Drawing;
     using System.IO;
 
     [TestFixture]
@@ -14,7 +14,7 @@ namespace TweakerCore.Tests
         [SetUp]
         public void SetUp()
         {
-            _tempDir = Path.Combine(Path.GetTempPath(), "ChangerAPITests", Guid.NewGuid().ToString("N"));
+            _tempDir = Path.Combine(Path.GetTempPath(), "TweakerCoreTests", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(_tempDir);
         }
 
@@ -60,11 +60,9 @@ namespace TweakerCore.Tests
                 Assert.IsNotNull(loaded.Cover);
                 Assert.AreEqual("cover.png", loaded.Cover.Name);
 
-                using (var bitmap = (Bitmap)loaded.Tiles)
-                {
-                    Assert.AreEqual(2, bitmap.Width);
-                    Assert.AreEqual(2, bitmap.Height);
-                }
+                var bitmap = (SKBitmap)loaded.Tiles;
+                Assert.AreEqual(2, bitmap.Width);
+                Assert.AreEqual(2, bitmap.Height);
             }
         }
 
@@ -92,33 +90,32 @@ namespace TweakerCore.Tests
                 Assert.AreEqual(original.Name, clone.Name);
                 Assert.AreNotSame(original.Tiles, clone.Tiles);
 
-                using (var originalBitmap = (Bitmap)original.Tiles)
-                using (var cloneBitmap = (Bitmap)clone.Tiles)
-                {
-                    Assert.AreNotSame(originalBitmap, cloneBitmap);
+                var originalBitmap = (SKBitmap)original.Tiles;
+                var cloneBitmap = (SKBitmap)clone.Tiles;
 
-                    cloneBitmap.SetPixel(0, 0, Color.Black);
-                    Assert.AreNotEqual(cloneBitmap.GetPixel(0, 0), originalBitmap.GetPixel(0, 0));
-                }
+                Assert.AreNotSame(originalBitmap, cloneBitmap);
+
+                cloneBitmap.SetPixel(0, 0, SKColors.Black);
+                Assert.AreNotEqual(cloneBitmap.GetPixel(0, 0), originalBitmap.GetPixel(0, 0));
             }
         }
 
         private static AudiosurfSkinExtended BuildSampleSkin(string name)
         {
             var skin = new AudiosurfSkinExtended { Name = name };
-            skin.Cliffs.AddImage(new NamedBitmap("cliff-1.png", CreateTestBitmap(Color.Red)));
-            skin.Tiles = new NamedBitmap("tiles.png", CreateTestBitmap(Color.Blue));
-            skin.TilesFlyup = new NamedBitmap("tileflyup.png", CreateTestBitmap(Color.Green));
-            skin.Cover = new NamedBitmap("cover.png", CreateTestBitmap(Color.Yellow));
+            skin.Cliffs.AddImage(new NamedBitmap("cliff-1.png", CreateTestBitmap(SKColors.Red)));
+            skin.Tiles = new NamedBitmap("tiles.png", CreateTestBitmap(SKColors.Blue));
+            skin.TilesFlyup = new NamedBitmap("tileflyup.png", CreateTestBitmap(SKColors.Green));
+            skin.Cover = new NamedBitmap("cover.png", CreateTestBitmap(SKColors.Yellow));
             return skin;
         }
 
-        private static Bitmap CreateTestBitmap(Color color)
+        private static SKBitmap CreateTestBitmap(SKColor color)
         {
-            var bitmap = new Bitmap(2, 2);
-            using (var graphics = Graphics.FromImage(bitmap))
+            var bitmap = new SKBitmap(2, 2);
+            using (var canvas = new SKCanvas(bitmap))
             {
-                graphics.Clear(color);
+                canvas.Clear(color);
             }
             return bitmap;
         }

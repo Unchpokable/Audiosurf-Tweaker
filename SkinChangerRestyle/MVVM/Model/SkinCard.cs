@@ -2,9 +2,9 @@
 using SkinChangerRestyle.Core;
 using SkinChangerRestyle.Core.Extensions;
 using SkinChangerRestyle.MVVM.ViewModel;
+using SkiaSharp;
 using System;
 using System.Collections.ObjectModel;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -126,7 +126,7 @@ namespace SkinChangerRestyle.MVVM.Model
             _pathToOriginFile = pathToOrigin;
             Name = $"{skin.Name}";
             if (UseFastPreview)
-                Screenshots = new ObservableCollection<InteractableScreenshot>(skin.Previews.Group.Select(screenshot => new InteractableScreenshot(((Bitmap)screenshot).Rescale(860, 440).ToImageSource())));
+                Screenshots = new ObservableCollection<InteractableScreenshot>(skin.Previews.Group.Select(screenshot => new InteractableScreenshot(((SKBitmap)screenshot).Rescale(860, 440).ToImageSource())));
         }
 
         private void AssignSkin(LoadedSkinData skin)

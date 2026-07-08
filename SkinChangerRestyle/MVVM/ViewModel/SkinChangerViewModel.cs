@@ -13,7 +13,7 @@ using TweakerCore.FolderChecker;
 using System.Windows.Forms;
 using System.Reflection;
 using AudiosurfInterface;
-using System.Drawing;
+using SkiaSharp;
 using System.Collections.Generic;
 using Notification.Wpf;
 using SkinChangerRestyle.Core.Utils;
@@ -618,14 +618,14 @@ namespace SkinChangerRestyle.MVVM.ViewModel
             AudiosurfHandle.Instance.Command($"tw-update-skin-list {skinsList}");
         }
 
-        private List<Bitmap> GetSkinScreenshots(string pathToSkin)
+        private List<SKBitmap> GetSkinScreenshots(string pathToSkin)
         {
             return Task.Run(() =>
             {
                 using (var skin = SkinPackager.Decompile(pathToSkin))
                 {
                     return
-                        skin.Previews.Group.Select(screenshot => ((Bitmap)screenshot).Rescale(860, 440))
+                        skin.Previews.Group.Select(screenshot => ((SKBitmap)screenshot).Rescale(860, 440))
                                            .ToList();
                 }
             }).Result;

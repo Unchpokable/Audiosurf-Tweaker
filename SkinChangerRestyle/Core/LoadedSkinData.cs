@@ -1,7 +1,7 @@
 ﻿using TweakerCore.Engine;
+using SkiaSharp;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using SkinChangerRestyle.Core.Extensions;
 
@@ -16,10 +16,10 @@ namespace SkinChangerRestyle.Core
 
         public LoadedSkinData(AudiosurfSkinExtended origin, string pathToOrigin)
         {
-            var screenshots = new List<Bitmap>();
+            var screenshots = new List<SKBitmap>();
             Name = origin.Name;
             if (origin.Previews != null)
-                screenshots.AddRange(origin.Previews.Group.Select(x => ((Bitmap)x).Rescale(860, 440)));
+                screenshots.AddRange(origin.Previews.Group.Select(x => ((SKBitmap)x).Rescale(860, 440)));
             Screenshots = screenshots.ToArray();
             PathToOriginFile = pathToOrigin;
         }
@@ -27,7 +27,7 @@ namespace SkinChangerRestyle.Core
         private bool _disposedValue;
 
         public string Name { get; set; }
-        public Bitmap[] Screenshots { get; set; }
+        public SKBitmap[] Screenshots { get; set; }
         public string PathToOriginFile { get; set; }
 
         protected virtual void Dispose(bool disposing)

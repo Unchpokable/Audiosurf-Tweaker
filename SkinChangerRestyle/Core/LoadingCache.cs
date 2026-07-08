@@ -1,7 +1,6 @@
+using SkiaSharp;
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -83,23 +82,18 @@ namespace SkinChangerRestyle.Core
             }
         }
 
-        private static string EncodePng(Bitmap bitmap)
+        private static string EncodePng(SKBitmap bitmap)
         {
-            using (var memory = new MemoryStream())
+            using (var image = SKImage.FromBitmap(bitmap))
+            using (var data = image.Encode(SKEncodedImageFormat.Png, 100))
             {
-                // Bitmap.Save() needs a seekable stream (GDI+ writes headers after the data).
-                bitmap.Save(memory, ImageFormat.Png);
-                return Convert.ToBase64String(memory.ToArray());
+                return Convert.ToBase64String(data.ToArray());
             }
         }
 
-        private static Bitmap DecodePng(string base64)
+        private static SKBitmap DecodePng(string base64)
         {
-            using (var memory = new MemoryStream(Convert.FromBase64String(base64)))
-            using (var streamedImage = Image.FromStream(memory))
-            {
-                return new Bitmap(streamedImage);
-            }
+            return SKBitmap.Decode(Convert.FromBase64String(base64));
         }
 
         private class CacheDto
