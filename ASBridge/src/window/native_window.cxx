@@ -16,7 +16,8 @@ struct typed_handler_entry final {
     as::wnd::short_handler handler;
 };
 
-constexpr std::size_t max_handlers = 24;
+constexpr std::size_t max_handlers { 24 };
+std::size_t handlers_inserter_idx { 0 };
 std::array<typed_handler_entry, max_handlers> specialized_handlers;
 } // namespace
 
@@ -70,6 +71,21 @@ void set_wndproc_handler(wndproc_handler handler)
 void remove_wndproc_handler()
 {
     registered_handler = nullptr;
+}
+} // namespace as::wnd
+
+namespace as::wnd
+{
+void set_handler_for(msg_type message_type, short_handler handler)
+{
+    for(std::size_t idx; idx < max_handlers; ++idx) {
+        if(specialized_handlers[idx].msg_type == message_type) {
+            specialized_handlers[idx] = { .msg_type = message_type, .handler = handler };
+            return;
+        }
+    }
+
+    specialized_handlers[handlers_inserter_idx++] = { .msg_type = message_type, .handler = handler };
 }
 } // namespace as::wnd
 
