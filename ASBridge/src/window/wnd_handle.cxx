@@ -51,10 +51,25 @@ wnd_handle wnd_handle::create_new(wndproc_handler wndproc, as::raw_sys_const_str
     vd::require(hwnd != nullptr, "as::wnd::wnd_handle::create_new: CreateWindowExW failed, GetLastError={}", ::GetLastError());
 
     wnd_handle handle(hwnd);
+
     if(wndproc != nullptr) {
         vd::require(handle.set_wndproc(wndproc), "as::wnd::wnd_handle::create_new: set_wndproc failed, GetLastError={}", ::GetLastError());
     }
+
+    handle.m_owning = true;
+
     return handle;
+}
+
+wnd_handle wnd_handle::open_existing(as::raw_sys_const_string title)
+{
+    auto window = ::FindWindowW(nullptr, title);
+
+    if(!window || !::IsWindow(window)) {
+        return wnd_handle(nullptr);
+    }
+
+    return wnd_handle(window);
 }
 
 wnd_handle::wnd_handle(HWND handle) : m_handle(handle)
@@ -63,9 +78,10 @@ wnd_handle::wnd_handle(HWND handle) : m_handle(handle)
 
 wnd_handle::~wnd_handle()
 {
-    if(!valid()) {
+    if(!valid() || !m_owning) {
         return;
     }
+
     ::DestroyWindow(m_handle);
 }
 
@@ -80,7 +96,7 @@ wnd_handle& wnd_handle::operator=(wnd_handle&& other) noexcept
         return *this;
     }
 
-    if(valid()) {
+    if(valid() && m_owning) {
         ::DestroyWindow(m_handle);
     }
 
@@ -93,7 +109,7 @@ wnd_handle& wnd_handle::operator=(wnd_handle&& other) noexcept
 
 bool wnd_handle::valid() const noexcept
 {
-    return !m_released_or_moved && m_handle != nullptr;
+    return !m_released_or_moved && m_handle != nullptr && ::IsWindow(m_handle);
 }
 
 HWND wnd_handle::native() const noexcept
@@ -108,6 +124,10 @@ void wnd_handle::release() noexcept
 
 bool wnd_handle::set_wndproc(wndproc_handler wndproc) noexcept
 {
+    if(!m_owning) {
+        return false;
+    }
+
     if(!valid() || wndproc == nullptr) {
         return false;
     }
@@ -121,6 +141,10 @@ bool wnd_handle::set_wndproc(wndproc_handler wndproc) noexcept
 
 bool wnd_handle::resize(int width, int height) noexcept
 {
+    if(!m_owning) {
+        return false;
+    }
+
     if(!valid()) {
         return false;
     }
@@ -129,6 +153,10 @@ bool wnd_handle::resize(int width, int height) noexcept
 
 bool wnd_handle::rename(as::raw_sys_const_string title) noexcept
 {
+    if(!m_owning) {
+        return false;
+    }
+
     if(!valid()) {
         return false;
     }

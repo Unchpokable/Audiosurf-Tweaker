@@ -13,6 +13,12 @@
 namespace as::wnd
 {
 using wndproc_handler = LRESULT(CALLBACK*)(HWND, UINT, WPARAM, LPARAM);
+using short_handler = LRESULT (*)(HWND, WPARAM, LPARAM); // internal type for ASBridge, handler for special message type
+} // namespace as::wnd
+
+namespace as::wnd
+{
+using msg_type = UINT;
 } // namespace as::wnd
 
 namespace as::wnd
@@ -28,6 +34,9 @@ public:
     /// during creation, before wndproc can be installed - those two messages are always seen by
     /// DefWindowProc, never by the handler passed in here. Aborts (vd::require) on any Win32 failure.
     static wnd_handle create_new(wndproc_handler wndproc, as::raw_sys_const_string title, int width, int height);
+
+    ///@brief looks for existing window with title in the system
+    static wnd_handle open_existing(as::raw_sys_const_string title);
 
     explicit wnd_handle() = default;
 
@@ -46,11 +55,11 @@ public:
 
     ///@brief True only while this object currently owns a live window; false after release() or
     /// after being moved from, even though native() may still report a (now stale) handle value.
-    bool valid() const noexcept;
+    [[nodiscard]] bool valid() const noexcept;
 
     ///@brief The last known HWND, even after release()/move. Does not imply ownership - check
     /// valid() first if that distinction matters.
-    HWND native() const noexcept;
+    [[nodiscard]] HWND native() const noexcept;
 
     ///@brief Detaches without destroying the window: the destructor becomes a no-op. Use when
     /// ownership has been handed off elsewhere, or the window is already known to be gone.
@@ -69,6 +78,8 @@ public:
 
 private:
     HWND m_handle = nullptr;
+
     bool m_released_or_moved { false };
+    bool m_owning { false };
 };
 } // namespace as::wnd

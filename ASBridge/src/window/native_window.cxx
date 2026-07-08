@@ -1,4 +1,7 @@
+#include <algorithm>
 #include <vd.hxx>
+
+#include <array>
 
 #include "window/native_window.hxx"
 #include "wnd_handle.hxx"
@@ -7,17 +10,33 @@ namespace
 {
 as::wnd::wnd_handle window {};
 as::wnd::wndproc_handler registered_handler {};
+
+struct typed_handler_entry final {
+    UINT msg_type;
+    as::wnd::short_handler handler;
+};
+
+constexpr std::size_t max_handlers = 24;
+std::array<typed_handler_entry, max_handlers> specialized_handlers;
 } // namespace
 
 namespace
 {
 LRESULT WINAPI internal_wndproc_handler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
-    if(registered_handler) {
-        auto code = registered_handler(hwnd, msg, wparam, lparam);
-        return code;
+    // looks for specialized handlers
+    for(std::size_t idx; idx < max_handlers; ++idx) {
+        if(auto handler = specialized_handlers[idx]; handler.msg_type == msg) {
+            return handler.handler(hwnd, wparam, lparam);
+        }
     }
 
+    // no specialized handler - call generic
+    if(registered_handler) {
+        return registered_handler(hwnd, msg, wparam, lparam);
+    }
+
+    // no registered external handler - call default
     return DefWindowProc(hwnd, msg, wparam, lparam);
 }
 } // namespace
@@ -30,6 +49,8 @@ void initialize(as::raw_sys_const_string title)
     vd::require(std::wcslen(title) > 0, "as::wnd::initialize: title cannot be empty");
 
     window = wnd_handle::create_new(nullptr, title, 0, 0);
+
+    window.set_wndproc(&internal_wndproc_handler);
 }
 
 void shutdown()

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "window/native_window.hxx"
 #if defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -23,6 +22,11 @@ namespace as::wnd
 {
 void set_wndproc_handler(wndproc_handler handler);
 void remove_wndproc_handler();
+} // namespace as::wnd
+
+namespace as::wnd
+{
+void set_handler_for(msg_type message_type, short_handler handler);
 } // namespace as::wnd
 
 namespace as::wnd
