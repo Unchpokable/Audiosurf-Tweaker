@@ -66,3 +66,6 @@ CheckOptions:
     value: CamelCase
   - key: readability-identifier-naming.TemplateTemplateParameterCase
     value: CamelCase
+  # "Modernize" keys
+  - key: modernize-use-override.AllowVirtualAndOverride
+    value: true

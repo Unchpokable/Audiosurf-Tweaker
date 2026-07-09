@@ -1,10 +1,9 @@
-#include <algorithm>
 #include <vd.hxx>
 
 #include <array>
 
 #include "window/native_window.hxx"
-#include "wnd_handle.hxx"
+#include "window/wnd_handle.hxx"
 
 namespace
 {
@@ -26,7 +25,7 @@ namespace
 LRESULT WINAPI internal_wndproc_handler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
     // looks for specialized handlers
-    for(std::size_t idx; idx < max_handlers; ++idx) {
+    for(std::size_t idx = 0; idx < max_handlers; ++idx) {
         if(auto handler = specialized_handlers[idx]; handler.msg_type == msg) {
             return handler.handler(hwnd, wparam, lparam);
         }
@@ -46,10 +45,13 @@ namespace as::wnd
 {
 void initialize(as::raw_sys_const_string title)
 {
-    vd::require(!window.valid(), "as::wnd::initialize: window already initialized");
-    vd::require(std::wcslen(title) > 0, "as::wnd::initialize: title cannot be empty");
+    vd::require<asbridge_native_window_failure>(!window.valid(), "as::wnd::initialize: window titled already initialized");
+    vd::require<asbridge_native_window_failure>(std::wcslen(title) > 0, "as::wnd::initialize: title cannot be empty");
 
     window = wnd_handle::create_new(nullptr, title, 0, 0);
+
+    vd::require<asbridge_native_window_failure>(
+        window.valid(), "as::wnd::initialize: window titled creation failed! GetLastError={}", ::GetLastError());
 
     window.set_wndproc(&internal_wndproc_handler);
 }
@@ -78,7 +80,7 @@ namespace as::wnd
 {
 void set_handler_for(msg_type message_type, short_handler handler)
 {
-    for(std::size_t idx; idx < max_handlers; ++idx) {
+    for(std::size_t idx = 0; idx < max_handlers; ++idx) {
         if(specialized_handlers[idx].msg_type == message_type) {
             specialized_handlers[idx] = { .msg_type = message_type, .handler = handler };
             return;

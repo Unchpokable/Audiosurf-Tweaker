@@ -29,6 +29,8 @@ public:
         pending,      //< overlapped_result(wait=false) only: operation has not completed yet
     };
 
+    explicit duplex_pipe() = default;
+
     ///@brief Wraps an already open/connected handle (secondary path, mirrors process(proc_handle)).
     explicit duplex_pipe(as::file_handle handle, as::system_path fname = {});
     ~duplex_pipe();
@@ -39,9 +41,9 @@ public:
     duplex_pipe& operator=(const duplex_pipe&) = delete;
     duplex_pipe& operator=(duplex_pipe&& other) noexcept;
 
-    bool valid() const noexcept;
-    bool connected() const noexcept;
-    bool is_server() const noexcept;
+    [[nodiscard]] bool valid() const noexcept;
+    [[nodiscard]] bool connected() const noexcept;
+    [[nodiscard]] bool is_server() const noexcept;
 
     ///@brief Server-side only: blocks (up to timeout) until a client connects.
     bool accept(int timeout = timeout_infinite);
@@ -87,10 +89,10 @@ private:
     friend duplex_pipe create_duplex_pipe(as::system_path name, std::size_t buffer_size);
     friend duplex_pipe open_duplex_pipe(as::system_path name, int timeout);
 
-    as::system_path m_fname;
+    as::system_path m_fname {};
     as::file_handle m_file { as::invalid_handle };
 
-    std::size_t m_readwrite_length;
+    std::size_t m_readwrite_length {};
     flags_bitmask m_flags { 0 };
 
     bool m_is_server { false };

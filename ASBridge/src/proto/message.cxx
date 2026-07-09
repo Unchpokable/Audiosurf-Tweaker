@@ -42,6 +42,9 @@ asbridge_msg_type msg_type_from_string(std::string_view token) noexcept
     if(token == rules::message_msg_broadcast_forward) {
         return asbridge_msg_type::broadcast_forward;
     }
+    if(token == rules::message_msg_service) {
+        return asbridge_msg_type::service;
+    }
 
     return invalid_msg_type;
 }
@@ -100,6 +103,8 @@ vd::result validate(const asbridge_msg& msg) noexcept
                 return rules::asbridge_msg_failed_check.check(msg);
             case asbridge_msg_type::broadcast_forward:
                 return rules::asbridge_msg_broadcast_forward_check.check(msg);
+            case asbridge_msg_type::service:
+                return rules::asbridge_msg_service_check.check(msg);
             default:
                 return rules::asbridge_msg_server_report_check.check(msg);
         }

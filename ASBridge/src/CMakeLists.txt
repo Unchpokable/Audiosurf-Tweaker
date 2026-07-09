@@ -7,3 +7,4 @@ target_include_directories(asbridge PUBLIC
 add_subdirectory(pipes)
 add_subdirectory(window)
 add_subdirectory(proto)
+add_subdirectory(service)

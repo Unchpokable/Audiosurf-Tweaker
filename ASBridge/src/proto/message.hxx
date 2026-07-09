@@ -18,7 +18,7 @@ public:
     {
     }
 
-    [[nodiscard]] const char* what() const noexcept override
+    [[nodiscard]] virtual const char* what() const noexcept override
     {
         return m_message.c_str();
     }
@@ -37,6 +37,7 @@ enum class asbridge_msg_type : std::uint8_t {
     ok,
     failed,
     broadcast_forward,
+    service,
 };
 
 struct asbridge_msg final {
@@ -55,6 +56,10 @@ inline constexpr auto message_msg_send = "SEND";
 inline constexpr auto message_msg_ok = "OK";
 inline constexpr auto message_msg_failed = "FAILED";
 inline constexpr auto message_msg_broadcast_forward = "BROADCAST_FORWARD";
+inline constexpr auto message_msg_service = "SERVICE";
+
+inline constexpr auto service_status_window_lost = "WINDOW_LOST";
+inline constexpr auto service_status_window_found = "WINDOW_FOUND";
 
 constexpr std::string_view to_string(asbridge_msg_header header) noexcept
 {
@@ -79,6 +84,8 @@ constexpr std::string_view to_string(asbridge_msg_type msg) noexcept
             return message_msg_failed;
         case asbridge_msg_type::broadcast_forward:
             return message_msg_broadcast_forward;
+        case asbridge_msg_type::service:
+            return message_msg_service;
     }
 
     return {};
@@ -136,6 +143,19 @@ struct asbridge_msg_broadcast_forward_details_non_empty final {
     }
 };
 
+struct asbridge_msg_service_details_non_empty final {
+    static constexpr auto description = "details must be non-empty";
+
+    vd::result operator()(const asbridge_msg& msg) const noexcept
+    {
+        if(msg.msg == asbridge_msg_type::service && msg.details.empty()) {
+            return vd::result::failed({ std::format("{}. details must be non-empty when msg is SERVICE", description) });
+        }
+
+        return vd::result::ok();
+    }
+};
+
 struct asbridge_msg_client_command_send final {
     static constexpr auto description = "header must be CCOMMAND and msg must be SEND";
 
@@ -151,13 +171,13 @@ struct asbridge_msg_client_command_send final {
 };
 
 struct asbridge_msg_server_report_valid_msg final {
-    static constexpr auto description = "header must be SREPORT and msg must be OK, FAILED, or BROADCAST_FORWARD";
+    static constexpr auto description = "header must be SREPORT and msg must be OK, FAILED, BROADCAST_FORWARD, or SERVICE";
 
     vd::result operator()(const asbridge_msg& msg) const noexcept
     {
         if(msg.header == asbridge_msg_header::server_report
-           && (msg.msg == asbridge_msg_type::ok || msg.msg == asbridge_msg_type::failed
-               || msg.msg == asbridge_msg_type::broadcast_forward)) {
+            && (msg.msg == asbridge_msg_type::ok || msg.msg == asbridge_msg_type::failed
+                || msg.msg == asbridge_msg_type::broadcast_forward || msg.msg == asbridge_msg_type::service)) {
             return vd::result::ok();
         }
 
@@ -189,6 +209,7 @@ inline const auto asbridge_msg_client_command_send_check =
 inline const auto asbridge_msg_server_report_check = asbridge_msg_full_check.with(asbridge_msg_server_report_valid_msg {});
 inline const auto asbridge_msg_broadcast_forward_check =
     asbridge_msg_server_report_check.with(asbridge_msg_broadcast_forward_details_non_empty {});
+inline const auto asbridge_msg_service_check = asbridge_msg_server_report_check.with(asbridge_msg_service_details_non_empty {});
 } // namespace as::proto::rules
 
 namespace as::proto

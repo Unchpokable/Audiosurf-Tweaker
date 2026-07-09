@@ -8,9 +8,33 @@
 #error "This file is only for Windows builds"
 #endif
 
+#include <exception>
+
 #include "window/wnd_handle.hxx"
 
 #include "system/string.hxx"
+
+namespace as::wnd
+{
+class asbridge_native_window_failure final : public std::exception {
+public:
+    explicit asbridge_native_window_failure(const std::string& what) : m_message(what)
+    {
+    }
+
+    explicit asbridge_native_window_failure(const char* what) : m_message(std::string(what))
+    {
+    }
+
+    [[nodiscard]] virtual const char* what() const noexcept override
+    {
+        return m_message.c_str();
+    }
+
+private:
+    std::string m_message;
+};
+} // namespace as::wnd
 
 namespace as::wnd
 {
