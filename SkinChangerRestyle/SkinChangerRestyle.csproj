@@ -48,6 +48,31 @@
     <ProjectReference Include="..\TweakerScriptsInterpreter\TweakerScriptInterpreter.csproj" />
   </ItemGroup>
 
+  <!--
+    Native asbridge.exe (Live IPC subprocess) is built by CMake as a black box - no vcxproj, not in
+    the .sln. On Windows a CMake failure fails the whole solution build on purpose; on non-Windows
+    the step is skipped entirely (WM_COPYDATA IPC is unimplementable against a Wine-hosted game).
+  -->
+  <PropertyGroup>
+    <AsBridgeSourceDir>$(MSBuildThisFileDirectory)..\ASBridge</AsBridgeSourceDir>
+    <AsBridgeBuildDir>$(AsBridgeSourceDir)\build\msbuild</AsBridgeBuildDir>
+  </PropertyGroup>
+
+  <Target Name="BuildAsBridge" BeforeTargets="Build" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <Exec Command="cmake -S &quot;$(AsBridgeSourceDir)&quot; -B &quot;$(AsBridgeBuildDir)&quot;" />
+    <Exec Command="cmake --build &quot;$(AsBridgeBuildDir)&quot; --config Release" />
+  </Target>
+
+  <Target Name="CopyAsBridge" AfterTargets="BuildAsBridge" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+    <PropertyGroup>
+      <!-- Single-config generators (Ninja) emit to bin\, multi-config (Visual Studio) to bin\<Config>\. -->
+      <AsBridgeExe>$(AsBridgeBuildDir)\bin\asbridge.exe</AsBridgeExe>
+      <AsBridgeExe Condition="!Exists('$(AsBridgeExe)')">$(AsBridgeBuildDir)\bin\Release\asbridge.exe</AsBridgeExe>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(AsBridgeExe)')" Text="asbridge.exe not found after CMake build at $(AsBridgeBuildDir)" />
+    <Copy SourceFiles="$(AsBridgeExe)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+
   <ItemGroup>
     <PackageReference Include="Gameloop.Vdf" Version="0.6.2" />
     <PackageReference Include="Gameloop.Vdf.JsonConverter" Version="0.2.1" />

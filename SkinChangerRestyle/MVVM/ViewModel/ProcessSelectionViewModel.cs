@@ -105,13 +105,10 @@ namespace SkinChangerRestyle.MVVM.ViewModel
 
         private void SetHandleToSelectedProcessInternal(object param)
         {
-            var process = (ShortProcessDescriptor)param;
+            // Manual handle selection is gone with the asbridge architecture: the bridge subprocess
+            // discovers the game window itself on a fast timer. Resetting the bridge is the closest
+            // remaining action; this window's fate is decided in the Avalonia UI phase.
             _asHandle.ReinitializeWndProcMessageService();
-            _asHandle.StopAutoHandling();
-            _asHandle.SetHandle(System.Diagnostics.Process.GetProcessById(process.GetProcessID()));
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
             CloseWindow.Execute(new object());
         }
     }

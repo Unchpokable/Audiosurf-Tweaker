@@ -135,7 +135,7 @@ std::expected<as::proto::asbridge_msg, as::proto::asbridge_msg_parse_error> as::
         return std::unexpected(asbridge_msg_parse_error { "Malformed message: details must be double-quoted and whitespace-separated" });
     }
 
-    if(auto validation = validate(msg); validation.is_valid) {
+    if(auto validation = validate(msg); !validation.is_valid) {
         return std::unexpected(asbridge_msg_parse_error { validation.short_format() });
     }
 

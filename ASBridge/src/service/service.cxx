@@ -21,8 +21,11 @@
 
 namespace
 {
-constexpr auto k_audiosurf_window_title = L"QuestViewer.exe";
-constexpr auto k_listener_registration_prefix = L"asregisterlistenerwindow ";
+constexpr auto k_audiosurf_process_exe = L"QuestViewer.exe";
+
+// The game protocol distinguishes a freshly started game: within this window after process start
+// the legacy tweaker sent "quickstartregisterwindow" instead of "registerlistenerwindow".
+constexpr double k_quickstart_process_age_seconds = 30.0;
 
 constexpr UINT_PTR k_liveness_timer_id = 1;
 constexpr UINT k_liveness_timer_interval_ms = 30;
@@ -35,6 +38,7 @@ namespace
 {
 // Touched only by the window/timer thread (main thread).
 as::wnd::wnd_handle audiosurf_window;
+DWORD audiosurf_pid = 0;
 bool audiosurf_last_known_valid = false;
 as::sys_string wnd_title_storage;
 
@@ -77,21 +81,70 @@ std::string to_narrow(const wchar_t* wide, int wide_len)
     return narrow;
 }
 
-bool send_wide_copydata(HWND target, const std::wstring& text)
+// The game expects single-byte ANSI text: the legacy tweaker marshalled COPYDATASTRUCT::lpData as
+// UnmanagedType.LPStr with cbData = length + 1 (null terminator included). Wide strings are not
+// understood by the game side, so everything outbound goes through this narrow variant.
+bool send_ansi_copydata(HWND target, const std::string& text)
 {
     COPYDATASTRUCT cds {};
     cds.dwData = 0;
-    cds.cbData = static_cast<DWORD>(text.size() * sizeof(wchar_t));
-    cds.lpData = const_cast<wchar_t*>(text.data()); // NOLINT COPYDATASTRUCT::lpData is not const in the Win32 API
+    cds.cbData = static_cast<DWORD>(text.size() + 1);
+    cds.lpData = const_cast<char*>(text.c_str()); // NOLINT COPYDATASTRUCT::lpData is not const in the Win32 API
 
     return ::SendMessageW(
                target, WM_COPYDATA, reinterpret_cast<WPARAM>(as::wnd::get_window().native()), reinterpret_cast<LPARAM>(&cds))
         != 0;
 }
 
-void send_listener_registration(HWND target)
+// Age of a process in seconds, or a huge value when it cannot be determined - mirroring the legacy
+// tweaker, which fell back to "not a quickstart" when process times were inaccessible.
+double process_age_seconds(DWORD pid)
 {
-    send_wide_copydata(target, k_listener_registration_prefix + wnd_title_storage);
+    constexpr double k_unknown_age = 1.0e9;
+
+    as::proc_handle process = ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if(process == nullptr) {
+        return k_unknown_age;
+    }
+
+    FILETIME creation {}, exit {}, kernel {}, user {};
+    const BOOL got_times = ::GetProcessTimes(process, &creation, &exit, &kernel, &user);
+    ::CloseHandle(process);
+
+    if(got_times == FALSE) {
+        return k_unknown_age;
+    }
+
+    FILETIME now {};
+    ::GetSystemTimeAsFileTime(&now);
+
+    ULARGE_INTEGER created {};
+    created.LowPart = creation.dwLowDateTime;
+    created.HighPart = creation.dwHighDateTime;
+
+    ULARGE_INTEGER current {};
+    current.LowPart = now.dwLowDateTime;
+    current.HighPart = now.dwHighDateTime;
+
+    if(current.QuadPart <= created.QuadPart) {
+        return 0.0;
+    }
+
+    constexpr double k_filetime_ticks_per_second = 1.0e7; // FILETIME is in 100ns units
+    return static_cast<double>(current.QuadPart - created.QuadPart) / k_filetime_ticks_per_second;
+}
+
+void send_listener_registration(HWND target, DWORD pid)
+{
+    // Legacy protocol verbatim: a freshly started game gets "quickstartregisterwindow", an already
+    // running one gets "registerlistenerwindow"; the game acks with "successfullyquickstartregistered"
+    // / "successfullyregistered" broadcast back to the listener window named here.
+    const bool quickstart = process_age_seconds(pid) < k_quickstart_process_age_seconds;
+
+    std::string command = std::string("ascommand ") + (quickstart ? "quickstartregisterwindow " : "registerlistenerwindow ")
+        + to_narrow(wnd_title_storage.data(), static_cast<int>(wnd_title_storage.size()));
+
+    send_ansi_copydata(target, command);
 }
 
 void push_report(const as::proto::asbridge_msg& msg)
@@ -118,6 +171,11 @@ LRESULT process_wm_copydata(HWND, WPARAM, LPARAM lparam)
                                ? to_narrow(reinterpret_cast<const wchar_t*>(raw_bytes), raw_len / static_cast<int>(sizeof(wchar_t)))
                                : std::string(raw_bytes, static_cast<std::size_t>(raw_len));
 
+        // cbData conventionally includes the null terminator; don't leak it into the protocol.
+        while(!data.empty() && data.back() == '\0') {
+            data.pop_back();
+        }
+
         push_report({
             .header = as::proto::asbridge_msg_header::server_report,
             .msg = as::proto::asbridge_msg_type::broadcast_forward,
@@ -128,6 +186,69 @@ LRESULT process_wm_copydata(HWND, WPARAM, LPARAM lparam)
     return TRUE;
 }
 
+struct found_game_window final {
+    HWND hwnd = nullptr;
+    DWORD pid = 0;
+};
+
+// EnumWindows callback state for find_audiosurf_main_window().
+struct enum_windows_state final {
+    found_game_window result;
+};
+
+bool process_exe_matches(DWORD pid, const wchar_t* expected_exe)
+{
+    as::proc_handle process = ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    if(process == nullptr) {
+        return false;
+    }
+
+    wchar_t image_path[MAX_PATH] = {};
+    DWORD path_len = MAX_PATH;
+    const BOOL queried = ::QueryFullProcessImageNameW(process, 0, image_path, &path_len);
+    ::CloseHandle(process);
+
+    if(queried == FALSE) {
+        return false;
+    }
+
+    const wchar_t* basename = ::wcsrchr(image_path, L'\\');
+    basename = basename != nullptr ? basename + 1 : image_path;
+
+    return ::_wcsicmp(basename, expected_exe) == 0;
+}
+
+BOOL CALLBACK enum_windows_proc(HWND hwnd, LPARAM lparam)
+{
+    auto* state = reinterpret_cast<enum_windows_state*>(lparam); // NOLINT System API
+
+    // Emulates .NET's Process.MainWindowHandle pick, which is what the legacy tweaker relied on:
+    // a visible, unowned top-level window belonging to the target process.
+    if(::IsWindowVisible(hwnd) == FALSE || ::GetWindow(hwnd, GW_OWNER) != nullptr) {
+        return TRUE;
+    }
+
+    DWORD pid = 0;
+    ::GetWindowThreadProcessId(hwnd, &pid);
+
+    if(pid == 0 || !process_exe_matches(pid, k_audiosurf_process_exe)) {
+        return TRUE;
+    }
+
+    state->result = { .hwnd = hwnd, .pid = pid };
+    return FALSE; // found - stop enumerating
+}
+
+// The game window is located by process exe name, not by window title: the title of the game's
+// main window is not guaranteed to be anything in particular, while the process is always
+// QuestViewer.exe (same lookup the legacy tweaker did via Process.GetProcessesByName).
+found_game_window find_audiosurf_main_window()
+{
+    enum_windows_state state;
+    ::EnumWindows(enum_windows_proc, reinterpret_cast<LPARAM>(&state)); // NOLINT System API
+    return state.result;
+}
+
 LRESULT process_wm_timer(HWND, WPARAM wparam, LPARAM)
 {
     if(wparam != k_liveness_timer_id) {
@@ -136,7 +257,11 @@ LRESULT process_wm_timer(HWND, WPARAM wparam, LPARAM)
 
     bool currently_valid = audiosurf_window.valid();
     if(!currently_valid) {
-        audiosurf_window = as::wnd::wnd_handle::open_existing(k_audiosurf_window_title);
+        auto found = find_audiosurf_main_window();
+        if(found.hwnd != nullptr) {
+            audiosurf_window = as::wnd::wnd_handle(found.hwnd);
+            audiosurf_pid = found.pid;
+        }
         currently_valid = audiosurf_window.valid();
     }
 
@@ -145,16 +270,21 @@ LRESULT process_wm_timer(HWND, WPARAM wparam, LPARAM)
     if(currently_valid != audiosurf_last_known_valid) {
         audiosurf_last_known_valid = currently_valid;
 
-        if(currently_valid) {
-            send_listener_registration(audiosurf_window.native());
-        }
-
+        // WINDOW_FOUND must be queued before the registration goes out: the game replies to the
+        // registration synchronously (SendMessage re-enters process_wm_copydata before
+        // send_listener_registration returns), and the client expects "window found" to precede
+        // the game's "successfullyregistered" broadcast.
         push_report({
             .header = as::proto::asbridge_msg_header::server_report,
             .msg = as::proto::asbridge_msg_type::service,
-            .details = { currently_valid ? as::proto::rules::service_status_window_found
-                                          : as::proto::rules::service_status_window_lost },
+            .details = currently_valid
+                ? std::vector<std::string> { as::proto::rules::service_status_window_found, std::to_string(audiosurf_pid) }
+                : std::vector<std::string> { as::proto::rules::service_status_window_lost },
         });
+
+        if(currently_valid) {
+            send_listener_registration(audiosurf_window.native(), audiosurf_pid);
+        }
     }
 
     return 0;
@@ -174,17 +304,9 @@ void reset_pipe()
 
 bool send_to_audiosurf(HWND target, const std::string& detail)
 {
-    int wide_len = ::MultiByteToWideChar(CP_UTF8, 0, detail.data(), static_cast<int>(detail.size()), nullptr, 0);
-    if(wide_len <= 0 && !detail.empty()) {
-        return false;
-    }
-
-    std::wstring wide(static_cast<std::size_t>(wide_len), L'\0');
-    if(wide_len > 0) {
-        ::MultiByteToWideChar(CP_UTF8, 0, detail.data(), static_cast<int>(detail.size()), wide.data(), wide_len);
-    }
-
-    return send_wide_copydata(target, wide);
+    // Game commands are plain ASCII, and the game reads lpData as a single-byte string - the
+    // pipe-side UTF-8 payload can go out as-is (see send_ansi_copydata for the protocol rationale).
+    return send_ansi_copydata(target, detail);
 }
 
 void handle_client_command(const as::proto::asbridge_msg& msg)

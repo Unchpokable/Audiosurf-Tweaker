@@ -85,9 +85,13 @@ wnd_handle::~wnd_handle()
     ::DestroyWindow(m_handle);
 }
 
-wnd_handle::wnd_handle(wnd_handle&& other) noexcept : m_handle(other.m_handle), m_released_or_moved(other.m_released_or_moved)
+wnd_handle::wnd_handle(wnd_handle&& other) noexcept
+    : m_handle(other.m_handle), m_released_or_moved(other.m_released_or_moved), m_owning(other.m_owning)
 {
+    // m_owning must travel with the move: create_new() returns by value, and losing the flag here
+    // silently broke set_wndproc() on the moved-to handle (it refuses to touch non-owned windows).
     other.m_released_or_moved = true;
+    other.m_owning = false;
 }
 
 wnd_handle& wnd_handle::operator=(wnd_handle&& other) noexcept
@@ -102,7 +106,9 @@ wnd_handle& wnd_handle::operator=(wnd_handle&& other) noexcept
 
     m_handle = other.m_handle;
     m_released_or_moved = other.m_released_or_moved;
+    m_owning = other.m_owning;
     other.m_released_or_moved = true;
+    other.m_owning = false;
 
     return *this;
 }
