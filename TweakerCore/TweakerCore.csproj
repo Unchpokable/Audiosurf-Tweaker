@@ -3,7 +3,7 @@
   <ItemGroup>
     <!-- 3.119.x rather than 4.x: Avalonia (the phase-4 UI target) ships against SkiaSharp 3.119,
          and keeping the versions aligned avoids a native-binary conflict later. -->
-    <PackageReference Include="SkiaSharp" Version="3.119.4" />
+    <PackageReference Include="SkiaSharp" Version="4.150.0" />
   </ItemGroup>
 
 </Project>

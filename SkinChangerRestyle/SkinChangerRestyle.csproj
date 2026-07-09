@@ -77,10 +77,10 @@
     <PackageReference Include="Gameloop.Vdf" Version="0.6.2" />
     <PackageReference Include="Gameloop.Vdf.JsonConverter" Version="0.2.1" />
     <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.1938.49" />
-    <PackageReference Include="Notification.Wpf" Version="7.0.0.2" />
-    <PackageReference Include="PixiEditor.ColorPicker" Version="3.3.1" />
-    <PackageReference Include="SkiaSharp" Version="3.119.4" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4078.44" />
+    <PackageReference Include="Notification.Wpf" Version="11.0.0" />
+    <PackageReference Include="PixiEditor.ColorPicker" Version="3.4.2.3" />
+    <PackageReference Include="SkiaSharp" Version="4.150.0" />
   </ItemGroup>
 
 </Project>
