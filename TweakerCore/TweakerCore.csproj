@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <!-- 3.119.x rather than 4.x: Avalonia (the phase-4 UI target) ships against SkiaSharp 3.119,
-         and keeping the versions aligned avoids a native-binary conflict later. -->
+    <!-- Pinned to match the SkiaSharp version Avalonia 12.0.5 (the phase-4 UI target) resolves to
+         transitively, so the native binary doesn't get pulled twice at conflicting versions. -->
     <PackageReference Include="SkiaSharp" Version="4.150.0" />
   </ItemGroup>
 

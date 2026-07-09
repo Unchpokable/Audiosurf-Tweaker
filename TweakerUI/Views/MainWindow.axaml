@@ -3,18 +3,80 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:viewModels="clr-namespace:TweakerUI.ViewModels"
-        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        x:Class="AudiosurfTweaker.Views.MainWindow"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="700"
+        x:Class="TweakerUI.Views.MainWindow"
         x:DataType="viewModels:MainWindowViewModel"
-        Icon="/Assets/avalonia-logo.ico"
-        Title="AudiosurfTweaker">
+        Icon="avares://TweakerUI/Assets/TweakerIcon.ico"
+        Title="Audiosurf Tweaker"
+        Width="1200" Height="700"
+        MinWidth="1000" MinHeight="600"
+        WindowDecorations="None"
+        Background="White"
+        WindowStartupLocation="CenterScreen">
 
     <Design.DataContext>
-        <!-- This only sets the DataContext for the previewer in an IDE,
-             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
         <viewModels:MainWindowViewModel/>
     </Design.DataContext>
 
-    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+    <Border BorderBrush="#FF9E9E9E" BorderThickness="1">
+        <Grid RowDefinitions="35,*">
 
+            <!-- Title bar -->
+            <Border Grid.Row="0" Background="White" BorderBrush="#FFE0E0E0" BorderThickness="0,0,0,1" PointerPressed="OnTitleBarPointerPressed">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center">
+                        <Image Source="avares://TweakerUI/Assets/TweakerIcon.ico" Width="18" Height="18"/>
+                        <TextBlock Text="Audiosurf Tweaker" Margin="10,0,0,0" FontSize="15" FontWeight="SemiBold" Foreground="#FF5F5F5F" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button Classes="TitleBarButton" Content="&#8212;" Click="OnMinimizeClick" ToolTip.Tip="Minimize"/>
+                        <Button Classes="TitleBarButton" Content="&#9633;" Click="OnMaximizeClick" ToolTip.Tip="Maximize"/>
+                        <Button Classes="TitleBarButton TitleBarButtonClose" Content="&#10005;" Click="OnCloseClick" ToolTip.Tip="Close"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <Grid Grid.Row="1" ColumnDefinitions="260,*">
+
+                <!-- Navigation -->
+                <Border Grid.Column="0" Background="#FFEDEDED" BorderBrush="#FFDCDCDC" BorderThickness="0,0,1,0">
+                    <Grid RowDefinitions="Auto,*,Auto">
+
+                        <StackPanel Grid.Row="0" Margin="16,16,16,8">
+                            <TextBlock Text="Menu" FontSize="20" Foreground="#FF5D5D5D" Margin="0,0,0,10"/>
+                            <RadioButton Classes="NavItem" Content="Skin Changer" GroupName="Nav" IsChecked="True" Command="{Binding ShowSkinChangerCommand}"/>
+                            <RadioButton Classes="NavItem" Content="Colors Configurator" GroupName="Nav" Command="{Binding ShowColorsCommand}"/>
+                            <RadioButton Classes="NavItem" Content="Server Swapper" GroupName="Nav" Command="{Binding ShowServerSwapperCommand}"/>
+                            <RadioButton Classes="NavItem" Content="Command and Control" GroupName="Nav" Command="{Binding ShowTweakerCommand}"/>
+                            <RadioButton Classes="NavItem" Content="Settings" GroupName="Nav" Command="{Binding ShowSettingsCommand}"/>
+                        </StackPanel>
+
+                        <Border Grid.Row="2" BorderBrush="#FFC3C3C3" BorderThickness="0,1,0,0" Margin="16,0,16,16" Padding="0,14,0,0">
+                            <StackPanel Spacing="12">
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                    <Ellipse Width="10" Height="10" Fill="{Binding AudiosurfStatusBrush}" Stroke="DarkGray" StrokeThickness="1"/>
+                                    <TextBlock Text="{Binding AudiosurfStatusMessage}" FontSize="13" Foreground="#FF717171" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <Grid ColumnDefinitions="*,*">
+                                    <Button Grid.Column="0" Content="Reset" Classes="FlatButton" Command="{Binding ResetBridgeCommand}"
+                                            HorizontalAlignment="Stretch" Margin="0,0,4,0"
+                                            ToolTip.Tip="Reinitialize the bridge and try to register with the game again"/>
+                                    <Button Grid.Column="1" Content="Auto" Classes="FlatButton" Command="{Binding EnableAutoHandlingCommand}"
+                                            HorizontalAlignment="Stretch" Margin="4,0,0,0"
+                                            ToolTip.Tip="Enable auto-handling (enabled by default)"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <!-- Active module -->
+                <ContentControl Grid.Column="1" Content="{Binding CurrentView}"/>
+
+                <!-- Resize grip -->
+                <Panel Grid.Column="1" Width="16" Height="16" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                       Background="Transparent" Cursor="BottomRightCorner" PointerPressed="OnResizeGripPointerPressed"/>
+            </Grid>
+        </Grid>
+    </Border>
 </Window>

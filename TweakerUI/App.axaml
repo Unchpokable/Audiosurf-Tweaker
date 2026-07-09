@@ -1,10 +1,11 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="AudiosurfTweaker.App"
-             xmlns:local="using:AudiosurfTweaker"
+             x:Class="TweakerUI.App"
              xmlns:tweakerUi="clr-namespace:TweakerUI"
-             RequestedThemeVariant="Default">
-    <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+             RequestedThemeVariant="Light">
+    <!-- Pinned to Light: the custom chrome in Themes/Styles.axaml hardcodes a light palette (matching
+         the old WPF app, which never had a dark mode either) rather than theme-resource colors, so
+         following the system's dark variant would only mismatch unstyled FluentTheme control parts. -->
 
     <Application.DataTemplates>
         <tweakerUi:ViewLocator/>
@@ -12,5 +13,6 @@
 
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="avares://TweakerUI/Themes/Styles.axaml"/>
     </Application.Styles>
 </Application>

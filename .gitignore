@@ -5,6 +5,7 @@
 
 # Local test fixtures - real game texture files, not ours to redistribute
 /Mocks/
+/Fuckups/
 
 # User-specific files
 *.rsuser

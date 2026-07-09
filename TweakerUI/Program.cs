@@ -1,5 +1,4 @@
 ﻿using System;
-using AudiosurfTweaker;
 using Avalonia;
 
 namespace TweakerUI

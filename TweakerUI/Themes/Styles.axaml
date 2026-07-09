@@ -1,0 +1,149 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- Custom window chrome buttons (minimize/maximize/close) hosted in MainWindow's own title bar,
+    since SystemDecorations="None" means there is no native title bar to style instead. -->
+    <Style Selector="Button.TitleBarButton">
+        <Setter Property="Width" Value="44"/>
+        <Setter Property="Height" Value="35"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="0"/>
+        <Setter Property="Foreground" Value="#FF5F5F5F"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Button.TitleBarButton:pointerover">
+        <Setter Property="Background" Value="#FFE5E5E5"/>
+    </Style>
+    <Style Selector="Button.TitleBarButtonClose:pointerover">
+        <Setter Property="Background" Value="#FFE81123"/>
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <!-- Left-menu navigation row - matches the old WPF SimpleLeftMenuRadioButton exactly in spirit:
+    no background box at all, selection reads purely from a text-color change plus a thin purple
+    accent bar on the left edge (the old app's 5px "bullet" strip). Foreground/accent-bar changes
+    both transition, which is the animation groundwork - later states (or real .axaml Animations)
+    slot into the same Transitions without touching the template again. -->
+    <Style Selector="RadioButton.NavItem">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="#FFA0A0A0"/>
+        <Setter Property="FontSize" Value="16"/>
+        <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="Height" Value="46"/>
+        <Setter Property="Margin" Value="0,2,0,0"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid ColumnDefinitions="4,*">
+                    <Border Name="AccentBar"
+                            Grid.Column="0"
+                            Background="Transparent"
+                            CornerRadius="2"
+                            Margin="0,6">
+                        <Border.Transitions>
+                            <Transitions>
+                                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                            </Transitions>
+                        </Border.Transitions>
+                    </Border>
+                    <ContentPresenter Grid.Column="1"
+                                      Content="{TemplateBinding Content}"
+                                      Margin="16,0,0,0"
+                                      VerticalAlignment="Center"
+                                      HorizontalAlignment="Left"
+                                      Foreground="{TemplateBinding Foreground}"
+                                      FontSize="{TemplateBinding FontSize}"
+                                      FontWeight="{TemplateBinding FontWeight}">
+                        <ContentPresenter.Transitions>
+                            <Transitions>
+                                <BrushTransition Property="Foreground" Duration="0:0:0.15"/>
+                            </Transitions>
+                        </ContentPresenter.Transitions>
+                    </ContentPresenter>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="RadioButton.NavItem:pointerover">
+        <Setter Property="Foreground" Value="#FF9D5BF5"/>
+    </Style>
+    <Style Selector="RadioButton.NavItem:checked">
+        <Setter Property="Foreground" Value="#FF757575"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+    </Style>
+    <Style Selector="RadioButton.NavItem:checked /template/ Border#AccentBar">
+        <Setter Property="Background" Value="#FF6E00FF"/>
+    </Style>
+
+    <!-- Bridge connection controls (Reset/Auto): the real Audiosurf Tweaker palette is white-and-purple,
+    not gray - these two match the old UnderscoredButton/FlatButton styles almost exactly. -->
+    <Style Selector="Button.UnderscoredButton">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="#FF5D5D5D"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Height" Value="36"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Root" Background="{TemplateBinding Background}" CornerRadius="6">
+                    <Border.Transitions>
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                        </Transitions>
+                    </Border.Transitions>
+                    <Grid RowDefinitions="*,3">
+                        <ContentPresenter Grid.Row="0"
+                                          Content="{TemplateBinding Content}"
+                                          HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          Foreground="{TemplateBinding Foreground}"
+                                          FontSize="{TemplateBinding FontSize}"/>
+                        <Border Name="Underscore" Grid.Row="1" Background="#FF9D5BF5" Margin="14,0,14,0">
+                            <Border.Transitions>
+                                <Transitions>
+                                    <ThicknessTransition Property="Margin" Duration="0:0:0.15"/>
+                                </Transitions>
+                            </Border.Transitions>
+                        </Border>
+                    </Grid>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="Button.UnderscoredButton:pointerover /template/ Border#Root">
+        <Setter Property="Background" Value="#FFD1F7FF"/>
+    </Style>
+    <Style Selector="Button.UnderscoredButton:pointerover /template/ Border#Underscore">
+        <Setter Property="Margin" Value="0"/>
+    </Style>
+    <Style Selector="Button.UnderscoredButton:pressed /template/ Border#Root">
+        <Setter Property="Background" Value="#FFA7B8FF"/>
+    </Style>
+
+    <Style Selector="Button.FlatButton">
+        <Setter Property="Background" Value="#FF9D5BF5"/>
+        <Setter Property="Foreground" Value="#FFE0E0E0"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Height" Value="36"/>
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.FlatButton:pointerover">
+        <Setter Property="Background" Value="#FF8A32FF"/>
+    </Style>
+    <Style Selector="Button.FlatButton:pressed">
+        <Setter Property="Background" Value="#FF6D00FF"/>
+    </Style>
+</Styles>
