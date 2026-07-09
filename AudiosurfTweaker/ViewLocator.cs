@@ -1,10 +1,10 @@
-using AudiosurfTweaker.ViewModels;
-using Avalonia.Controls;
-using Avalonia.Controls.Templates;
 using System;
 using System.Diagnostics.CodeAnalysis;
+using Avalonia.Controls;
+using Avalonia.Controls.Templates;
+using TweakerUI.ViewModels;
 
-namespace AudiosurfTweaker
+namespace TweakerUI
 {
     /// <summary>
     /// Given a view model, returns the corresponding view if possible.

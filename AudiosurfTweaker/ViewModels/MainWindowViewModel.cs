@@ -1,4 +1,4 @@
-﻿namespace AudiosurfTweaker.ViewModels
+﻿namespace TweakerUI.ViewModels
 {
     public partial class MainWindowViewModel : ViewModelBase
     {

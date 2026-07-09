@@ -1,7 +1,8 @@
-﻿using Avalonia;
-using System;
+﻿using System;
+using AudiosurfTweaker;
+using Avalonia;
 
-namespace AudiosurfTweaker
+namespace TweakerUI
 {
     internal sealed class Program
     {

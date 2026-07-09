@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace AudiosurfTweaker.ViewModels
+namespace TweakerUI.ViewModels
 {
     public abstract class ViewModelBase : ObservableObject
     {

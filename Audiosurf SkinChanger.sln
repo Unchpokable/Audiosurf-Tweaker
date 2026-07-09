@@ -25,7 +25,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "LegacyDataConverter", "Lega
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TweakerCore.Tests", "TweakerCore.Tests\TweakerCore.Tests.csproj", "{9E3B7C1D-5A2F-4E6B-8C4D-3F1A7B9E2D6C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AudiosurfTweaker", "AudiosurfTweaker\AudiosurfTweaker.csproj", "{86A0B551-BF1A-49A6-B77D-8959A6168551}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TweakerUI", "AudiosurfTweaker\TweakerUI.csproj", "{86A0B551-BF1A-49A6-B77D-8959A6168551}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

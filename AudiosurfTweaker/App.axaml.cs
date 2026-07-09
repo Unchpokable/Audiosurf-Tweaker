@@ -1,4 +1,3 @@
-using AudiosurfTweaker.ViewModels;
 using AudiosurfTweaker.Views;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
@@ -6,6 +5,7 @@ using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using System.Linq;
+using TweakerUI.ViewModels;
 
 namespace AudiosurfTweaker
 {
