@@ -79,6 +79,24 @@
         </ControlTemplate>
     </Styles.Resources>
 
+    <!-- Section cards - visual consistency pass with Color Configurator's own CCCard/CCGamePanel
+    (same tokens, kept under the SC prefix rather than reused directly, per this module's own
+    file-scoping). Applied to the top bar, skins list, screenshots panel and Custom Installation. -->
+    <Style Selector="Border.SCCard">
+        <Setter Property="Background" Value="#FFFFFFFF"/>
+        <Setter Property="BorderBrush" Value="#FFE2E4E9"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="16,12"/>
+    </Style>
+    <Style Selector="Border.SCGamePanelCard">
+        <Setter Property="Background" Value="#FFF8F4FD"/>
+        <Setter Property="BorderBrush" Value="#FFE5D9F5"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="16,14"/>
+    </Style>
+
     <!-- Left icon rail (Add / Import from Game / Refresh) -->
     <Style Selector="Button.SCIconButton">
         <Setter Property="Width" Value="34"/>
@@ -212,9 +230,9 @@
         <Setter Property="Foreground" Value="#FF6C4CE0"/>
     </Style>
 
-    <!-- Screenshots panel -->
+    <!-- Screenshots panel. Height is no longer fixed here - AspectRatioBox (16:9) in the view derives
+    it from the available width, so stretching the window scales the tile instead of cropping it. -->
     <Style Selector="Border.SCScreenshotItem">
-        <Setter Property="Height" Value="180"/>
         <Setter Property="CornerRadius" Value="6"/>
         <Setter Property="ClipToBounds" Value="True"/>
         <Setter Property="Background">
@@ -225,7 +243,6 @@
         </Setter>
     </Style>
     <Style Selector="Border.SCScreenshotSkeleton">
-        <Setter Property="Height" Value="180"/>
         <Setter Property="CornerRadius" Value="6"/>
         <Setter Property="Background" Value="#FFE0E0E4"/>
     </Style>

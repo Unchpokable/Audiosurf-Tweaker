@@ -3,7 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using SkiaSharp;
@@ -52,8 +51,6 @@ namespace TweakerUI.Models
         private string newName;
 
         public bool UseFastPreview => SettingsProvider.UseFastPreview;
-
-        public Bitmap Cover => Screenshots?.FirstOrDefault()?.Image;
 
         public string InstallTooltip => "Clear Installation";
         public string ExportCopyTooltip => "Export copy of this skin";

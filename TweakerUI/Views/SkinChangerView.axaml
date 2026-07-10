@@ -4,6 +4,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:vm="clr-namespace:TweakerUI.ViewModels"
              xmlns:models="clr-namespace:TweakerUI.Models"
+             xmlns:controls="clr-namespace:TweakerUI.Controls"
              mc:Ignorable="d" d:DesignWidth="900" d:DesignHeight="640"
              x:Class="TweakerUI.Views.SkinChangerView"
              x:DataType="vm:SkinChangerViewModel">
@@ -11,22 +12,29 @@
     <!-- Ported from the "Audiosurf Tweaker" Claude Design mockup. Same page-chrome pattern established
     in 4.2 (unmargined edge-to-edge Border for the background, inset Grid for content) to avoid the
     Windows 11 DWM corner-rounding artifact found there. The mockup's own status bar is dropped - it
-    moves to the shared app shell later, not owned by this tab anymore (see roadmap Phase 4.3 notes). -->
+    moves to the shared app shell later, not owned by this tab anymore (see roadmap Phase 4.3 notes).
+    Every section is wrapped in a light Border.SCCard (or the purple-tinted SCGamePanelCard for Custom
+    Installation) to match Color Configurator's card language - the mockup itself didn't have this, but
+    it reads as flat/disconnected without it once placed next to the rest of the app. -->
     <Border Background="#FFF2F2F4">
         <Grid Margin="20" RowDefinitions="Auto,*,Auto">
 
-            <!-- Top bar. Column 0 is a deliberately empty spacer, matching the mockup's own empty
+            <!-- Top bar. The left side is a deliberately empty spacer, matching the mockup's own empty
             flex:1 div - status text belongs to the shared app-wide status bar, not this tab. -->
-            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
-                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <TextBlock Text="Currently installed: " Classes="SCTopBarLabel"/>
-                    <TextBlock Text="{Binding CurrentInstalledSkin}" Classes="SCTopBarValue"/>
-                </StackPanel>
-            </Grid>
+            <Border Grid.Row="0" Classes="SCCard" Margin="0,0,0,14">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="Currently installed: " Classes="SCTopBarLabel"/>
+                        <TextBlock Text="{Binding CurrentInstalledSkin}" Classes="SCTopBarValue"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
 
-            <!-- Main area: icon rail | skins list | screenshots -->
-            <Grid Grid.Row="1" ColumnDefinitions="40,10,320,14,*" Margin="0,0,0,14">
-
+            <!-- Main area: icon rail | skins list | screenshots. Skins list and screenshots share the
+            remaining width proportionally (3:5) instead of a fixed pixel width for the list, so both
+            scale together when the window is resized instead of the screenshots column absorbing 100%
+            of the change alone. -->
+            <Grid Grid.Row="1" ColumnDefinitions="40,10,3*,14,5*" Margin="0,0,0,14">
                 <StackPanel Grid.Column="0" Spacing="6">
                     <Button Classes="SCIconButton" Command="{Binding AddNewSkinCommand}" ToolTip.Tip="Add new .askin package">
                         <Path Data="{StaticResource IconAdd}" Width="16" Height="16" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.3" StrokeLineCap="Round"/>
@@ -39,158 +47,168 @@
                     </Button>
                 </StackPanel>
 
-                <Grid Grid.Column="2">
-                    <!-- Loading skeleton: no skin-list caching, so a full reload leaves this empty for
-                    however long the disk scan takes - these rows fill that gap instead of a blank list. -->
-                    <ItemsControl ItemsSource="{Binding SkinPlaceholders}" IsVisible="{Binding LoadingVisible}">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Classes="SCSkinRowSkeleton SCSkeletonPulse"/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                <ListBox x:Name="SkinsListBox" Classes="SCSkinsList" IsVisible="{Binding !LoadingVisible}"
-                         ItemsSource="{Binding Skins}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
-                         DragDrop.AllowDrop="True">
-                    <ListBox.KeyBindings>
-                        <KeyBinding Gesture="Delete" Command="{Binding RemoveSelectedCommand}"/>
-                    </ListBox.KeyBindings>
-                    <ListBox.ItemTemplate>
-                        <DataTemplate x:DataType="models:SkinCard">
-                            <!-- Hover preview: the old WPF ListViewItem's Border.ToolTip trick (a plain
-                            Image bound to Cover), ported onto the whole row so it fires no matter where
-                            over the card the pointer sits. -->
-                            <Grid ColumnDefinitions="34,14,*" Margin="10,10,14,10" ToolTip.ShowDelay="600">
-                                <ToolTip.Tip>
-                                    <Image Source="{Binding Cover}" Width="480" Height="270" Stretch="Uniform" RenderOptions.BitmapInterpolationMode="HighQuality"/>
-                                </ToolTip.Tip>
-                                <Button Grid.Column="0" Classes="SCRowIconButton" Command="{Binding InstallCommand}"
-                                        ToolTip.Tip="{Binding InstallTooltip}" VerticalAlignment="Center">
-                                    <Path Data="{StaticResource IconInstall}" Width="17" Height="17" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
-                                </Button>
-                                <Grid Grid.Column="2" RowDefinitions="Auto,Auto">
-                                    <Panel Grid.Row="0" HorizontalAlignment="Left">
-                                        <TextBlock Text="{Binding Name}" Classes="SCSkinName" IsVisible="{Binding !RenameActive}" TextTrimming="CharacterEllipsis"/>
-                                        <TextBox Text="{Binding NewName, Mode=TwoWay}" Classes="SCRenameInput" IsVisible="{Binding RenameActive}"
-                                                 KeyDown="OnRenameKeyDown" MinWidth="160"/>
-                                    </Panel>
-                                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="-7,6,0,0" Spacing="4">
-                                        <Button Classes="SCRowIconButton" Command="{Binding ExportCopyCommand}" ToolTip.Tip="{Binding ExportCopyTooltip}">
-                                            <Path Data="{StaticResource IconExport}" Width="13" Height="13" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                <Border Grid.Column="2" Classes="SCCard" Padding="10">
+                    <Grid>
+                        <!-- Loading skeleton: no skin-list caching, so a full reload leaves this empty for
+                        however long the disk scan takes - these rows fill that gap instead of a blank list. -->
+                        <ItemsControl ItemsSource="{Binding SkinPlaceholders}" IsVisible="{Binding LoadingVisible}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Classes="SCSkinRowSkeleton SCSkeletonPulse"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <ListBox x:Name="SkinsListBox" Classes="SCSkinsList" IsVisible="{Binding !LoadingVisible}"
+                                 ItemsSource="{Binding Skins}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                                 DragDrop.AllowDrop="True">
+                            <ListBox.KeyBindings>
+                                <KeyBinding Gesture="Delete" Command="{Binding RemoveSelectedCommand}"/>
+                            </ListBox.KeyBindings>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="models:SkinCard">
+                                    <!-- No hover popup preview here - deliberately dropped. It would need
+                                    each card's screenshot decoded up front (fast-preview mode) to have
+                                    anything to show, which contradicts the "no screenshot caching" call
+                                    made to keep the app's memory footprint down. -->
+                                    <Grid ColumnDefinitions="34,14,*" Margin="10,10,14,10">
+                                        <Button Grid.Column="0" Classes="SCRowIconButton" Command="{Binding InstallCommand}"
+                                                ToolTip.Tip="{Binding InstallTooltip}" VerticalAlignment="Center">
+                                            <Path Data="{StaticResource IconInstall}" Width="17" Height="17" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
                                         </Button>
-                                        <Button Classes="SCRowIconButton" Click="OnRenameClick" ToolTip.Tip="{Binding RenameTooltip}">
-                                            <Path Data="{StaticResource IconRename}" Width="13" Height="13" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
-                                        </Button>
-                                        <Button Classes="SCRowIconButton Danger" Command="{Binding RemoveCommand}" ToolTip.Tip="{Binding RemoveTooltip}">
-                                            <Path Data="{StaticResource IconDelete}" Width="13" Height="13" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
-                                        </Button>
-                                    </StackPanel>
-                                </Grid>
-                            </Grid>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-                </Grid>
-
-                <Grid Grid.Column="4" RowDefinitions="Auto,*">
-                    <TextBlock Grid.Row="0" Text="Screenshots" FontSize="14" Foreground="#FF8A8A8A" Margin="0,0,0,8"/>
-                    <Grid Grid.Row="1">
-                        <TextBlock Text="Select a skin to see its screenshots" Classes="SCEmptyState" IsVisible="{Binding !HasSelection}"/>
-                        <ScrollViewer IsVisible="{Binding HasSelection}">
-                            <Grid>
-                                <!-- No screenshot caching (deliberately - see SkinChangerViewModel), so
-                                every selection re-decodes from disk; these skeleton tiles fill the gap
-                                instead of an empty panel. -->
-                                <ItemsControl ItemsSource="{Binding ScreenshotPlaceholders}" IsVisible="{Binding IsLoadingScreenshots}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <StackPanel Spacing="10"/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Classes="SCScreenshotSkeleton SCSkeletonPulse"/>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-
-                                <ItemsControl ItemsSource="{Binding SelectedItemScreenshots}" IsVisible="{Binding !IsLoadingScreenshots}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <StackPanel Spacing="10"/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="models:InteractableScreenshot">
-                                            <Border Classes="SCScreenshotItem" DoubleTapped="OnScreenshotDoubleTapped" Cursor="Hand">
-                                                <Image Source="{Binding Image}" Stretch="UniformToFill" RenderOptions.BitmapInterpolationMode="HighQuality"/>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </Grid>
-                        </ScrollViewer>
+                                        <Grid Grid.Column="2" RowDefinitions="Auto,Auto">
+                                            <Panel Grid.Row="0" HorizontalAlignment="Left">
+                                                <TextBlock Text="{Binding Name}" Classes="SCSkinName" IsVisible="{Binding !RenameActive}" TextTrimming="CharacterEllipsis"/>
+                                                <TextBox Text="{Binding NewName, Mode=TwoWay}" Classes="SCRenameInput" IsVisible="{Binding RenameActive}"
+                                                         KeyDown="OnRenameKeyDown" MinWidth="160"/>
+                                            </Panel>
+                                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="-7,6,0,0" Spacing="4">
+                                                <Button Classes="SCRowIconButton" Command="{Binding ExportCopyCommand}" ToolTip.Tip="{Binding ExportCopyTooltip}">
+                                                    <Path Data="{StaticResource IconExport}" Width="13" Height="13" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                                                </Button>
+                                                <Button Classes="SCRowIconButton" Click="OnRenameClick" ToolTip.Tip="{Binding RenameTooltip}">
+                                                    <Path Data="{StaticResource IconRename}" Width="13" Height="13" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                                                </Button>
+                                                <Button Classes="SCRowIconButton Danger" Command="{Binding RemoveCommand}" ToolTip.Tip="{Binding RemoveTooltip}">
+                                                    <Path Data="{StaticResource IconDelete}" Width="13" Height="13" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                                                </Button>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
                     </Grid>
-                </Grid>
-            </Grid>
+                </Border>
 
-            <!-- Custom Installation -->
-            <Grid Grid.Row="2" RowDefinitions="Auto,Auto,Auto">
-                <TextBlock Grid.Row="0" Text="Custom Installation" Classes="SCSectionTitle" Margin="0,0,0,10"/>
+                <Border Grid.Column="4" Classes="SCCard">
+                    <Grid RowDefinitions="Auto,*">
+                        <TextBlock Grid.Row="0" Text="Screenshots" FontSize="14" FontWeight="SemiBold" Foreground="#FF8A8A8A" Margin="0,0,0,10"/>
+                        <Grid Grid.Row="1">
+                            <TextBlock Text="Select a skin to see its screenshots" Classes="SCEmptyState" IsVisible="{Binding !HasSelection}"/>
+                            <ScrollViewer IsVisible="{Binding HasSelection}">
+                                <Grid>
+                                    <!-- No screenshot caching (deliberately - see SkinChangerViewModel), so
+                                    every selection re-decodes from disk; these skeleton tiles fill the gap
+                                    instead of an empty panel. -->
+                                    <ItemsControl ItemsSource="{Binding ScreenshotPlaceholders}" IsVisible="{Binding IsLoadingScreenshots}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Spacing="10"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <controls:AspectRatioBox Ratio="1.7777777777778">
+                                                    <Border Classes="SCScreenshotSkeleton SCSkeletonPulse"/>
+                                                </controls:AspectRatioBox>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
 
-                <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,14">
-                    <Border Classes="SCToggleGroup" Classes.On="{Binding ShouldInstallSkyspheres}">
-                        <StackPanel Orientation="Horizontal" Spacing="7" Margin="18,0">
-                            <Path Classes="SCToggleIcon" Data="{StaticResource IconSky}" Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"/>
-                            <TextBlock Text="Skyspheres" Classes="SCToggleLabel" VerticalAlignment="Center"/>
-                            <ToggleButton Classes="SCSwitch" IsChecked="{Binding ShouldInstallSkyspheres, Mode=TwoWay}" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Border>
-                    <Border Classes="SCToggleDivider"/>
-                    <Border Classes="SCToggleGroup" Classes.On="{Binding ShouldInstallRings}">
-                        <StackPanel Orientation="Horizontal" Spacing="7" Margin="18,0">
-                            <Path Classes="SCToggleIcon" Data="{StaticResource IconRings}" Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"/>
-                            <TextBlock Text="Rings" Classes="SCToggleLabel" VerticalAlignment="Center"/>
-                            <ToggleButton Classes="SCSwitch" IsChecked="{Binding ShouldInstallRings, Mode=TwoWay}" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Border>
-                    <Border Classes="SCToggleDivider"/>
-                    <Border Classes="SCToggleGroup" Classes.On="{Binding ShouldInstallTileset}">
-                        <StackPanel Orientation="Horizontal" Spacing="7" Margin="18,0">
-                            <Path Classes="SCToggleIcon" Data="{StaticResource IconTile}" Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"/>
-                            <TextBlock Text="Tileset" Classes="SCToggleLabel" VerticalAlignment="Center"/>
-                            <ToggleButton Classes="SCSwitch" IsChecked="{Binding ShouldInstallTileset, Mode=TwoWay}" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Border>
-                    <Border Classes="SCToggleDivider"/>
-                    <Border Classes="SCToggleGroup" Classes.On="{Binding ShouldInstallHits}">
-                        <StackPanel Orientation="Horizontal" Spacing="7" Margin="18,0">
-                            <Path Classes="SCToggleIcon" Data="{StaticResource IconHits}" Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"/>
-                            <TextBlock Text="Hits" Classes="SCToggleLabel" VerticalAlignment="Center"/>
-                            <ToggleButton Classes="SCSwitch" IsChecked="{Binding ShouldInstallHits, Mode=TwoWay}" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Border>
-                    <Border Classes="SCToggleDivider"/>
-                    <Border Classes="SCToggleGroup" Classes.On="{Binding ShouldInstallParticles}">
-                        <StackPanel Orientation="Horizontal" Spacing="7" Margin="18,0">
-                            <Path Classes="SCToggleIcon" Data="{StaticResource IconParticles}" Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"/>
-                            <TextBlock Text="Particles" Classes="SCToggleLabel" VerticalAlignment="Center"/>
-                            <ToggleButton Classes="SCSwitch" IsChecked="{Binding ShouldInstallParticles, Mode=TwoWay}" VerticalAlignment="Center"/>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-
-                <Border Grid.Row="2" Classes="SCSegmentWrap">
-                    <Grid ColumnDefinitions="*,1,*">
-                        <Button Grid.Column="0" Classes="SCSegment" Content="Install Selected" Command="{Binding InstallSelectedCommand}" IsEnabled="{Binding HasSelection}"
-                                ToolTip.Tip="Replace only selected textures, keep other textures"/>
-                        <Border Grid.Column="1" Background="#FFD7D7DD"/>
-                        <Button Grid.Column="2" Classes="SCSegment" Content="Clear Selected" Command="{Binding ClearInstallSelectedCommand}" IsEnabled="{Binding HasSelection}"
-                                ToolTip.Tip="Replace only selected textures, set other textures to default Audiosurf look"/>
+                                    <ItemsControl ItemsSource="{Binding SelectedItemScreenshots}" IsVisible="{Binding !IsLoadingScreenshots}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Spacing="10"/>
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="models:InteractableScreenshot">
+                                                <!-- Fixed 16:9 box instead of a fixed pixel Height - stretching the
+                                                window used to crop these badly since a fixed-height/flexible-width
+                                                container only matched the image's own aspect at one specific width. -->
+                                                <controls:AspectRatioBox Ratio="1.7777777777778">
+                                                    <Border Classes="SCScreenshotItem" DoubleTapped="OnScreenshotDoubleTapped" Cursor="Hand">
+                                                        <Image Source="{Binding Image}" Stretch="UniformToFill" RenderOptions.BitmapInterpolationMode="HighQuality"/>
+                                                    </Border>
+                                                </controls:AspectRatioBox>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Grid>
+                            </ScrollViewer>
+                        </Grid>
                     </Grid>
                 </Border>
             </Grid>
+
+            <!-- Custom Installation -->
+            <Border Grid.Row="2" Classes="SCGamePanelCard">
+                <Grid RowDefinitions="Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Text="Custom Installation" Classes="SCSectionTitle" Margin="0,0,0,10"/>
+
+                    <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,14">
+                        <Border Classes="SCToggleGroup" Classes.On="{Binding ShouldInstallSkyspheres}">
+                            <StackPanel Orientation="Horizontal" Spacing="7" Margin="18,0">
+                                <Path Classes="SCToggleIcon" Data="{StaticResource IconSky}" Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"/>
+                                <TextBlock Text="Skyspheres" Classes="SCToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Classes="SCSwitch" IsChecked="{Binding ShouldInstallSkyspheres, Mode=TwoWay}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="SCToggleDivider"/>
+                        <Border Classes="SCToggleGroup" Classes.On="{Binding ShouldInstallRings}">
+                            <StackPanel Orientation="Horizontal" Spacing="7" Margin="18,0">
+                                <Path Classes="SCToggleIcon" Data="{StaticResource IconRings}" Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"/>
+                                <TextBlock Text="Rings" Classes="SCToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Classes="SCSwitch" IsChecked="{Binding ShouldInstallRings, Mode=TwoWay}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="SCToggleDivider"/>
+                        <Border Classes="SCToggleGroup" Classes.On="{Binding ShouldInstallTileset}">
+                            <StackPanel Orientation="Horizontal" Spacing="7" Margin="18,0">
+                                <Path Classes="SCToggleIcon" Data="{StaticResource IconTile}" Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"/>
+                                <TextBlock Text="Tileset" Classes="SCToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Classes="SCSwitch" IsChecked="{Binding ShouldInstallTileset, Mode=TwoWay}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="SCToggleDivider"/>
+                        <Border Classes="SCToggleGroup" Classes.On="{Binding ShouldInstallHits}">
+                            <StackPanel Orientation="Horizontal" Spacing="7" Margin="18,0">
+                                <Path Classes="SCToggleIcon" Data="{StaticResource IconHits}" Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"/>
+                                <TextBlock Text="Hits" Classes="SCToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Classes="SCSwitch" IsChecked="{Binding ShouldInstallHits, Mode=TwoWay}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Classes="SCToggleDivider"/>
+                        <Border Classes="SCToggleGroup" Classes.On="{Binding ShouldInstallParticles}">
+                            <StackPanel Orientation="Horizontal" Spacing="7" Margin="18,0">
+                                <Path Classes="SCToggleIcon" Data="{StaticResource IconParticles}" Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"/>
+                                <TextBlock Text="Particles" Classes="SCToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Classes="SCSwitch" IsChecked="{Binding ShouldInstallParticles, Mode=TwoWay}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <Border Grid.Row="2" Classes="SCSegmentWrap">
+                        <Grid ColumnDefinitions="*,1,*">
+                            <Button Grid.Column="0" Classes="SCSegment" Content="Install Selected" Command="{Binding InstallSelectedCommand}" IsEnabled="{Binding HasSelection}"
+                                    ToolTip.Tip="Replace only selected textures, keep other textures"/>
+                            <Border Grid.Column="1" Background="#FFD7D7DD"/>
+                            <Button Grid.Column="2" Classes="SCSegment" Content="Clear Selected" Command="{Binding ClearInstallSelectedCommand}" IsEnabled="{Binding HasSelection}"
+                                    ToolTip.Tip="Replace only selected textures, set other textures to default Audiosurf look"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+            </Border>
         </Grid>
     </Border>
 </UserControl>
