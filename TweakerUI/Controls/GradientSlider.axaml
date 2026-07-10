@@ -1,0 +1,13 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="TweakerUI.Controls.GradientSlider"
+             Focusable="True"
+             Height="16" VerticalAlignment="Center">
+    <Panel x:Name="RootPanel" Background="Transparent" PointerPressed="OnPointerPressed" Cursor="Hand">
+        <Border x:Name="Track" Height="6" CornerRadius="4" VerticalAlignment="Center"/>
+        <Border x:Name="Thumb" Width="16" Height="16" CornerRadius="8" Background="White"
+                BorderBrush="#FF333333" BorderThickness="2"
+                HorizontalAlignment="Left" VerticalAlignment="Center"
+                IsHitTestVisible="False" BoxShadow="0 1 3 0 #55000000"/>
+    </Panel>
+</UserControl>

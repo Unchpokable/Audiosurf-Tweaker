@@ -1,6 +1,50 @@
 <Styles xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+    <Styles.Resources>
+        <!-- Fully retemplated rather than styled through Setters: FluentTheme's built-in TextBox
+        template draws its own accent-colored focus ring on a template-internal part that a plain
+        Setter can't reach, which produced a thick, badly-placed focus outline. Owning the whole
+        template means the only focus feedback is the BorderBrush swap in the Style below - thin
+        and intentional. Shared by TextBox.CCNameInput and TextBox.CCHexInput. -->
+        <!-- No ScrollViewer: these fields are short (name/hex), never wrap, and the ScrollViewer's
+        viewport layout was fighting TextPresenter's own vertical centering and selection-highlight
+        positioning (text and its selection box were rendering low and slightly offset from each
+        other). TextPresenter alone, directly in the padded Border, centers correctly on its own. -->
+        <ControlTemplate x:Key="CCTextBoxTemplate" TargetType="TextBox">
+            <Border Name="PART_Border"
+                    Background="{TemplateBinding Background}"
+                    BorderBrush="{TemplateBinding BorderBrush}"
+                    BorderThickness="{TemplateBinding BorderThickness}"
+                    CornerRadius="{TemplateBinding CornerRadius}"
+                    Padding="{TemplateBinding Padding}">
+                <Border.Transitions>
+                    <Transitions>
+                        <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
+                    </Transitions>
+                </Border.Transitions>
+                <Panel>
+                    <TextBlock Name="PART_Watermark"
+                               Opacity="0.5"
+                               Text="{TemplateBinding Watermark}"
+                               VerticalAlignment="Center"
+                               IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                    <TextPresenter Name="PART_TextPresenter"
+                                   Text="{TemplateBinding Text, Mode=TwoWay}"
+                                   CaretIndex="{TemplateBinding CaretIndex}"
+                                   SelectionStart="{TemplateBinding SelectionStart}"
+                                   SelectionEnd="{TemplateBinding SelectionEnd}"
+                                   TextAlignment="{TemplateBinding TextAlignment}"
+                                   TextWrapping="NoWrap"
+                                   SelectionBrush="#5D7A4FC7"
+                                   SelectionForegroundBrush="White"
+                                   CaretBrush="{TemplateBinding CaretBrush}"
+                                   VerticalAlignment="Center"/>
+                </Panel>
+            </Border>
+        </ControlTemplate>
+    </Styles.Resources>
+
     <!-- Custom window chrome buttons (minimize/maximize/close) hosted in MainWindow's own title bar,
     since SystemDecorations="None" means there is no native title bar to style instead. -->
     <Style Selector="Button.TitleBarButton">
@@ -145,5 +189,409 @@
     </Style>
     <Style Selector="Button.FlatButton:pressed">
         <Setter Property="Background" Value="#FF6D00FF"/>
+    </Style>
+
+    <!-- ============================================================================
+    Color Configurator (stage 4.2) - ported from the "Palette Designer" Claude Design
+    mockup. This module's own soft-purple palette (#7a4fc7 family) comes straight from
+    the mockup's tokens and is intentionally distinct from the app shell's #9d5bf5
+    family (built in 4.1 from the old WPF theme) - not reconciled here, since the brief
+    for this stage was to translate the mockup as given rather than invent a merge.
+    ============================================================================ -->
+
+    <Style Selector="Border.CCCard">
+        <Setter Property="Background" Value="#FFFFFFFF"/>
+        <Setter Property="BorderBrush" Value="#FFE2E4E9"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="16,12"/>
+    </Style>
+    <Style Selector="Border.CCCardPad20">
+        <Setter Property="Padding" Value="16"/>
+    </Style>
+    <Style Selector="Border.CCListCard">
+        <Setter Property="Background" Value="#FFFFFFFF"/>
+        <Setter Property="BorderBrush" Value="#FFE2E4E9"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="16"/>
+        <Setter Property="VerticalAlignment" Value="Stretch"/>
+    </Style>
+
+    <Style Selector="TextBlock.CCHeading">
+        <Setter Property="FontSize" Value="16"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="#FF2C2E33"/>
+    </Style>
+    <Style Selector="TextBlock.CCSubHeading">
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="#FF2C2E33"/>
+    </Style>
+    <Style Selector="Border.CCBadge">
+        <Setter Property="Background" Value="#FFF1F2F5"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="Padding" Value="8,2"/>
+    </Style>
+    <Style Selector="TextBlock.CCBadgeText">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="#FF9A9EA6"/>
+    </Style>
+    <Style Selector="TextBlock.CCSmallLabel">
+        <Setter Property="FontSize" Value="11.5"/>
+        <Setter Property="Foreground" Value="#FF9A9EA6"/>
+    </Style>
+    <Style Selector="TextBlock.CCEditingLabel">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="#FF9A9EA6"/>
+    </Style>
+    <Style Selector="TextBlock.CCSliderLabel">
+        <Setter Property="Width" Value="16"/>
+        <Setter Property="FontSize" Value="12.5"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="#FF5A5D66"/>
+    </Style>
+    <Style Selector="TextBlock.CCSliderValue">
+        <Setter Property="Width" Value="42"/>
+        <Setter Property="TextAlignment" Value="Right"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="#FF5A5D66"/>
+    </Style>
+
+    <Style Selector="TextBox.CCNameInput">
+        <Setter Property="FontSize" Value="18"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="#FF2C2E33"/>
+        <Setter Property="CaretBrush" Value="#FF2C2E33"/>
+        <Setter Property="Background" Value="#FFFAFAFB"/>
+        <Setter Property="BorderBrush" Value="#FFDFE1E6"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="7"/>
+        <Setter Property="Padding" Value="10,7"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Cursor" Value="IBeam"/>
+        <Setter Property="Template" Value="{StaticResource CCTextBoxTemplate}"/>
+    </Style>
+    <Style Selector="TextBox.CCNameInput:pointerover">
+        <Setter Property="BorderBrush" Value="#FFC9CCD3"/>
+    </Style>
+    <Style Selector="TextBox.CCNameInput:focus /template/ Border#PART_Border">
+        <Setter Property="BorderBrush" Value="#FF7A4FC7"/>
+    </Style>
+
+    <Style Selector="TextBox.CCHexInput">
+        <Setter Property="Width" Value="110"/>
+        <Setter Property="FontSize" Value="13.5"/>
+        <Setter Property="Foreground" Value="#FF2C2E33"/>
+        <Setter Property="CaretBrush" Value="#FF2C2E33"/>
+        <Setter Property="Background" Value="#FFFAFAFB"/>
+        <Setter Property="BorderBrush" Value="#FFDFE1E6"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="8,6"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="Cursor" Value="IBeam"/>
+        <Setter Property="Template" Value="{StaticResource CCTextBoxTemplate}"/>
+    </Style>
+    <Style Selector="TextBox.CCHexInput:pointerover">
+        <Setter Property="BorderBrush" Value="#FFC9CCD3"/>
+    </Style>
+    <Style Selector="TextBox.CCHexInput:focus /template/ Border#PART_Border">
+        <Setter Property="BorderBrush" Value="#FF7A4FC7"/>
+    </Style>
+
+    <!-- Palette list rows: transitions carry the "selected" highlight in/out smoothly instead of a
+    hard cut, same baseline established for NavItem/UnderscoredButton in 4.1. -->
+    <Style Selector="Border.CCAccentBar">
+        <Setter Property="Width" Value="3"/>
+        <Setter Property="CornerRadius" Value="2"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Opacity" Value="0"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.2"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.CCAccentBar.Selected">
+        <Setter Property="Opacity" Value="1"/>
+        <Setter Property="Background">
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                <GradientStop Color="#FF7A4FC7" Offset="0"/>
+                <GradientStop Color="#FFA97FD6" Offset="1"/>
+            </LinearGradientBrush>
+        </Setter>
+    </Style>
+    <Style Selector="TextBlock.CCPaletteName">
+        <Setter Property="FontSize" Value="13.5"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="Foreground" Value="#FF2C2E33"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Foreground" Duration="0:0:0.2"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="TextBlock.CCPaletteName.Selected">
+        <Setter Property="Foreground" Value="#FF5A3D8F"/>
+    </Style>
+
+    <Style Selector="Button.CCPaletteRow">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Root" Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="1" CornerRadius="9">
+                    <Border.Transitions>
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                        </Transitions>
+                    </Border.Transitions>
+                    <ContentPresenter Content="{TemplateBinding Content}" Margin="12,10"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="Button.CCPaletteRow:pointerover /template/ Border#Root">
+        <Setter Property="Background" Value="#FFF6F4FA"/>
+    </Style>
+    <Style Selector="Button.CCPaletteRow.Selected /template/ Border#Root">
+        <Setter Property="Background" Value="#FFF2ECFB"/>
+        <Setter Property="BorderBrush" Value="#FFD9C6F2"/>
+    </Style>
+
+    <Style Selector="Button.CCNewPalette">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="#FF7A4FC7"/>
+        <Setter Property="FontSize" Value="13.5"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="Padding" Value="0,10"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="BorderBrush" Value="#FFC9CCD3"/>
+        <Setter Property="BorderThickness" Value="1.5"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.CCNewPalette:pointerover">
+        <Setter Property="Background" Value="#FFF8F4FD"/>
+        <Setter Property="BorderBrush" Value="#FFE5D9F5"/>
+    </Style>
+
+    <Style Selector="Button.CCNegative">
+        <Setter Property="Background" Value="#FFF8F8FA"/>
+        <Setter Property="Foreground" Value="#FF5A5D66"/>
+        <Setter Property="BorderBrush" Value="#FFE2E4E9"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="7"/>
+        <Setter Property="FontSize" Value="12.5"/>
+        <Setter Property="Padding" Value="12,6"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.CCNegative:pointerover">
+        <Setter Property="Background" Value="#FFF0F0F3"/>
+    </Style>
+
+    <!-- Rectangular (not square) core-color swatches: a full 96x96 grid of 5 squares ate a lot of
+    vertical room for little benefit on a desktop window - same recognizability at a fraction of the
+    height. Selection uses an accent border + soft glow rather than a background box, echoing the
+    text-color-only selection language used for NavItem. -->
+    <Style Selector="Border.CCSwatchChip">
+        <Setter Property="Width" Value="96"/>
+        <Setter Property="Height" Value="52"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="BorderBrush" Value="#14000000"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <!-- Border isn't focusable by default; without this, clicking a swatch can't take keyboard
+        focus away from the name TextBox (see code-behind's explicit Focus() call on click). -->
+        <Setter Property="Focusable" Value="True"/>
+        <Setter Property="BoxShadow" Value="0 1 3 0 #0F000000"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="BorderBrush" Duration="0:0:0.2"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.CCSwatchChip.Selected">
+        <Setter Property="BorderBrush" Value="#FF7A4FC7"/>
+        <Setter Property="BorderThickness" Value="3"/>
+        <Setter Property="BoxShadow" Value="0 4 12 0 #477A4FC7"/>
+    </Style>
+    <Style Selector="TextBlock.CCSwatchLabel">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="#FF5A5D66"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Foreground" Duration="0:0:0.2"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="TextBlock.CCSwatchLabel.Selected">
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="#FF5A3D8F"/>
+    </Style>
+
+    <Style Selector="Border.CCWheelWrap">
+        <Setter Property="Background" Value="#FFF4F5F7"/>
+        <Setter Property="CornerRadius" Value="14"/>
+        <Setter Property="Padding" Value="14"/>
+    </Style>
+    <Style Selector="Border.CCCurrentColorBox">
+        <Setter Property="Width" Value="56"/>
+        <Setter Property="Height" Value="56"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="BorderBrush" Value="#FFE2E4E9"/>
+        <Setter Property="BorderThickness" Value="1"/>
+    </Style>
+
+    <Style Selector="Border.CCTabsWrap">
+        <Setter Property="Background" Value="#FFF1F2F5"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="3"/>
+    </Style>
+    <Style Selector="Button.CCTab">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="#FF9A9EA6"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Padding" Value="14,5"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                <BrushTransition Property="Foreground" Duration="0:0:0.15"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.CCTab:pointerover">
+        <Setter Property="Background" Value="#FFECECEF"/>
+    </Style>
+    <Style Selector="Button.CCTab.Selected">
+        <Setter Property="Background" Value="#FFFFFFFF"/>
+        <Setter Property="Foreground" Value="#FF5A3D8F"/>
+    </Style>
+    <Style Selector="Button.CCTab.Selected:pointerover">
+        <Setter Property="Background" Value="#FFFFFFFF"/>
+    </Style>
+
+    <Style Selector="Border.CCSaveBar">
+        <Setter Property="Background" Value="#FFFFFFFF"/>
+        <Setter Property="BorderBrush" Value="#FFE2E4E9"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="16,12"/>
+    </Style>
+    <Style Selector="Border.CCGamePanel">
+        <Setter Property="Background" Value="#FFF8F4FD"/>
+        <Setter Property="BorderBrush" Value="#FFE5D9F5"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="16,14"/>
+    </Style>
+    <Style Selector="TextBlock.CCGamePanelTitle">
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="#FF5A3D8F"/>
+    </Style>
+
+    <!-- Shared gradient CTA (Save Bar's "Apply changes" and the game panel's "Apply to game"). -->
+    <Style Selector="Button.CCGradientButton">
+        <Setter Property="Foreground" Value="#FFFFFFFF"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="FontSize" Value="13.5"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Padding" Value="18,10"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Background">
+            <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                <GradientStop Color="#FF7A4FC7" Offset="0"/>
+                <GradientStop Color="#FFA97FD6" Offset="1"/>
+            </LinearGradientBrush>
+        </Setter>
+        <Setter Property="Transitions">
+            <Transitions>
+                <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.CCGradientButton:pointerover">
+        <Setter Property="Opacity" Value="0.92"/>
+    </Style>
+    <Style Selector="Button.CCGradientButton:pressed">
+        <Setter Property="Opacity" Value="0.82"/>
+    </Style>
+
+    <Style Selector="Button.CCSecondary">
+        <Setter Property="Background" Value="#FFFFFFFF"/>
+        <Setter Property="Foreground" Value="#FF5A3D8F"/>
+        <Setter Property="BorderBrush" Value="#FFE5D9F5"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="FontSize" Value="13.5"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Padding" Value="18,10"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.CCSecondary:pointerover">
+        <Setter Property="Background" Value="#FFF8F4FD"/>
+    </Style>
+
+    <Style Selector="Button.CCGhost">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="#FF5A3D8F"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="FontSize" Value="13.5"/>
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="Padding" Value="16,10"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.CCGhost:pointerover">
+        <Setter Property="Background" Value="#FFF8F4FD"/>
+    </Style>
+
+    <Style Selector="Button.CCDiscard">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="#FF9A9EA6"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="7"/>
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="Padding" Value="10,8"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                <BrushTransition Property="Foreground" Duration="0:0:0.15"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.CCDiscard:pointerover">
+        <Setter Property="Background" Value="#FFF4F4F6"/>
+        <Setter Property="Foreground" Value="#FF5A3D8F"/>
     </Style>
 </Styles>

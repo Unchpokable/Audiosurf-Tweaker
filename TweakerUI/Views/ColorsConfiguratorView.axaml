@@ -1,9 +1,274 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:TweakerUI.ViewModels"
+             xmlns:models="clr-namespace:TweakerUI.Models"
+             xmlns:controls="clr-namespace:TweakerUI.Controls"
+             xmlns:conv="clr-namespace:TweakerUI.Core.Converters"
              x:Class="TweakerUI.Views.ColorsConfiguratorView"
-             x:DataType="vm:ColorsConfiguratorViewModel">
-    <Grid>
-        <TextBlock Text="{Binding PlaceholderText}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="20" Foreground="Gray"/>
+             x:DataType="vm:ColorsConfiguratorViewModel"
+             x:Name="Root">
+
+    <UserControl.Resources>
+        <conv:StringEqualsConverter x:Key="StringEqualsConverter"/>
+    </UserControl.Resources>
+
+    <!-- Background lives on this unmargined outer Border so it fills the view edge-to-edge; putting
+    it on the inset Grid instead (as a shortcut) left a 20px band of the window's own background
+    showing around the content, which made the OS's rounded window corners visible as a stray white
+    outline behind the cards. The Grid itself is NOT wrapped in a page-level ScrollViewer - a
+    ScrollViewer measures its content with infinite available height, so the list card's
+    VerticalAlignment="Stretch" (meant to match the window/right column's real height) had nothing
+    finite to stretch into and just fell back to its own content size. Instead the Grid gets the
+    Border's real, finite allocated height directly, so the list card genuinely fills it; only the
+    right (potentially overflowing) column scrolls internally. -->
+    <Border Background="#FFEEF0F3">
+    <Grid Margin="20" ColumnDefinitions="270,16,*">
+
+        <!-- LEFT: palette list + game sync (game-wide color sync isn't really about editing one
+        palette, so it sits under the list instead of in the editor column). -->
+        <Grid Grid.Column="0" RowDefinitions="*,Auto">
+            <Border Grid.Row="0" Classes="CCListCard">
+                <Grid RowDefinitions="Auto,*,Auto">
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Classes="CCHeading" Text="Palettes" VerticalAlignment="Center"/>
+                        <Border Grid.Column="1" Classes="CCBadge">
+                            <TextBlock Classes="CCBadgeText" Text="{Binding Palettes.Count}"/>
+                        </Border>
+                    </Grid>
+
+                    <ScrollViewer Grid.Row="1" Margin="0,10,0,0" VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding Palettes}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="2"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:ColorPalette">
+                                    <Button Classes="CCPaletteRow" Classes.Selected="{Binding IsSelected}"
+                                            HorizontalAlignment="Stretch"
+                                            Command="{Binding #Root.DataContext.SelectPaletteCommand}"
+                                            CommandParameter="{Binding}">
+                                        <Grid ColumnDefinitions="3,*" RowDefinitions="Auto,Auto">
+                                            <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="2"
+                                                    Classes="CCAccentBar" Classes.Selected="{Binding IsSelected}"/>
+                                            <TextBlock Grid.Column="1" Grid.Row="0" Classes="CCPaletteName"
+                                                       Classes.Selected="{Binding IsSelected}" Text="{Binding Name}"
+                                                       Margin="8,0,0,4"/>
+                                            <Border Grid.Column="1" Grid.Row="1" CornerRadius="4" ClipToBounds="True"
+                                                    Height="16" Margin="8,0,0,0" HorizontalAlignment="Stretch">
+                                                <Grid ColumnDefinitions="*,*,*,*,*">
+                                                    <Border Grid.Column="0" Background="{Binding PurpleBrush}"/>
+                                                    <Border Grid.Column="1" Background="{Binding BlueBrush}"/>
+                                                    <Border Grid.Column="2" Background="{Binding GreenBrush}"/>
+                                                    <Border Grid.Column="3" Background="{Binding YellowBrush}"/>
+                                                    <Border Grid.Column="4" Background="{Binding RedBrush}"/>
+                                                </Grid>
+                                            </Border>
+                                        </Grid>
+                                    </Button>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+
+                    <Button Grid.Row="2" Classes="CCNewPalette" Content="+ New Palette" Margin="0,10,0,0"
+                            HorizontalAlignment="Stretch" Command="{Binding NewPaletteCommand}"/>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="1" Classes="CCGamePanel" Margin="0,12,0,0">
+                <StackPanel Spacing="8">
+                    <TextBlock Classes="CCGamePanelTitle" Text="Game Sync"/>
+                    <Button Classes="CCGradientButton" Content="Apply Selected" HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center" Command="{Binding ApplyPaletteToGameCommand}"/>
+                    <Button Classes="CCSecondary" Content="Pull from Game" HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center" Command="{Binding SaveCurrentFromGameCommand}"/>
+                    <Grid ColumnDefinitions="*,8,*">
+                        <Button Grid.Column="0" Classes="CCGhost" Content="↓ Export" HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center" Command="{Binding ExportPaletteCommand}"/>
+                        <Button Grid.Column="2" Classes="CCGhost" Content="↑ Import" HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center" Command="{Binding ImportPaletteCommand}"/>
+                    </Grid>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- RIGHT: editor - AdaptiveStackPanel shrinks the gaps between cards toward MinSpacing when
+        the window is short (so it fits without scrolling where it reasonably could) and grows them
+        up to MaxSpacing to fill extra height in a tall window, only falling back to scrolling once
+        gaps are already at their minimum. Deliberately not used for the Palettes/Game Sync column. -->
+        <ScrollViewer Grid.Column="2">
+        <controls:AdaptiveStackPanel MinSpacing="2" MaxSpacing="128">
+
+                <!-- name + preview strip -->
+                <Border Classes="CCCard">
+                    <StackPanel Spacing="8">
+                        <TextBox Classes="CCNameInput" Text="{Binding PaletteNameInput, Mode=TwoWay}"/>
+                        <Border CornerRadius="6" ClipToBounds="True" Height="12">
+                            <Grid ColumnDefinitions="*,*,*,*,*">
+                                <Border Grid.Column="0" Background="{Binding PurpleSwatch.Brush}"/>
+                                <Border Grid.Column="1" Background="{Binding BlueSwatch.Brush}"/>
+                                <Border Grid.Column="2" Background="{Binding GreenSwatch.Brush}"/>
+                                <Border Grid.Column="3" Background="{Binding YellowSwatch.Brush}"/>
+                                <Border Grid.Column="4" Background="{Binding RedSwatch.Brush}"/>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- core 5 colors -->
+                <Border Classes="CCCard">
+                    <StackPanel Spacing="10">
+                        <Grid ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Classes="CCSubHeading" Text="Palette Colors" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Classes="CCNegative" Content="⇄ Invert" Command="{Binding MakeNegativeCommand}"/>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding Swatches}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:SwatchEditState">
+                                    <StackPanel Spacing="6" HorizontalAlignment="Center" Margin="0,0,12,0">
+                                        <Border Classes="CCSwatchChip" Classes.Selected="{Binding IsSelected}"
+                                                Background="{Binding Brush}" PointerPressed="OnSwatchPointerPressed"/>
+                                        <TextBlock Classes="CCSwatchLabel" Classes.Selected="{Binding IsSelected}"
+                                                   Text="{Binding Name}" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+                <!-- color editor -->
+                <Border Classes="CCCard CCCardPad20">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                            <TextBlock Classes="CCEditingLabel" Text="Editing: "/>
+                            <TextBlock Classes="CCEditingLabel" Text="{Binding CurrentSwatch.Name}" FontWeight="SemiBold" Foreground="#FF2C2E33"/>
+                        </StackPanel>
+
+                        <WrapPanel Orientation="Horizontal">
+                            <Border Classes="CCWheelWrap" Margin="0,0,20,12">
+                                <controls:HsvWheel Hue="{Binding CurrentSwatch.Hue, Mode=TwoWay}"
+                                                    Saturation="{Binding CurrentSwatch.Saturation, Mode=TwoWay}"
+                                                    Value="{Binding CurrentSwatch.Value, Mode=TwoWay}"/>
+                            </Border>
+
+                            <StackPanel Spacing="10" Width="300" Margin="0,0,0,12">
+                                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                                    <Border Classes="CCCurrentColorBox" Background="{Binding CurrentSwatch.Brush}"/>
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Classes="CCSmallLabel" Text="HEX"/>
+                                        <TextBox Classes="CCHexInput" Text="{Binding CurrentSwatch.Hex}"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <Border Classes="CCTabsWrap" HorizontalAlignment="Left">
+                                    <StackPanel Orientation="Horizontal" Spacing="4">
+                                        <Button Classes="CCTab" Content="HSV" Command="{Binding SelectTabCommand}" CommandParameter="HSV"
+                                                Classes.Selected="{Binding ColorTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=HSV}"/>
+                                        <Button Classes="CCTab" Content="HSL" Command="{Binding SelectTabCommand}" CommandParameter="HSL"
+                                                Classes.Selected="{Binding ColorTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=HSL}"/>
+                                        <Button Classes="CCTab" Content="RGB" Command="{Binding SelectTabCommand}" CommandParameter="RGB"
+                                                Classes.Selected="{Binding ColorTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=RGB}"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- HSV -->
+                                <StackPanel Spacing="8" IsVisible="{Binding ColorTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=HSV}">
+                                    <Grid ColumnDefinitions="16,8,*,8,36">
+                                        <TextBlock Grid.Column="0" Classes="CCSliderLabel" Text="H"/>
+                                        <controls:GradientSlider Grid.Column="2" Minimum="0" Maximum="359.9"
+                                                                  Value="{Binding CurrentSwatch.Hue, Mode=TwoWay}"
+                                                                  TrackBrush="{Binding CurrentSwatch.HueTrackBrush}"/>
+                                        <TextBlock Grid.Column="4" Classes="CCSliderValue" Text="{Binding CurrentSwatch.Hue, StringFormat={}{0:F0}}"/>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="16,8,*,8,36">
+                                        <TextBlock Grid.Column="0" Classes="CCSliderLabel" Text="S"/>
+                                        <controls:GradientSlider Grid.Column="2" Minimum="0" Maximum="100"
+                                                                  Value="{Binding CurrentSwatch.Saturation, Mode=TwoWay}"
+                                                                  TrackBrush="{Binding CurrentSwatch.SaturationTrackBrush}"/>
+                                        <TextBlock Grid.Column="4" Classes="CCSliderValue" Text="{Binding CurrentSwatch.Saturation, StringFormat={}{0:F0}}"/>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="16,8,*,8,36">
+                                        <TextBlock Grid.Column="0" Classes="CCSliderLabel" Text="V"/>
+                                        <controls:GradientSlider Grid.Column="2" Minimum="0" Maximum="100"
+                                                                  Value="{Binding CurrentSwatch.Value, Mode=TwoWay}"
+                                                                  TrackBrush="{Binding CurrentSwatch.ValueTrackBrush}"/>
+                                        <TextBlock Grid.Column="4" Classes="CCSliderValue" Text="{Binding CurrentSwatch.Value, StringFormat={}{0:F0}}"/>
+                                    </Grid>
+                                </StackPanel>
+
+                                <!-- HSL -->
+                                <StackPanel Spacing="8" IsVisible="{Binding ColorTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=HSL}">
+                                    <Grid ColumnDefinitions="16,8,*,8,36">
+                                        <TextBlock Grid.Column="0" Classes="CCSliderLabel" Text="H"/>
+                                        <controls:GradientSlider Grid.Column="2" Minimum="0" Maximum="359.9"
+                                                                  Value="{Binding CurrentSwatch.HslHue, Mode=TwoWay}"
+                                                                  TrackBrush="{Binding CurrentSwatch.HueTrackBrush}"/>
+                                        <TextBlock Grid.Column="4" Classes="CCSliderValue" Text="{Binding CurrentSwatch.HslHue, StringFormat={}{0:F0}}"/>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="16,8,*,8,36">
+                                        <TextBlock Grid.Column="0" Classes="CCSliderLabel" Text="S"/>
+                                        <controls:GradientSlider Grid.Column="2" Minimum="0" Maximum="100"
+                                                                  Value="{Binding CurrentSwatch.HslSaturation, Mode=TwoWay}"
+                                                                  TrackBrush="{Binding CurrentSwatch.HslSaturationTrackBrush}"/>
+                                        <TextBlock Grid.Column="4" Classes="CCSliderValue" Text="{Binding CurrentSwatch.HslSaturation, StringFormat={}{0:F0}}"/>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="16,8,*,8,36">
+                                        <TextBlock Grid.Column="0" Classes="CCSliderLabel" Text="L"/>
+                                        <controls:GradientSlider Grid.Column="2" Minimum="0" Maximum="100"
+                                                                  Value="{Binding CurrentSwatch.HslLightness, Mode=TwoWay}"
+                                                                  TrackBrush="{Binding CurrentSwatch.HslLightnessTrackBrush}"/>
+                                        <TextBlock Grid.Column="4" Classes="CCSliderValue" Text="{Binding CurrentSwatch.HslLightness, StringFormat={}{0:F0}}"/>
+                                    </Grid>
+                                </StackPanel>
+
+                                <!-- RGB -->
+                                <StackPanel Spacing="8" IsVisible="{Binding ColorTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=RGB}">
+                                    <Grid ColumnDefinitions="16,8,*,8,36">
+                                        <TextBlock Grid.Column="0" Classes="CCSliderLabel" Text="R"/>
+                                        <controls:GradientSlider Grid.Column="2" Minimum="0" Maximum="255"
+                                                                  Value="{Binding CurrentSwatch.R, Mode=TwoWay}"
+                                                                  TrackBrush="{Binding CurrentSwatch.RTrackBrush}"/>
+                                        <TextBlock Grid.Column="4" Classes="CCSliderValue" Text="{Binding CurrentSwatch.R, StringFormat={}{0:F0}}"/>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="16,8,*,8,36">
+                                        <TextBlock Grid.Column="0" Classes="CCSliderLabel" Text="G"/>
+                                        <controls:GradientSlider Grid.Column="2" Minimum="0" Maximum="255"
+                                                                  Value="{Binding CurrentSwatch.G, Mode=TwoWay}"
+                                                                  TrackBrush="{Binding CurrentSwatch.GTrackBrush}"/>
+                                        <TextBlock Grid.Column="4" Classes="CCSliderValue" Text="{Binding CurrentSwatch.G, StringFormat={}{0:F0}}"/>
+                                    </Grid>
+                                    <Grid ColumnDefinitions="16,8,*,8,36">
+                                        <TextBlock Grid.Column="0" Classes="CCSliderLabel" Text="B"/>
+                                        <controls:GradientSlider Grid.Column="2" Minimum="0" Maximum="255"
+                                                                  Value="{Binding CurrentSwatch.B, Mode=TwoWay}"
+                                                                  TrackBrush="{Binding CurrentSwatch.BTrackBrush}"/>
+                                        <TextBlock Grid.Column="4" Classes="CCSliderValue" Text="{Binding CurrentSwatch.B, StringFormat={}{0:F0}}"/>
+                                    </Grid>
+                                </StackPanel>
+                            </StackPanel>
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- save bar -->
+                <Border Classes="CCSaveBar">
+                    <WrapPanel>
+                        <Button Classes="CCSecondary" Content="Save as New" Margin="0,0,8,8" Command="{Binding SaveAsNewCommand}"/>
+                        <Button Classes="CCGradientButton" Content="Apply Changes" Margin="0,0,8,8" Command="{Binding ApplyChangesCommand}"/>
+                        <Button Classes="CCDiscard" Content="Discard Changes" Margin="0,0,0,8" Command="{Binding DiscardCommand}"/>
+                    </WrapPanel>
+                </Border>
+
+            </controls:AdaptiveStackPanel>
+        </ScrollViewer>
     </Grid>
+    </Border>
 </UserControl>

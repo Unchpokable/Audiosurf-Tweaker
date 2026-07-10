@@ -1,0 +1,43 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="TweakerUI.Controls.HsvWheel"
+             Focusable="True"
+             Width="160" Height="160">
+    <Panel>
+        <Ellipse x:Name="WheelEllipse" Width="160" Height="160" PointerPressed="OnWheelPointerPressed" Cursor="Cross"/>
+
+        <Border x:Name="HueHandle" Width="14" Height="14" CornerRadius="7"
+                Background="White" BorderBrush="#FF333333" BorderThickness="2"
+                HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False"
+                BoxShadow="0 1 4 0 #66000000"/>
+
+        <Border x:Name="SvSquare" Width="76.8" Height="76.8" CornerRadius="4" ClipToBounds="True"
+                HorizontalAlignment="Left" VerticalAlignment="Top" Margin="41.6"
+                PointerPressed="OnSquarePointerPressed" Cursor="Cross">
+            <Panel>
+                <Border x:Name="PureHueLayer"/>
+                <Border>
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                            <GradientStop Color="White" Offset="0"/>
+                            <GradientStop Color="Transparent" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+                <Border>
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="50%,0%" EndPoint="50%,100%">
+                            <GradientStop Color="Transparent" Offset="0"/>
+                            <GradientStop Color="Black" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                </Border>
+            </Panel>
+        </Border>
+
+        <Border x:Name="SvHandle" Width="12" Height="12" CornerRadius="6"
+                Background="White" BorderBrush="#FF333333" BorderThickness="2"
+                HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False"
+                BoxShadow="0 1 4 0 #66000000"/>
+    </Panel>
+</UserControl>
