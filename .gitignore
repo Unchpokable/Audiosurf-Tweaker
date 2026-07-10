@@ -6,6 +6,9 @@
 # Local test fixtures - real game texture files, not ours to redistribute
 /Mocks/
 /Fuckups/
+/Skins/
+*.pltc
+*.palette
 
 # User-specific files
 *.rsuser
