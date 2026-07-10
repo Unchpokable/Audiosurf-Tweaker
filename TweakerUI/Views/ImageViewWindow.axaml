@@ -1,0 +1,16 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="TweakerUI.Views.ImageViewWindow"
+        Title="Screenshot Preview"
+        Width="800" Height="450"
+        CanResize="False"
+        WindowDecorations="None"
+        Background="Black"
+        WindowStartupLocation="CenterScreen">
+
+    <!-- Ported from the old WPF ImageViewWindow: borderless popup, drag anywhere to move, closes the
+    moment it loses focus (click elsewhere) instead of needing an explicit close button. -->
+    <Border PointerPressed="OnPointerPressed">
+        <Image x:Name="ImageViewport" Stretch="Uniform" Margin="10" RenderOptions.BitmapInterpolationMode="HighQuality"/>
+    </Border>
+</Window>

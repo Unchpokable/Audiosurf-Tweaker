@@ -14,5 +14,6 @@
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://TweakerUI/Themes/Styles.axaml"/>
+        <StyleInclude Source="avares://TweakerUI/Themes/SkinChangerStyles.axaml"/>
     </Application.Styles>
 </Application>
