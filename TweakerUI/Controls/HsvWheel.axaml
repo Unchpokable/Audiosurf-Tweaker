@@ -3,6 +3,10 @@
              x:Class="TweakerUI.Controls.HsvWheel"
              Focusable="True"
              Width="160" Height="160">
+    <!-- White/Black gradient stops here are colorimetric (the actual saturation/value math of the
+    wheel), and the handle chrome (white fill, dark outline/shadow) is the same theme-invariant
+    picker convention as GradientSlider.axaml - neither goes through NeutralColors.axaml
+    (Фаза 4.7, step 1). See that file's own comment for the reasoning. -->
     <Panel>
         <Ellipse x:Name="WheelEllipse" Width="160" Height="160" PointerPressed="OnWheelPointerPressed" Cursor="Cross"/>
 

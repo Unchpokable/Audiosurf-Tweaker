@@ -7,7 +7,7 @@
     own established visual language instead: card sections, the Skin Changer's toggle-switch
     pattern (TWSwitch mirrors SCSwitch) with StreamGeometry icons in place of CheckBoxes, kept
     in its own file per the same per-module scoping as SkinChangerStyles.axaml/CCCard. "TW"
-    prefix, accent purple #6C4CE0 matches the rest of the app.
+    prefix; accent colors flow through Themes/AccentColors.axaml (2026-07-13 consistency pass).
     ============================================================================ -->
 
     <Styles.Resources>
@@ -27,33 +27,12 @@
         <StreamGeometry x:Key="IconSkipOff">M4 5v14l8-7z M13 5v14l8-7z M2 2l20 20</StreamGeometry>
         <StreamGeometry x:Key="IconClear">M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M9 9l6 6 M15 9l-6 6</StreamGeometry>
 
-        <!-- Duplicated from SkinChangerStyles' SCSwitchTemplate rather than shared, per this
-        module's own file-scoping. -->
-        <ControlTemplate x:Key="TWSwitchTemplate" TargetType="ToggleButton">
-            <Grid Width="32" Height="18">
-                <Border Name="Track" CornerRadius="9" Background="#FFD5D5DA">
-                    <Border.Transitions>
-                        <Transitions>
-                            <BrushTransition Property="Background" Duration="0:0:0.2"/>
-                        </Transitions>
-                    </Border.Transitions>
-                </Border>
-                <Border Name="Thumb" Width="14" Height="14" CornerRadius="7" Background="White"
-                        HorizontalAlignment="Left" Margin="2,0,0,0">
-                    <Border.Transitions>
-                        <Transitions>
-                            <ThicknessTransition Property="Margin" Duration="0:0:0.2"/>
-                        </Transitions>
-                    </Border.Transitions>
-                </Border>
-            </Grid>
-        </ControlTemplate>
     </Styles.Resources>
 
     <!-- Section cards - same tokens as SCCard/CCCard, duplicated under this file's own prefix. -->
     <Style Selector="Border.TWCard">
-        <Setter Property="Background" Value="#FFFFFFFF"/>
-        <Setter Property="BorderBrush" Value="#FFE2E4E9"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="12"/>
         <Setter Property="Padding" Value="18,14"/>
@@ -62,7 +41,7 @@
     <Style Selector="TextBlock.TWCardTitle">
         <Setter Property="FontSize" Value="18"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="#FF2C2C31"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
 
     <!-- Tweak toggle rows -->
@@ -76,12 +55,15 @@
             </Transitions>
         </Setter>
     </Style>
+    <!-- This was #FFF4F2FC - a hand-picked wash that turned out to compute almost exactly to
+    AccentPrimaryColor at 10% opacity (i.e. AccentHoverBrush), not an independent neutral gray -
+    reclassified accordingly rather than filed under NeutralColors.axaml. -->
     <Style Selector="Border.TWToggleRow:pointerover">
-        <Setter Property="Background" Value="#FFF4F2FC"/>
+        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
     </Style>
 
     <Style Selector="Path.TWToggleIcon">
-        <Setter Property="Stroke" Value="#FFA8A8B0"/>
+        <Setter Property="Stroke" Value="{DynamicResource TextGlyphMutedBrush}"/>
         <Setter Property="StrokeThickness" Value="1.8"/>
         <Setter Property="StrokeLineCap" Value="Round"/>
         <Setter Property="StrokeJoin" Value="Round"/>
@@ -93,23 +75,23 @@
         </Setter>
     </Style>
     <Style Selector="Border.TWToggleRow.On Path.TWToggleIcon">
-        <Setter Property="Stroke" Value="#FF6C4CE0"/>
+        <Setter Property="Stroke" Value="{DynamicResource AccentPrimaryBrush}"/>
     </Style>
 
     <Style Selector="TextBlock.TWToggleLabel">
         <Setter Property="FontSize" Value="14"/>
-        <Setter Property="Foreground" Value="#FF3B3B40"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
     </Style>
 
     <Style Selector="ToggleButton.TWSwitch">
-        <Setter Property="Template" Value="{StaticResource TWSwitchTemplate}"/>
+        <Setter Property="Template" Value="{StaticResource AccentSwitchTemplate}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding" Value="0"/>
         <Setter Property="Cursor" Value="Hand"/>
     </Style>
     <Style Selector="ToggleButton.TWSwitch:checked /template/ Border#Track">
-        <Setter Property="Background" Value="#FF6C4CE0"/>
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
     </Style>
     <Style Selector="ToggleButton.TWSwitch:checked /template/ Border#Thumb">
         <Setter Property="Margin" Value="16,0,0,0"/>
@@ -117,8 +99,8 @@
 
     <!-- Commands list -->
     <Style Selector="Button.TWCommandButton">
-        <Setter Property="Background" Value="#FFF6F6F8"/>
-        <Setter Property="Foreground" Value="#FF3B3B40"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceSoftBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="FontSize" Value="13.5"/>
@@ -134,7 +116,7 @@
         </Setter>
     </Style>
     <Style Selector="Button.TWCommandButton:pointerover">
-        <Setter Property="Background" Value="#FFECEAFB"/>
+        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
     </Style>
     <Style Selector="Button.TWCommandButton:disabled">
         <Setter Property="Opacity" Value="0.45"/>
@@ -162,12 +144,15 @@
     </Style>
 
     <!-- Console - dark panel, deliberately distinct from the light cards so it reads as a
-    terminal/log surface rather than another form section. -->
+    terminal/log surface rather than another form section - already dark even in the app's light
+    theme, and stays that way regardless of app theme for now (see NeutralColors.axaml's own note
+    on ConsoleBackgroundColor/ConsoleTextColor - flat, not a ThemeDictionaries entry; whether it
+    gets an even-darker Dark-mode variant is an open call in the roadmap, Фаза 4.7). -->
     <Style Selector="TextBox.TWConsole">
-        <Setter Property="Background" Value="#FF1E1E24"/>
-        <Setter Property="Foreground" Value="#FFD8D8E0"/>
-        <Setter Property="CaretBrush" Value="#FFD8D8E0"/>
-        <Setter Property="SelectionBrush" Value="#5D6C4CE0"/>
+        <Setter Property="Background" Value="{DynamicResource ConsoleBackgroundBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource ConsoleTextBrush}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource ConsoleTextBrush}"/>
+        <Setter Property="SelectionBrush" Value="{DynamicResource AccentSelectionBrush}"/>
         <Setter Property="FontFamily" Value="Consolas,Cascadia Mono,Courier New,monospace"/>
         <Setter Property="FontSize" Value="12.5"/>
         <Setter Property="BorderThickness" Value="0"/>
@@ -180,16 +165,16 @@
     over it - that's what was turning the console white on hover/focus with the text still dark,
     making it unreadable. Overriding the same template-part selectors here is the reliable fix. -->
     <Style Selector="TextBox.TWConsole:pointerover /template/ Border#PART_BorderElement">
-        <Setter Property="Background" Value="#FF1E1E24"/>
-        <Setter Property="BorderBrush" Value="#FF1E1E24"/>
+        <Setter Property="Background" Value="{DynamicResource ConsoleBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ConsoleBackgroundBrush}"/>
     </Style>
     <Style Selector="TextBox.TWConsole:focus /template/ Border#PART_BorderElement">
-        <Setter Property="Background" Value="#FF1E1E24"/>
-        <Setter Property="BorderBrush" Value="#FF1E1E24"/>
+        <Setter Property="Background" Value="{DynamicResource ConsoleBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ConsoleBackgroundBrush}"/>
     </Style>
     <Style Selector="TextBox.TWConsole:focus-within /template/ Border#PART_BorderElement">
-        <Setter Property="Background" Value="#FF1E1E24"/>
-        <Setter Property="BorderBrush" Value="#FF1E1E24"/>
+        <Setter Property="Background" Value="{DynamicResource ConsoleBackgroundBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource ConsoleBackgroundBrush}"/>
     </Style>
 
 </Styles>

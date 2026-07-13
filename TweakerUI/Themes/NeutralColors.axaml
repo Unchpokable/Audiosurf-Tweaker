@@ -1,0 +1,107 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ============================================================================
+    Neutral palette (Фаза 4.7, step 1, 2026-07-13) - the gray/white/border/text scale that
+    every module's Styles file and View previously hardcoded "by eye" per usage (the same
+    problem the purple accent had before Themes/AccentColors.axaml). This is the larger of
+    the two remaining pieces before dark theme switching (see roadmap): AccentColors.axaml
+    covers the purple family, this file covers everything else that isn't a semantic status
+    color (danger red, box-shadow black, translucent scrims stay local - see the "explicitly
+    left alone" list in the roadmap for why).
+
+    ThemeDictionaries only has a "Light" variant for now - the "Dark" variant is deliberately
+    NOT stubbed with guessed values. It gets filled in once real dark-theme mockups exist to
+    extract the actual palette from, per the user's own plan (extraction now, palette later).
+    Until "Dark" exists, every DynamicResource lookup here simply always resolves to "Light"
+    regardless of Application.RequestedThemeVariant - harmless, and exactly the intermediate
+    state this step is meant to produce: all the plumbing in place, nothing visually changes
+    yet. App.axaml's RequestedThemeVariant="Light" pin stays until Dark is populated.
+
+    Values were taken as literally as possible from the existing (already-shipped) hex
+    literals; near-identical values that were clearly the same role drifting slightly
+    between modules (e.g. Color Configurator's page background #FFEEF0F3 vs the other three
+    modules' #FFF2F2F4) were unified the same way the accent purples were - picking the
+    majority/source value, not literally every occurrence honored 1:1.
+    ============================================================================ -->
+
+    <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+            <!-- Surfaces -->
+            <Color x:Key="AppBackgroundColor">#FFF2F2F4</Color>
+            <Color x:Key="SurfaceColor">#FFFFFFFF</Color>
+            <Color x:Key="SurfaceMutedColor">#FFEDEDED</Color>
+            <Color x:Key="SurfaceSoftColor">#FFF4F5F7</Color>
+            <Color x:Key="SurfaceHoverColor">#FFF0F0F3</Color>
+            <Color x:Key="SurfaceInputColor">#FFFAFAFB</Color>
+            <Color x:Key="SurfaceRowColor">#FFECECEC</Color>
+            <Color x:Key="SurfaceRowHoverColor">#FFE2E2E2</Color>
+            <Color x:Key="SurfaceSkeletonColor">#FFE0E0E4</Color>
+            <Color x:Key="ControlTrackOffColor">#FFD5D5DA</Color>
+            <Color x:Key="ControlThumbColor">#FFFFFFFF</Color>
+
+            <!-- Borders -->
+            <Color x:Key="BorderColor">#FFE2E4E9</Color>
+            <Color x:Key="BorderSubtleColor">#FFDFE1E6</Color>
+            <Color x:Key="BorderStrongColor">#FFC9CCD3</Color>
+            <Color x:Key="BorderDividerColor">#FFD7D7DD</Color>
+            <Color x:Key="BorderWindowColor">#FF9E9E9E</Color>
+
+            <!-- Text -->
+            <Color x:Key="TextPrimaryColor">#FF2C2E33</Color>
+            <Color x:Key="TextSecondaryColor">#FF3B3B40</Color>
+            <Color x:Key="TextMutedColor">#FF5A5D66</Color>
+            <Color x:Key="TextSubtleColor">#FF8A8A8A</Color>
+            <Color x:Key="TextFaintColor">#FF9A9EA6</Color>
+            <Color x:Key="TextGlyphMutedColor">#FFA8A8B0</Color>
+            <Color x:Key="TextOnAccentColor">#FFFFFFFF</Color>
+        </ResourceDictionary>
+        <!-- "Dark" goes here once mockups give us real values - see roadmap Фаза 4.7. -->
+    </ResourceDictionary.ThemeDictionaries>
+
+    <!-- Derived brushes - Setters/attributes reference these, never the Color keys directly
+    (same convention as AccentColors.axaml). Color property is bound via DynamicResource so
+    each brush re-resolves when the active ThemeDictionaries variant changes. -->
+    <SolidColorBrush x:Key="AppBackgroundBrush" Color="{DynamicResource AppBackgroundColor}"/>
+    <SolidColorBrush x:Key="SurfaceBrush" Color="{DynamicResource SurfaceColor}"/>
+    <SolidColorBrush x:Key="SurfaceMutedBrush" Color="{DynamicResource SurfaceMutedColor}"/>
+    <SolidColorBrush x:Key="SurfaceSoftBrush" Color="{DynamicResource SurfaceSoftColor}"/>
+    <SolidColorBrush x:Key="SurfaceHoverBrush" Color="{DynamicResource SurfaceHoverColor}"/>
+    <SolidColorBrush x:Key="SurfaceInputBrush" Color="{DynamicResource SurfaceInputColor}"/>
+    <SolidColorBrush x:Key="SurfaceRowBrush" Color="{DynamicResource SurfaceRowColor}"/>
+    <SolidColorBrush x:Key="SurfaceRowHoverBrush" Color="{DynamicResource SurfaceRowHoverColor}"/>
+    <SolidColorBrush x:Key="SurfaceSkeletonBrush" Color="{DynamicResource SurfaceSkeletonColor}"/>
+    <SolidColorBrush x:Key="ControlTrackOffBrush" Color="{DynamicResource ControlTrackOffColor}"/>
+    <SolidColorBrush x:Key="ControlThumbBrush" Color="{DynamicResource ControlThumbColor}"/>
+
+    <SolidColorBrush x:Key="BorderBrush" Color="{DynamicResource BorderColor}"/>
+    <SolidColorBrush x:Key="BorderSubtleBrush" Color="{DynamicResource BorderSubtleColor}"/>
+    <SolidColorBrush x:Key="BorderStrongBrush" Color="{DynamicResource BorderStrongColor}"/>
+    <SolidColorBrush x:Key="BorderDividerBrush" Color="{DynamicResource BorderDividerColor}"/>
+    <SolidColorBrush x:Key="BorderWindowBrush" Color="{DynamicResource BorderWindowColor}"/>
+
+    <SolidColorBrush x:Key="TextPrimaryBrush" Color="{DynamicResource TextPrimaryColor}"/>
+    <SolidColorBrush x:Key="TextSecondaryBrush" Color="{DynamicResource TextSecondaryColor}"/>
+    <SolidColorBrush x:Key="TextMutedBrush" Color="{DynamicResource TextMutedColor}"/>
+    <SolidColorBrush x:Key="TextSubtleBrush" Color="{DynamicResource TextSubtleColor}"/>
+    <SolidColorBrush x:Key="TextFaintBrush" Color="{DynamicResource TextFaintColor}"/>
+    <SolidColorBrush x:Key="TextGlyphMutedBrush" Color="{DynamicResource TextGlyphMutedColor}"/>
+    <SolidColorBrush x:Key="TextOnAccentBrush" Color="{DynamicResource TextOnAccentColor}"/>
+
+    <!-- Deliberately NOT theme-variant (flat, always the same value regardless of Light/Dark):
+    - Skin Changer's screenshot-tile placeholder gradient (Border.SCScreenshotItem) - a media/photo
+      placeholder reads as "dark backdrop for an image" in any app theme, same convention as
+      Views/ImageViewWindow.axaml's fixed Background="Black".
+    - Tweaker console (Border.TWConsole family) - already a dark terminal-style panel even in the
+      app's light theme (see roadmap Фаза 4.5 notes); whether it gets its own darker Dark-mode
+      variant is an open decision noted in the roadmap (Фаза 4.7), not resolved by this pass. Kept
+      as its own flat tokens so that decision has a single, obvious place to land later instead of
+      requiring another literal-hunting pass through TweakerStyles.axaml. -->
+    <Color x:Key="MediaGradientTopColor">#FF26262E</Color>
+    <Color x:Key="MediaGradientBottomColor">#FF101014</Color>
+    <Color x:Key="ConsoleBackgroundColor">#FF1E1E24</Color>
+    <Color x:Key="ConsoleTextColor">#FFD8D8E0</Color>
+    <SolidColorBrush x:Key="ConsoleBackgroundBrush" Color="{StaticResource ConsoleBackgroundColor}"/>
+    <SolidColorBrush x:Key="ConsoleTextBrush" Color="{StaticResource ConsoleTextColor}"/>
+
+</ResourceDictionary>

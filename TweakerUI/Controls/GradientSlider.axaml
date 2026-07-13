@@ -3,6 +3,10 @@
              x:Class="TweakerUI.Controls.GradientSlider"
              Focusable="True"
              Height="16" VerticalAlignment="Center">
+    <!-- Thumb chrome (white fill, dark outline/shadow) deliberately left as literals, not run
+    through NeutralColors.axaml (Фаза 4.7, step 1) - a white knob with a dark ring is the
+    convention that keeps this readable against ANY track color, in either app theme, so it isn't
+    meant to vary with Light/Dark the way the rest of the app's chrome is. -->
     <Panel x:Name="RootPanel" Background="Transparent" PointerPressed="OnPointerPressed" Cursor="Hand">
         <Border x:Name="Track" Height="6" CornerRadius="4" VerticalAlignment="Center"/>
         <Border x:Name="Thumb" Width="16" Height="16" CornerRadius="8" Background="White"

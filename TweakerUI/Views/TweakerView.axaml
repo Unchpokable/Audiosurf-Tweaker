@@ -7,7 +7,7 @@
 
     <!-- No mockup for this tab (it's genuinely just toggles/buttons/a log) - laid out "on the eye"
     reusing the app's established card/toggle-switch vocabulary rather than inventing a new one. -->
-    <Border Background="#FFF2F2F4">
+    <Border Background="{DynamicResource AppBackgroundBrush}">
         <Grid Margin="20" RowDefinitions="Auto,Auto,*">
 
             <!-- Tweaks -->

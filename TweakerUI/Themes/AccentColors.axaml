@@ -1,0 +1,92 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ============================================================================
+    Centralized accent palette (visual consistency pass, 2026-07-13). Before this, every module's
+    Styles file picked its own "something purple-ish" token by eye (Color Configurator's #7A4FC7,
+    Skin Changer/Tweaker/Settings' shared #6C4CE0, the app shell's #9D5BF5, assorted one-off tints
+    like #4B3FA0 for button text) - none of them reconciled with each other. Source of truth is
+    Color Configurator's own CCGradientButton gradient and CCGamePanelTitle's text color, merged into
+    Application.Resources (see App.axaml) so every Styles file and every View can reference the same
+    keys instead of hardcoding a hex literal "by eye" per file.
+
+    Applied by role, not by module:
+      - Primary:   fills - button backgrounds, checked-switch tracks, icon glyph fill/stroke, gradient start.
+      - Secondary: outlines/borders, gradient end.
+      - Text:      any purple TEXT foreground (button labels, headings, highlighted values).
+    Neutral grays/blacks and the semantic "danger" red used for destructive actions are unrelated to
+    this palette and live in Themes/NeutralColors.axaml (or stay local for one-off status colors) -
+    this file is scoped to the purple accent only.
+
+    Restructured into ThemeDictionaries (Фаза 4.7, step 1, 2026-07-13), same reasoning and same
+    "Dark" left unpopulated for now as NeutralColors.axaml - the dark theme wants different accents
+    too (not just different backgrounds), so this palette needs to be able to vary by theme the same
+    way. Every derived brush below binds Color via DynamicResource so it re-resolves on theme switch;
+    only the ThemeDictionaries entries themselves need a "Dark" variant added later for that to take
+    visible effect.
+    ============================================================================ -->
+
+    <ResourceDictionary.ThemeDictionaries>
+        <ResourceDictionary x:Key="Light">
+            <Color x:Key="AccentPrimaryColor">#FF7A4FC7</Color>
+            <Color x:Key="AccentSecondaryColor">#FFA97FD6</Color>
+            <Color x:Key="AccentTextColor">#FF5A3D8F</Color>
+        </ResourceDictionary>
+        <!-- "Dark" goes here once mockups give us real values - see roadmap Фаза 4.7. -->
+    </ResourceDictionary.ThemeDictionaries>
+
+    <SolidColorBrush x:Key="AccentPrimaryBrush" Color="{DynamicResource AccentPrimaryColor}"/>
+    <SolidColorBrush x:Key="AccentSecondaryBrush" Color="{DynamicResource AccentSecondaryColor}"/>
+    <SolidColorBrush x:Key="AccentTextBrush" Color="{DynamicResource AccentTextColor}"/>
+
+    <!-- Derived translucent tiers - one systematic source instead of a dozen hand-picked near-white
+    purples that used to disagree slightly from module to module (#FFF8F4FD vs #FFF4F2FC vs #FFECEAFB
+    vs #FFF1E9FE, ...). Opacity values were fit to roughly match the strongest/most common of the old
+    literals per tier rather than preserve every one exactly - the point of centralizing is to stop
+    having eight near-identical shades in the first place. -->
+    <SolidColorBrush x:Key="AccentSelectionBrush" Color="{DynamicResource AccentPrimaryColor}" Opacity="0.36"/>
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="{DynamicResource AccentPrimaryColor}" Opacity="0.05"/>
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="{DynamicResource AccentPrimaryColor}" Opacity="0.10"/>
+    <SolidColorBrush x:Key="AccentPressedBrush" Color="{DynamicResource AccentPrimaryColor}" Opacity="0.18"/>
+    <SolidColorBrush x:Key="AccentBorderBrush" Color="{DynamicResource AccentSecondaryColor}" Opacity="0.30"/>
+    <!-- Noticeably stronger than the tiers above - for a persistently-selected list row (e.g. the
+    Skin Changer skins list), which needs to read clearly against neighboring unselected rows rather
+    than blend in the way a transient hover/pressed tint is meant to. -->
+    <SolidColorBrush x:Key="AccentSelectedBrush" Color="{DynamicResource AccentPrimaryColor}" Opacity="0.45"/>
+
+    <!-- Same gradient as Color Configurator's CCGradientButton - the "Apply changes"/"Apply to game"
+    CTA look, now reusable by any other module's primary action button. -->
+    <LinearGradientBrush x:Key="AccentGradientBrush" StartPoint="0%,50%" EndPoint="100%,50%">
+        <GradientStop Color="{DynamicResource AccentPrimaryColor}" Offset="0"/>
+        <GradientStop Color="{DynamicResource AccentSecondaryColor}" Offset="1"/>
+    </LinearGradientBrush>
+
+    <!-- Skin Changer/Tweaker/Settings each carried a byte-identical copy of this toggle-switch
+    template under their own file scoping (SCSwitchTemplate/TWSwitchTemplate/STSwitchTemplate) - zero
+    divergence between the three made this a genuine duplicate, not "something in that vein" per
+    module, so it's centralized here instead. Track/thumb colors aren't part of the accent palette -
+    they now come from Themes/NeutralColors.axaml (ControlTrackOffBrush/ControlThumbBrush) instead of
+    local literals, so they're just as theme-switch-ready as everything else. Each module's own
+    ToggleButton.*Switch style still supplies its own :checked track Background from AccentPrimaryBrush,
+    so the template itself carries no accent color at all. -->
+    <ControlTemplate x:Key="AccentSwitchTemplate" TargetType="ToggleButton">
+        <Grid Width="32" Height="18">
+            <Border Name="Track" CornerRadius="9" Background="{DynamicResource ControlTrackOffBrush}">
+                <Border.Transitions>
+                    <Transitions>
+                        <BrushTransition Property="Background" Duration="0:0:0.2"/>
+                    </Transitions>
+                </Border.Transitions>
+            </Border>
+            <Border Name="Thumb" Width="14" Height="14" CornerRadius="7" Background="{DynamicResource ControlThumbBrush}"
+                    HorizontalAlignment="Left" Margin="2,0,0,0">
+                <Border.Transitions>
+                    <Transitions>
+                        <ThicknessTransition Property="Margin" Duration="0:0:0.2"/>
+                    </Transitions>
+                </Border.Transitions>
+            </Border>
+        </Grid>
+    </ControlTemplate>
+
+</ResourceDictionary>

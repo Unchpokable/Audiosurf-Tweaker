@@ -3,13 +3,24 @@
              x:Class="TweakerUI.App"
              xmlns:tweakerUi="clr-namespace:TweakerUI"
              RequestedThemeVariant="Light">
-    <!-- Pinned to Light: the custom chrome in Themes/Styles.axaml hardcodes a light palette (matching
-         the old WPF app, which never had a dark mode either) rather than theme-resource colors, so
-         following the system's dark variant would only mismatch unstyled FluentTheme control parts. -->
+    <!-- Pinned to Light: NeutralColors.axaml's "Dark" ThemeDictionaries variant isn't populated yet
+         (Фаза 4.7, step 1 - extraction/DynamicResource plumbing only, real dark values come from
+         mockups later), so following the system's dark variant would only mismatch unstyled FluentTheme
+         control parts against a still-light custom palette. Unpin once Dark is populated and the
+         Settings "Appearance" toggle exists to drive RequestedThemeVariant explicitly. -->
 
     <Application.DataTemplates>
         <tweakerUi:ViewLocator/>
     </Application.DataTemplates>
+
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://TweakerUI/Themes/NeutralColors.axaml"/>
+                <ResourceInclude Source="avares://TweakerUI/Themes/AccentColors.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
 
     <Application.Styles>
         <FluentTheme />

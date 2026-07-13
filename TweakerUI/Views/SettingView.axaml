@@ -6,7 +6,7 @@
 
     <!-- No mockup for this tab either - single scrollable page of card sections, same spirit as
     TweakerView, instead of the donor's WPF TabControl (Paths / Skin Changer / Watcher / UI). -->
-    <Border Background="#FFF2F2F4">
+    <Border Background="{DynamicResource AppBackgroundBrush}">
         <ScrollViewer Margin="20" VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="14">
 

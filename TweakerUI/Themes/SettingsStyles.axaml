@@ -6,7 +6,8 @@
     a single scrollable page of card sections rather than the donor's WPF TabControl, to match the
     rest of the app (Tweaker/Skin Changer/Color Configurator are all single-page card layouts too).
     Kept in its own file per the same per-module scoping as SkinChangerStyles.axaml/TweakerStyles.axaml.
-    "ST" prefix, accent purple #6C4CE0 matches the rest of the app. Toggle rows here skip the
+    "ST" prefix; accent colors flow through Themes/AccentColors.axaml (2026-07-13 consistency pass).
+    Toggle rows here skip the
     per-item icon column Tweaker's toggles use - these read as ordinary preference switches (label +
     switch), not tweaks tied to a concrete visual concept, so an icon per row would be decoration
     without a clear referent.
@@ -39,39 +40,18 @@
                                SelectionEnd="{TemplateBinding SelectionEnd}"
                                TextAlignment="{TemplateBinding TextAlignment}"
                                TextWrapping="NoWrap"
-                               SelectionBrush="#5D6C4CE0"
-                               SelectionForegroundBrush="White"
+                               SelectionBrush="{DynamicResource AccentSelectionBrush}"
+                               SelectionForegroundBrush="{DynamicResource TextOnAccentBrush}"
                                CaretBrush="{TemplateBinding CaretBrush}"
                                VerticalAlignment="Center"/>
             </Border>
         </ControlTemplate>
 
-        <!-- Duplicated from Tweaker/SkinChanger's own switch templates rather than shared, per this
-        module's own file-scoping. -->
-        <ControlTemplate x:Key="STSwitchTemplate" TargetType="ToggleButton">
-            <Grid Width="32" Height="18">
-                <Border Name="Track" CornerRadius="9" Background="#FFD5D5DA">
-                    <Border.Transitions>
-                        <Transitions>
-                            <BrushTransition Property="Background" Duration="0:0:0.2"/>
-                        </Transitions>
-                    </Border.Transitions>
-                </Border>
-                <Border Name="Thumb" Width="14" Height="14" CornerRadius="7" Background="White"
-                        HorizontalAlignment="Left" Margin="2,0,0,0">
-                    <Border.Transitions>
-                        <Transitions>
-                            <ThicknessTransition Property="Margin" Duration="0:0:0.2"/>
-                        </Transitions>
-                    </Border.Transitions>
-                </Border>
-            </Grid>
-        </ControlTemplate>
     </Styles.Resources>
 
     <Style Selector="Border.STCard">
-        <Setter Property="Background" Value="#FFFFFFFF"/>
-        <Setter Property="BorderBrush" Value="#FFE2E4E9"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="12"/>
         <Setter Property="Padding" Value="18,14"/>
@@ -80,7 +60,7 @@
     <Style Selector="TextBlock.STCardTitle">
         <Setter Property="FontSize" Value="18"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="#FF2C2C31"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
 
     <!-- Toggle rows -->
@@ -95,7 +75,7 @@
         </Setter>
     </Style>
     <Style Selector="Border.STToggleRow:pointerover">
-        <Setter Property="Background" Value="#FFF4F2FC"/>
+        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
     </Style>
     <!-- Sub-toggles that only make sense when a parent switch is on (e.g. Safety installation under
     Control textures folder, or the two Watcher sub-options) - indented and dimmed instead of hidden,
@@ -109,24 +89,24 @@
 
     <Style Selector="TextBlock.STToggleLabel">
         <Setter Property="FontSize" Value="14"/>
-        <Setter Property="Foreground" Value="#FF3B3B40"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
     </Style>
     <Style Selector="TextBlock.STToggleHint">
         <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Foreground" Value="#FF9A9AA2"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
         <Setter Property="Margin" Value="0,2,0,0"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
 
     <Style Selector="ToggleButton.STSwitch">
-        <Setter Property="Template" Value="{StaticResource STSwitchTemplate}"/>
+        <Setter Property="Template" Value="{StaticResource AccentSwitchTemplate}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding" Value="0"/>
         <Setter Property="Cursor" Value="Hand"/>
     </Style>
     <Style Selector="ToggleButton.STSwitch:checked /template/ Border#Track">
-        <Setter Property="Background" Value="#FF6C4CE0"/>
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
     </Style>
     <Style Selector="ToggleButton.STSwitch:checked /template/ Border#Thumb">
         <Setter Property="Margin" Value="16,0,0,0"/>
@@ -135,7 +115,7 @@
     <!-- Path/file rows -->
     <Style Selector="TextBlock.STFieldLabel">
         <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Foreground" Value="#FF8A8A8A"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSubtleBrush}"/>
         <Setter Property="Margin" Value="2,0,0,4"/>
     </Style>
     <Style Selector="TextBox.STPathBox">
@@ -143,10 +123,10 @@
         and slightly harsh against the field's light background (per direct feedback); Medium is
         still clearly a "field", not a heading, but renders smoother at this size. -->
         <Setter Property="FontWeight" Value="Medium"/>
-        <Setter Property="Background" Value="#FFF6F6F8"/>
-        <Setter Property="Foreground" Value="#FF3B3B40"/>
-        <Setter Property="CaretBrush" Value="#FF3B3B40"/>
-        <Setter Property="BorderBrush" Value="#FFE2E4E9"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceSoftBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource TextSecondaryBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Padding" Value="10,8"/>
@@ -156,14 +136,14 @@
         <Setter Property="Template" Value="{StaticResource STTextBoxTemplate}"/>
     </Style>
     <Style Selector="TextBox.STPathBox:pointerover /template/ Border#PART_Border">
-        <Setter Property="BorderBrush" Value="#FFC9CCD3"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
     </Style>
     <Style Selector="TextBox.STPathBox:focus /template/ Border#PART_Border">
-        <Setter Property="BorderBrush" Value="#FF6C4CE0"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
     </Style>
     <Style Selector="Button.STBrowseButton">
-        <Setter Property="Background" Value="#FFECEAFB"/>
-        <Setter Property="Foreground" Value="#FF4B3FA0"/>
+        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="FontSize" Value="13.5"/>
@@ -179,7 +159,7 @@
         </Setter>
     </Style>
     <Style Selector="Button.STBrowseButton:pointerover">
-        <Setter Property="Background" Value="#FFDFDAF7"/>
+        <Setter Property="Background" Value="{DynamicResource AccentPressedBrush}"/>
     </Style>
     <Style Selector="Button.STBrowseButton:disabled">
         <Setter Property="Opacity" Value="0.5"/>

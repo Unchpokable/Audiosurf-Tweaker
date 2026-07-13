@@ -21,7 +21,7 @@
     finite to stretch into and just fell back to its own content size. Instead the Grid gets the
     Border's real, finite allocated height directly, so the list card genuinely fills it; only the
     right (potentially overflowing) column scrolls internally. -->
-    <Border Background="#FFEEF0F3">
+    <Border Background="{DynamicResource AppBackgroundBrush}">
     <Grid Margin="20" ColumnDefinitions="270,16,*">
 
         <!-- LEFT: palette list + game sync (game-wide color sync isn't really about editing one
@@ -149,7 +149,7 @@
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                             <TextBlock Classes="CCEditingLabel" Text="Editing: "/>
-                            <TextBlock Classes="CCEditingLabel" Text="{Binding CurrentSwatch.Name}" FontWeight="SemiBold" Foreground="#FF2C2E33"/>
+                            <TextBlock Classes="CCEditingLabel" Text="{Binding CurrentSwatch.Name}" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                         </StackPanel>
 
                         <WrapPanel Orientation="Horizontal">

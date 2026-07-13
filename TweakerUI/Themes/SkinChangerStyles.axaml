@@ -5,10 +5,9 @@
     Skin Changer (stage 4.3) - ported from the "Audiosurf Tweaker" Claude Design mockup.
     Kept in its own file (rather than appended to the shared Themes/Styles.axaml) so each
     module's styling stays easy to find; the "SC" prefix mirrors the "CC" prefix already
-    used for the Color Configurator's own file-scoped styles. This module's accent purple
-    (#6C4CE0) is the mockup's own token and, like Color Configurator's #7A4FC7, is not
-    reconciled with the app shell's #9D5BF5 family yet - that's the planned end-of-phase
-    consistency pass, not something to invent here.
+    used for the Color Configurator's own file-scoped styles. This module's own mockup
+    accent purple (#6C4CE0) was replaced in the 2026-07-13 consistency pass - every accent
+    usage here now flows through Themes/AccentColors.axaml's centralized resources instead.
     ============================================================================ -->
 
     <Styles.Resources>
@@ -28,26 +27,6 @@
         <StreamGeometry x:Key="IconTile">M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z</StreamGeometry>
         <StreamGeometry x:Key="IconHits">M12 2l1.7 5.1L19 9l-5.3 1.9L12 16l-1.7-5.1L5 9l5.3-1.9z</StreamGeometry>
         <StreamGeometry x:Key="IconParticles">M5 5h3v3H5zM16 4h2.4v2.4H16zM11 10l1.4 4.2L16.6 16l-4.2 1.4L11 21.6 9.6 17.4 5.4 16l4.2-1.4z</StreamGeometry>
-
-        <ControlTemplate x:Key="SCSwitchTemplate" TargetType="ToggleButton">
-            <Grid Width="32" Height="18">
-                <Border Name="Track" CornerRadius="9" Background="#FFD5D5DA">
-                    <Border.Transitions>
-                        <Transitions>
-                            <BrushTransition Property="Background" Duration="0:0:0.2"/>
-                        </Transitions>
-                    </Border.Transitions>
-                </Border>
-                <Border Name="Thumb" Width="14" Height="14" CornerRadius="7" Background="White"
-                        HorizontalAlignment="Left" Margin="2,0,0,0">
-                    <Border.Transitions>
-                        <Transitions>
-                            <ThicknessTransition Property="Margin" Duration="0:0:0.2"/>
-                        </Transitions>
-                    </Border.Transitions>
-                </Border>
-            </Grid>
-        </ControlTemplate>
 
         <!-- Self-contained rename field template, deliberately not sharing Color Configurator's
         CCTextBoxTemplate - keeping this file's resources local avoids reaching into another
@@ -71,8 +50,8 @@
                                SelectionEnd="{TemplateBinding SelectionEnd}"
                                TextAlignment="{TemplateBinding TextAlignment}"
                                TextWrapping="NoWrap"
-                               SelectionBrush="#5D6C4CE0"
-                               SelectionForegroundBrush="White"
+                               SelectionBrush="{DynamicResource AccentSelectionBrush}"
+                               SelectionForegroundBrush="{DynamicResource TextOnAccentBrush}"
                                CaretBrush="{TemplateBinding CaretBrush}"
                                VerticalAlignment="Center"/>
             </Border>
@@ -83,15 +62,15 @@
     (same tokens, kept under the SC prefix rather than reused directly, per this module's own
     file-scoping). Applied to the top bar, skins list, screenshots panel and Custom Installation. -->
     <Style Selector="Border.SCCard">
-        <Setter Property="Background" Value="#FFFFFFFF"/>
-        <Setter Property="BorderBrush" Value="#FFE2E4E9"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="12"/>
         <Setter Property="Padding" Value="16,12"/>
     </Style>
     <Style Selector="Border.SCGamePanelCard">
-        <Setter Property="Background" Value="#FFF8F4FD"/>
-        <Setter Property="BorderBrush" Value="#FFE5D9F5"/>
+        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="12"/>
         <Setter Property="Padding" Value="16,14"/>
@@ -115,7 +94,7 @@
         </Setter>
     </Style>
     <Style Selector="Button.SCIconButton:pointerover">
-        <Setter Property="Background" Value="#1A6C4CE0"/>
+        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
     </Style>
     <Style Selector="Button.SCIconButton:disabled">
         <Setter Property="Opacity" Value="0.4"/>
@@ -139,7 +118,7 @@
         </Setter>
     </Style>
     <Style Selector="Button.SCRowIconButton:pointerover">
-        <Setter Property="Background" Value="#1F6C4CE0"/>
+        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
     </Style>
     <Style Selector="Button.SCRowIconButton.Danger:pointerover">
         <Setter Property="Background" Value="#1FDC3C3C"/>
@@ -155,7 +134,7 @@
         <Setter Property="Padding" Value="0"/>
         <Setter Property="Margin" Value="0,0,0,8"/>
         <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="Background" Value="#FFECECEC"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceRowBrush}"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Setter Property="Transitions">
@@ -165,20 +144,20 @@
         </Setter>
     </Style>
     <Style Selector="ListBox.SCSkinsList ListBoxItem:pointerover">
-        <Setter Property="Background" Value="#FFE2E2E2"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceRowHoverBrush}"/>
     </Style>
     <!-- The mockup's own literal #B7C3F7 read as too bright/blue against real skin data - shifted
     toward the app's purple accent family and toned down a notch. -->
     <Style Selector="ListBox.SCSkinsList ListBoxItem:selected">
-        <Setter Property="Background" Value="#FFBEA8E8"/>
+        <Setter Property="Background" Value="{DynamicResource AccentSelectedBrush}"/>
     </Style>
     <Style Selector="ListBox.SCSkinsList ListBoxItem:selected:pointerover">
-        <Setter Property="Background" Value="#FFBEA8E8"/>
+        <Setter Property="Background" Value="{DynamicResource AccentSelectedBrush}"/>
     </Style>
 
     <Style Selector="TextBlock.SCSkinName">
         <Setter Property="FontSize" Value="15"/>
-        <Setter Property="Foreground" Value="#FF2C2C31"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
 
     <!-- Loading placeholders: no screenshot/skin-list caching (deliberately, to keep memory down), so
@@ -201,16 +180,16 @@
     <Style Selector="Border.SCSkinRowSkeleton">
         <Setter Property="Height" Value="66"/>
         <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="Background" Value="#FFE6E6E6"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceSkeletonBrush}"/>
         <Setter Property="Margin" Value="0,0,0,8"/>
     </Style>
 
     <Style Selector="TextBox.SCRenameInput">
         <Setter Property="FontSize" Value="15"/>
-        <Setter Property="Foreground" Value="#FF2C2C31"/>
-        <Setter Property="CaretBrush" Value="#FF2C2C31"/>
-        <Setter Property="Background" Value="#FFFFFFFF"/>
-        <Setter Property="BorderBrush" Value="#FF6C4CE0"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
         <Setter Property="BorderThickness" Value="1.5"/>
         <Setter Property="CornerRadius" Value="5"/>
         <Setter Property="Padding" Value="6,3"/>
@@ -222,12 +201,12 @@
     <!-- Top bar -->
     <Style Selector="TextBlock.SCTopBarLabel">
         <Setter Property="FontSize" Value="14"/>
-        <Setter Property="Foreground" Value="#FF4A4A50"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
     </Style>
     <Style Selector="TextBlock.SCTopBarValue">
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="#FF6C4CE0"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
     </Style>
 
     <!-- Screenshots panel. Height is no longer fixed here - AspectRatioBox (16:9) in the view derives
@@ -237,18 +216,18 @@
         <Setter Property="ClipToBounds" Value="True"/>
         <Setter Property="Background">
             <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                <GradientStop Color="#FF26262E" Offset="0"/>
-                <GradientStop Color="#FF101014" Offset="1"/>
+                <GradientStop Color="{DynamicResource MediaGradientTopColor}" Offset="0"/>
+                <GradientStop Color="{DynamicResource MediaGradientBottomColor}" Offset="1"/>
             </LinearGradientBrush>
         </Setter>
     </Style>
     <Style Selector="Border.SCScreenshotSkeleton">
         <Setter Property="CornerRadius" Value="6"/>
-        <Setter Property="Background" Value="#FFE0E0E4"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceSkeletonBrush}"/>
     </Style>
     <Style Selector="TextBlock.SCEmptyState">
         <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Foreground" Value="#FFA0A0A6"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
         <Setter Property="HorizontalAlignment" Value="Center"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
@@ -256,26 +235,26 @@
     <!-- Custom Installation bar -->
     <Style Selector="TextBlock.SCSectionTitle">
         <Setter Property="FontSize" Value="15"/>
-        <Setter Property="Foreground" Value="#FF8A8A8A"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSubtleBrush}"/>
         <Setter Property="HorizontalAlignment" Value="Center"/>
     </Style>
 
     <Style Selector="ToggleButton.SCSwitch">
-        <Setter Property="Template" Value="{StaticResource SCSwitchTemplate}"/>
+        <Setter Property="Template" Value="{StaticResource AccentSwitchTemplate}"/>
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Padding" Value="0"/>
         <Setter Property="Cursor" Value="Hand"/>
     </Style>
     <Style Selector="ToggleButton.SCSwitch:checked /template/ Border#Track">
-        <Setter Property="Background" Value="#FF6C4CE0"/>
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
     </Style>
     <Style Selector="ToggleButton.SCSwitch:checked /template/ Border#Thumb">
         <Setter Property="Margin" Value="16,0,0,0"/>
     </Style>
 
     <Style Selector="Path.SCToggleIcon">
-        <Setter Property="Fill" Value="#FFA8A8B0"/>
+        <Setter Property="Fill" Value="{DynamicResource TextGlyphMutedBrush}"/>
         <Setter Property="Transitions">
             <Transitions>
                 <BrushTransition Property="Fill" Duration="0:0:0.2"/>
@@ -283,15 +262,15 @@
         </Setter>
     </Style>
     <Style Selector="Border.SCToggleGroup.On Path.SCToggleIcon">
-        <Setter Property="Fill" Value="#FF6C4CE0"/>
+        <Setter Property="Fill" Value="{DynamicResource AccentPrimaryBrush}"/>
     </Style>
     <Style Selector="TextBlock.SCToggleLabel">
         <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Foreground" Value="#FF3B3B40"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
     </Style>
     <Style Selector="Border.SCToggleDivider">
         <Setter Property="Width" Value="1"/>
-        <Setter Property="Background" Value="#FFE2E2E6"/>
+        <Setter Property="Background" Value="{DynamicResource BorderBrush}"/>
         <Setter Property="Margin" Value="0,2"/>
     </Style>
 
@@ -299,15 +278,15 @@
     <Style Selector="Border.SCSegmentWrap">
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="ClipToBounds" Value="True"/>
-        <Setter Property="BorderBrush" Value="#FFD7D7DD"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderDividerBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
     </Style>
     <!-- HorizontalAlignment/VerticalContentAlignment set explicitly (not just HorizontalContentAlignment)
     - the Fluent theme's default Button sizes to its content unless told to fill, which left the text
     hugging the left edge of the Grid column instead of centering across it. -->
     <Style Selector="Button.SCSegment">
-        <Setter Property="Background" Value="#FFECEAFB"/>
-        <Setter Property="Foreground" Value="#FF4B3FA0"/>
+        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="0"/>
         <Setter Property="FontSize" Value="13.5"/>
@@ -324,7 +303,7 @@
         </Setter>
     </Style>
     <Style Selector="Button.SCSegment:pointerover">
-        <Setter Property="Background" Value="#FFDFDAF7"/>
+        <Setter Property="Background" Value="{DynamicResource AccentPressedBrush}"/>
     </Style>
     <Style Selector="Button.SCSegment:disabled">
         <Setter Property="Opacity" Value="0.5"/>

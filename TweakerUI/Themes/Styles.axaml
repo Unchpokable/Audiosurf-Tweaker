@@ -39,8 +39,8 @@
                                    SelectionEnd="{TemplateBinding SelectionEnd}"
                                    TextAlignment="{TemplateBinding TextAlignment}"
                                    TextWrapping="NoWrap"
-                                   SelectionBrush="#5D7A4FC7"
-                                   SelectionForegroundBrush="White"
+                                   SelectionBrush="{DynamicResource AccentSelectionBrush}"
+                                   SelectionForegroundBrush="{DynamicResource TextOnAccentBrush}"
                                    CaretBrush="{TemplateBinding CaretBrush}"
                                    VerticalAlignment="Center"/>
                 </Panel>
@@ -56,17 +56,17 @@
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="0"/>
-        <Setter Property="Foreground" Value="#FF5F5F5F"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
     </Style>
     <Style Selector="Button.TitleBarButton:pointerover">
-        <Setter Property="Background" Value="#FFE5E5E5"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
     </Style>
     <Style Selector="Button.TitleBarButtonClose:pointerover">
         <Setter Property="Background" Value="#FFE81123"/>
-        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}"/>
     </Style>
 
     <!-- Left-menu navigation row - matches the old WPF SimpleLeftMenuRadioButton exactly in spirit:
@@ -76,7 +76,7 @@
     slot into the same Transitions without touching the template again. -->
     <Style Selector="RadioButton.NavItem">
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="#FFA0A0A0"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
         <Setter Property="FontSize" Value="16"/>
         <Setter Property="FontWeight" Value="Normal"/>
         <Setter Property="Height" Value="46"/>
@@ -115,21 +115,21 @@
         </Setter>
     </Style>
     <Style Selector="RadioButton.NavItem:pointerover">
-        <Setter Property="Foreground" Value="#FF9D5BF5"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
     </Style>
     <Style Selector="RadioButton.NavItem:checked">
-        <Setter Property="Foreground" Value="#FF757575"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
     <Style Selector="RadioButton.NavItem:checked /template/ Border#AccentBar">
-        <Setter Property="Background" Value="#FF6E00FF"/>
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
     </Style>
 
     <!-- Bridge connection controls: the real Audiosurf Tweaker palette is white-and-purple, not gray -
     this matches the old UnderscoredButton style almost exactly. -->
     <Style Selector="Button.UnderscoredButton">
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="#FF5D5D5D"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Height" Value="36"/>
         <Setter Property="FontSize" Value="13"/>
@@ -149,7 +149,7 @@
                                           VerticalAlignment="Center"
                                           Foreground="{TemplateBinding Foreground}"
                                           FontSize="{TemplateBinding FontSize}"/>
-                        <Border Name="Underscore" Grid.Row="1" Background="#FF9D5BF5" Margin="14,0,14,0">
+                        <Border Name="Underscore" Grid.Row="1" Background="{DynamicResource AccentPrimaryBrush}" Margin="14,0,14,0">
                             <Border.Transitions>
                                 <Transitions>
                                     <ThicknessTransition Property="Margin" Duration="0:0:0.15"/>
@@ -178,7 +178,7 @@
         <Setter Property="Width" Value="26"/>
         <Setter Property="Height" Value="26"/>
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="#FF9D5BF5"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="7"/>
         <Setter Property="Padding" Value="5"/>
@@ -192,23 +192,23 @@
         </Setter>
     </Style>
     <Style Selector="Button.IconResetButton:pointerover">
-        <Setter Property="Background" Value="#FFF1E9FE"/>
+        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
     </Style>
     <Style Selector="Button.IconResetButton:pressed">
-        <Setter Property="Background" Value="#FFE0CFFB"/>
+        <Setter Property="Background" Value="{DynamicResource AccentPressedBrush}"/>
     </Style>
 
     <!-- ============================================================================
     Color Configurator (stage 4.2) - ported from the "Palette Designer" Claude Design
-    mockup. This module's own soft-purple palette (#7a4fc7 family) comes straight from
-    the mockup's tokens and is intentionally distinct from the app shell's #9d5bf5
-    family (built in 4.1 from the old WPF theme) - not reconciled here, since the brief
-    for this stage was to translate the mockup as given rather than invent a merge.
+    mockup. Its soft-purple palette became the source of truth for the app-wide accent
+    consistency pass (2026-07-13, see Themes/AccentColors.axaml): every module's own ad
+    hoc purple token, including the app shell's own #9d5bf5 family above, now flows
+    through the same three centralized resources instead of picking its own by eye.
     ============================================================================ -->
 
     <Style Selector="Border.CCCard">
-        <Setter Property="Background" Value="#FFFFFFFF"/>
-        <Setter Property="BorderBrush" Value="#FFE2E4E9"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="12"/>
         <Setter Property="Padding" Value="16,12"/>
@@ -217,8 +217,8 @@
         <Setter Property="Padding" Value="16"/>
     </Style>
     <Style Selector="Border.CCListCard">
-        <Setter Property="Background" Value="#FFFFFFFF"/>
-        <Setter Property="BorderBrush" Value="#FFE2E4E9"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="12"/>
         <Setter Property="Padding" Value="16"/>
@@ -228,50 +228,50 @@
     <Style Selector="TextBlock.CCHeading">
         <Setter Property="FontSize" Value="16"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="#FF2C2E33"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
     <Style Selector="TextBlock.CCSubHeading">
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="#FF2C2E33"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
     <Style Selector="Border.CCBadge">
-        <Setter Property="Background" Value="#FFF1F2F5"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceSoftBrush}"/>
         <Setter Property="CornerRadius" Value="10"/>
         <Setter Property="Padding" Value="8,2"/>
     </Style>
     <Style Selector="TextBlock.CCBadgeText">
         <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Foreground" Value="#FF9A9EA6"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
     </Style>
     <Style Selector="TextBlock.CCSmallLabel">
         <Setter Property="FontSize" Value="11.5"/>
-        <Setter Property="Foreground" Value="#FF9A9EA6"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
     </Style>
     <Style Selector="TextBlock.CCEditingLabel">
         <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Foreground" Value="#FF9A9EA6"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
     </Style>
     <Style Selector="TextBlock.CCSliderLabel">
         <Setter Property="Width" Value="16"/>
         <Setter Property="FontSize" Value="12.5"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="#FF5A5D66"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
     </Style>
     <Style Selector="TextBlock.CCSliderValue">
         <Setter Property="Width" Value="42"/>
         <Setter Property="TextAlignment" Value="Right"/>
         <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Foreground" Value="#FF5A5D66"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
     </Style>
 
     <Style Selector="TextBox.CCNameInput">
         <Setter Property="FontSize" Value="18"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="#FF2C2E33"/>
-        <Setter Property="CaretBrush" Value="#FF2C2E33"/>
-        <Setter Property="Background" Value="#FFFAFAFB"/>
-        <Setter Property="BorderBrush" Value="#FFDFE1E6"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceInputBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="7"/>
         <Setter Property="Padding" Value="10,7"/>
@@ -280,19 +280,19 @@
         <Setter Property="Template" Value="{StaticResource CCTextBoxTemplate}"/>
     </Style>
     <Style Selector="TextBox.CCNameInput:pointerover">
-        <Setter Property="BorderBrush" Value="#FFC9CCD3"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
     </Style>
     <Style Selector="TextBox.CCNameInput:focus /template/ Border#PART_Border">
-        <Setter Property="BorderBrush" Value="#FF7A4FC7"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
     </Style>
 
     <Style Selector="TextBox.CCHexInput">
         <Setter Property="Width" Value="110"/>
         <Setter Property="FontSize" Value="13.5"/>
-        <Setter Property="Foreground" Value="#FF2C2E33"/>
-        <Setter Property="CaretBrush" Value="#FF2C2E33"/>
-        <Setter Property="Background" Value="#FFFAFAFB"/>
-        <Setter Property="BorderBrush" Value="#FFDFE1E6"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceInputBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderSubtleBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="6"/>
         <Setter Property="Padding" Value="8,6"/>
@@ -301,10 +301,10 @@
         <Setter Property="Template" Value="{StaticResource CCTextBoxTemplate}"/>
     </Style>
     <Style Selector="TextBox.CCHexInput:pointerover">
-        <Setter Property="BorderBrush" Value="#FFC9CCD3"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
     </Style>
     <Style Selector="TextBox.CCHexInput:focus /template/ Border#PART_Border">
-        <Setter Property="BorderBrush" Value="#FF7A4FC7"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
     </Style>
 
     <!-- Palette list rows: transitions carry the "selected" highlight in/out smoothly instead of a
@@ -322,17 +322,12 @@
     </Style>
     <Style Selector="Border.CCAccentBar.Selected">
         <Setter Property="Opacity" Value="1"/>
-        <Setter Property="Background">
-            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-                <GradientStop Color="#FF7A4FC7" Offset="0"/>
-                <GradientStop Color="#FFA97FD6" Offset="1"/>
-            </LinearGradientBrush>
-        </Setter>
+        <Setter Property="Background" Value="{DynamicResource AccentGradientBrush}"/>
     </Style>
     <Style Selector="TextBlock.CCPaletteName">
         <Setter Property="FontSize" Value="13.5"/>
         <Setter Property="FontWeight" Value="Medium"/>
-        <Setter Property="Foreground" Value="#FF2C2E33"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="Transitions">
             <Transitions>
                 <BrushTransition Property="Foreground" Duration="0:0:0.2"/>
@@ -340,7 +335,7 @@
         </Setter>
     </Style>
     <Style Selector="TextBlock.CCPaletteName.Selected">
-        <Setter Property="Foreground" Value="#FF5A3D8F"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
     </Style>
 
     <Style Selector="Button.CCPaletteRow">
@@ -362,22 +357,22 @@
         </Setter>
     </Style>
     <Style Selector="Button.CCPaletteRow:pointerover /template/ Border#Root">
-        <Setter Property="Background" Value="#FFF6F4FA"/>
+        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
     </Style>
     <Style Selector="Button.CCPaletteRow.Selected /template/ Border#Root">
-        <Setter Property="Background" Value="#FFF2ECFB"/>
-        <Setter Property="BorderBrush" Value="#FFD9C6F2"/>
+        <Setter Property="Background" Value="{DynamicResource AccentPressedBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/>
     </Style>
 
     <Style Selector="Button.CCNewPalette">
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="#FF7A4FC7"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
         <Setter Property="FontSize" Value="13.5"/>
         <Setter Property="FontWeight" Value="Medium"/>
         <Setter Property="Padding" Value="0,10"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="BorderBrush" Value="#FFC9CCD3"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
         <Setter Property="BorderThickness" Value="1.5"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Transitions">
@@ -388,14 +383,14 @@
         </Setter>
     </Style>
     <Style Selector="Button.CCNewPalette:pointerover">
-        <Setter Property="Background" Value="#FFF8F4FD"/>
-        <Setter Property="BorderBrush" Value="#FFE5D9F5"/>
+        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/>
     </Style>
 
     <Style Selector="Button.CCNegative">
-        <Setter Property="Background" Value="#FFF8F8FA"/>
-        <Setter Property="Foreground" Value="#FF5A5D66"/>
-        <Setter Property="BorderBrush" Value="#FFE2E4E9"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceSoftBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="7"/>
         <Setter Property="FontSize" Value="12.5"/>
@@ -408,7 +403,7 @@
         </Setter>
     </Style>
     <Style Selector="Button.CCNegative:pointerover">
-        <Setter Property="Background" Value="#FFF0F0F3"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
     </Style>
 
     <!-- Rectangular (not square) core-color swatches: a full 96x96 grid of 5 squares ate a lot of
@@ -433,13 +428,13 @@
         </Setter>
     </Style>
     <Style Selector="Border.CCSwatchChip.Selected">
-        <Setter Property="BorderBrush" Value="#FF7A4FC7"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
         <Setter Property="BorderThickness" Value="3"/>
         <Setter Property="BoxShadow" Value="0 4 12 0 #477A4FC7"/>
     </Style>
     <Style Selector="TextBlock.CCSwatchLabel">
         <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Foreground" Value="#FF5A5D66"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
         <Setter Property="Transitions">
             <Transitions>
                 <BrushTransition Property="Foreground" Duration="0:0:0.2"/>
@@ -448,11 +443,11 @@
     </Style>
     <Style Selector="TextBlock.CCSwatchLabel.Selected">
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="#FF5A3D8F"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
     </Style>
 
     <Style Selector="Border.CCWheelWrap">
-        <Setter Property="Background" Value="#FFF4F5F7"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceSoftBrush}"/>
         <Setter Property="CornerRadius" Value="14"/>
         <Setter Property="Padding" Value="14"/>
     </Style>
@@ -460,18 +455,18 @@
         <Setter Property="Width" Value="56"/>
         <Setter Property="Height" Value="56"/>
         <Setter Property="CornerRadius" Value="10"/>
-        <Setter Property="BorderBrush" Value="#FFE2E4E9"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
     </Style>
 
     <Style Selector="Border.CCTabsWrap">
-        <Setter Property="Background" Value="#FFF1F2F5"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceSoftBrush}"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Padding" Value="3"/>
     </Style>
     <Style Selector="Button.CCTab">
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="#FF9A9EA6"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Padding" Value="14,5"/>
@@ -485,26 +480,26 @@
         </Setter>
     </Style>
     <Style Selector="Button.CCTab:pointerover">
-        <Setter Property="Background" Value="#FFECECEF"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
     </Style>
     <Style Selector="Button.CCTab.Selected">
-        <Setter Property="Background" Value="#FFFFFFFF"/>
-        <Setter Property="Foreground" Value="#FF5A3D8F"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
     </Style>
     <Style Selector="Button.CCTab.Selected:pointerover">
-        <Setter Property="Background" Value="#FFFFFFFF"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
     </Style>
 
     <Style Selector="Border.CCSaveBar">
-        <Setter Property="Background" Value="#FFFFFFFF"/>
-        <Setter Property="BorderBrush" Value="#FFE2E4E9"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="12"/>
         <Setter Property="Padding" Value="16,12"/>
     </Style>
     <Style Selector="Border.CCGamePanel">
-        <Setter Property="Background" Value="#FFF8F4FD"/>
-        <Setter Property="BorderBrush" Value="#FFE5D9F5"/>
+        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="12"/>
         <Setter Property="Padding" Value="16,14"/>
@@ -512,24 +507,19 @@
     <Style Selector="TextBlock.CCGamePanelTitle">
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="#FF5A3D8F"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
     </Style>
 
     <!-- Shared gradient CTA (Save Bar's "Apply changes" and the game panel's "Apply to game"). -->
     <Style Selector="Button.CCGradientButton">
-        <Setter Property="Foreground" Value="#FFFFFFFF"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="FontSize" Value="13.5"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Padding" Value="18,10"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Background">
-            <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
-                <GradientStop Color="#FF7A4FC7" Offset="0"/>
-                <GradientStop Color="#FFA97FD6" Offset="1"/>
-            </LinearGradientBrush>
-        </Setter>
+        <Setter Property="Background" Value="{DynamicResource AccentGradientBrush}"/>
         <Setter Property="Transitions">
             <Transitions>
                 <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
@@ -544,9 +534,9 @@
     </Style>
 
     <Style Selector="Button.CCSecondary">
-        <Setter Property="Background" Value="#FFFFFFFF"/>
-        <Setter Property="Foreground" Value="#FF5A3D8F"/>
-        <Setter Property="BorderBrush" Value="#FFE5D9F5"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="FontSize" Value="13.5"/>
@@ -560,12 +550,12 @@
         </Setter>
     </Style>
     <Style Selector="Button.CCSecondary:pointerover">
-        <Setter Property="Background" Value="#FFF8F4FD"/>
+        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
     </Style>
 
     <Style Selector="Button.CCGhost">
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="#FF5A3D8F"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="FontSize" Value="13.5"/>
@@ -579,12 +569,12 @@
         </Setter>
     </Style>
     <Style Selector="Button.CCGhost:pointerover">
-        <Setter Property="Background" Value="#FFF8F4FD"/>
+        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
     </Style>
 
     <Style Selector="Button.CCDiscard">
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="Foreground" Value="#FF9A9EA6"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="7"/>
         <Setter Property="FontSize" Value="14"/>
@@ -598,7 +588,7 @@
         </Setter>
     </Style>
     <Style Selector="Button.CCDiscard:pointerover">
-        <Setter Property="Background" Value="#FFF4F4F6"/>
-        <Setter Property="Foreground" Value="#FF5A3D8F"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
     </Style>
 </Styles>

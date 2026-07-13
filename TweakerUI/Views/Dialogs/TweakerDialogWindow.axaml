@@ -13,7 +13,7 @@
         <Border Grid.Row="0" Background="Black" Opacity="0.45"/>
 
         <Border Grid.Row="1"
-                Background="White"
+                Background="{DynamicResource SurfaceBrush}"
                 CornerRadius="10"
                 Padding="24"
                 MinWidth="300"
@@ -22,7 +22,7 @@
                 VerticalAlignment="Center"
                 BoxShadow="0 4 24 0 #40000000">
             <StackPanel Spacing="20">
-                <TextBlock Text="{Binding Message}" TextWrapping="Wrap" FontSize="15" HorizontalAlignment="Center" TextAlignment="Center"/>
+                <TextBlock Text="{Binding Message}" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" FontSize="15" HorizontalAlignment="Center" TextAlignment="Center"/>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12">
                     <Button Content="OK" Click="OnOkClick" IsVisible="{Binding ShowOk}" MinWidth="80"/>
                     <Button Content="Cancel" Click="OnCancelClick" IsVisible="{Binding ShowCancel}" MinWidth="80"/>
