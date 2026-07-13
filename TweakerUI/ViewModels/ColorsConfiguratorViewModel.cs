@@ -135,7 +135,7 @@ namespace TweakerUI.ViewModels
         }
 
         [RelayCommand]
-        private void NewPalette()
+        private async Task NewPalette()
         {
             var palette = new ColorPalette
             {
@@ -147,8 +147,10 @@ namespace TweakerUI.ViewModels
                 Red = Colors.Red,
             };
             Palettes.Add(palette);
-            PaletteDynamicLoadContainer.Add(palette, PaletteContainerFilename);
             SelectPalette(palette);
+
+            if (!await Task.Run(() => PaletteDynamicLoadContainer.Add(palette, PaletteContainerFilename)))
+                await ApplicationNotificationManager.Manager.ShowImportantInfo("Cache error", "Error while writing cached palette storage. Changes will not be saved");
         }
 
         private ColorPalette BuildWorkingPalette()
@@ -172,7 +174,12 @@ namespace TweakerUI.ViewModels
                 return;
 
             var updated = BuildWorkingPalette();
-            await Task.Run(() => PaletteDynamicLoadContainer.Replace(EditedPalette, updated, PaletteContainerFilename));
+            var ok = await Task.Run(() => PaletteDynamicLoadContainer.Replace(EditedPalette, updated, PaletteContainerFilename));
+            if (!ok)
+            {
+                await ApplicationNotificationManager.Manager.ShowImportantInfo("Cache error", "Error while writing cached palette storage. Changes will not be saved");
+                return;
+            }
 
             EditedPalette.Name = updated.Name;
             EditedPalette.Purple = updated.Purple;
@@ -188,6 +195,7 @@ namespace TweakerUI.ViewModels
             var newPalette = BuildWorkingPalette();
             newPalette.Id = Guid.NewGuid();
             Palettes.Add(newPalette);
+            SelectPalette(newPalette);
 
             var ok = await Task.Run(() => PaletteDynamicLoadContainer.Add(newPalette, PaletteContainerFilename));
             if (!ok)
@@ -220,6 +228,15 @@ namespace TweakerUI.ViewModels
         [RelayCommand]
         private async Task ApplyPaletteToGame()
         {
+            // GameTexturesPath can legitimately be null/missing here - that's exactly the state left
+            // behind by ConfigurationManager's "can't detect Audiosurf installation" fault path, which
+            // points the user at Settings to fix it rather than crashing on the very next click.
+            if (string.IsNullOrEmpty(SettingsProvider.GameTexturesPath) || !Directory.Exists(SettingsProvider.GameTexturesPath))
+            {
+                ApplicationNotificationManager.Manager.ShowError("Error", "Game textures folder is not set or does not exist. Check the Settings tab, then try again");
+                return;
+            }
+
             var isGameKilled = false;
             var gameProcesses = Process.GetProcessesByName("QuestViewer");
             if (gameProcesses.Length > 0)
@@ -263,6 +280,12 @@ namespace TweakerUI.ViewModels
         [RelayCommand]
         private void SaveCurrentFromGame()
         {
+            if (string.IsNullOrEmpty(SettingsProvider.GameTexturesPath) || !Directory.Exists(SettingsProvider.GameTexturesPath))
+            {
+                ApplicationNotificationManager.Manager.ShowError("Error", "Game textures folder is not set or does not exist. Check the Settings tab, then try again");
+                return;
+            }
+
             var pathToIni = Directory.GetParent(SettingsProvider.GameTexturesPath)?.FullName + "\\options.ini";
             var presenter = new AudiosurfConfigurationPresenter();
             try

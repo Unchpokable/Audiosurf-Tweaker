@@ -19,6 +19,8 @@ namespace TweakerUI
         {
             AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
             SkinPackager.OperationFailed += OnSkinPackagerOperationFailed;
+            LegacyConverter.ConversionFailed += OnLegacyConversionFailed;
+            _logger.ReadWriteException += OnLoggerReadWriteException;
         }
 
         public override void Initialize()
@@ -42,6 +44,20 @@ namespace TweakerUI
         private void OnSkinPackagerOperationFailed(string context, Exception exception)
         {
             _logger.Log("SkinPackager", $"{context}: {exception}");
+        }
+
+        private void OnLegacyConversionFailed(string path, Exception exception)
+        {
+            _logger.Log("LegacyConverter", $"Failed to convert '{path}': {exception}");
+        }
+
+        // The logger itself couldn't write to disk (restricted MyDocuments path, log dir deleted while
+        // running, etc.) - surfacing this beats losing every subsequent Log() call silently, since
+        // Logger is usually the only place an original failure's details are recorded at all.
+        private void OnLoggerReadWriteException(object sender, UnhandledExceptionEventArgs e)
+        {
+            ApplicationNotificationManager.Manager.ShowWarning("Logging error",
+                $"Could not write to the log file: {(e.ExceptionObject as Exception)?.Message}");
         }
 
         // Avalonia has no WPF-style DispatcherUnhandledException event to catch UI-thread exceptions

@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Threading.Tasks;
 using AudiosurfInterface;
@@ -219,7 +220,14 @@ namespace TweakerUI.ViewModels
             if (path == null)
                 return;
 
-            File.Copy(WatcherTempFile, path, overwrite: true);
+            try
+            {
+                File.Copy(WatcherTempFile, path, overwrite: true);
+            }
+            catch (Exception ex)
+            {
+                ApplicationNotificationManager.Manager.ShowError("Duplicate temp file", $"Could not copy the temp file: {ex.Message}");
+            }
         }
 
         private void StartWatcher()
@@ -258,7 +266,7 @@ namespace TweakerUI.ViewModels
 
         private async void OnWatcherTriggered(object sender, FileSystemEventArgs e)
         {
-            AudiosurfHandle.Instance.Command("ascommand reloadtextures");
+            AudiosurfHandle.Instance.Command(GameProtocol.Command(GameProtocol.ReloadTextures));
             if (IsShouldStoreTextures)
                 await (Watcher?.OverwriteTempFile() ?? Task.CompletedTask);
         }

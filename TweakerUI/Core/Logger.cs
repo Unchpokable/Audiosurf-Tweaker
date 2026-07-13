@@ -37,8 +37,12 @@ namespace TweakerUI.Core
                     writer.WriteLine(FormatMessage(logTitle, message));
                 }
             }
-            catch (IOException e)
+            catch (Exception e)
             {
+                // Logger is typically called from inside another class's own catch block to record the
+                // original failure - letting a narrower exception type (e.g. UnauthorizedAccessException
+                // on a restricted MyDocuments path) escape here would replace that original error with an
+                // unrelated crash instead.
                 ReadWriteException?.Invoke(this, new UnhandledExceptionEventArgs(e, false));
             }
         }

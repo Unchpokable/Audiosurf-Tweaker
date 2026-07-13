@@ -159,13 +159,13 @@ namespace TweakerUI.ViewModels
                 if (clearInstall)
                 {
                     Utils.HardClear(target);
-                    AudiosurfHandle.Instance.Command("ascommand reloadtextures");
+                    AudiosurfHandle.Instance.Command(GameProtocol.Command(GameProtocol.ReloadTextures));
                 }
 
                 var skinName = await InstallSkinInternal(pathToOrigin, target, forced, unpackScreenshots, saveState);
 
                 if (SettingsProvider.HotReload)
-                    AudiosurfHandle.Instance.Command("ascommand reloadtextures");
+                    AudiosurfHandle.Instance.Command(GameProtocol.Command(GameProtocol.ReloadTextures));
 
                 ApplicationNotificationManager.Manager.ShowSuccess("Done!", $"Skin \"{skinName}\" successfully installed. Enjoy! ^_^");
                 ChangerStatus = "Ready";
@@ -204,7 +204,7 @@ namespace TweakerUI.ViewModels
 
         public void HandleFileDrop(IEnumerable<string> filePaths)
         {
-            var accepted = filePaths.Where(f => new[] { EnvironmentalVeriables.LegacySkinExtention, EnvironmentalVeriables.ActualSkinExtention }.Any(ext => ext == Path.GetExtension(f)));
+            var accepted = filePaths.Where(f => new[] { EnvironmentalVeriables.LegacySkinExtention, EnvironmentalVeriables.ActualSkinExtention }.Any(ext => ext.Equals(Path.GetExtension(f), StringComparison.OrdinalIgnoreCase)));
             foreach (var file in accepted)
                 _ = AddNewSkinAsync(file);
         }

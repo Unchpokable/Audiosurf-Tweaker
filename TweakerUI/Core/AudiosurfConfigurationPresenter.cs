@@ -116,10 +116,15 @@ namespace TweakerUI.Core
                 while (!file.EndOfStream)
                 {
                     var rawLine = file.ReadLine();
-                    if (string.IsNullOrEmpty(rawLine))
+                    if (string.IsNullOrWhiteSpace(rawLine))
                         continue;
                     var line = rawLine.Split(':').Select(x => x.Trim()).ToArray();
-                    _configurations[line[0]] = float.Parse(line[1], CultureInfo.InvariantCulture);
+                    // A blank/trailing line with no ':' (or one that doesn't parse as a float) is just
+                    // skipped rather than failing the whole read - options.ini isn't validated elsewhere,
+                    // so a stray line shouldn't turn into "Error while reading game configuration".
+                    if (line.Length < 2 || !float.TryParse(line[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
+                        continue;
+                    _configurations[line[0]] = value;
                 }
             }
         }

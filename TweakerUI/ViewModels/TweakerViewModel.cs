@@ -26,55 +26,55 @@ namespace TweakerUI.ViewModels
         private bool invisibleRoadTweakActive;
 
         partial void OnInvisibleRoadTweakActiveChanged(bool value) =>
-            _audiosurfHandle.Command($"asconfig roadvisible {(!value).ToString().ToLower()}");
+            _audiosurfHandle.Command(GameProtocol.Config(GameProtocol.RoadVisible, !value));
 
         [ObservableProperty]
         private bool hiddenSongTweakActive;
 
         partial void OnHiddenSongTweakActiveChanged(bool value) =>
-            _audiosurfHandle.Command($"asconfig showsongname {(!value).ToString().ToLower()}");
+            _audiosurfHandle.Command(GameProtocol.Config(GameProtocol.ShowSongName, !value));
 
         [ObservableProperty]
         private bool sidewinderCameraTweakActive;
 
         partial void OnSidewinderCameraTweakActiveChanged(bool value) =>
-            _audiosurfHandle.Command($"asconfig sidewinder {value.ToString().ToLower()}");
+            _audiosurfHandle.Command(GameProtocol.Config(GameProtocol.Sidewinder, value));
 
         [ObservableProperty]
         private bool bankingCameraTweakActive;
 
         partial void OnBankingCameraTweakActiveChanged(bool value) =>
-            _audiosurfHandle.Command($"asconfig usebankingcamera {value.ToString().ToLower()}");
+            _audiosurfHandle.Command(GameProtocol.Config(GameProtocol.UseBankingCamera, value));
 
         [ObservableProperty]
         private bool freerideNoBlocksTweakActive;
 
         partial void OnFreerideNoBlocksTweakActiveChanged(bool value) =>
-            _audiosurfHandle.Command($"asconfig freerideblocks {(!value).ToString().ToLower()}");
+            _audiosurfHandle.Command(GameProtocol.Config(GameProtocol.FreerideBlocks, !value));
 
         [ObservableProperty]
         private bool freerideBlocksCaterpillarsTweakActive;
 
         partial void OnFreerideBlocksCaterpillarsTweakActiveChanged(bool value) =>
-            _audiosurfHandle.Command($"asconfig freeridecaterpillars {value.ToString().ToLower()}");
+            _audiosurfHandle.Command(GameProtocol.Config(GameProtocol.FreerideCaterpillars, value));
 
         [ObservableProperty]
         private bool freerideAutoAdvanceDisableTweakActive;
 
         partial void OnFreerideAutoAdvanceDisableTweakActiveChanged(bool value) =>
-            _audiosurfHandle.Command($"asconfig freerideautoadvance {(!value).ToString().ToLower()}");
+            _audiosurfHandle.Command(GameProtocol.Config(GameProtocol.FreerideAutoAdvance, !value));
 
         public string ConsoleContent => _console.ToString();
 
         [RelayCommand]
         private void Send(string param)
         {
-            if (string.Equals(param, "closeaudiosurf", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(param, GameProtocol.CloseAudiosurf, StringComparison.OrdinalIgnoreCase))
             {
                 KillAudiosurf();
                 return;
             }
-            _audiosurfHandle.Command($"ascommand {param}");
+            _audiosurfHandle.Command(GameProtocol.Command(param));
         }
 
         [RelayCommand]

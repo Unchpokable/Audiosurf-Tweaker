@@ -2,6 +2,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <Styles.Resources>
+        <!-- Bridge status row's reset button (see Button.IconResetButton below). -->
+        <StreamGeometry x:Key="IconReset">M1 4v6h6 M3.51 15a9 9 0 1 0 2.13-9.36L1 10</StreamGeometry>
+
         <!-- Fully retemplated rather than styled through Setters: FluentTheme's built-in TextBox
         template draws its own accent-colored focus ring on a template-internal part that a plain
         Setter can't reach, which produced a thick, badly-placed focus outline. Owning the whole
@@ -122,8 +125,8 @@
         <Setter Property="Background" Value="#FF6E00FF"/>
     </Style>
 
-    <!-- Bridge connection controls (Reset/Auto): the real Audiosurf Tweaker palette is white-and-purple,
-    not gray - these two match the old UnderscoredButton/FlatButton styles almost exactly. -->
+    <!-- Bridge connection controls: the real Audiosurf Tweaker palette is white-and-purple, not gray -
+    this matches the old UnderscoredButton style almost exactly. -->
     <Style Selector="Button.UnderscoredButton">
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="#FF5D5D5D"/>
@@ -168,13 +171,17 @@
         <Setter Property="Background" Value="#FFA7B8FF"/>
     </Style>
 
-    <Style Selector="Button.FlatButton">
-        <Setter Property="Background" Value="#FF9D5BF5"/>
-        <Setter Property="Foreground" Value="#FFE0E0E0"/>
+    <!-- Small icon-only reset button next to the status dot (replaces the old full-width "Reset" text
+    button + "Auto" button pair - auto-handling is now the bridge subprocess's own always-on behavior,
+    so the button for it was removed rather than kept as a no-op). -->
+    <Style Selector="Button.IconResetButton">
+        <Setter Property="Width" Value="26"/>
+        <Setter Property="Height" Value="26"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="#FF9D5BF5"/>
         <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="Height" Value="36"/>
-        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="CornerRadius" Value="7"/>
+        <Setter Property="Padding" Value="5"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Cursor" Value="Hand"/>
@@ -184,11 +191,11 @@
             </Transitions>
         </Setter>
     </Style>
-    <Style Selector="Button.FlatButton:pointerover">
-        <Setter Property="Background" Value="#FF8A32FF"/>
+    <Style Selector="Button.IconResetButton:pointerover">
+        <Setter Property="Background" Value="#FFF1E9FE"/>
     </Style>
-    <Style Selector="Button.FlatButton:pressed">
-        <Setter Property="Background" Value="#FF6D00FF"/>
+    <Style Selector="Button.IconResetButton:pressed">
+        <Setter Property="Background" Value="#FFE0CFFB"/>
     </Style>
 
     <!-- ============================================================================

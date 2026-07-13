@@ -110,27 +110,49 @@ namespace TweakerUI.Models
                 return;
 
             skinObject.Name = newName;
-            Name = newName;
-
             var newFile = $@"Skins\{newName}{EnvironmentalVeriables.ActualSkinExtention}";
             var oldFile = _pathToOriginFile;
-            _pathToOriginFile = newFile;
 
-            await Task.Run(() =>
+            // Name/_pathToOriginFile are only committed below once the file operations actually
+            // succeed - previously they were updated optimistically up front, so a failed compile or a
+            // locked/undeletable old file left the card pointing at a file that didn't exist on disk.
+            var success = await Task.Run(() =>
             {
-                SkinPackager.CompileToPath(skinObject, "Skins");
-                File.Delete(oldFile);
-
-                var cacheDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-                if (LoadingCache.TryFind(cacheDir, out LoadingCache cache))
+                try
                 {
-                    cache.Data.RemoveAll(x => x.Name == oldName);
-                    cache.Data.Add(new LoadedSkinData(skinObject, newFile));
-                    cache.Serialize(cacheDir);
-                }
+                    if (!SkinPackager.CompileToPath(skinObject, "Skins"))
+                        return false;
 
-                Utils.DisposeAndClear(cache, skinObject);
+                    File.Delete(oldFile);
+
+                    var cacheDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                    if (LoadingCache.TryFind(cacheDir, out LoadingCache cache))
+                    {
+                        cache.Data.RemoveAll(x => x.Name == oldName);
+                        cache.Data.Add(new LoadedSkinData(skinObject, newFile));
+                        cache.Serialize(cacheDir);
+                        Utils.DisposeAndClear(cache);
+                    }
+
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
             });
+
+            Utils.DisposeAndClear(skinObject);
+
+            if (success)
+            {
+                Name = newName;
+                _pathToOriginFile = newFile;
+            }
+            else
+            {
+                ApplicationNotificationManager.Manager.ShowError("Rename failed", $"Could not rename skin \"{oldName}\" to \"{newName}\". The skin file on disk was left unchanged.");
+            }
         }
 
         [RelayCommand]

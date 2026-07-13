@@ -37,6 +37,8 @@ namespace TweakerCore.FolderChecker
 
         public bool Equals(FolderHashInfo obj)
         {
+            if (obj == null || ContainedFilesHashes == null || obj.ContainedFilesHashes == null)
+                return false;
             if (ContainedFilesHashes.Count != obj.ContainedFilesHashes.Count)
                 return false;
             foreach (var array in obj.ContainedFilesHashes)

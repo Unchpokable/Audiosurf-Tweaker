@@ -14,6 +14,11 @@ namespace TweakerCore.Engine
         public AudiosurfSkinExtended() : base()
         {
             Cover = new NamedBitmap();
+            // Reinterpret/Clone/DeepClone all already assign a fresh id on creation - the default
+            // constructor (used by CreateSkinFromFolder and every ReadSkinArchive decompile) was the
+            // only path that left this at its zero default, defeating "Import from Game"/every
+            // decompiled skin's uniqueness.
+            _id = new UID((uint)DateTime.Now.Ticks);
         }
 
         public static AudiosurfSkinExtended Reinterpret(AudiosurfSkin source)
@@ -75,6 +80,15 @@ namespace TweakerCore.Engine
                 Cover = this.Cover,
                 _id = new UID((uint)DateTime.Now.Ticks)
             };
+        }
+
+        // Base Dispose(bool) never touches Cover - it's a member only this subclass adds.
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+                Cover?.Dispose();
+            Cover = null;
+            base.Dispose(disposing);
         }
     }
 }

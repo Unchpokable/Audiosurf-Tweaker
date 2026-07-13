@@ -51,20 +51,15 @@
                         </StackPanel>
 
                         <Border Grid.Row="2" BorderBrush="#FFC3C3C3" BorderThickness="0,1,0,0" Margin="16,0,16,16" Padding="0,14,0,0">
-                            <StackPanel Spacing="12">
-                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                    <Ellipse Width="10" Height="10" Fill="{Binding AudiosurfStatusBrush}" Stroke="DarkGray" StrokeThickness="1"/>
-                                    <TextBlock Text="{Binding AudiosurfStatusMessage}" FontSize="13" Foreground="#FF717171" VerticalAlignment="Center"/>
-                                </StackPanel>
-                                <Grid ColumnDefinitions="*,*">
-                                    <Button Grid.Column="0" Content="Reset" Classes="FlatButton" Command="{Binding ResetBridgeCommand}"
-                                            HorizontalAlignment="Stretch" Margin="0,0,4,0"
-                                            ToolTip.Tip="Reinitialize the bridge and try to register with the game again"/>
-                                    <Button Grid.Column="1" Content="Auto" Classes="FlatButton" Command="{Binding EnableAutoHandlingCommand}"
-                                            HorizontalAlignment="Stretch" Margin="4,0,0,0"
-                                            ToolTip.Tip="Enable auto-handling (enabled by default)"/>
-                                </Grid>
-                            </StackPanel>
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Ellipse Grid.Column="0" Width="10" Height="10" Fill="{Binding AudiosurfStatusBrush}" Stroke="DarkGray" StrokeThickness="1" VerticalAlignment="Center"/>
+                                <TextBlock Grid.Column="1" Text="{Binding AudiosurfStatusMessage}" FontSize="13" Foreground="#FF717171" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                                <Button Grid.Column="2" Classes="IconResetButton" Command="{Binding ResetBridgeCommand}"
+                                        ToolTip.Tip="Reinitialize the bridge and try to register with the game again">
+                                    <Path Data="{StaticResource IconReset}" Width="14" Height="14" Stretch="Uniform"
+                                          Stroke="#FF9D5BF5" StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent"/>
+                                </Button>
+                            </Grid>
                         </Border>
                     </Grid>
                 </Border>

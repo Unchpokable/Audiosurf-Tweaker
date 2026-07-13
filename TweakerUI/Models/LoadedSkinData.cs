@@ -38,8 +38,10 @@ namespace TweakerUI.Models
             {
                 if (disposing)
                 {
-                    foreach (var bmp in Screenshots)
-                        bmp.Dispose();
+                    // A corrupted/truncated load.cache entry can decode to a null SKBitmap (SKBitmap.Decode
+                    // returns null rather than throwing on bad data) - skip those instead of NRE-ing here.
+                    foreach (var bmp in Screenshots ?? Enumerable.Empty<SKBitmap>())
+                        bmp?.Dispose();
                 }
                 Screenshots = null;
                 _disposedValue = true;

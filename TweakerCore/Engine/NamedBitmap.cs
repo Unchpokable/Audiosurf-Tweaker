@@ -109,9 +109,14 @@ namespace TweakerCore.Engine
             if (source == null)
                 return;
 
+            // Name can come straight from a decompiled skin's manifest.json, which is untrusted
+            // (skins are shared user files) - strip any directory component so a crafted manifest
+            // entry like "..\..\Startup\x.png" can't write outside the target folder.
+            var safeName = System.IO.Path.GetFileName(Name);
+
             using (var image = SKImage.FromBitmap(source))
             using (var data = image.Encode(GetImageFormatByExtension(format.ToLower()), JpegEncodeQuality))
-            using (var filestream = System.IO.File.Create(filepath + @"\\" + Name))
+            using (var filestream = System.IO.File.Create(System.IO.Path.Combine(filepath, safeName)))
             {
                 data.SaveTo(filestream);
             }

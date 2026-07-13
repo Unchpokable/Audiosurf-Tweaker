@@ -78,8 +78,11 @@ namespace TweakerUI.Models
                 }
                 return false;
             }
-            catch (JsonException ex)
+            catch (Exception ex)
             {
+                // This is a local disposable cache, not user data - any read failure (malformed JSON,
+                // a locked/deleted/inaccessible cache dir) is treated as "no cache", not propagated to
+                // crash the caller; SkinChangerViewModel falls back to rebuilding it from source files.
                 _logger.Log("LoadingCache", $"Failed to load loading cache from '{path}': {ex}");
                 return false;
             }

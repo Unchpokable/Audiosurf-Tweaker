@@ -47,8 +47,6 @@ namespace TweakerUI.Core
         public void ShowWarningWnd(string title, string message) => Show(title, message, NotificationType.Warning);
         public void ShowInformationWnd(string title, string message) => Show(title, message, NotificationType.Information);
 
-        public void ShowOverWindow(string title, string message, NotificationType type) => _host?.Show(new Notification(title, message, type));
-
         // Replaces the old blocking WPF ShowDialog() - Avalonia's Window.ShowDialog<T>() runs on
         // Dispatcher.UIThread rather than a nested message loop, so a synchronous wrapper here would
         // deadlock the UI thread waiting on itself. Call sites become "await"-ed as each module is ported.
@@ -77,7 +75,18 @@ namespace TweakerUI.Core
 
             if (SettingsProvider.IsUWPNotificationSilent)
                 toast.AddAudio(new ToastAudio() { Silent = true });
-            toast.Show();
+
+            try
+            {
+                toast.Show();
+            }
+            catch
+            {
+                // Toast notifications commonly throw for unpackaged Win32 apps without a registered
+                // AUMID/shortcut (e.g. a portable build) - falling back to the in-app notification host
+                // beats losing the message entirely.
+                _host?.Show(new Notification(caption, message, NotificationType.Information));
+            }
         }
     }
 }

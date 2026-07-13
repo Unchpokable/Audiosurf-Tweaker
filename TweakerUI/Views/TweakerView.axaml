@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:TweakerUI.ViewModels"
+             xmlns:ai="clr-namespace:AudiosurfInterface;assembly=AudiosurfInterface"
              x:Class="TweakerUI.Views.TweakerView"
              x:DataType="vm:TweakerViewModel">
 
@@ -84,18 +85,18 @@
                     <TextBlock Text="Commands" Classes="TWCardTitle" Margin="0,0,0,10"/>
                     <Grid ColumnDefinitions="*,16,*">
                         <StackPanel Grid.Column="0">
-                            <Button Classes="TWCommandButton" Content="Set Audiosurf always on top" Command="{Binding SendCommand}" CommandParameter="setwindowalwaysontop" IsEnabled="{Binding IsAudiosurfConnected}"/>
-                            <Button Classes="TWCommandButton" Content="Always on top (no border)" Command="{Binding SendCommand}" CommandParameter="setwindowalwaysontopnoborder" IsEnabled="{Binding IsAudiosurfConnected}"/>
-                            <Button Classes="TWCommandButton" Content="Run without focus" Command="{Binding SendCommand}" CommandParameter="runwithoutfocus" IsEnabled="{Binding IsAudiosurfConnected}"/>
-                            <Button Classes="TWCommandButton" Content="Reload textures" Command="{Binding SendCommand}" CommandParameter="reloadtextures" IsEnabled="{Binding IsAudiosurfConnected}"/>
-                            <Button Classes="TWCommandButton" Content="Reload sounds" Command="{Binding SendCommand}" CommandParameter="reloadsounds" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                            <Button Classes="TWCommandButton" Content="Set Audiosurf always on top" Command="{Binding SendCommand}" CommandParameter="{x:Static ai:GameProtocol.SetWindowAlwaysOnTop}" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                            <Button Classes="TWCommandButton" Content="Always on top (no border)" Command="{Binding SendCommand}" CommandParameter="{x:Static ai:GameProtocol.SetWindowAlwaysOnTopNoBorder}" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                            <Button Classes="TWCommandButton" Content="Run without focus" Command="{Binding SendCommand}" CommandParameter="{x:Static ai:GameProtocol.RunWithoutFocus}" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                            <Button Classes="TWCommandButton" Content="Reload textures" Command="{Binding SendCommand}" CommandParameter="{x:Static ai:GameProtocol.ReloadTextures}" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                            <Button Classes="TWCommandButton" Content="Reload sounds" Command="{Binding SendCommand}" CommandParameter="{x:Static ai:GameProtocol.ReloadSounds}" IsEnabled="{Binding IsAudiosurfConnected}"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2">
-                            <Button Classes="TWCommandButton" Content="Go to character screen" Command="{Binding SendCommand}" CommandParameter="gotocharacterscreen" IsEnabled="{Binding IsAudiosurfConnected}"/>
-                            <Button Classes="TWCommandButton" Content="Maximize Audiosurf" Command="{Binding SendCommand}" CommandParameter="maximize" IsEnabled="{Binding IsAudiosurfConnected}"/>
-                            <Button Classes="TWCommandButton" Content="Go fullscreen" Command="{Binding SendCommand}" CommandParameter="gofullscreen" IsEnabled="{Binding IsAudiosurfConnected}"/>
-                            <Button Classes="TWCommandButton" Content="Restore window style" Command="{Binding SendCommand}" CommandParameter="restorenormalwindowstyle" IsEnabled="{Binding IsAudiosurfConnected}"/>
-                            <Button Classes="TWCommandButton" Content="Close Audiosurf" Command="{Binding SendCommand}" CommandParameter="closeaudiosurf" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                            <Button Classes="TWCommandButton" Content="Go to character screen" Command="{Binding SendCommand}" CommandParameter="{x:Static ai:GameProtocol.GoToCharacterScreen}" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                            <Button Classes="TWCommandButton" Content="Maximize Audiosurf" Command="{Binding SendCommand}" CommandParameter="{x:Static ai:GameProtocol.Maximize}" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                            <Button Classes="TWCommandButton" Content="Go fullscreen" Command="{Binding SendCommand}" CommandParameter="{x:Static ai:GameProtocol.GoFullscreen}" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                            <Button Classes="TWCommandButton" Content="Restore window style" Command="{Binding SendCommand}" CommandParameter="{x:Static ai:GameProtocol.RestoreNormalWindowStyle}" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                            <Button Classes="TWCommandButton" Content="Close Audiosurf" Command="{Binding SendCommand}" CommandParameter="{x:Static ai:GameProtocol.CloseAudiosurf}" IsEnabled="{Binding IsAudiosurfConnected}"/>
                         </StackPanel>
                     </Grid>
                 </StackPanel>

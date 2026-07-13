@@ -1,4 +1,5 @@
 using System;
+using System.Threading.Tasks;
 using Avalonia.Media;
 using Avalonia.Threading;
 using AudiosurfInterface;
@@ -58,11 +59,11 @@ namespace TweakerUI.ViewModels
         [RelayCommand]
         private void ShowSettings() => CurrentView = SettingsVM;
 
+        // ReinitializeWndProcMessageService disposes the old bridge connection synchronously (up to a
+        // 2s Thread.Join plus a blocking Process.Kill) - running it inline on the UI thread froze the
+        // whole window for that long every time the user hit Reset.
         [RelayCommand]
-        private void ResetBridge() => _asHandle.ReinitializeWndProcMessageService();
-
-        [RelayCommand]
-        private void EnableAutoHandling() => _asHandle.StartAutoHandling();
+        private Task ResetBridge() => Task.Run(() => _asHandle.ReinitializeWndProcMessageService());
 
         private void OnAudiosurfStateChanged(object sender, EventArgs e)
         {

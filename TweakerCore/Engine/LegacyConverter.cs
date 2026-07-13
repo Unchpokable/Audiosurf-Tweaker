@@ -14,6 +14,8 @@ namespace TweakerCore.Engine
     {
         private const string ExecutableRelativePath = "LegacyDataConverter.exe";
 
+        public static event Action<string, Exception> ConversionFailed;
+
         public static bool IsAvailable => File.Exists(GetConverterPath());
 
         public static bool TryConvert(string path)
@@ -38,8 +40,9 @@ namespace TweakerCore.Engine
                     return process.ExitCode == 0;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                ConversionFailed?.Invoke(path, ex);
                 return false;
             }
         }

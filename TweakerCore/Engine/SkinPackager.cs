@@ -72,7 +72,7 @@ namespace TweakerCore.Engine
             if (!File.Exists(path))
                 return null;
 
-            if (new[] { Env.LegacySkinExtention, Env.ActualSkinExtention }.All(ext => ext != Path.GetExtension(path)))
+            if (new[] { Env.LegacySkinExtention, Env.ActualSkinExtention }.All(ext => !ext.Equals(Path.GetExtension(path), StringComparison.OrdinalIgnoreCase)))
                 return null;
 
             try
@@ -112,7 +112,10 @@ namespace TweakerCore.Engine
                 result.Cover = result.Previews?.Group?.FirstOrDefault();
             }
 
-            if (tiles.Group.Count > 1 || tileflyup.Group.Count > 1)
+            // Previously only rejected "more than one match" - a folder with neither file wrapped a
+            // null SKBitmap into the result instead, which only surfaced later as a generic
+            // "failed to compile" from Compile's SKImage.FromBitmap(null) rather than a clear cause here.
+            if (tiles.Group.Count != 1 || tileflyup.Group.Count != 1)
             {
                 return null;
             }

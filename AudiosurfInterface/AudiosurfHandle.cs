@@ -231,7 +231,7 @@ namespace AudiosurfInterface
         private void OnRegistered()
         {
             Registered?.Invoke(this, EventArgs.Empty);
-            for (int i = 0; i < _queuedCommands.Count; i++)
+            while (_queuedCommands.Count > 0)
             {
                 var command = _queuedCommands.Dequeue();
                 _connection.Send(command);

@@ -79,18 +79,26 @@ namespace TweakerCore.Engine
                 if (disposing)
                 {
                     SkySpheres.Dispose();
+                    // Unlike the other groups, SkySphereSource isn't set up by the default constructor
+                    // (only ever populated by Reinterpret/ReadSkinArchive), so it can legitimately be null.
+                    SkySphereSource?.Dispose();
                     Cliffs.Dispose();
                     Hits.Dispose();
                     Tiles.Dispose();
+                    TilesFlyup.Dispose();
                     Rings.Dispose();
                     Previews.Dispose();
+                    Particles.Dispose();
                 }
                 SkySpheres = null;
+                SkySphereSource = null;
                 Cliffs = null;
                 Tiles = null;
+                TilesFlyup = null;
                 Rings = null;
                 Hits = null;
                 Previews = null;
+                Particles = null;
                 _disposedValue = true;
             }
         }
