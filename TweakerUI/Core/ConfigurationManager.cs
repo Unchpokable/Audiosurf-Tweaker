@@ -26,6 +26,31 @@ namespace TweakerUI.Core
         // file's name on both runtimes, so use that instead.
         private static string ExePath => System.Reflection.Assembly.GetExecutingAssembly().Location;
 
+        // Mirrors the <appSettings> keys shipped in App.config. Read by EnsureDefaultKeysExist below -
+        // OpenExeConfiguration on a missing/incomplete config file returns a non-null but empty
+        // AppSettings section (confirmed by direct test), so Settings["FirstRun"].Value threw a
+        // NullReferenceException that SetUpDefaultSettings' own try/catch swallowed *before* it ever
+        // reached cfg.Save() - meaning a missing config file could never self-heal, it would just fail
+        // the same way on every single launch. This keeps that failure mode from being silent/permanent
+        // regardless of why the file's missing or incomplete (packaging step, manually deleted key, a
+        // setting added after a user's config was already on disk, ...).
+        private static readonly (string Key, string Default)[] DefaultAppSettings =
+        {
+            ("FirstRun", "true"),
+            ("TexturesPath", "None"),
+            ("AddSkinsPath", "None"),
+            ("HotReload", "true"),
+            ("DCSActive", "true"),
+            ("SafeInstall", "false"),
+            ("UseFastPreview", "false"),
+            ("WatcherEnabled", "false"),
+            ("WatcherTempFile", "Storage/temp.tasp"),
+            ("WatcherShouldStoreTextures", "false"),
+            ("WatcherTempFileOverrided", "false"),
+            ("UWPNotificationsAllowed", "false"),
+            ("UWPNotificationSilent", "true"),
+        };
+
         public static void SetUpDefaultSettings()
         {
             try
@@ -37,6 +62,8 @@ namespace TweakerUI.Core
                     InitializationFaultCallback?.Invoke(new Exception("Null configuration section"));
                     return;
                 }
+
+                EnsureDefaultKeysExist(cfg);
 
                 if (!bool.Parse(cfg.AppSettings.Settings["FirstRun"].Value) && Directory.Exists(cfg.AppSettings.Settings["TexturesPath"].Value))
                     return;
@@ -64,6 +91,22 @@ namespace TweakerUI.Core
             }
         }
 
+        private static void EnsureDefaultKeysExist(Configuration cfg)
+        {
+            var addedAnyKey = false;
+            foreach (var (key, defaultValue) in DefaultAppSettings)
+            {
+                if (cfg.AppSettings.Settings[key] != null)
+                    continue;
+
+                cfg.AppSettings.Settings.Add(key, defaultValue);
+                addedAnyKey = true;
+            }
+
+            if (addedAnyKey)
+                cfg.Save();
+        }
+
         public static void InitializeEnvironment()
         {
             try
@@ -86,12 +129,6 @@ namespace TweakerUI.Core
                 Settings.UseFastPreview = bool.Parse(Get("UseFastPreview"));
                 Settings.IsUWPNotificationsAllowed = bool.Parse(Get("UWPNotificationsAllowed"));
                 Settings.IsUWPNotificationSilent = bool.Parse(Get("UWPNotificationSilent"));
-                Settings.IsOverlayEnabled = bool.Parse(Get("OverlayEnabled"));
-                Settings.InfopanelFontColor = Get("InfopanelFontColor");
-                Settings.InfopanelFontSize = Get("InfopanelFontSize");
-                Settings.InfopanelXOffset = Get("InfopanelXOffset");
-                Settings.InfopanelYOffset = Get("InfopanelYOffset");
-                Settings.InstalledServerPackageName = Get("InstalledServerPackageName");
             }
             catch (Exception e)
             {
@@ -116,12 +153,6 @@ namespace TweakerUI.Core
                 cfg.AppSettings.Settings["UseFastPreview"].Value = Settings.UseFastPreview.ToString();
                 cfg.AppSettings.Settings["UWPNotificationsAllowed"].Value = Settings.IsUWPNotificationsAllowed.ToString();
                 cfg.AppSettings.Settings["UWPNotificationSilent"].Value = Settings.IsUWPNotificationSilent.ToString();
-                cfg.AppSettings.Settings["OverlayEnabled"].Value = Settings.IsOverlayEnabled.ToString();
-                cfg.AppSettings.Settings["InfopanelFontColor"].Value = Settings.InfopanelFontColor;
-                cfg.AppSettings.Settings["InfopanelFontSize"].Value = Settings.InfopanelFontSize;
-                cfg.AppSettings.Settings["InfopanelXOffset"].Value = Settings.InfopanelXOffset;
-                cfg.AppSettings.Settings["InfopanelYOffset"].Value = Settings.InfopanelYOffset;
-                cfg.AppSettings.Settings["InstalledServerPackageName"].Value = Settings.InstalledServerPackageName;
                 cfg.Save();
             }
             catch (Exception e)

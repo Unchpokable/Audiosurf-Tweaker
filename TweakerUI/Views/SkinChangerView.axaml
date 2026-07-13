@@ -30,77 +30,83 @@
                 </Grid>
             </Border>
 
-            <!-- Main area: icon rail | skins list | screenshots. Skins list and screenshots share the
-            remaining width proportionally (3:5) instead of a fixed pixel width for the list, so both
-            scale together when the window is resized instead of the screenshots column absorbing 100%
-            of the change alone. -->
-            <Grid Grid.Row="1" ColumnDefinitions="40,10,3*,14,5*" Margin="0,0,0,14">
-                <StackPanel Grid.Column="0" Spacing="6">
-                    <Button Classes="SCIconButton" Command="{Binding AddNewSkinCommand}" ToolTip.Tip="Add new .askin package">
-                        <Path Data="{StaticResource IconAdd}" Width="16" Height="16" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.3" StrokeLineCap="Round"/>
-                    </Button>
-                    <Button Classes="SCIconButton" Command="{Binding ImportFromGameCommand}" ToolTip.Tip="Package your currently installed textures as a new skin">
-                        <Path Data="{StaticResource IconImportGame}" Width="16" Height="16" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.1" StrokeLineCap="Round" StrokeJoin="Round"/>
-                    </Button>
-                    <Button Classes="SCIconButton" Command="{Binding ReloadSkinsCommand}" IsEnabled="{Binding ReloadButtonUnlocked}" ToolTip.Tip="Reload skins from disk">
-                        <Path Data="{StaticResource IconRefresh}" Width="16" Height="16" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.1" StrokeLineCap="Round" StrokeJoin="Round"/>
-                    </Button>
-                </StackPanel>
+            <!-- Main area: skins list (icon rail + list, one card) | screenshots. Skins list and
+            screenshots share the remaining width proportionally (3:5) instead of a fixed pixel width
+            for the list, so both scale together when the window is resized instead of the screenshots
+            column absorbing 100% of the change alone. -->
+            <Grid Grid.Row="1" ColumnDefinitions="3*,14,5*" Margin="0,0,0,14">
 
-                <Border Grid.Column="2" Classes="SCCard" Padding="10">
-                    <Grid>
-                        <!-- Loading skeleton: no skin-list caching, so a full reload leaves this empty for
-                        however long the disk scan takes - these rows fill that gap instead of a blank list. -->
-                        <ItemsControl ItemsSource="{Binding SkinPlaceholders}" IsVisible="{Binding LoadingVisible}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Classes="SCSkinRowSkeleton SCSkeletonPulse"/>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <ListBox x:Name="SkinsListBox" Classes="SCSkinsList" IsVisible="{Binding !LoadingVisible}"
-                                 ItemsSource="{Binding Skins}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
-                                 DragDrop.AllowDrop="True">
-                            <ListBox.KeyBindings>
-                                <KeyBinding Gesture="Delete" Command="{Binding RemoveSelectedCommand}"/>
-                            </ListBox.KeyBindings>
-                            <ListBox.ItemTemplate>
-                                <DataTemplate x:DataType="models:SkinCard">
-                                    <!-- No hover popup preview here - deliberately dropped. It would need
-                                    each card's screenshot decoded up front (fast-preview mode) to have
-                                    anything to show, which contradicts the "no screenshot caching" call
-                                    made to keep the app's memory footprint down. -->
-                                    <Grid ColumnDefinitions="34,14,*" Margin="10,10,14,10">
-                                        <Button Grid.Column="0" Classes="SCRowIconButton" Command="{Binding InstallCommand}"
-                                                ToolTip.Tip="{Binding InstallTooltip}" VerticalAlignment="Center">
-                                            <Path Data="{StaticResource IconInstall}" Width="17" Height="17" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
-                                        </Button>
-                                        <Grid Grid.Column="2" RowDefinitions="Auto,Auto">
-                                            <Panel Grid.Row="0" HorizontalAlignment="Left">
-                                                <TextBlock Text="{Binding Name}" Classes="SCSkinName" IsVisible="{Binding !RenameActive}" TextTrimming="CharacterEllipsis"/>
-                                                <TextBox Text="{Binding NewName, Mode=TwoWay}" Classes="SCRenameInput" IsVisible="{Binding RenameActive}"
-                                                         KeyDown="OnRenameKeyDown" MinWidth="160"/>
-                                            </Panel>
-                                            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="-7,6,0,0" Spacing="4">
-                                                <Button Classes="SCRowIconButton" Command="{Binding ExportCopyCommand}" ToolTip.Tip="{Binding ExportCopyTooltip}">
-                                                    <Path Data="{StaticResource IconExport}" Width="13" Height="13" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
-                                                </Button>
-                                                <Button Classes="SCRowIconButton" Click="OnRenameClick" ToolTip.Tip="{Binding RenameTooltip}">
-                                                    <Path Data="{StaticResource IconRename}" Width="13" Height="13" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
-                                                </Button>
-                                                <Button Classes="SCRowIconButton Danger" Command="{Binding RemoveCommand}" ToolTip.Tip="{Binding RemoveTooltip}">
-                                                    <Path Data="{StaticResource IconDelete}" Width="13" Height="13" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
-                                                </Button>
-                                            </StackPanel>
+                <!-- Icon rail lives inside this card now (not floating on the page background to its
+                left) - a standalone rail next to the card left a visible gap in the app's otherwise
+                consistent card language, per direct feedback. -->
+                <Border Grid.Column="0" Classes="SCCard" Padding="10">
+                    <Grid ColumnDefinitions="40,10,*">
+                        <StackPanel Grid.Column="0" Spacing="6">
+                            <Button Classes="SCIconButton" Command="{Binding AddNewSkinCommand}" ToolTip.Tip="Add new .askin package">
+                                <Path Data="{StaticResource IconAdd}" Width="16" Height="16" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.3" StrokeLineCap="Round"/>
+                            </Button>
+                            <Button Classes="SCIconButton" Command="{Binding ImportFromGameCommand}" ToolTip.Tip="Package your currently installed textures as a new skin">
+                                <Path Data="{StaticResource IconImportGame}" Width="16" Height="16" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.1" StrokeLineCap="Round" StrokeJoin="Round"/>
+                            </Button>
+                            <Button Classes="SCIconButton" Command="{Binding ReloadSkinsCommand}" IsEnabled="{Binding ReloadButtonUnlocked}" ToolTip.Tip="Reload skins from disk">
+                                <Path Data="{StaticResource IconRefresh}" Width="16" Height="16" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.1" StrokeLineCap="Round" StrokeJoin="Round"/>
+                            </Button>
+                        </StackPanel>
+
+                        <Grid Grid.Column="2">
+                            <!-- Loading skeleton: no skin-list caching, so a full reload leaves this empty for
+                            however long the disk scan takes - these rows fill that gap instead of a blank list. -->
+                            <ItemsControl ItemsSource="{Binding SkinPlaceholders}" IsVisible="{Binding LoadingVisible}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Classes="SCSkinRowSkeleton SCSkeletonPulse"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <ListBox x:Name="SkinsListBox" Classes="SCSkinsList" IsVisible="{Binding !LoadingVisible}"
+                                     ItemsSource="{Binding Skins}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
+                                     DragDrop.AllowDrop="True">
+                                <ListBox.KeyBindings>
+                                    <KeyBinding Gesture="Delete" Command="{Binding RemoveSelectedCommand}"/>
+                                </ListBox.KeyBindings>
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="models:SkinCard">
+                                        <!-- No hover popup preview here - deliberately dropped. It would need
+                                        each card's screenshot decoded up front (fast-preview mode) to have
+                                        anything to show, which contradicts the "no screenshot caching" call
+                                        made to keep the app's memory footprint down. -->
+                                        <Grid ColumnDefinitions="34,14,*" Margin="10,10,14,10">
+                                            <Button Grid.Column="0" Classes="SCRowIconButton" Command="{Binding InstallCommand}"
+                                                    ToolTip.Tip="{Binding InstallTooltip}" VerticalAlignment="Center">
+                                                <Path Data="{StaticResource IconInstall}" Width="17" Height="17" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                                            </Button>
+                                            <Grid Grid.Column="2" RowDefinitions="Auto,Auto">
+                                                <Panel Grid.Row="0" HorizontalAlignment="Left">
+                                                    <TextBlock Text="{Binding Name}" Classes="SCSkinName" IsVisible="{Binding !RenameActive}" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBox Text="{Binding NewName, Mode=TwoWay}" Classes="SCRenameInput" IsVisible="{Binding RenameActive}"
+                                                             KeyDown="OnRenameKeyDown" MinWidth="160"/>
+                                                </Panel>
+                                                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="-7,6,0,0" Spacing="4">
+                                                    <Button Classes="SCRowIconButton" Command="{Binding ExportCopyCommand}" ToolTip.Tip="{Binding ExportCopyTooltip}">
+                                                        <Path Data="{StaticResource IconExport}" Width="13" Height="13" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                                                    </Button>
+                                                    <Button Classes="SCRowIconButton" Click="OnRenameClick" ToolTip.Tip="{Binding RenameTooltip}">
+                                                        <Path Data="{StaticResource IconRename}" Width="13" Height="13" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                                                    </Button>
+                                                    <Button Classes="SCRowIconButton Danger" Command="{Binding RemoveCommand}" ToolTip.Tip="{Binding RemoveTooltip}">
+                                                        <Path Data="{StaticResource IconDelete}" Width="13" Height="13" Stretch="Uniform" Stroke="#FF6C4CE0" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                                                    </Button>
+                                                </StackPanel>
+                                            </Grid>
                                         </Grid>
-                                    </Grid>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
                     </Grid>
                 </Border>
 
-                <Border Grid.Column="4" Classes="SCCard">
+                <Border Grid.Column="2" Classes="SCCard">
                     <Grid RowDefinitions="Auto,*">
                         <TextBlock Grid.Row="0" Text="Screenshots" FontSize="14" FontWeight="SemiBold" Foreground="#FF8A8A8A" Margin="0,0,0,10"/>
                         <Grid Grid.Row="1">

@@ -1,8 +1,10 @@
 using System;
 using Avalonia.Media;
+using Avalonia.Threading;
 using AudiosurfInterface;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using TweakerUI.Core;
 
 namespace TweakerUI.ViewModels
 {
@@ -10,6 +12,15 @@ namespace TweakerUI.ViewModels
     {
         public MainWindowViewModel()
         {
+            // Mirrors the donor MainViewModel's constructor order exactly: config has to be loaded into
+            // SettingsProvider before any child VM is built, since several of them (SkinChangerViewModel
+            // among them) read SettingsProvider.* values straight from their own constructors. This was
+            // never actually wired up in TweakerUI before now - every SettingsProvider field has been
+            // sitting at its C# default (false/null) through every phase-4 smoke test to date.
+            ConfigurationManager.InitializationFaultCallback += OnConfigurationFault;
+            ConfigurationManager.SetUpDefaultSettings();
+            ConfigurationManager.InitializeEnvironment();
+
             SkinChangerVM = new SkinChangerViewModel();
             ColorsVM = new ColorsConfiguratorViewModel();
             TweakerVM = new TweakerViewModel();
@@ -57,6 +68,19 @@ namespace TweakerUI.ViewModels
         {
             OnPropertyChanged(nameof(AudiosurfStatusMessage));
             OnPropertyChanged(nameof(AudiosurfStatusBrush));
+        }
+
+        // Fires from ConfigurationManager's own constructor-time call above, when the window/its
+        // TopLevel-attached notification host don't exist yet (AppShell.MainWindow is still null at
+        // this point in startup) - DispatcherPriority.Loaded defers it past that window, the same
+        // priority already relied on elsewhere in this codebase for "after the window is actually up"
+        // timing (see SkinChangerView's rename-focus handling).
+        private static void OnConfigurationFault(Exception exception)
+        {
+            Dispatcher.UIThread.Post(() => ApplicationNotificationManager.Manager.ShowErrorWnd(
+                "Settings initialization error",
+                "Could not detect the Audiosurf installation. Check the Settings tab, set the game textures path manually, then restart Audiosurf Tweaker."),
+                DispatcherPriority.Loaded);
         }
     }
 }

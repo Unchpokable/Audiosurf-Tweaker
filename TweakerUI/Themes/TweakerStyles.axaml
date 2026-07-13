@@ -1,0 +1,195 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ============================================================================
+    Tweaker / Command and Control (stage 4.5) - no mockup for this tab, ported "on the eye"
+    from the donor Tweaker.xaml (checkboxes + plain buttons + a log TextBox) reusing this app's
+    own established visual language instead: card sections, the Skin Changer's toggle-switch
+    pattern (TWSwitch mirrors SCSwitch) with StreamGeometry icons in place of CheckBoxes, kept
+    in its own file per the same per-module scoping as SkinChangerStyles.axaml/CCCard. "TW"
+    prefix, accent purple #6C4CE0 matches the rest of the app.
+    ============================================================================ -->
+
+    <Styles.Resources>
+        <!-- Tweak toggle icons - stroke-style glyphs (same family as the SkinChanger icon rail,
+        rather than the filled-silhouette SCToggleIcon family) since these read better as thin
+        line icons at this size. -->
+        <StreamGeometry x:Key="IconCamera">M4 7h3l1.5-2h7L17 7h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z</StreamGeometry>
+        <StreamGeometry x:Key="IconBank">M3 19l7-14 M21 19l-7-14 M8 19h8</StreamGeometry>
+        <StreamGeometry x:Key="IconEyeOff">M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z M9.3 9.3a4 4 0 0 0 5.4 5.4 M2 2l20 20</StreamGeometry>
+        <StreamGeometry x:Key="IconMusicOff">M9 18V6l11-2v12 M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M17 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M2 2l20 20</StreamGeometry>
+        <StreamGeometry x:Key="IconGridOff">M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z M2 2l20 20</StreamGeometry>
+        <!-- 3 dots on a connecting line - matches the actual tweak (freeride blocks spawning as a
+        long connected chain instead of individually), not a zigzag. Its bbox (~19x5) is much wider
+        than tall, unlike the other icons here (~18x18ish) - see the Height override on this specific
+        Path usage in TweakerView.axaml for why that matters. -->
+        <StreamGeometry x:Key="IconCaterpillar">M4 15a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z M11 15a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z M18 15a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z M6 12h3 M13 12h3</StreamGeometry>
+        <StreamGeometry x:Key="IconSkipOff">M4 5v14l8-7z M13 5v14l8-7z M2 2l20 20</StreamGeometry>
+        <StreamGeometry x:Key="IconClear">M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M9 9l6 6 M15 9l-6 6</StreamGeometry>
+
+        <!-- Duplicated from SkinChangerStyles' SCSwitchTemplate rather than shared, per this
+        module's own file-scoping. -->
+        <ControlTemplate x:Key="TWSwitchTemplate" TargetType="ToggleButton">
+            <Grid Width="32" Height="18">
+                <Border Name="Track" CornerRadius="9" Background="#FFD5D5DA">
+                    <Border.Transitions>
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.2"/>
+                        </Transitions>
+                    </Border.Transitions>
+                </Border>
+                <Border Name="Thumb" Width="14" Height="14" CornerRadius="7" Background="White"
+                        HorizontalAlignment="Left" Margin="2,0,0,0">
+                    <Border.Transitions>
+                        <Transitions>
+                            <ThicknessTransition Property="Margin" Duration="0:0:0.2"/>
+                        </Transitions>
+                    </Border.Transitions>
+                </Border>
+            </Grid>
+        </ControlTemplate>
+    </Styles.Resources>
+
+    <!-- Section cards - same tokens as SCCard/CCCard, duplicated under this file's own prefix. -->
+    <Style Selector="Border.TWCard">
+        <Setter Property="Background" Value="#FFFFFFFF"/>
+        <Setter Property="BorderBrush" Value="#FFE2E4E9"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="18,14"/>
+    </Style>
+
+    <Style Selector="TextBlock.TWCardTitle">
+        <Setter Property="FontSize" Value="18"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="#FF2C2C31"/>
+    </Style>
+
+    <!-- Tweak toggle rows -->
+    <Style Selector="Border.TWToggleRow">
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="8,7"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.TWToggleRow:pointerover">
+        <Setter Property="Background" Value="#FFF4F2FC"/>
+    </Style>
+
+    <Style Selector="Path.TWToggleIcon">
+        <Setter Property="Stroke" Value="#FFA8A8B0"/>
+        <Setter Property="StrokeThickness" Value="1.8"/>
+        <Setter Property="StrokeLineCap" Value="Round"/>
+        <Setter Property="StrokeJoin" Value="Round"/>
+        <Setter Property="Fill" Value="Transparent"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Stroke" Duration="0:0:0.2"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.TWToggleRow.On Path.TWToggleIcon">
+        <Setter Property="Stroke" Value="#FF6C4CE0"/>
+    </Style>
+
+    <Style Selector="TextBlock.TWToggleLabel">
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="Foreground" Value="#FF3B3B40"/>
+    </Style>
+
+    <Style Selector="ToggleButton.TWSwitch">
+        <Setter Property="Template" Value="{StaticResource TWSwitchTemplate}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="ToggleButton.TWSwitch:checked /template/ Border#Track">
+        <Setter Property="Background" Value="#FF6C4CE0"/>
+    </Style>
+    <Style Selector="ToggleButton.TWSwitch:checked /template/ Border#Thumb">
+        <Setter Property="Margin" Value="16,0,0,0"/>
+    </Style>
+
+    <!-- Commands list -->
+    <Style Selector="Button.TWCommandButton">
+        <Setter Property="Background" Value="#FFF6F6F8"/>
+        <Setter Property="Foreground" Value="#FF3B3B40"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="FontSize" Value="13.5"/>
+        <Setter Property="Padding" Value="12,9"/>
+        <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        <Setter Property="HorizontalContentAlignment" Value="Left"/>
+        <Setter Property="Margin" Value="0,0,0,6"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.TWCommandButton:pointerover">
+        <Setter Property="Background" Value="#FFECEAFB"/>
+    </Style>
+    <Style Selector="Button.TWCommandButton:disabled">
+        <Setter Property="Opacity" Value="0.45"/>
+    </Style>
+
+    <!-- Logs card header + clear button -->
+    <Style Selector="Button.TWIconButton">
+        <Setter Property="Width" Value="28"/>
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.TWIconButton:pointerover">
+        <Setter Property="Background" Value="#1AD03C3C"/>
+    </Style>
+
+    <!-- Console - dark panel, deliberately distinct from the light cards so it reads as a
+    terminal/log surface rather than another form section. -->
+    <Style Selector="TextBox.TWConsole">
+        <Setter Property="Background" Value="#FF1E1E24"/>
+        <Setter Property="Foreground" Value="#FFD8D8E0"/>
+        <Setter Property="CaretBrush" Value="#FFD8D8E0"/>
+        <Setter Property="SelectionBrush" Value="#5D6C4CE0"/>
+        <Setter Property="FontFamily" Value="Consolas,Cascadia Mono,Courier New,monospace"/>
+        <Setter Property="FontSize" Value="12.5"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="10"/>
+    </Style>
+    <!-- FluentTheme's own TextBox ControlTheme sets Background directly on the template's
+    Border#PART_BorderElement for :pointerover/:focus (to a near-white resource in Light mode),
+    which sits "closer" to the rendered element than a plain TextBox.Background setter and wins
+    over it - that's what was turning the console white on hover/focus with the text still dark,
+    making it unreadable. Overriding the same template-part selectors here is the reliable fix. -->
+    <Style Selector="TextBox.TWConsole:pointerover /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="#FF1E1E24"/>
+        <Setter Property="BorderBrush" Value="#FF1E1E24"/>
+    </Style>
+    <Style Selector="TextBox.TWConsole:focus /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="#FF1E1E24"/>
+        <Setter Property="BorderBrush" Value="#FF1E1E24"/>
+    </Style>
+    <Style Selector="TextBox.TWConsole:focus-within /template/ Border#PART_BorderElement">
+        <Setter Property="Background" Value="#FF1E1E24"/>
+        <Setter Property="BorderBrush" Value="#FF1E1E24"/>
+    </Style>
+
+</Styles>

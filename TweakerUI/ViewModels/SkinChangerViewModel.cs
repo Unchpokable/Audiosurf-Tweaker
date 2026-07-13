@@ -45,9 +45,6 @@ namespace TweakerUI.ViewModels
                 CurrentInstalledSkinRaw = state.StateName;
 
             _ = LoadSkinsAsync(rebuildCache: false);
-
-            if (SettingsProvider.IsOverlayEnabled)
-                AudiosurfHandle.Instance.Registered += (s, e) => InjectOverlayPlugin();
         }
 
         public ObservableCollection<SkinCard> Skins { get; }
@@ -107,8 +104,6 @@ namespace TweakerUI.ViewModels
 
         public bool HasSelection => SelectedItem != null;
 
-        private DateTime _lastOverlayInstallCall;
-
         partial void OnCurrentInstalledSkinRawChanged(string value) => OnPropertyChanged(nameof(CurrentInstalledSkin));
 
         partial void OnSelectedItemChanged(SkinCard value)
@@ -119,52 +114,66 @@ namespace TweakerUI.ViewModels
 
         public async void InstallSkin(string pathToOrigin, string target, bool forced = false, bool unpackScreenshots = false, bool clearInstall = false, bool saveState = true)
         {
-            if (!Directory.Exists(target))
+            // Suppressed for the whole call, not just around the actual write, matching the donor's
+            // placement - without it, the watcher (when enabled) sees the Tweaker's own texture writes
+            // as an external change and redundantly reloads/re-snapshots on top of what this method is
+            // already doing. try/finally (the donor used neither) guarantees re-enabling on every early
+            // return below - without it, a declined "unsaved changes" prompt left the watcher suppressed
+            // forever, silently dead until the next full install.
+            TexturesWatcher.IfActive?.DisableRaisingEvents();
+            try
             {
-                ApplicationNotificationManager.Manager.ShowError("Installation Error", $"Given directory does not exist: {target}\nCheck that 'Path to game textures' setting is valid");
-                return;
-            }
-            if (!File.Exists(pathToOrigin))
-            {
-                ApplicationNotificationManager.Manager.ShowError("Installation error", $"Given path does not exist: {pathToOrigin}\nIt may be caused by corrupted skins cache. Please rebuild skins cache and try again");
-                return;
-            }
-
-            ChangerStatus = "Working...";
-
-            if (target.Equals(SettingsProvider.GameTexturesPath, StringComparison.InvariantCultureIgnoreCase))
-            {
-                if (SettingsProvider.SafeInstall && !EnvironmentChecker.CheckEnvironment(target, out FolderHashInfo _))
+                if (!Directory.Exists(target))
                 {
-                    ApplicationNotificationManager.Manager.ShowWarning("Skin installation restriction", "Current texture set is unsaved. Skin installation prohibited");
-                    ChangerStatus = "Ready";
+                    ApplicationNotificationManager.Manager.ShowError("Installation Error", $"Given directory does not exist: {target}\nCheck that 'Path to game textures' setting is valid");
+                    return;
+                }
+                if (!File.Exists(pathToOrigin))
+                {
+                    ApplicationNotificationManager.Manager.ShowError("Installation error", $"Given path does not exist: {pathToOrigin}\nIt may be caused by corrupted skins cache. Please rebuild skins cache and try again");
                     return;
                 }
 
-                if (SettingsProvider.ControlSystemActive && !EnvironmentChecker.CheckEnvironment(target, out FolderHashInfo _))
+                ChangerStatus = "Working...";
+
+                if (target.Equals(SettingsProvider.GameTexturesPath, StringComparison.InvariantCultureIgnoreCase))
                 {
-                    if (!await ApplicationNotificationManager.Manager.AskForAction("Danger action warning",
-                            "Your current texture set is unsaved. Installing a skin will overwrite unsaved changes and you will lose them. Do you want to continue?"))
+                    if (SettingsProvider.SafeInstall && !EnvironmentChecker.CheckEnvironment(target, out FolderHashInfo _))
                     {
+                        ApplicationNotificationManager.Manager.ShowWarning("Skin installation restriction", "Current texture set is unsaved. Skin installation prohibited");
                         ChangerStatus = "Ready";
                         return;
                     }
+
+                    if (SettingsProvider.ControlSystemActive && !EnvironmentChecker.CheckEnvironment(target, out FolderHashInfo _))
+                    {
+                        if (!await ApplicationNotificationManager.Manager.AskForAction("Danger action warning",
+                                "Your current texture set is unsaved. Installing a skin will overwrite unsaved changes and you will lose them. Do you want to continue?"))
+                        {
+                            ChangerStatus = "Ready";
+                            return;
+                        }
+                    }
                 }
-            }
 
-            if (clearInstall)
+                if (clearInstall)
+                {
+                    Utils.HardClear(target);
+                    AudiosurfHandle.Instance.Command("ascommand reloadtextures");
+                }
+
+                var skinName = await InstallSkinInternal(pathToOrigin, target, forced, unpackScreenshots, saveState);
+
+                if (SettingsProvider.HotReload)
+                    AudiosurfHandle.Instance.Command("ascommand reloadtextures");
+
+                ApplicationNotificationManager.Manager.ShowSuccess("Done!", $"Skin \"{skinName}\" successfully installed. Enjoy! ^_^");
+                ChangerStatus = "Ready";
+            }
+            finally
             {
-                Utils.HardClear(target);
-                AudiosurfHandle.Instance.Command("ascommand reloadtextures");
+                TexturesWatcher.IfActive?.EnableRaisingEvents();
             }
-
-            var skinName = await InstallSkinInternal(pathToOrigin, target, forced, unpackScreenshots, saveState);
-
-            if (SettingsProvider.HotReload)
-                AudiosurfHandle.Instance.Command("ascommand reloadtextures");
-
-            ApplicationNotificationManager.Manager.ShowSuccess("Done!", $"Skin \"{skinName}\" successfully installed. Enjoy! ^_^");
-            ChangerStatus = "Ready";
         }
 
         public async Task RemoveSkin(SkinCard target)
@@ -529,54 +538,6 @@ namespace TweakerUI.ViewModels
                 return new List<SKBitmap>();
 
             return skin.Previews.Group.Select(screenshot => ((SKBitmap)screenshot).Rescale(860, 440)).ToList();
-        }
-
-        // Overlay integration: the in-game overlay (when injected) can request a skin install and
-        // wants to know the currently installed skin's name for its info panel. Not part of the
-        // mockup, ported because it's a core Skin Changer <-> overlay feature, not overlay-rendering
-        // itself (which stays frozen per the roadmap).
-        private void InjectOverlayPlugin()
-        {
-            OverlayHelper.Instance.OverlayInjected += OnOverlayInjected;
-            OverlayHelper.Instance.InjectOverlayPlugin();
-        }
-
-        private void OnOverlayInjected(object sender, EventArgs e)
-        {
-            UpdateOverlaySkinsList();
-            AudiosurfHandle.Instance.Command($"tw-update-ovl-info Currently Installed skin: {CurrentInstalledSkin}");
-            AudiosurfHandle.Instance.MessageResieved += OnMessageReceived;
-            OverlayHelper.Instance.OverlayInjected -= OnOverlayInjected;
-        }
-
-        private void UpdateOverlaySkinsList()
-        {
-            var skinsList = string.Join("; ", Skins.Select(skin => skin.Name));
-            AudiosurfHandle.Instance.Command($"tw-update-skin-list {skinsList}");
-        }
-
-        private void OnMessageReceived(object sender, string content)
-        {
-            if (DateTime.Now.Subtract(_lastOverlayInstallCall) < TimeSpan.FromSeconds(1))
-                return; // guards against processing the same overlay command more than once
-
-            if (content.Contains("tw-Install-package"))
-            {
-                var skinToInstall = content.Substring("tw-Install-package".Length).Trim();
-                var skin = Skins.FirstOrDefault(x => x.Name.Trim().ToLower() == skinToInstall.ToLower());
-
-                if (skin != null)
-                {
-                    InstallSkin(skin.PathToOrigin, SettingsProvider.GameTexturesPath, true, false, true);
-                    _lastOverlayInstallCall = DateTime.Now;
-                }
-            }
-
-            if (content.Contains("nowplayingsongtitle"))
-                AudiosurfHandle.Instance.Command($"tw-update-ovl-info Skin: {CurrentInstalledSkin}");
-
-            if (content.Contains("songcomplete") || content.Contains("oncharacterscreen"))
-                AudiosurfHandle.Instance.Command("tw-update-ovl-info "); // sets overlay info to NULL
         }
     }
 }

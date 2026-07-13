@@ -3,7 +3,122 @@
              xmlns:vm="clr-namespace:TweakerUI.ViewModels"
              x:Class="TweakerUI.Views.TweakerView"
              x:DataType="vm:TweakerViewModel">
-    <Grid>
-        <TextBlock Text="{Binding PlaceholderText}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="20" Foreground="Gray"/>
-    </Grid>
+
+    <!-- No mockup for this tab (it's genuinely just toggles/buttons/a log) - laid out "on the eye"
+    reusing the app's established card/toggle-switch vocabulary rather than inventing a new one. -->
+    <Border Background="#FFF2F2F4">
+        <Grid Margin="20" RowDefinitions="Auto,Auto,*">
+
+            <!-- Tweaks -->
+            <Border Grid.Row="0" Classes="TWCard" Margin="0,0,0,14">
+                <StackPanel>
+                    <TextBlock Text="Tweaks" Classes="TWCardTitle" Margin="0,0,0,10"/>
+                    <Grid ColumnDefinitions="*,16,*">
+                        <StackPanel Grid.Column="0" Spacing="2">
+                            <Border Classes="TWToggleRow" Classes.On="{Binding SidewinderCameraTweakActive}">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <Path Grid.Column="0" Classes="TWToggleIcon" Data="{StaticResource IconCamera}" Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="Sidewinder camera" Classes="TWToggleLabel" Margin="10,0" VerticalAlignment="Center"/>
+                                    <ToggleButton Grid.Column="2" Classes="TWSwitch" IsChecked="{Binding SidewinderCameraTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                            <Border Classes="TWToggleRow" Classes.On="{Binding BankingCameraTweakActive}">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <Path Grid.Column="0" Classes="TWToggleIcon" Data="{StaticResource IconBank}" Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="Banking camera" Classes="TWToggleLabel" Margin="10,0" VerticalAlignment="Center"/>
+                                    <ToggleButton Grid.Column="2" Classes="TWSwitch" IsChecked="{Binding BankingCameraTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                            <Border Classes="TWToggleRow" Classes.On="{Binding InvisibleRoadTweakActive}">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <Path Grid.Column="0" Classes="TWToggleIcon" Data="{StaticResource IconEyeOff}" Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="Invisible road" Classes="TWToggleLabel" Margin="10,0" VerticalAlignment="Center"/>
+                                    <ToggleButton Grid.Column="2" Classes="TWSwitch" IsChecked="{Binding InvisibleRoadTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                            <Border Classes="TWToggleRow" Classes.On="{Binding HiddenSongTweakActive}">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <Path Grid.Column="0" Classes="TWToggleIcon" Data="{StaticResource IconMusicOff}" Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="Hidden song title" Classes="TWToggleLabel" Margin="10,0" VerticalAlignment="Center"/>
+                                    <ToggleButton Grid.Column="2" Classes="TWSwitch" IsChecked="{Binding HiddenSongTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2" Spacing="2">
+                            <Border Classes="TWToggleRow" Classes.On="{Binding FreerideNoBlocksTweakActive}">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <Path Grid.Column="0" Classes="TWToggleIcon" Data="{StaticResource IconGridOff}" Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="Disable freeride blocks" Classes="TWToggleLabel" Margin="10,0" VerticalAlignment="Center"/>
+                                    <ToggleButton Grid.Column="2" Classes="TWSwitch" IsChecked="{Binding FreerideNoBlocksTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                            <Border Classes="TWToggleRow" Classes.On="{Binding FreerideBlocksCaterpillarsTweakActive}">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <!-- Height=5 (not 18 like the other icons) matches this shape's own bounding box aspect -
+                                    the 18x18 box the others use has almost no vertical content (0.947x scale, width-limited),
+                                    and whatever wasn't scaled away sat as slack the shape renderer anchored to the top
+                                    instead of centering, which is what actually made this icon look misaligned. Sizing the
+                                    box to fit the content leaves ~0px slack, so centering just falls out of the row's own
+                                    VerticalAlignment="Center" instead of depending on that anchor behavior. -->
+                                    <Path Grid.Column="0" Classes="TWToggleIcon" Data="{StaticResource IconCaterpillar}" Width="18" Height="5" Stretch="Uniform" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="Freeride block caterpillars" Classes="TWToggleLabel" Margin="10,0" VerticalAlignment="Center"/>
+                                    <ToggleButton Grid.Column="2" Classes="TWSwitch" IsChecked="{Binding FreerideBlocksCaterpillarsTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                            <Border Classes="TWToggleRow" Classes.On="{Binding FreerideAutoAdvanceDisableTweakActive}">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <Path Grid.Column="0" Classes="TWToggleIcon" Data="{StaticResource IconSkipOff}" Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="Disable freeride auto advance" Classes="TWToggleLabel" Margin="10,0" VerticalAlignment="Center"/>
+                                    <ToggleButton Grid.Column="2" Classes="TWSwitch" IsChecked="{Binding FreerideAutoAdvanceDisableTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Commands -->
+            <Border Grid.Row="1" Classes="TWCard" Margin="0,0,0,14">
+                <StackPanel>
+                    <TextBlock Text="Commands" Classes="TWCardTitle" Margin="0,0,0,10"/>
+                    <Grid ColumnDefinitions="*,16,*">
+                        <StackPanel Grid.Column="0">
+                            <Button Classes="TWCommandButton" Content="Set Audiosurf always on top" Command="{Binding SendCommand}" CommandParameter="setwindowalwaysontop" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                            <Button Classes="TWCommandButton" Content="Always on top (no border)" Command="{Binding SendCommand}" CommandParameter="setwindowalwaysontopnoborder" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                            <Button Classes="TWCommandButton" Content="Run without focus" Command="{Binding SendCommand}" CommandParameter="runwithoutfocus" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                            <Button Classes="TWCommandButton" Content="Reload textures" Command="{Binding SendCommand}" CommandParameter="reloadtextures" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                            <Button Classes="TWCommandButton" Content="Reload sounds" Command="{Binding SendCommand}" CommandParameter="reloadsounds" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <Button Classes="TWCommandButton" Content="Go to character screen" Command="{Binding SendCommand}" CommandParameter="gotocharacterscreen" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                            <Button Classes="TWCommandButton" Content="Maximize Audiosurf" Command="{Binding SendCommand}" CommandParameter="maximize" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                            <Button Classes="TWCommandButton" Content="Go fullscreen" Command="{Binding SendCommand}" CommandParameter="gofullscreen" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                            <Button Classes="TWCommandButton" Content="Restore window style" Command="{Binding SendCommand}" CommandParameter="restorenormalwindowstyle" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                            <Button Classes="TWCommandButton" Content="Close Audiosurf" Command="{Binding SendCommand}" CommandParameter="closeaudiosurf" IsEnabled="{Binding IsAudiosurfConnected}"/>
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Logs -->
+            <Border Grid.Row="2" Classes="TWCard">
+                <Grid RowDefinitions="Auto,*">
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+                        <TextBlock Grid.Column="0" Text="Logs" Classes="TWCardTitle" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1" Classes="TWIconButton" Command="{Binding FlushConsoleCommand}" ToolTip.Tip="Clear log">
+                            <Path Data="{StaticResource IconClear}" Width="16" Height="16" Stretch="Uniform" Stroke="#FFB0413C" StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent"/>
+                        </Button>
+                    </Grid>
+                    <TextBox Grid.Row="1" Classes="TWConsole" x:Name="ConsoleOutput"
+                             Text="{Binding ConsoleContent, Mode=OneWay}"
+                             IsReadOnly="True" AcceptsReturn="True"
+                             TextWrapping="Wrap"
+                             VerticalContentAlignment="Top"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             TextChanged="OnConsoleTextChanged"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
 </UserControl>

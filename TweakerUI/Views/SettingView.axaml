@@ -3,7 +3,141 @@
              xmlns:vm="clr-namespace:TweakerUI.ViewModels"
              x:Class="TweakerUI.Views.SettingView"
              x:DataType="vm:SettingViewModel">
-    <Grid>
-        <TextBlock Text="{Binding PlaceholderText}" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="20" Foreground="Gray"/>
-    </Grid>
+
+    <!-- No mockup for this tab either - single scrollable page of card sections, same spirit as
+    TweakerView, instead of the donor's WPF TabControl (Paths / Skin Changer / Watcher / UI). -->
+    <Border Background="#FFF2F2F4">
+        <ScrollViewer Margin="20" VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="14">
+
+                <!-- Paths -->
+                <Border Classes="STCard">
+                    <StackPanel Spacing="14">
+                        <TextBlock Text="Paths" Classes="STCardTitle"/>
+                        <StackPanel>
+                            <TextBlock Text="Path to Audiosurf textures" Classes="STFieldLabel"/>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox Grid.Column="0" Classes="STPathBox" Text="{Binding TexturesFolderPath}" IsReadOnly="True"/>
+                                <Button Grid.Column="1" Classes="STBrowseButton" Content="Browse…" Command="{Binding BrowseTexturesPathCommand}"/>
+                            </Grid>
+                        </StackPanel>
+                        <StackPanel>
+                            <TextBlock Text="Additional skins folder" Classes="STFieldLabel"/>
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBox Grid.Column="0" Classes="STPathBox" Text="{Binding AdditionalSkinsFolderPath}" IsReadOnly="True"/>
+                                <Button Grid.Column="1" Classes="STBrowseButton" Content="Browse…" Command="{Binding BrowseSkinsPathCommand}"/>
+                            </Grid>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Skin Changer -->
+                <Border Classes="STCard">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Skin Changer" Classes="STCardTitle" Margin="0,0,0,8"/>
+
+                        <Border Classes="STToggleRow"
+                                ToolTip.Tip="Force the game to reload textures after skin installation - no need to restart the track in-game to see changes">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Hot reload" Classes="STToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsHotReload, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Classes="STToggleRow"
+                                ToolTip.Tip="Compare checksums of the game's textures folder at startup, to catch unsaved changes before they're overwritten">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Control game's textures folder content" Classes="STToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsShouldCheckTextures, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Classes="STToggleRow STNested" IsEnabled="{Binding IsShouldCheckTextures}"
+                                ToolTip.Tip="Refuse to install a skin while the game's textures folder content is unsaved">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Safety installation" Classes="STToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsShouldUseSafetyInstallation, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Classes="STToggleRow"
+                                ToolTip.Tip="Decode a skin's screenshots up front instead of when you select it - faster browsing, more memory used">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Fast preview" Classes="STToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsFastPreview, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Textures Watcher -->
+                <Border Classes="STCard">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Textures Watcher" Classes="STCardTitle" Margin="0,0,0,2"/>
+                        <TextBlock Classes="STToggleHint" Margin="2,0,0,8"
+                                   Text="Tracks the game's textures folder and notifies the game about changes in real time. Only active while Audiosurf is connected."/>
+
+                        <Border Classes="STToggleRow"
+                                ToolTip.Tip="Watch the game's textures folder and notify the game about changes in real time">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Enabled" Classes="STToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsWatcherActive, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Classes="STToggleRow STNested" IsEnabled="{Binding IsWatcherActive}"
+                                ToolTip.Tip="Store every change to the textures folder in a temporary skin file">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Store textures in temp file" Classes="STToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsShouldStoreTextures, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Classes="STToggleRow STNested" IsEnabled="{Binding IsWatcherActive}"
+                                ToolTip.Tip="Use a custom temp file instead of the default Storage/temp.tasp">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Override temp file" Classes="STToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsTempFileOverrided, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- Nested IsEnabled: needs both the watcher on AND the override toggled - a
+                        plain single binding can't express the AND, so this relies on Avalonia's normal
+                        IsEnabled inheritance (outer bound to IsWatcherActive, inner to IsTempFileOverrided). -->
+                        <Border IsEnabled="{Binding IsWatcherActive}">
+                            <Grid ColumnDefinitions="*,Auto,Auto" Margin="30,4,0,0" IsEnabled="{Binding IsTempFileOverrided}">
+                                <TextBox Grid.Column="0" Classes="STPathBox" Text="{Binding WatcherTempFile}" IsReadOnly="True"/>
+                                <Button Grid.Column="1" Classes="STBrowseButton" Content="Select…" Command="{Binding SelectTempFileCommand}"/>
+                                <Button Grid.Column="2" Classes="STBrowseButton" Content="Duplicate" Command="{Binding DuplicateTempFileCommand}"/>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+                <!-- Notifications -->
+                <Border Classes="STCard">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Notifications" Classes="STCardTitle" Margin="0,0,0,8"/>
+
+                        <Border Classes="STToggleRow"
+                                ToolTip.Tip="Send Windows notifications after actions complete, instead of the app's own colored popups">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Use UWP notifications" Classes="STToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsUWPNotificationsAllowed, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
+                        <Border Classes="STToggleRow STNested" IsEnabled="{Binding IsUWPNotificationsAllowed}"
+                                ToolTip.Tip="Show UWP notifications but suppress the system notification sound">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Mute UWP notifications" Classes="STToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsUWPNotificationSilent, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Border>
 </UserControl>
