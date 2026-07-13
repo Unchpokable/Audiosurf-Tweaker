@@ -12,7 +12,6 @@ namespace TweakerUI.ViewModels
         {
             SkinChangerVM = new SkinChangerViewModel();
             ColorsVM = new ColorsConfiguratorViewModel();
-            ServerSwapperVM = new ServerSwapperViewModel();
             TweakerVM = new TweakerViewModel();
             SettingsVM = new SettingViewModel();
 
@@ -24,7 +23,6 @@ namespace TweakerUI.ViewModels
 
         public SkinChangerViewModel SkinChangerVM { get; }
         public ColorsConfiguratorViewModel ColorsVM { get; }
-        public ServerSwapperViewModel ServerSwapperVM { get; }
         public TweakerViewModel TweakerVM { get; }
         public SettingViewModel SettingsVM { get; }
 
@@ -42,9 +40,6 @@ namespace TweakerUI.ViewModels
 
         [RelayCommand]
         private void ShowColors() => CurrentView = ColorsVM;
-
-        [RelayCommand]
-        private void ShowServerSwapper() => CurrentView = ServerSwapperVM;
 
         [RelayCommand]
         private void ShowTweaker() => CurrentView = TweakerVM;

@@ -40,7 +40,6 @@
   <ItemGroup>
     <ProjectReference Include="..\TweakerCore\TweakerCore.csproj" />
     <ProjectReference Include="..\AudiosurfInterface\AudiosurfInterface.csproj" />
-    <ProjectReference Include="..\TweakerScriptsInterpreter\TweakerScriptInterpreter.csproj" />
   </ItemGroup>
 
   <!--
