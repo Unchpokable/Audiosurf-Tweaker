@@ -32,9 +32,16 @@ namespace TweakerUI
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
+                // MainWindowViewModel's constructor loads config (ConfigurationManager.InitializeEnvironment)
+                // as its first act, so SettingsProvider.IsDarkTheme is only known once it returns - applying
+                // the theme has to happen after this line, before the window is actually shown, or the user
+                // briefly sees the XAML-default Light variant flash before flipping to their saved choice.
+                var mainViewModel = new MainWindowViewModel();
+                ThemeService.Apply(SettingsProvider.IsDarkTheme);
+
                 desktop.MainWindow = new MainWindow
                 {
-                    DataContext = new MainWindowViewModel(),
+                    DataContext = mainViewModel,
                 };
             }
 

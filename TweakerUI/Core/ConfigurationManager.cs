@@ -49,6 +49,7 @@ namespace TweakerUI.Core
             ("WatcherTempFileOverrided", "false"),
             ("UWPNotificationsAllowed", "false"),
             ("UWPNotificationSilent", "true"),
+            ("DarkTheme", "false"),
         };
 
         public static void SetUpDefaultSettings()
@@ -129,6 +130,7 @@ namespace TweakerUI.Core
                 Settings.UseFastPreview = bool.Parse(Get("UseFastPreview"));
                 Settings.IsUWPNotificationsAllowed = bool.Parse(Get("UWPNotificationsAllowed"));
                 Settings.IsUWPNotificationSilent = bool.Parse(Get("UWPNotificationSilent"));
+                Settings.IsDarkTheme = bool.Parse(Get("DarkTheme"));
             }
             catch (Exception e)
             {
@@ -153,6 +155,7 @@ namespace TweakerUI.Core
                 cfg.AppSettings.Settings["UseFastPreview"].Value = Settings.UseFastPreview.ToString();
                 cfg.AppSettings.Settings["UWPNotificationsAllowed"].Value = Settings.IsUWPNotificationsAllowed.ToString();
                 cfg.AppSettings.Settings["UWPNotificationSilent"].Value = Settings.IsUWPNotificationSilent.ToString();
+                cfg.AppSettings.Settings["DarkTheme"].Value = Settings.IsDarkTheme.ToString();
                 cfg.Save();
             }
             catch (Exception e)

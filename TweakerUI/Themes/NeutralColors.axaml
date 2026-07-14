@@ -10,19 +10,22 @@
     color (danger red, box-shadow black, translucent scrims stay local - see the "explicitly
     left alone" list in the roadmap for why).
 
-    ThemeDictionaries only has a "Light" variant for now - the "Dark" variant is deliberately
-    NOT stubbed with guessed values. It gets filled in once real dark-theme mockups exist to
-    extract the actual palette from, per the user's own plan (extraction now, palette later).
-    Until "Dark" exists, every DynamicResource lookup here simply always resolves to "Light"
-    regardless of Application.RequestedThemeVariant - harmless, and exactly the intermediate
-    state this step is meant to produce: all the plumbing in place, nothing visually changes
-    yet. App.axaml's RequestedThemeVariant="Light" pin stays until Dark is populated.
-
-    Values were taken as literally as possible from the existing (already-shipped) hex
-    literals; near-identical values that were clearly the same role drifting slightly
-    between modules (e.g. Color Configurator's page background #FFEEF0F3 vs the other three
-    modules' #FFF2F2F4) were unified the same way the accent purples were - picking the
-    majority/source value, not literally every occurrence honored 1:1.
+    Dark palette extracted (2026-07-13, Фаза 4.7 step 2) from the user's "Palette Designer -
+    Dark" Claude Design mockup. That mockup only renders one screen (Color Configurator), so
+    it directly gives values for AppBackground/Surface/SurfaceMuted(nb)/SurfaceSoft/
+    SurfaceHover/SurfaceInput/Border/BorderSubtle/TextPrimary/TextMuted/TextFaint/TextOnAccent
+    (see per-key comments below for which). Two roles the mockup's own style objects clearly
+    treat as their own distinct tier - not reducible to any existing token without a visible
+    mismatch - were added as new tokens rather than force-fit into an existing one:
+    SurfaceBadgeColor (badge chips read distinctly lighter than the general soft-fill tier in
+    dark) and SurfaceElevatedColor (the selected settings-tab / a hovered secondary button read
+    distinctly lighter than the general hover tier in dark). Everything else without a direct
+    mockup equivalent (this app has several surfaces - Skin Changer's row list, skeleton
+    placeholders, window chrome - the single-screen mockup doesn't show) was interpolated
+    against the values that ARE given, following the same lightness ordering the mockup's own
+    tokens establish; flagged per-key below. Treat those as a first pass pending visual QA once
+    the theme can actually be switched on screen, not as extracted-and-final the way the direct
+    ones are.
     ============================================================================ -->
 
     <ResourceDictionary.ThemeDictionaries>
@@ -37,6 +40,14 @@
             <Color x:Key="SurfaceRowColor">#FFECECEC</Color>
             <Color x:Key="SurfaceRowHoverColor">#FFE2E2E2</Color>
             <Color x:Key="SurfaceSkeletonColor">#FFE0E0E4</Color>
+            <!-- Matches the mockup's own badgeBg (light) almost exactly - previously folded into
+            SurfaceSoftColor before the dark mockup showed the two roles need to diverge (see file
+            header); split out here too so both themes use the same token for the same role. -->
+            <Color x:Key="SurfaceBadgeColor">#FFF1F2F5</Color>
+            <!-- Matches SurfaceColor in Light (mockup's selected-tab background is plain white,
+            same as any other card) - exists as its own token purely so Dark can diverge; see
+            SurfaceElevatedColor's Dark comment. -->
+            <Color x:Key="SurfaceElevatedColor">#FFFFFFFF</Color>
             <Color x:Key="ControlTrackOffColor">#FFD5D5DA</Color>
             <Color x:Key="ControlThumbColor">#FFFFFFFF</Color>
 
@@ -56,7 +67,84 @@
             <Color x:Key="TextGlyphMutedColor">#FFA8A8B0</Color>
             <Color x:Key="TextOnAccentColor">#FFFFFFFF</Color>
         </ResourceDictionary>
-        <!-- "Dark" goes here once mockups give us real values - see roadmap Фаза 4.7. -->
+        <ResourceDictionary x:Key="Dark">
+            <!-- Surfaces -->
+            <!-- Literal: mockup's pageBg. -->
+            <Color x:Key="AppBackgroundColor">#FF1B1D21</Color>
+            <!-- Literal: mockup's cardBg. -->
+            <Color x:Key="SurfaceColor">#FF24262B</Color>
+            <!-- Not a direct mockup role (no app-shell nav sidebar in a single-screen mockup) -
+            reused the mockup's wheelBg (#17181B), which sits in exactly the "slightly darker than
+            AppBackground" relationship the nav sidebar has to the page in Light. -->
+            <Color x:Key="SurfaceMutedColor">#FF17181B</Color>
+            <!-- Literal: mockup's tabsWrap background (dark ? '#1e2024' : ...), used for the same
+            soft-panel-fill role as CCWheelWrap/CCTabsWrap/input-and-button resting backgrounds. -->
+            <Color x:Key="SurfaceSoftColor">#FF1E2024</Color>
+            <!-- Literal: mockup's hoverRowBg, matching (within ~2 hex units) its own tab-hover and
+            discard-hover literals too - genuinely one tier in the mockup's own dark palette. -->
+            <Color x:Key="SurfaceHoverColor">#FF2A2D32</Color>
+            <!-- Literal: mockup's inputBg. -->
+            <Color x:Key="SurfaceInputColor">#FF1A1C20</Color>
+            <!-- Not a direct mockup role (Skin Changer's row list isn't part of this mockup) -
+            interpolated between SurfaceColor and SurfaceHoverColor. -->
+            <Color x:Key="SurfaceRowColor">#FF292B30</Color>
+            <!-- Not a direct mockup role - interpolated one step past SurfaceHoverColor, same
+            "row hover reads a bit stronger than a plain ghost-button hover" relationship Light has. -->
+            <Color x:Key="SurfaceRowHoverColor">#FF32353B</Color>
+            <!-- Not a direct mockup role (no loading-skeleton state in the mockup) - interpolated
+            between SurfaceColor and BorderColor. -->
+            <Color x:Key="SurfaceSkeletonColor">#FF2E3036</Color>
+            <!-- Literal: mockup's badgeBg - noticeably lighter than SurfaceSoftColor in dark (unlike
+            Light, where the two were close enough to fold together); see file header. -->
+            <Color x:Key="SurfaceBadgeColor">#FF2F3238</Color>
+            <!-- Literal: mockup's selected-tab background (dark ? '#33363c' : ...) - a distinctly
+            lighter "elevated" surface in dark mode rather than reusing plain SurfaceColor the way
+            Light's selected tab does (its own background is just white, same as any card); see
+            file header. -->
+            <Color x:Key="SurfaceElevatedColor">#FF33363C</Color>
+            <!-- Not a direct mockup role (no toggle switches in the mockup) - a mid-gray with enough
+            separation from both SurfaceColor and BorderColor to read as an "off" track. -->
+            <Color x:Key="ControlTrackOffColor">#FF40434A</Color>
+            <!-- Not a direct mockup role - kept near-white (softened slightly off pure white to cut
+            glare against a dark track), matching the common OS convention of an always-light switch
+            thumb regardless of app theme. -->
+            <Color x:Key="ControlThumbColor">#FFECEDEF</Color>
+
+            <!-- Borders -->
+            <!-- Literal: mockup's cardBorder. -->
+            <Color x:Key="BorderColor">#FF34373D</Color>
+            <!-- Literal: mockup's inputBorder. -->
+            <Color x:Key="BorderSubtleColor">#FF3A3D44</Color>
+            <!-- Not a direct mockup role (no input/button :hover border state shown) - lightened
+            further than BorderColor/BorderSubtleColor for the higher contrast a dark theme's
+            "strong" border tier needs (the reverse direction of Light, where "strong" goes darker). -->
+            <Color x:Key="BorderStrongColor">#FF4A4E56</Color>
+            <!-- Not a direct mockup role - kept close to BorderColor, same near-duplicate
+            relationship the two have in Light. -->
+            <Color x:Key="BorderDividerColor">#FF3C3F46</Color>
+            <!-- Not a direct mockup role (no app shell in the mockup) - lightened well past
+            BorderColor so the outermost window frame stays visible against a dark desktop, the
+            same purpose Light's noticeably-darker-than-BorderColor #FF9E9E9E serves there. -->
+            <Color x:Key="BorderWindowColor">#FF55585F</Color>
+
+            <!-- Text -->
+            <!-- Literal: mockup's text. -->
+            <Color x:Key="TextPrimaryColor">#FFE8E9EC</Color>
+            <!-- Not a direct mockup role - interpolated between TextPrimaryColor and TextMutedColor. -->
+            <Color x:Key="TextSecondaryColor">#FFC4C6CB</Color>
+            <!-- Literal: mockup's textMuted. -->
+            <Color x:Key="TextMutedColor">#FF9297A1</Color>
+            <!-- Not a direct mockup role - interpolated between TextMutedColor and TextFaintColor. -->
+            <Color x:Key="TextSubtleColor">#FF7D8088</Color>
+            <!-- Literal: mockup's textFaint. -->
+            <Color x:Key="TextFaintColor">#FF6C7078</Color>
+            <!-- Not a direct mockup role (no stroke-icon rows in the mockup) - darker than
+            TextFaintColor, mirroring Light where this is the single weakest text-ish tier. -->
+            <Color x:Key="TextGlyphMutedColor">#FF5C5F66</Color>
+            <!-- Literal: mockup's buttonText - a near-white with a faint cool tint rather than
+            pure white, for readability specifically against the richer AccentButtonGradientBrush. -->
+            <Color x:Key="TextOnAccentColor">#FFF2FDFB</Color>
+        </ResourceDictionary>
     </ResourceDictionary.ThemeDictionaries>
 
     <!-- Derived brushes - Setters/attributes reference these, never the Color keys directly
@@ -71,6 +159,8 @@
     <SolidColorBrush x:Key="SurfaceRowBrush" Color="{DynamicResource SurfaceRowColor}"/>
     <SolidColorBrush x:Key="SurfaceRowHoverBrush" Color="{DynamicResource SurfaceRowHoverColor}"/>
     <SolidColorBrush x:Key="SurfaceSkeletonBrush" Color="{DynamicResource SurfaceSkeletonColor}"/>
+    <SolidColorBrush x:Key="SurfaceBadgeBrush" Color="{DynamicResource SurfaceBadgeColor}"/>
+    <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="{DynamicResource SurfaceElevatedColor}"/>
     <SolidColorBrush x:Key="ControlTrackOffBrush" Color="{DynamicResource ControlTrackOffColor}"/>
     <SolidColorBrush x:Key="ControlThumbBrush" Color="{DynamicResource ControlThumbColor}"/>
 

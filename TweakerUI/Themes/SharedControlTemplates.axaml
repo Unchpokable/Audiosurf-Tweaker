@@ -1,0 +1,62 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ============================================================================
+    Root cause investigation (2026-07-14): the user reported hover/press animations on
+    a long list of buttons across every module as either completely absent or passing
+    through an unexplained intermediate color, despite each one already having its own
+    Background Setters + BrushTransition. Traced against Avalonia's actual Fluent theme
+    source (AvaloniaUI/Avalonia @ 12.0.5, src/Avalonia.Themes.Fluent/Controls/Button.xaml):
+    the default Button ControlTheme paints :pointerover/:pressed/:disabled Background,
+    BorderBrush AND Foreground directly on its own template's ContentPresenter#PART_
+    ContentPresenter, with NO Transitions of its own on those properties. That style
+    targets a template-internal part directly - not the Button's own Background property
+    - so it wins over ANY plain `Setter Property="Background"` on the Button itself,
+    unconditionally, the instant a pseudo-class activates, snapping without a transition
+    and completely discarding whatever we set at the Button level. This is the exact
+    same class of bug already diagnosed once for TextBox's focus ring (CCTextBoxTemplate)
+    and for ListBoxItem's selection color (SCSkinListItemTemplate in SkinChangerStyles.
+    axaml) - both already fixed by owning the whole template. Every custom Button class
+    in this app that wasn't already fully retemplated (CCPaletteRow/UnderscoredButton/
+    NavItem were, and were never actually broken) had this same latent bug; it only
+    surfaced now because nobody had exercised :pointerover/:pressed by hand before.
+
+    FlatButtonTemplate below is the fix, centralized once instead of copy-pasted per
+    button class (the user's own complaint about near-duplicate template blocks scattered
+    file-to-file) - a plain Border+ContentPresenter with every color-ish property routed
+    through TemplateBinding and BrushTransitions baked in on the properties that actually
+    render, so any Style consuming it just needs Background/BorderBrush/Foreground Setters
+    per pseudo-class - no per-class Transitions or template boilerplate required anymore.
+    Merged into Application.Resources (see App.axaml) alongside NeutralColors.axaml/
+    AccentColors.axaml so every module's Styles file can reference it via StaticResource,
+    the same way AccentSwitchTemplate already is.
+    ============================================================================ -->
+
+    <ControlTemplate x:Key="FlatButtonTemplate" TargetType="Button">
+        <Border Name="PART_Border"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="{TemplateBinding CornerRadius}">
+            <Border.Transitions>
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
+                </Transitions>
+            </Border.Transitions>
+            <ContentPresenter Content="{TemplateBinding Content}"
+                               ContentTemplate="{TemplateBinding ContentTemplate}"
+                               Foreground="{TemplateBinding Foreground}"
+                               Padding="{TemplateBinding Padding}"
+                               HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                               VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}">
+                <ContentPresenter.Transitions>
+                    <Transitions>
+                        <BrushTransition Property="Foreground" Duration="0:0:0.15"/>
+                    </Transitions>
+                </ContentPresenter.Transitions>
+            </ContentPresenter>
+        </Border>
+    </ControlTemplate>
+
+</ResourceDictionary>

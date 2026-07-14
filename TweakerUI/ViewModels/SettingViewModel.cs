@@ -27,6 +27,10 @@ namespace TweakerUI.ViewModels
             IsFastPreview = SettingsProvider.UseFastPreview;
             IsUWPNotificationsAllowed = SettingsProvider.IsUWPNotificationsAllowed;
             IsUWPNotificationSilent = SettingsProvider.IsUWPNotificationSilent;
+            // Assigned directly, not through the property setter - the theme is already applied by the
+            // time this VM is constructed (App.axaml.cs applies it before the window is shown), so
+            // there's no need to call ThemeService.Apply a second time for the value it started at.
+            isDarkTheme = SettingsProvider.IsDarkTheme;
 
             // Assigned directly (not through the property setters below) so StartWatcher can read the
             // persisted temp-file preferences without re-triggering their side effects twice.
@@ -39,6 +43,16 @@ namespace TweakerUI.ViewModels
                 isWatcherActive = true;
                 StartWatcher();
             }
+        }
+
+        [ObservableProperty]
+        private bool isDarkTheme;
+
+        partial void OnIsDarkThemeChanged(bool value)
+        {
+            SettingsProvider.IsDarkTheme = value;
+            ApplySettings();
+            ThemeService.Apply(value);
         }
 
         [ObservableProperty]

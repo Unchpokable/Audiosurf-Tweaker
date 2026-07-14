@@ -18,44 +18,118 @@
     this palette and live in Themes/NeutralColors.axaml (or stay local for one-off status colors) -
     this file is scoped to the purple accent only.
 
-    Restructured into ThemeDictionaries (Фаза 4.7, step 1, 2026-07-13), same reasoning and same
-    "Dark" left unpopulated for now as NeutralColors.axaml - the dark theme wants different accents
-    too (not just different backgrounds), so this palette needs to be able to vary by theme the same
-    way. Every derived brush below binds Color via DynamicResource so it re-resolves on theme switch;
-    only the ThemeDictionaries entries themselves need a "Dark" variant added later for that to take
-    visible effect.
-    ============================================================================ -->
+    Dark palette extracted (2026-07-13, Фаза 4.7 step 2) from the user's "Palette Designer - Dark"
+    Claude Design mockup (same source project as the original light Color Configurator mockup this
+    whole accent system is built from). The dark theme genuinely swaps hue, not just lightness - accent
+    goes from purple to teal/cyan (#2DD4BF/#22D3EE), matching the user's own framing ("тёмная тема с
+    другими акцентами"). Every opacity-tier brush below (Selection/Soft/Hover/Pressed/Border/Selected)
+    now lives INSIDE the ThemeDictionaries blocks rather than as one flat derived resource, because a
+    handful of the dark mockup's own literal tier colors (selectedRowBg #163338, selectedRowBorder
+    #1F4D4F) don't reduce to a simple opacity-blend of the dark accent hue over any single background -
+    they read as independently hand-picked, the same way the light tiers originally were. Where the
+    mockup gave an explicit literal, it's used directly (opaque, Opacity omitted); where it didn't
+    (Selection/Hover/Selected have no 1:1 equivalent in a mockup that only shows one list), the same
+    "one source color, tuned opacity" technique carries over with dark-appropriate fractions re-fit by
+    eye against the closest mockup value that does exist (accentSoft/accentSoftBorder). Flagged inline
+    per-key below; treat the non-literal dark values as a first pass pending visual QA once the theme
+    can actually be switched on screen, not as extracted-and-final the way the literal ones are.
+
+    Opacity baked into each tier's own Color (8-digit ARGB) rather than expressed as a separate
+    Opacity="X" attribute on the SolidColorBrush (2026-07-13, animation bugfix). Avalonia's
+    BrushTransition only interpolates a brush's Color (its own R/G/B/A channels) between old and new
+    values - it does NOT read the wrapping Brush.Opacity property at all. With Opacity as a separate
+    attribute, every one of these brushes had an opaque Color (alpha=FF) and BrushTransition was
+    silently animating toward/from full 100% opacity instead of the intended faint tier - a visibly
+    wrong, jarring flash mid-transition (or an instant snap with no visible animation at all, if both
+    endpoints happened to share the exact same Color and only differed in the ignored Opacity attribute
+    - see AccentSoftBrush vs AccentHoverBrush vs AccentPressedBrush, all built off the same hue). Baking
+    the intended alpha directly into Color's own alpha digits makes BrushTransition's naive channel
+    interpolation land on the actually-correct value throughout, not just at rest. -->
+
+    <!-- Baked-alpha reference table (rounded to the nearest hex digit, alpha = Opacity*255):
+    Light: Primary=#7A4FC7, Secondary=#A97FD6 - 5%=0D 10%=1A 18%=2E 30%=4D 36%=5C 45%=73
+    Dark:  Primary=#2DD4BF               - 15%=26 20%=33 25%=40 36%=5C 45%=73 -->
 
     <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
             <Color x:Key="AccentPrimaryColor">#FF7A4FC7</Color>
             <Color x:Key="AccentSecondaryColor">#FFA97FD6</Color>
             <Color x:Key="AccentTextColor">#FF5A3D8F</Color>
+
+            <SolidColorBrush x:Key="AccentSelectionBrush" Color="#5C7A4FC7"/>
+            <SolidColorBrush x:Key="AccentSoftBrush" Color="#0D7A4FC7"/>
+            <SolidColorBrush x:Key="AccentHoverBrush" Color="#1A7A4FC7"/>
+            <SolidColorBrush x:Key="AccentPressedBrush" Color="#2E7A4FC7"/>
+            <SolidColorBrush x:Key="AccentBorderBrush" Color="#4DA97FD6"/>
+            <SolidColorBrush x:Key="AccentSelectedBrush" Color="#737A4FC7"/>
+            <!-- Zero-alpha version of Primary's own hue (not a generic "Transparent") - used as the
+            resting Background for controls that fade IN to an accent tint on hover (ToggleRow/CCGhost).
+            Transitioning from literal Transparent (#00000000) to a tinted brush still ramps R/G/B up
+            from zero at the same time as alpha, which reads as a dull gray/black smudge passing through
+            before the real hue "arrives" - starting from the same hue at 0 alpha keeps R/G/B constant
+            for the whole transition, so only alpha visibly ramps, i.e. a clean fade-in of the tint. -->
+            <SolidColorBrush x:Key="AccentGhostBrush" Color="#007A4FC7"/>
+
+            <!-- Mockup's own "gradient" and "buttonGradient" fields are identical in Light (both
+            #7A4FC7 -> #A97FD6), so the CTA-button gradient just reuses the same two stops as the
+            decorative one below. -->
+            <LinearGradientBrush x:Key="AccentButtonGradientBrush" StartPoint="0%,50%" EndPoint="100%,50%">
+                <GradientStop Color="{StaticResource AccentPrimaryColor}" Offset="0"/>
+                <GradientStop Color="{StaticResource AccentSecondaryColor}" Offset="1"/>
+            </LinearGradientBrush>
         </ResourceDictionary>
-        <!-- "Dark" goes here once mockups give us real values - see roadmap Фаза 4.7. -->
+        <ResourceDictionary x:Key="Dark">
+            <!-- Literal, extracted directly from the mockup's getTokens() dark branch. -->
+            <Color x:Key="AccentPrimaryColor">#FF2DD4BF</Color>
+            <Color x:Key="AccentSecondaryColor">#FF22D3EE</Color>
+            <Color x:Key="AccentTextColor">#FF5EEAD4</Color>
+
+            <!-- Not a literal mockup value (text-selection highlight has no on-screen equivalent in
+            the mockup) - same opacity fraction as Light, just re-based on the dark accent hue. -->
+            <SolidColorBrush x:Key="AccentSelectionBrush" Color="#5C2DD4BF"/>
+            <!-- Fit by eye against the mockup's own accentSoft (#1A3A3A, used for ghost-button hover
+            fills) - Primary at ~0.15 over the dark page background lands within a few hex units of it. -->
+            <SolidColorBrush x:Key="AccentSoftBrush" Color="#262DD4BF"/>
+            <!-- No distinct "hover" tier in the mockup (its own hover states mostly reuse accentSoft
+            directly) - extrapolated one notch stronger than Soft, same relative step as Light's Soft->Hover. -->
+            <SolidColorBrush x:Key="AccentHoverBrush" Color="#332DD4BF"/>
+            <!-- Literal: matches the mockup's own selectedRowBg (#163338) for the palette list's
+            persistently-selected row - this specific color doesn't reduce to any opacity-blend of the
+            dark accent hue over a plausible background (its red channel sits below both the accent
+            color's and every candidate background's red channel, which a simple alpha composite can't
+            produce), so it's taken as an opaque literal rather than forced into the tier formula. -->
+            <SolidColorBrush x:Key="AccentPressedBrush" Color="#FF163338"/>
+            <!-- Fit by eye against the mockup's own accentSoftBorder (#245050) and selectedRowBorder
+            (#1F4D4F, nearly identical to accentSoftBorder in the mockup itself) - Primary (not
+            Secondary, unlike Light) at ~0.25 over the dark card background lands closest. -->
+            <SolidColorBrush x:Key="AccentBorderBrush" Color="#402DD4BF"/>
+            <!-- Not a literal mockup value - kept "noticeably stronger than Pressed" per its own role
+            (Skin Changer's selected skin row, a role this Color-Configurator-only mockup doesn't cover),
+            same opacity fraction as Light, re-based on the dark accent hue. -->
+            <SolidColorBrush x:Key="AccentSelectedBrush" Color="#732DD4BF"/>
+            <!-- See Light's own comment - same zero-alpha-same-hue reasoning, dark accent hue. -->
+            <SolidColorBrush x:Key="AccentGhostBrush" Color="#002DD4BF"/>
+
+            <!-- Same two stops as the decorative gradient below (Primary -> Secondary), unlike Light -
+            see AccentButtonGradientBrush's own comment for why the CTA button needs a separate, richer
+            pair here. -->
+            <LinearGradientBrush x:Key="AccentButtonGradientBrush" StartPoint="0%,50%" EndPoint="100%,50%">
+                <GradientStop Color="#FF0891B2" Offset="0"/>
+                <GradientStop Color="#FF0D9488" Offset="1"/>
+            </LinearGradientBrush>
+        </ResourceDictionary>
     </ResourceDictionary.ThemeDictionaries>
 
     <SolidColorBrush x:Key="AccentPrimaryBrush" Color="{DynamicResource AccentPrimaryColor}"/>
     <SolidColorBrush x:Key="AccentSecondaryBrush" Color="{DynamicResource AccentSecondaryColor}"/>
     <SolidColorBrush x:Key="AccentTextBrush" Color="{DynamicResource AccentTextColor}"/>
 
-    <!-- Derived translucent tiers - one systematic source instead of a dozen hand-picked near-white
-    purples that used to disagree slightly from module to module (#FFF8F4FD vs #FFF4F2FC vs #FFECEAFB
-    vs #FFF1E9FE, ...). Opacity values were fit to roughly match the strongest/most common of the old
-    literals per tier rather than preserve every one exactly - the point of centralizing is to stop
-    having eight near-identical shades in the first place. -->
-    <SolidColorBrush x:Key="AccentSelectionBrush" Color="{DynamicResource AccentPrimaryColor}" Opacity="0.36"/>
-    <SolidColorBrush x:Key="AccentSoftBrush" Color="{DynamicResource AccentPrimaryColor}" Opacity="0.05"/>
-    <SolidColorBrush x:Key="AccentHoverBrush" Color="{DynamicResource AccentPrimaryColor}" Opacity="0.10"/>
-    <SolidColorBrush x:Key="AccentPressedBrush" Color="{DynamicResource AccentPrimaryColor}" Opacity="0.18"/>
-    <SolidColorBrush x:Key="AccentBorderBrush" Color="{DynamicResource AccentSecondaryColor}" Opacity="0.30"/>
-    <!-- Noticeably stronger than the tiers above - for a persistently-selected list row (e.g. the
-    Skin Changer skins list), which needs to read clearly against neighboring unselected rows rather
-    than blend in the way a transient hover/pressed tint is meant to. -->
-    <SolidColorBrush x:Key="AccentSelectedBrush" Color="{DynamicResource AccentPrimaryColor}" Opacity="0.45"/>
-
-    <!-- Same gradient as Color Configurator's CCGradientButton - the "Apply changes"/"Apply to game"
-    CTA look, now reusable by any other module's primary action button. -->
+    <!-- Same gradient as Color Configurator's CCGradientButton - the accent-bar/selection-indicator
+    look (CCAccentBar.Selected etc.), reusable anywhere a small decorative gradient sliver is wanted.
+    Kept distinct from AccentButtonGradientBrush (defined per-theme above) because the dark mockup's
+    own "gradient" and "buttonGradient" tokens diverge - the CTA button needs a richer/darker pair so
+    its solid fill doesn't glow against the dark page the way the bright cyan-teal decorative gradient
+    would. -->
     <LinearGradientBrush x:Key="AccentGradientBrush" StartPoint="0%,50%" EndPoint="100%,50%">
         <GradientStop Color="{DynamicResource AccentPrimaryColor}" Offset="0"/>
         <GradientStop Color="{DynamicResource AccentSecondaryColor}" Offset="1"/>

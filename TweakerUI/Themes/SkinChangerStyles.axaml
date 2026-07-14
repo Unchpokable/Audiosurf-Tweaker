@@ -56,6 +56,29 @@
                                VerticalAlignment="Center"/>
             </Border>
         </ControlTemplate>
+
+        <!-- Own template, not the FluentTheme default: the stock ListBoxItem ControlTheme paints its
+        :selected/:pointerover backgrounds directly on its own template-internal ContentPresenter, tied
+        to the FluentTheme accent (a blue that has nothing to do with either app palette) - a plain
+        Background Setter on the ListBoxItem itself loses that fight the same way TextBox's focus ring
+        did (see CCTextBoxTemplate). Owning the whole template means our own Background Setters/
+        Transitions are the only thing painting this row, in either theme. -->
+        <ControlTemplate x:Key="SCSkinListItemTemplate" TargetType="ListBoxItem">
+            <Border Name="PART_Border"
+                    Background="{TemplateBinding Background}"
+                    CornerRadius="{TemplateBinding CornerRadius}">
+                <Border.Transitions>
+                    <Transitions>
+                        <BrushTransition Property="Background" Duration="0:0:0.2"/>
+                    </Transitions>
+                </Border.Transitions>
+                <ContentPresenter Content="{TemplateBinding Content}"
+                                   ContentTemplate="{TemplateBinding ContentTemplate}"
+                                   Padding="{TemplateBinding Padding}"
+                                   HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                   VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
+            </Border>
+        </ControlTemplate>
     </Styles.Resources>
 
     <!-- Section cards - visual consistency pass with Color Configurator's own CCCard/CCGamePanel
@@ -80,18 +103,14 @@
     <Style Selector="Button.SCIconButton">
         <Setter Property="Width" Value="34"/>
         <Setter Property="Height" Value="34"/>
-        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="6"/>
         <Setter Property="Padding" Value="0"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.15"/>
-            </Transitions>
-        </Setter>
+        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
     </Style>
     <Style Selector="Button.SCIconButton:pointerover">
         <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
@@ -104,18 +123,14 @@
     <Style Selector="Button.SCRowIconButton">
         <Setter Property="Width" Value="28"/>
         <Setter Property="Height" Value="28"/>
-        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="6"/>
         <Setter Property="Padding" Value="0"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.15"/>
-            </Transitions>
-        </Setter>
+        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
     </Style>
     <Style Selector="Button.SCRowIconButton:pointerover">
         <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
@@ -137,11 +152,7 @@
         <Setter Property="Background" Value="{DynamicResource SurfaceRowBrush}"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.2"/>
-            </Transitions>
-        </Setter>
+        <Setter Property="Template" Value="{StaticResource SCSkinListItemTemplate}"/>
     </Style>
     <Style Selector="ListBox.SCSkinsList ListBoxItem:pointerover">
         <Setter Property="Background" Value="{DynamicResource SurfaceRowHoverBrush}"/>
@@ -296,11 +307,7 @@
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.15"/>
-            </Transitions>
-        </Setter>
+        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
     </Style>
     <Style Selector="Button.SCSegment:pointerover">
         <Setter Property="Background" Value="{DynamicResource AccentPressedBrush}"/>

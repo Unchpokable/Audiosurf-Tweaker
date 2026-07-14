@@ -67,7 +67,7 @@
     <Style Selector="Border.STToggleRow">
         <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Padding" Value="8,7"/>
-        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
         <Setter Property="Transitions">
             <Transitions>
                 <BrushTransition Property="Background" Duration="0:0:0.15"/>
@@ -152,11 +152,7 @@
         <Setter Property="VerticalAlignment" Value="Stretch"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.15"/>
-            </Transitions>
-        </Setter>
+        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
     </Style>
     <Style Selector="Button.STBrowseButton:pointerover">
         <Setter Property="Background" Value="{DynamicResource AccentPressedBrush}"/>

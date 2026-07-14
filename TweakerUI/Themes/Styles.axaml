@@ -60,6 +60,7 @@
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
     </Style>
     <Style Selector="Button.TitleBarButton:pointerover">
         <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
@@ -185,11 +186,7 @@
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.15"/>
-            </Transitions>
-        </Setter>
+        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
     </Style>
     <Style Selector="Button.IconResetButton:pointerover">
         <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
@@ -236,7 +233,7 @@
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
     </Style>
     <Style Selector="Border.CCBadge">
-        <Setter Property="Background" Value="{DynamicResource SurfaceSoftBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceBadgeBrush}"/>
         <Setter Property="CornerRadius" Value="10"/>
         <Setter Property="Padding" Value="8,2"/>
     </Style>
@@ -339,7 +336,7 @@
     </Style>
 
     <Style Selector="Button.CCPaletteRow">
-        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
         <Setter Property="Padding" Value="0"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Setter Property="Cursor" Value="Hand"/>
@@ -365,7 +362,7 @@
     </Style>
 
     <Style Selector="Button.CCNewPalette">
-        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
         <Setter Property="FontSize" Value="13.5"/>
         <Setter Property="FontWeight" Value="Medium"/>
@@ -375,12 +372,7 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
         <Setter Property="BorderThickness" Value="1.5"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.15"/>
-                <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
-            </Transitions>
-        </Setter>
+        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
     </Style>
     <Style Selector="Button.CCNewPalette:pointerover">
         <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
@@ -396,11 +388,7 @@
         <Setter Property="FontSize" Value="12.5"/>
         <Setter Property="Padding" Value="12,6"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.15"/>
-            </Transitions>
-        </Setter>
+        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
     </Style>
     <Style Selector="Button.CCNegative:pointerover">
         <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
@@ -472,22 +460,17 @@
         <Setter Property="Padding" Value="14,5"/>
         <Setter Property="CornerRadius" Value="6"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.15"/>
-                <BrushTransition Property="Foreground" Duration="0:0:0.15"/>
-            </Transitions>
-        </Setter>
+        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
     </Style>
     <Style Selector="Button.CCTab:pointerover">
         <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
     </Style>
     <Style Selector="Button.CCTab.Selected">
-        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
     </Style>
     <Style Selector="Button.CCTab.Selected:pointerover">
-        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
     </Style>
 
     <Style Selector="Border.CCSaveBar">
@@ -510,7 +493,14 @@
         <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
     </Style>
 
-    <!-- Shared gradient CTA (Save Bar's "Apply changes" and the game panel's "Apply to game"). -->
+    <!-- Shared gradient CTA (Save Bar's "Apply changes" and the game panel's "Apply to game"). Uses
+    AccentButtonGradientBrush (not the decorative AccentGradientBrush) - the two coincide in Light but
+    diverge in Dark, where the CTA needs its own richer/darker gradient pair for text readability -
+    see AccentColors.axaml's own comments. Own template (FlatButtonTemplate) so the gradient itself
+    never actually needs to change value at :pointerover/:pressed (a LinearGradientBrush can't be
+    smoothly cross-faded by BrushTransition anyway) - Opacity dimming alone is the animated feedback,
+    and now it's the ONLY thing touching the button, not fighting FluentTheme's own un-transitioned
+    hover highlight the way it silently was before owning the template. -->
     <Style Selector="Button.CCGradientButton">
         <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
@@ -519,7 +509,8 @@
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Padding" Value="18,10"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Background" Value="{DynamicResource AccentGradientBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource AccentButtonGradientBrush}"/>
+        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
         <Setter Property="Transitions">
             <Transitions>
                 <DoubleTransition Property="Opacity" Duration="0:0:0.15"/>
@@ -543,18 +534,14 @@
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Padding" Value="18,10"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.15"/>
-            </Transitions>
-        </Setter>
+        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
     </Style>
     <Style Selector="Button.CCSecondary:pointerover">
         <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
     </Style>
 
     <Style Selector="Button.CCGhost">
-        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="8"/>
@@ -562,11 +549,7 @@
         <Setter Property="FontWeight" Value="Medium"/>
         <Setter Property="Padding" Value="16,10"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.15"/>
-            </Transitions>
-        </Setter>
+        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
     </Style>
     <Style Selector="Button.CCGhost:pointerover">
         <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
@@ -580,12 +563,7 @@
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="Padding" Value="10,8"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.15"/>
-                <BrushTransition Property="Foreground" Duration="0:0:0.15"/>
-            </Transitions>
-        </Setter>
+        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
     </Style>
     <Style Selector="Button.CCDiscard:pointerover">
         <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>

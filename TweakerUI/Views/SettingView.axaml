@@ -10,6 +10,21 @@
         <ScrollViewer Margin="20" VerticalScrollBarVisibility="Auto">
             <StackPanel Spacing="14">
 
+                <!-- Appearance -->
+                <Border Classes="STCard">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Appearance" Classes="STCardTitle" Margin="0,0,0,8"/>
+
+                        <Border Classes="STToggleRow"
+                                ToolTip.Tip="Switch the app's color theme - takes effect immediately, no restart needed">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Dark theme" Classes="STToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsDarkTheme, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
                 <!-- Paths -->
                 <Border Classes="STCard">
                     <StackPanel Spacing="14">

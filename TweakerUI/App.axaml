@@ -3,11 +3,13 @@
              x:Class="TweakerUI.App"
              xmlns:tweakerUi="clr-namespace:TweakerUI"
              RequestedThemeVariant="Light">
-    <!-- Pinned to Light: NeutralColors.axaml's "Dark" ThemeDictionaries variant isn't populated yet
-         (Фаза 4.7, step 1 - extraction/DynamicResource plumbing only, real dark values come from
-         mockups later), so following the system's dark variant would only mismatch unstyled FluentTheme
-         control parts against a still-light custom palette. Unpin once Dark is populated and the
-         Settings "Appearance" toggle exists to drive RequestedThemeVariant explicitly. -->
+    <!-- "Light" here is only the design-time/pre-config-load fallback (e.g. previewer, or the brief
+         window before MainWindowViewModel's constructor finishes loading SettingsProvider). The real,
+         user-facing value is set in code - App.axaml.cs.OnFrameworkInitializationCompleted calls
+         ThemeService.Apply(SettingsProvider.IsDarkTheme) once config is loaded, and the Settings
+         "Appearance" toggle (SettingViewModel.IsDarkTheme) calls the same method live, no restart
+         needed - see ThemeService.cs. Deliberately NOT "Default" (follow the OS) - this app doesn't
+         want to switch themes out from under the user without them choosing to in Settings. -->
 
     <Application.DataTemplates>
         <tweakerUi:ViewLocator/>
@@ -18,6 +20,7 @@
             <ResourceDictionary.MergedDictionaries>
                 <ResourceInclude Source="avares://TweakerUI/Themes/NeutralColors.axaml"/>
                 <ResourceInclude Source="avares://TweakerUI/Themes/AccentColors.axaml"/>
+                <ResourceInclude Source="avares://TweakerUI/Themes/SharedControlTemplates.axaml"/>
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>
