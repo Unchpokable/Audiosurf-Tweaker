@@ -35,6 +35,13 @@
     <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
     <PackageReference Include="SkiaSharp" Version="4.150.0" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.9" />
+    <!-- Not used directly - pinned up from the vulnerable floors pulled in transitively
+         (Gameloop.Vdf.JsonConverter -> Newtonsoft.Json 12.0.3, GHSA-5crp-9r3c-p9vr;
+         Microsoft.Toolkit.Uwp.Notifications -> System.Drawing.Common 4.7.0, GHSA-rxg9-xrhp-64gj).
+         NuGet resolves to the highest floor across the graph, so a direct reference here is enough
+         to override both without touching the packages that actually need them. -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="System.Drawing.Common" Version="10.0.10" />
   </ItemGroup>
 
   <ItemGroup>

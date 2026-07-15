@@ -11,6 +11,8 @@ namespace TweakerUI.ViewModels
 {
     public partial class MainWindowViewModel : ViewModelBase
     {
+        private static readonly Logger _logger = new Logger();
+
         public MainWindowViewModel()
         {
             // Mirrors the donor MainViewModel's constructor order exactly: config has to be loaded into
@@ -78,6 +80,12 @@ namespace TweakerUI.ViewModels
         // timing (see SkinChangerView's rename-focus handling).
         private static void OnConfigurationFault(Exception exception)
         {
+            // Previously this only showed an ephemeral toast/dialog - once the window closed there was
+            // no record of what actually went wrong (which path OpenExeConfiguration resolved to, what
+            // the underlying exception was), making exactly this class of bug (config silently missing
+            // under some publish mode) unreachable without a debugger. See SkinChangerViewModel's
+            // LoadSkinsCoreAsync logging for the same reasoning applied to the Skins folder lookup.
+            _logger.Log("ConfigurationManager", exception.ToString());
             Dispatcher.UIThread.Post(() => ApplicationNotificationManager.Manager.ShowErrorWnd(
                 "Settings initialization error",
                 "Could not detect the Audiosurf installation. Check the Settings tab, set the game textures path manually, then restart Audiosurf Tweaker."),

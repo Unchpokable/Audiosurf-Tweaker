@@ -27,6 +27,7 @@
 
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="avares://TweakerUI/Themes/ScrollBarStyles.axaml"/>
         <StyleInclude Source="avares://TweakerUI/Themes/Styles.axaml"/>
         <StyleInclude Source="avares://TweakerUI/Themes/SkinChangerStyles.axaml"/>
         <StyleInclude Source="avares://TweakerUI/Themes/TweakerStyles.axaml"/>

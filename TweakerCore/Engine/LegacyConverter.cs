@@ -22,7 +22,15 @@ namespace TweakerCore.Engine
         {
             var converterPath = GetConverterPath();
             if (!File.Exists(converterPath))
+            {
+                // Previously a silent `return false` - indistinguishable from "this file legitimately
+                // isn't a legacy format" both to the caller and in the logs, which is exactly what made
+                // the single-file-publish path bug above invisible (every legacy skin silently failed to
+                // load, cache came out ~1KB, nothing recorded why).
+                ConversionFailed?.Invoke(path, new FileNotFoundException(
+                    $"LegacyDataConverter.exe not found at '{converterPath}' - legacy file left unconverted.", converterPath));
                 return false;
+            }
 
             try
             {
@@ -36,8 +44,20 @@ namespace TweakerCore.Engine
 
                 using (var process = Process.Start(startInfo))
                 {
+                    // LegacyDataConverter.exe writes every diagnostic (usage, "File not found", the
+                    // full exception on a failed conversion) to stdout via Console.WriteLine, not
+                    // stderr - reading StandardError here would always come back empty.
+                    var stdout = process.StandardOutput.ReadToEnd();
                     process.WaitForExit();
-                    return process.ExitCode == 0;
+
+                    if (process.ExitCode != 0)
+                    {
+                        ConversionFailed?.Invoke(path, new InvalidOperationException(
+                            $"LegacyDataConverter.exe exited with code {process.ExitCode}: {stdout}"));
+                        return false;
+                    }
+
+                    return true;
                 }
             }
             catch (Exception ex)
@@ -47,9 +67,18 @@ namespace TweakerCore.Engine
             }
         }
 
+        // Path.GetDirectoryName(Environment.ProcessPath), NOT AppDomain.CurrentDomain.BaseDirectory:
+        // the latter (same underlying value as AppContext.BaseDirectory) resolves to the
+        // %TEMP%\.net\TweakerUI\<hash>\ self-extraction folder under TweakerUI's self-contained
+        // single-file publish (Deploy.ps1, which needs IncludeNativeLibrariesForSelfExtract for
+        // SkiaSharp/HarfBuzzSharp to run at all) - not the folder actually containing
+        // LegacyDataConverter.exe. IsAvailable/TryConvert would silently look in the wrong place and
+        // fail every time, converting nothing (see SkinChangerViewModel's own AppDirectory constant
+        // for the same fix applied to the Skins folder lookup, root-caused the same way via logging).
+        // Environment.ProcessPath is unaffected by self-extraction - it's TweakerUI.exe's own path.
         private static string GetConverterPath()
         {
-            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, ExecutableRelativePath);
+            return Path.Combine(Path.GetDirectoryName(Environment.ProcessPath), ExecutableRelativePath);
         }
     }
 }

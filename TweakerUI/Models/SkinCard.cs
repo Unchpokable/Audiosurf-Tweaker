@@ -1,7 +1,7 @@
+using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -110,7 +110,7 @@ namespace TweakerUI.Models
                 return;
 
             skinObject.Name = newName;
-            var newFile = $@"Skins\{newName}{EnvironmentalVeriables.ActualSkinExtention}";
+            var newFile = Path.Combine(SkinChangerViewModel.SkinsRootPath, newName + EnvironmentalVeriables.ActualSkinExtention);
             var oldFile = _pathToOriginFile;
 
             // Name/_pathToOriginFile are only committed below once the file operations actually
@@ -120,12 +120,12 @@ namespace TweakerUI.Models
             {
                 try
                 {
-                    if (!SkinPackager.CompileToPath(skinObject, "Skins"))
+                    if (!SkinPackager.CompileToPath(skinObject, SkinChangerViewModel.SkinsRootPath))
                         return false;
 
                     File.Delete(oldFile);
 
-                    var cacheDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                    var cacheDir = SkinChangerViewModel.AppDirectory;
                     if (LoadingCache.TryFind(cacheDir, out LoadingCache cache))
                     {
                         cache.Data.RemoveAll(x => x.Name == oldName);

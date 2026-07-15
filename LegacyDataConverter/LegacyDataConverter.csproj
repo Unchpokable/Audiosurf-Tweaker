@@ -81,6 +81,18 @@
     <PackageReference Include="System.Text.Json">
       <Version>10.0.9</Version>
     </PackageReference>
+    <!-- .NET Framework has no real "self-contained" deployment (the CLR itself is always an
+         OS-provided component, not something an app can bundle) - the practical equivalent for a
+         single deployable binary is IL-merging the managed dependency closure into the exe itself,
+         so nothing ships loose next to it. ILRepack (MIT, open-source ILMerge continuation) does
+         exactly that, and its MSBuild task package already ships its own zero-config Release-only
+         AfterTargets="Build" merge target (see its own ILRepack.Lib.MSBuild.Task.targets) - it
+         merges the primary output with every DLL sitting in the output folder and deletes the
+         now-redundant loose copies, no custom target needed here beyond the package reference.
+         TweakerCore.Engine.LegacyConverter shells out to this exe expecting it alone at the
+         Tweaker's own base directory (see its own comment) - this merge is what makes that
+         "just one file" assumption actually hold. -->
+    <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.46" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>
