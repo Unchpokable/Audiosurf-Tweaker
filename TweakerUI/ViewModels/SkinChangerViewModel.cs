@@ -84,9 +84,6 @@ namespace TweakerUI.ViewModels
         private SkinCard selectedItem;
 
         [ObservableProperty]
-        private string changerStatus;
-
-        [ObservableProperty]
         private bool loadingVisible;
 
         [ObservableProperty]
@@ -153,14 +150,13 @@ namespace TweakerUI.ViewModels
                     return;
                 }
 
-                ChangerStatus = "Working...";
+                using var status = StatusService.Manager.Begin(StatusToken.DiskProcess, "Skin Changer", $"Installing {Path.GetFileName(pathToOrigin)}...");
 
                 if (target.Equals(SettingsProvider.GameTexturesPath, StringComparison.InvariantCultureIgnoreCase))
                 {
                     if (SettingsProvider.SafeInstall && !EnvironmentChecker.CheckEnvironment(target, out FolderHashInfo _))
                     {
                         ApplicationNotificationManager.Manager.ShowWarning("Skin installation restriction", "Current texture set is unsaved. Skin installation prohibited");
-                        ChangerStatus = "Ready";
                         return;
                     }
 
@@ -169,7 +165,6 @@ namespace TweakerUI.ViewModels
                         if (!await ApplicationNotificationManager.Manager.AskForAction("Danger action warning",
                                 "Your current texture set is unsaved. Installing a skin will overwrite unsaved changes and you will lose them. Do you want to continue?"))
                         {
-                            ChangerStatus = "Ready";
                             return;
                         }
                     }
@@ -187,7 +182,6 @@ namespace TweakerUI.ViewModels
                     AudiosurfHandle.Instance.Command(GameProtocol.Command(GameProtocol.ReloadTextures));
 
                 ApplicationNotificationManager.Manager.ShowSuccess("Done!", $"Skin \"{skinName}\" successfully installed. Enjoy! ^_^");
-                ChangerStatus = "Ready";
             }
             finally
             {
@@ -205,19 +199,20 @@ namespace TweakerUI.ViewModels
             if (!await ApplicationNotificationManager.Manager.AskForAction("Remove Skin", "Do you want to remove file too?"))
                 return;
 
-            ChangerStatus = "Working...";
-            await Task.Run(() =>
+            using (StatusService.Manager.Begin(StatusToken.DiskProcess, "Skin Changer", $"Removing {target.Name}..."))
             {
-                File.Delete(target.PathToOrigin);
-                var cacheDir = AppDirectory;
-                if (LoadingCache.TryFind(cacheDir, out LoadingCache cache))
+                await Task.Run(() =>
                 {
-                    cache.Data.RemoveAll(x => x.Name == target.Name);
-                    cache.Serialize(cacheDir);
-                    Utils.DisposeAndClear(cache);
-                }
-            });
-            ChangerStatus = "Ready";
+                    File.Delete(target.PathToOrigin);
+                    var cacheDir = AppDirectory;
+                    if (LoadingCache.TryFind(cacheDir, out LoadingCache cache))
+                    {
+                        cache.Data.RemoveAll(x => x.Name == target.Name);
+                        cache.Serialize(cacheDir);
+                        Utils.DisposeAndClear(cache);
+                    }
+                });
+            }
             ApplicationNotificationManager.Manager.ShowInformation("", "Operation completed");
         }
 
@@ -410,20 +405,19 @@ namespace TweakerUI.ViewModels
 
         private async Task LoadSkinsAsync(bool rebuildCache)
         {
-            ChangerStatus = "Loading...";
             LoadingVisible = true;
             ReloadButtonUnlocked = false;
 
-            await Task.Run(() => LoadSkinsCoreAsync(rebuildCache));
+            using (var status = StatusService.Manager.Begin(StatusToken.DiskProcess, "Skin Changer", "Loading skins..."))
+                await Task.Run(() => LoadSkinsCoreAsync(rebuildCache, status));
 
             LoadingVisible = false;
-            ChangerStatus = "Ready";
             ReloadButtonUnlocked = true;
         }
 
         private static readonly Logger _logger = new Logger();
 
-        private async Task LoadSkinsCoreAsync(bool rebuildCache)
+        private async Task LoadSkinsCoreAsync(bool rebuildCache, StatusHandle status)
         {
             var skinsRootExists = Directory.Exists(SkinsRootPath);
             // AppContext.BaseDirectory and Environment.CurrentDirectory are logged purely for
@@ -449,15 +443,15 @@ namespace TweakerUI.ViewModels
             if (!rebuildCache && LoadingCache.TryFind(cacheDir, out LoadingCache cache) &&
                 UnorderedSequenceEquals(files, cache.Data.Select(x => x.PathToOriginFile).ToList()))
             {
-                await LoadSkinsFromCacheAsync(cache);
+                await LoadSkinsFromCacheAsync(cache, status);
             }
             else
             {
-                await LoadSkinsFullAsync(files, cacheDir);
+                await LoadSkinsFullAsync(files, cacheDir, status);
             }
         }
 
-        private async Task LoadSkinsFromCacheAsync(LoadingCache cache)
+        private async Task LoadSkinsFromCacheAsync(LoadingCache cache, StatusHandle status)
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
@@ -465,14 +459,19 @@ namespace TweakerUI.ViewModels
                 CurrentLoadStep = 0;
             });
 
+            var total = cache.Data.Count;
+            var i = 0;
             foreach (var cachedSkin in cache.Data.OrderBy(x => x?.Name))
             {
                 if (cachedSkin == null)
                 {
                     await Dispatcher.UIThread.InvokeAsync(() => ApplicationNotificationManager.Manager.ShowError("", "Cache error occurred. Skins will be loaded from source files"));
-                    await LoadSkinsFullAsync(CollectSkinFiles(), AppDirectory);
+                    await LoadSkinsFullAsync(CollectSkinFiles(), AppDirectory, status);
                     return;
                 }
+
+                i++;
+                status.Update($"Loading {cachedSkin.Name} ({i}/{total})...");
 
                 var card = new SkinCard(cachedSkin, this);
                 await Dispatcher.UIThread.InvokeAsync(() =>
@@ -485,7 +484,7 @@ namespace TweakerUI.ViewModels
             Utils.DisposeAndClear(cache);
         }
 
-        private async Task LoadSkinsFullAsync(List<string> files, string cacheDir)
+        private async Task LoadSkinsFullAsync(List<string> files, string cacheDir, StatusHandle status)
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
@@ -494,22 +493,37 @@ namespace TweakerUI.ViewModels
                 CurrentLoadStep = 0;
             });
 
+            void OnConversionStarted(string path) => status.Update(StatusToken.DiskProcess, $"Converting legacy skin {Path.GetFileName(path)}...");
+            LegacyConverter.ConversionStarted += OnConversionStarted;
+
             var cache = new LoadingCache();
-            foreach (var file in files)
+            try
             {
-                var skin = SkinPackager.Decompile(file);
-                if (skin == null)
-                    continue;
-
-                cache.Data.Add(new LoadedSkinData(skin, file));
-                var card = new SkinCard(skin, file, this);
-                skin.Dispose();
-
-                await Dispatcher.UIThread.InvokeAsync(() =>
+                var total = files.Count;
+                var i = 0;
+                foreach (var file in files)
                 {
-                    Skins.Add(card);
-                    CurrentLoadStep++;
-                });
+                    i++;
+                    status.Update($"Loading {Path.GetFileName(file)} ({i}/{total})...");
+
+                    var skin = SkinPackager.Decompile(file);
+                    if (skin == null)
+                        continue;
+
+                    cache.Data.Add(new LoadedSkinData(skin, file));
+                    var card = new SkinCard(skin, file, this);
+                    skin.Dispose();
+
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        Skins.Add(card);
+                        CurrentLoadStep++;
+                    });
+                }
+            }
+            finally
+            {
+                LegacyConverter.ConversionStarted -= OnConversionStarted;
             }
 
             cache.Serialize(cacheDir);

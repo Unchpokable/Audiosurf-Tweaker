@@ -3,6 +3,8 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:viewModels="clr-namespace:TweakerUI.ViewModels"
+        xmlns:core="clr-namespace:TweakerUI.Core"
+        xmlns:conv="clr-namespace:TweakerUI.Core.Converters"
         mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="700"
         x:Class="TweakerUI.Views.MainWindow"
         x:DataType="viewModels:MainWindowViewModel"
@@ -18,8 +20,13 @@
         <viewModels:MainWindowViewModel/>
     </Design.DataContext>
 
+    <Window.Resources>
+        <conv:StringEqualsConverter x:Key="StringEqualsConverter"/>
+        <conv:CountGreaterThanZeroConverter x:Key="CountGreaterThanZeroConverter"/>
+    </Window.Resources>
+
     <Border BorderBrush="{DynamicResource BorderWindowBrush}" BorderThickness="1">
-        <Grid RowDefinitions="35,*">
+        <Grid RowDefinitions="35,*,Auto">
 
             <!-- Title bar -->
             <Border Grid.Row="0" Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" PointerPressed="OnTitleBarPointerPressed">
@@ -71,6 +78,35 @@
                 <Panel Grid.Column="1" Width="16" Height="16" HorizontalAlignment="Right" VerticalAlignment="Bottom"
                        Background="Transparent" Cursor="BottomRightCorner" PointerPressed="OnResizeGripPointerPressed"/>
             </Grid>
+
+            <!-- Status bar - app-wide, multi-source (TweakerUI.Core.StatusService). Collapsed entirely
+                 when nothing is active, same "quiet by default" principle as the service itself. -->
+            <Border Grid.Row="2" Classes="SBBar" IsVisible="{Binding ActiveStatuses.Count, Converter={StaticResource CountGreaterThanZeroConverter}}">
+                <ItemsControl ItemsSource="{Binding ActiveStatuses}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="core:StatusEntry">
+                            <Border Classes="SBChip"
+                                    Classes.Working="{Binding Token, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Working}"
+                                    Classes.DiskProcess="{Binding Token, Converter={StaticResource StringEqualsConverter}, ConverterParameter=DiskProcess}"
+                                    Classes.Network="{Binding Token, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Network}"
+                                    Classes.Playing="{Binding Token, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Playing}"
+                                    Classes.Warning="{Binding Token, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Warning}"
+                                    Classes.Error="{Binding Token, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Error}">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <Path Classes="SBChipIcon"/>
+                                    <TextBlock Classes="SBChipSource" Text="{Binding Source}"/>
+                                    <TextBlock Classes="SBChipMessage" Text="{Binding Message}"/>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Border>
         </Grid>
     </Border>
 </Window>

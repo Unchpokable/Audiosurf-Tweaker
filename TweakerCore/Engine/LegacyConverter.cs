@@ -16,6 +16,13 @@ namespace TweakerCore.Engine
 
         public static event Action<string, Exception> ConversionFailed;
 
+        // Fired right before the external converter process starts - lets a UI layer show "converting
+        // X" while it's actually happening, without duplicating SkinPackager.Decompile's own zip-magic-
+        // bytes sniffing to guess in advance whether a given file needs conversion at all. Plain Action,
+        // same as ConversionFailed - TweakerCore stays UI-agnostic, no reference to any status/notification
+        // concept lives here.
+        public static event Action<string> ConversionStarted;
+
         public static bool IsAvailable => File.Exists(GetConverterPath());
 
         public static bool TryConvert(string path)
@@ -34,6 +41,8 @@ namespace TweakerCore.Engine
 
             try
             {
+                ConversionStarted?.Invoke(path);
+
                 var startInfo = new ProcessStartInfo(converterPath, $"\"{path}\"")
                 {
                     UseShellExecute = false,

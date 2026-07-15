@@ -1,4 +1,5 @@
 using System;
+using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -46,6 +47,11 @@ namespace TweakerUI.ViewModels
         public string AudiosurfStatusMessage => _asHandle.StateMessage;
 
         public IBrush AudiosurfStatusBrush => Brush.Parse(_asHandle.StateColor ?? "#ff0000");
+
+        // Passthrough to the StatusService singleton - bound from MainWindow.axaml's status bar row.
+        // Every View binds through its ViewModel rather than a static directly, same as everywhere
+        // else in this codebase.
+        public ObservableCollection<StatusEntry> ActiveStatuses => StatusService.Manager.ActiveStatuses;
 
         private readonly AudiosurfHandle _asHandle;
 

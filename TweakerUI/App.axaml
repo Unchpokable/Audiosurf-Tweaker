@@ -32,5 +32,6 @@
         <StyleInclude Source="avares://TweakerUI/Themes/SkinChangerStyles.axaml"/>
         <StyleInclude Source="avares://TweakerUI/Themes/TweakerStyles.axaml"/>
         <StyleInclude Source="avares://TweakerUI/Themes/SettingsStyles.axaml"/>
+        <StyleInclude Source="avares://TweakerUI/Themes/StatusBarStyles.axaml"/>
     </Application.Styles>
 </Application>

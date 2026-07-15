@@ -1,0 +1,95 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ============================================================================
+    App-wide status bar (docked at the bottom of MainWindow.axaml) - own file per the
+    established per-module scoping (SC/TW/ST/CC prefixes), "SB" here. Chips are driven by
+    TweakerUI.Core.StatusService: one chip per active StatusHandle, token->icon/color mapping
+    done entirely via Classes selectors below (Classes.<Token> is set in the chip DataTemplate
+    using the existing StringEqualsConverter, no new converter needed for that part).
+    ============================================================================ -->
+
+    <Styles.Resources>
+        <!-- Same stroke-style glyph family as TweakerStyles.axaml's icon rail. -->
+        <StreamGeometry x:Key="IconSBWorking">M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M12 6v6l4 2</StreamGeometry>
+        <StreamGeometry x:Key="IconSBDisk">M3 10h18v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8z M3 10l2-6h14l2 6 M7 15h.01 M11 15h6</StreamGeometry>
+        <StreamGeometry x:Key="IconSBNetwork">M2 8.5a15 15 0 0 1 20 0 M5.5 12a10 10 0 0 1 13 0 M9 15.5a5 5 0 0 1 6 0 M12 19h.01</StreamGeometry>
+        <StreamGeometry x:Key="IconSBPlaying">M6 4l14 8-14 8z</StreamGeometry>
+        <StreamGeometry x:Key="IconSBWarning">M12 2L2 20h20z M12 9v5 M12 17h.01</StreamGeometry>
+        <StreamGeometry x:Key="IconSBError">M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z M9 9l6 6 M15 9l-6 6</StreamGeometry>
+    </Styles.Resources>
+
+    <!-- Bar container - full window width, docked below the nav+content row (MainWindow.axaml
+    root Grid's new Auto row). Hidden entirely (see IsVisible binding in MainWindow.axaml) when
+    ActiveStatuses is empty, same "quiet by default" principle as the chips themselves. -->
+    <Style Selector="Border.SBBar">
+        <Setter Property="Background" Value="{DynamicResource SurfaceMutedBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+        <Setter Property="BorderThickness" Value="0,1,0,0"/>
+        <Setter Property="Padding" Value="12,6"/>
+    </Style>
+
+    <Style Selector="Border.SBChip">
+        <Setter Property="Background" Value="{DynamicResource SurfaceSoftBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="8,4"/>
+        <Setter Property="Margin" Value="0,0,8,0"/>
+    </Style>
+
+    <Style Selector="Path.SBChipIcon">
+        <Setter Property="Width" Value="13"/>
+        <Setter Property="Height" Value="13"/>
+        <Setter Property="Stretch" Value="Uniform"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Stroke" Value="{DynamicResource AccentPrimaryBrush}"/>
+        <Setter Property="StrokeThickness" Value="1.6"/>
+        <Setter Property="StrokeLineCap" Value="Round"/>
+        <Setter Property="StrokeJoin" Value="Round"/>
+        <Setter Property="Fill" Value="Transparent"/>
+    </Style>
+
+    <Style Selector="TextBlock.SBChipSource">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style Selector="TextBlock.SBChipMessage">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <!-- Token -> icon geometry -->
+    <Style Selector="Border.SBChip.Working Path.SBChipIcon">
+        <Setter Property="Data" Value="{StaticResource IconSBWorking}"/>
+    </Style>
+    <Style Selector="Border.SBChip.DiskProcess Path.SBChipIcon">
+        <Setter Property="Data" Value="{StaticResource IconSBDisk}"/>
+    </Style>
+    <Style Selector="Border.SBChip.Network Path.SBChipIcon">
+        <Setter Property="Data" Value="{StaticResource IconSBNetwork}"/>
+    </Style>
+    <!-- Play triangle reads better filled than as a thin outline - overrides the shared
+    stroke-only default from Path.SBChipIcon above. -->
+    <Style Selector="Border.SBChip.Playing Path.SBChipIcon">
+        <Setter Property="Data" Value="{StaticResource IconSBPlaying}"/>
+        <Setter Property="Fill" Value="{DynamicResource AccentPrimaryBrush}"/>
+        <Setter Property="Stroke" Value="Transparent"/>
+    </Style>
+    <!-- Warning/Error reuse the app's existing "danger" red literal (Themes/Styles.axaml's close
+    button, #FFE81123) rather than introducing a new color token - see roadmap Фаза 4.7 п.1 for
+    why danger red was deliberately left out of NeutralColors.axaml. -->
+    <Style Selector="Border.SBChip.Warning Path.SBChipIcon">
+        <Setter Property="Data" Value="{StaticResource IconSBWarning}"/>
+        <Setter Property="Stroke" Value="#FFE81123"/>
+    </Style>
+    <Style Selector="Border.SBChip.Error Path.SBChipIcon">
+        <Setter Property="Data" Value="{StaticResource IconSBError}"/>
+        <Setter Property="Stroke" Value="#FFE81123"/>
+    </Style>
+
+</Styles>
