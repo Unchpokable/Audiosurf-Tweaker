@@ -1,0 +1,246 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:vm="clr-namespace:TweakerUI.ViewModels"
+             xmlns:models="clr-namespace:TweakerUI.Models"
+             xmlns:conv="clr-namespace:TweakerUI.Core.Converters"
+             mc:Ignorable="d" d:DesignWidth="1100" d:DesignHeight="700"
+             x:Class="TweakerUI.Views.QuickPlayerView"
+             x:DataType="vm:QuickPlayerViewModel">
+
+    <!-- QuickPlayer (Фаза 5) - no mockup, laid out from a verbal description and expected to be
+    iterated visually from here. Same page-chrome pattern as every other module (edge-to-edge
+    Border for the background, inset Grid for content - avoids the Windows 11 DWM corner-rounding
+    artifact found in Фаза 4.2). -->
+    <UserControl.Resources>
+        <conv:IsNotNullConverter x:Key="IsNotNullConverter"/>
+        <conv:IsNullConverter x:Key="IsNullConverter"/>
+    </UserControl.Resources>
+
+    <Border Background="{DynamicResource AppBackgroundBrush}">
+        <Grid Margin="20" RowDefinitions="*,14,Auto">
+
+            <!-- Playlists (left) | Queue (right) -->
+            <Grid Grid.Row="0" ColumnDefinitions="240,14,*">
+
+                <Border Grid.Column="0" Classes="QPCard">
+                    <Grid RowDefinitions="Auto,*">
+                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,10">
+                            <TextBlock Grid.Column="0" Text="Playlists" Classes="QPCardTitle" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Classes="QPIconButton" Command="{Binding NewPlaylistCommand}" ToolTip.Tip="New playlist">
+                                <Path Data="{StaticResource IconQPAdd}" Width="14" Height="14" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="2.2" StrokeLineCap="Round"/>
+                            </Button>
+                            <Button Grid.Column="2" Classes="QPIconButton" Margin="4,0,0,0" Command="{Binding RemovePlaylistCommand}"
+                                    IsEnabled="{Binding SelectedPlaylistRow, Converter={StaticResource IsNotNullConverter}}" ToolTip.Tip="Delete selected playlist">
+                                <Path Data="{StaticResource IconQPRemove}" Width="14" Height="14" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="1.9" StrokeLineCap="Round" StrokeJoin="Round"/>
+                            </Button>
+                        </Grid>
+
+                        <TextBlock Grid.Row="1" Text="No playlists yet - create one to get started" Classes="QPEmptyState"
+                                   IsVisible="{Binding !Playlists.Count}"/>
+
+                        <ListBox Grid.Row="1" Classes="QPPlaylistList" ItemsSource="{Binding Playlists}"
+                                 SelectedItem="{Binding SelectedPlaylistRow, Mode=TwoWay}" IsVisible="{Binding Playlists.Count}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="models:PlaylistRowViewModel">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" IsVisible="{Binding !RenameActive}" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Name}" Classes="QPPlaylistName"/>
+                                            <TextBlock Text="{Binding TrackCount, StringFormat={}{0} tracks}" Classes="QPPlaylistCount"/>
+                                        </StackPanel>
+                                        <TextBox Grid.Column="0" Classes="QPRenameInput" Text="{Binding NewName, Mode=TwoWay}"
+                                                 IsVisible="{Binding RenameActive}" VerticalAlignment="Center" KeyDown="OnPlaylistRenameKeyDown"/>
+                                        <Button Grid.Column="1" Classes="QPRowIconButton" IsVisible="{Binding !RenameActive}"
+                                                Click="OnPlaylistRenameClick" ToolTip.Tip="Rename playlist">
+                                            <Path Data="{StaticResource IconQPRename}" Width="13" Height="13" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round"/>
+                                        </Button>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Border>
+
+                <Border Grid.Column="2" Classes="QPCard">
+                    <Grid RowDefinitions="Auto,*">
+                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+                            <TextBlock Grid.Column="0" Text="{Binding SelectedPlaylistRow.Name}" Classes="QPCardTitle" VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Classes="QPIconButton" Command="{Binding AddTracksCommand}"
+                                    IsEnabled="{Binding SelectedPlaylistRow, Converter={StaticResource IsNotNullConverter}}" ToolTip.Tip="Add tracks">
+                                <Path Data="{StaticResource IconQPAdd}" Width="14" Height="14" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="2.2" StrokeLineCap="Round"/>
+                            </Button>
+                        </Grid>
+
+                        <TextBlock Grid.Row="1" Text="Select or create a playlist to see its queue" Classes="QPEmptyState"
+                                   IsVisible="{Binding SelectedPlaylistRow, Converter={StaticResource IsNullConverter}}"/>
+
+                        <ScrollViewer Grid.Row="1" IsVisible="{Binding SelectedPlaylistRow, Converter={StaticResource IsNotNullConverter}}">
+                            <ListBox x:Name="QueueListBox" Classes="QPQueueList" ItemsSource="{Binding Queue}" SelectedItem="{Binding SelectedTrackCard, Mode=TwoWay}"
+                                     DragDrop.AllowDrop="True">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="models:TrackCardViewModel">
+                                        <Border Classes="QPTrackCard" Classes.Playing="{Binding IsPlaying}">
+                                            <Border.ContextFlyout>
+                                                <Flyout Placement="Pointer">
+                                                    <Border Classes="QPMenuPanel">
+                                                        <ScrollViewer MaxHeight="480">
+                                                            <StackPanel>
+                                                                <TextBlock Text="Character" Classes="QPMenuSectionTitle First"/>
+                                                                <Grid ColumnDefinitions="*,Auto" Classes="QPMenuRow">
+                                                                    <TextBlock Grid.Column="0" Text="Override default character" Classes="QPMenuLabel"/>
+                                                                    <ToggleButton Grid.Column="1" Classes="QPSwitch" IsChecked="{Binding OverrideCharacterEnabled, Mode=TwoWay}"/>
+                                                                </Grid>
+                                                                <ItemsControl ItemsSource="{Binding CharacterOptions}" IsVisible="{Binding OverrideCharacterEnabled}" Margin="0,4,0,0">
+                                                                    <ItemsControl.ItemsPanel>
+                                                                        <ItemsPanelTemplate>
+                                                                            <UniformGrid Columns="7" Rows="2"/>
+                                                                        </ItemsPanelTemplate>
+                                                                    </ItemsControl.ItemsPanel>
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate x:DataType="models:CharacterOptionViewModel">
+                                                                            <RadioButton Classes="QPCharacterButton" GroupName="TrackCharacter"
+                                                                                         Content="{Binding DisplayName}"
+                                                                                         IsChecked="{Binding IsSelected}"
+                                                                                         Command="{Binding SelectCommand}"/>
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
+
+                                                                <TextBlock Text="Tags" Classes="QPMenuSectionTitle"/>
+                                                                <ItemsControl ItemsSource="{Binding TagOptions}">
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate x:DataType="models:TagOptionViewModel">
+                                                                            <Grid ColumnDefinitions="*,60,Auto" Classes="QPMenuRow">
+                                                                                <TextBlock Grid.Column="0" Text="{Binding Label}" Classes="QPMenuLabel" Margin="0,0,10,0"/>
+                                                                                <TextBox Grid.Column="1" Classes="QPParamInput" Text="{Binding ParameterText, Mode=TwoWay}"
+                                                                                         IsVisible="{Binding HasParameter}" PlaceholderText="#" Margin="6,0,12,0"/>
+                                                                                <ToggleButton Grid.Column="2" Classes="QPSwitch" IsChecked="{Binding IsEnabled, Mode=TwoWay}"/>
+                                                                            </Grid>
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
+
+                                                                <TextBlock Text="Mods" Classes="QPMenuSectionTitle"/>
+                                                                <ItemsControl ItemsSource="{Binding ModOptions}">
+                                                                    <ItemsControl.ItemTemplate>
+                                                                        <DataTemplate x:DataType="models:ModOptionViewModel">
+                                                                            <Grid ColumnDefinitions="*,Auto" Classes="QPMenuRow">
+                                                                                <TextBlock Grid.Column="0" Text="{Binding Label}" Classes="QPMenuLabel"/>
+                                                                                <ToggleButton Grid.Column="1" Classes="QPSwitch" IsChecked="{Binding IsEnabled, Mode=TwoWay}"/>
+                                                                            </Grid>
+                                                                        </DataTemplate>
+                                                                    </ItemsControl.ItemTemplate>
+                                                                </ItemsControl>
+                                                            </StackPanel>
+                                                        </ScrollViewer>
+                                                    </Border>
+                                                </Flyout>
+                                            </Border.ContextFlyout>
+
+                                            <Grid ColumnDefinitions="52,10,*,8,Auto,6,Auto" Margin="8">
+                                                <Border Grid.Column="0" Classes="QPTrackCover">
+                                                    <Grid>
+                                                        <Image Source="{Binding CoverBitmap}" Stretch="UniformToFill"
+                                                               IsVisible="{Binding CoverBitmap, Converter={StaticResource IsNotNullConverter}}"/>
+                                                        <Path Classes="QPCoverPlaceholderIcon" Data="{StaticResource IconQPCoverPlaceholder}"
+                                                              IsVisible="{Binding CoverBitmap, Converter={StaticResource IsNullConverter}}"
+                                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Grid>
+                                                </Border>
+
+                                                <Grid Grid.Column="2" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" VerticalAlignment="Center">
+                                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Title}" Classes="QPTrackTitle" VerticalAlignment="Center"/>
+                                                    <ItemsControl Grid.Row="0" Grid.Column="1" ItemsSource="{Binding ActiveBadges}" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                        <ItemsControl.ItemsPanel>
+                                                            <ItemsPanelTemplate>
+                                                                <WrapPanel/>
+                                                            </ItemsPanelTemplate>
+                                                        </ItemsControl.ItemsPanel>
+                                                        <ItemsControl.ItemTemplate>
+                                                            <DataTemplate x:DataType="x:String">
+                                                                <Border Classes="QPBadge Active">
+                                                                    <TextBlock Text="{Binding}" Classes="QPBadgeText"/>
+                                                                </Border>
+                                                            </DataTemplate>
+                                                        </ItemsControl.ItemTemplate>
+                                                    </ItemsControl>
+
+                                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding Artist}" Classes="QPTrackArtist" VerticalAlignment="Center" Margin="0,3,0,0"/>
+                                                    <Border Grid.Row="1" Grid.Column="1" Classes="QPBadge" Margin="8,3,0,0" HorizontalAlignment="Left">
+                                                        <TextBlock Text="{Binding AudioPropertiesText}" Classes="QPBadgeText"/>
+                                                    </Border>
+                                                </Grid>
+
+                                                <TextBlock Grid.Column="4" Text="{Binding DurationText}" Classes="QPTrackDuration"/>
+
+                                                <Button Grid.Column="6" Classes="QPTrackRemoveButton" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove from playlist">
+                                                    <Path Data="{StaticResource IconQPRemove}" Width="13" Height="13" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round"/>
+                                                </Button>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </ScrollViewer>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- Transport bar: prev/play/next, and the 14-character default-mode grid instead of a
+            progress bar (the game's protocol has no scrub/seek/progress reporting to drive one). -->
+            <Border Grid.Row="2" Classes="QPTransportBar">
+                <Grid ColumnDefinitions="Auto,20,*">
+                    <!-- Fixed-height Grid keeps the four buttons' own bounds aligned with each other
+                    (see the row-alignment fix). Icons are wrapped in Viewbox rather than sized via
+                    Path.Width/Height+Stretch - user-confirmed by experiment that neither Stretch alone
+                    nor layout alignment alone centers these specific icons correctly, meaning the raw
+                    path geometries themselves have inconsistent bounding boxes/offsets
+                    (Fuckups/buttons_alignment_wrong.png, most visible on Play). Viewbox measures the
+                    Path at its natural geometry size and scales+centers THAT to fit, which is a
+                    layout-level guarantee independent of whatever the geometry's own coordinates are -
+                    doesn't depend on fixing every path's authoring. -->
+                    <Grid Grid.Column="0" ColumnDefinitions="Auto,8,Auto,8,Auto,8,Auto" Height="46" VerticalAlignment="Center">
+                        <Button Grid.Column="0" Classes="QPTransportButton" Command="{Binding PrevCommand}" ToolTip.Tip="Previous track">
+                            <Viewbox Width="16" Height="16">
+                                <Path Data="{StaticResource IconQPPrev}" Fill="{DynamicResource AccentPrimaryBrush}"/>
+                            </Viewbox>
+                        </Button>
+                        <Button Grid.Column="2" Classes="QPTransportButton Primary" Command="{Binding PlaySelectedCommand}" ToolTip.Tip="Play selected track">
+                            <Viewbox Width="18" Height="18">
+                                <Path Data="{StaticResource IconQPPlay}" Fill="{DynamicResource TextOnAccentBrush}"/>
+                            </Viewbox>
+                        </Button>
+                        <Button Grid.Column="4" Classes="QPTransportButton" Command="{Binding StopCommand}"
+                                IsEnabled="{Binding CurrentTrackCard, Converter={StaticResource IsNotNullConverter}}" ToolTip.Tip="Stop">
+                            <Viewbox Width="14" Height="14">
+                                <Path Data="{StaticResource IconQPStop}" Fill="{DynamicResource AccentPrimaryBrush}"/>
+                            </Viewbox>
+                        </Button>
+                        <Button Grid.Column="6" Classes="QPTransportButton" Command="{Binding NextCommand}" ToolTip.Tip="Next track">
+                            <Viewbox Width="16" Height="16">
+                                <Path Data="{StaticResource IconQPNext}" Fill="{DynamicResource AccentPrimaryBrush}"/>
+                            </Viewbox>
+                        </Button>
+                    </Grid>
+
+                    <ItemsControl Grid.Column="2" ItemsSource="{Binding DefaultCharacterOptions}" HorizontalAlignment="Right">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="7" Rows="2"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="models:CharacterOptionViewModel">
+                                <RadioButton Classes="QPCharacterButton" GroupName="DefaultCharacter"
+                                             Content="{Binding DisplayName}"
+                                             IsChecked="{Binding IsSelected}"
+                                             Command="{Binding SelectCommand}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

@@ -28,6 +28,7 @@ namespace TweakerUI.ViewModels
             SkinChangerVM = new SkinChangerViewModel();
             ColorsVM = new ColorsConfiguratorViewModel();
             TweakerVM = new TweakerViewModel();
+            QuickPlayerVM = new QuickPlayerViewModel();
             SettingsVM = new SettingViewModel();
 
             currentView = SkinChangerVM;
@@ -39,6 +40,7 @@ namespace TweakerUI.ViewModels
         public SkinChangerViewModel SkinChangerVM { get; }
         public ColorsConfiguratorViewModel ColorsVM { get; }
         public TweakerViewModel TweakerVM { get; }
+        public QuickPlayerViewModel QuickPlayerVM { get; }
         public SettingViewModel SettingsVM { get; }
 
         [ObservableProperty]
@@ -63,6 +65,9 @@ namespace TweakerUI.ViewModels
 
         [RelayCommand]
         private void ShowTweaker() => CurrentView = TweakerVM;
+
+        [RelayCommand]
+        private void ShowQuickPlayer() => CurrentView = QuickPlayerVM;
 
         [RelayCommand]
         private void ShowSettings() => CurrentView = SettingsVM;

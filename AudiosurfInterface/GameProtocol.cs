@@ -28,6 +28,7 @@ namespace AudiosurfInterface
         public const string ReloadTextures = "reloadtextures";
         public const string ReloadSounds = "reloadsounds";
         public const string GoToCharacterScreen = "gotocharacterscreen";
+        public const string Minimize = "minimize";
         public const string Maximize = "maximize";
         public const string GoFullscreen = "gofullscreen";
         public const string RestoreNormalWindowStyle = "restorenormalwindowstyle";
@@ -37,8 +38,31 @@ namespace AudiosurfInterface
         // special-case match against the same literal instead of two hand-synced copies.
         public const string CloseAudiosurf = "closeaudiosurf";
 
+        // NOTE: registerlistenerwindow / quickstartregisterwindow / quickstartqueuecommand are
+        // deliberately NOT exposed here. asbridge.exe already sends these itself once it finds the
+        // game window (see Фаза 3c) - a second, managed-side registration would race/conflict with
+        // the one the bridge already performed. AudiosurfHandle.Command's own queue-until-Connected
+        // behavior already gives callers the same practical effect as quickstartqueuecommand.
+
+        // asreport names (broadcast content forwarded via AudiosurfHandle.MessageResieved, already
+        // stripped of the "asreport" prefix by AsBridgeProtocol - see HandleGameBroadcast).
+        public const string ReportSongComplete = "songcomplete";
+        public const string ReportOnCharacterScreen = "oncharacterscreen";
+        public const string ReportNowPlayingArtist = "nowplayingartistname";
+        public const string ReportNowPlayingTitle = "nowplayingsongtitle";
+        public const string ReportNowPlayingAshFile = "nowplayingashfile";
+
         public static string Config(string key, bool value) => $"{AsConfigPrefix} {key} {value.ToString().ToLower()}";
 
         public static string Command(string name) => $"{AsCommandPrefix} {name}";
+
+        public static string SetWindowPositionSize(int x, int y, int width, int height) =>
+            Command($"setwindowpositionsize {x},{y},{width},{height}");
+
+        // GameCharacter.ToString().ToLowerInvariant() matches the command suffix exactly for every
+        // value (DoubleVisionElite -> "doublevisionelite" -> playsongdoublevisionelite,
+        // CurrentCharacter -> "currentcharacter" -> playsongcurrentcharacter) - no lookup table needed.
+        public static string PlaySong(GameCharacter character, string filePath) =>
+            Command($"playsong{character.ToString().ToLowerInvariant()} {filePath}");
     }
 }

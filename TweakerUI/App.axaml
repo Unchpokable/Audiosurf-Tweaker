@@ -33,5 +33,6 @@
         <StyleInclude Source="avares://TweakerUI/Themes/TweakerStyles.axaml"/>
         <StyleInclude Source="avares://TweakerUI/Themes/SettingsStyles.axaml"/>
         <StyleInclude Source="avares://TweakerUI/Themes/StatusBarStyles.axaml"/>
+        <StyleInclude Source="avares://TweakerUI/Themes/QuickPlayerStyles.axaml"/>
     </Application.Styles>
 </Application>

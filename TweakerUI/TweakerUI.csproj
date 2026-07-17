@@ -47,6 +47,7 @@
   <ItemGroup>
     <ProjectReference Include="..\TweakerCore\TweakerCore.csproj" />
     <ProjectReference Include="..\AudiosurfInterface\AudiosurfInterface.csproj" />
+    <ProjectReference Include="..\QuickPlayerCore\QuickPlayerCore.csproj" />
   </ItemGroup>
 
   <!--
