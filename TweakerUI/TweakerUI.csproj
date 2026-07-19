@@ -1,70 +1,70 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <!-- Needs a Windows SDK-versioned TFM (not bare net10.0-windows), same reason and fix as
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<!-- Needs a Windows SDK-versioned TFM (not bare net10.0-windows), same reason and fix as
          SkinChangerRestyle: the WinRT toast notification projection (ToastContentBuilder.Show())
          only resolves with a Windows SDK version on the TFM. This is Windows-only regardless
          (WM_COPYDATA/asbridge), so the extra specificity costs nothing on the rest of the project. -->
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
-    <RootNamespace>TweakerUI</RootNamespace>
-    <!-- Nullable inherited as "disable" from Directory.Build.props (project-wide policy from Phase 3a,
+		<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+		<RootNamespace>TweakerUI</RootNamespace>
+		<!-- Nullable inherited as "disable" from Directory.Build.props (project-wide policy from Phase 3a,
          to avoid unrelated annotation churn) - the wizard's own override is dropped. This module is a
          mechanical port of a large amount of pre-nullable WPF code; keeping it enabled would drown every
          build in CS8618 noise across dozens of ported properties for no functional benefit. -->
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-  </PropertyGroup>
+		<ApplicationManifest>app.manifest</ApplicationManifest>
+		<AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <Folder Include="Models\" />
-    <AvaloniaResource Include="Assets\**" />
-  </ItemGroup>
+	<ItemGroup>
+		<Folder Include="Models\" />
+		<AvaloniaResource Include="Assets\**" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Avalonia" Version="12.0.5" />
-    <PackageReference Include="Avalonia.Desktop" Version="12.0.5" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.5" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.5" />
-    <PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3">
-      <IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
-      <PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
-    </PackageReference>
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
-    <PackageReference Include="Gameloop.Vdf" Version="0.6.2" />
-    <PackageReference Include="Gameloop.Vdf.JsonConverter" Version="0.2.1" />
-    <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
-    <PackageReference Include="SkiaSharp" Version="4.150.0" />
-    <PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.9" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Avalonia" Version="12.0.5" />
+		<PackageReference Include="Avalonia.Desktop" Version="12.0.5" />
+		<PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.5" />
+		<PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.5" />
+		<PackageReference Include="AvaloniaUI.DiagnosticsSupport" Version="2.2.3">
+			<IncludeAssets Condition="'$(Configuration)' != 'Debug'">None</IncludeAssets>
+			<PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
+		</PackageReference>
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
+		<PackageReference Include="Gameloop.Vdf" Version="0.6.2" />
+		<PackageReference Include="Gameloop.Vdf.JsonConverter" Version="0.2.1" />
+		<PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
+		<PackageReference Include="SkiaSharp" Version="4.150.0" />
+		<PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.9" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\TweakerCore\TweakerCore.csproj" />
-    <ProjectReference Include="..\AudiosurfInterface\AudiosurfInterface.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\TweakerCore\TweakerCore.csproj" />
+		<ProjectReference Include="..\AudiosurfInterface\AudiosurfInterface.csproj" />
+	</ItemGroup>
 
-  <!--
+	<!--
     Same asbridge.exe pre-build hook as SkinChangerRestyle.csproj (Phase 3c) - AudiosurfHandle spawns
     it next to the exe at runtime, so without this the bridge subprocess is simply missing and the
     connection status sits in a permanent reconnect loop. CMake is still a black box here: no vcxproj,
     not in the .sln, Windows-only build/copy, skipped (not failed) on other platforms.
   -->
-  <PropertyGroup>
-    <AsBridgeSourceDir>$(MSBuildThisFileDirectory)..\ASBridge</AsBridgeSourceDir>
-    <AsBridgeBuildDir>$(AsBridgeSourceDir)\build\msbuild</AsBridgeBuildDir>
-  </PropertyGroup>
+	<PropertyGroup>
+		<AsBridgeSourceDir>$(MSBuildThisFileDirectory)..\ASBridge</AsBridgeSourceDir>
+		<AsBridgeBuildDir>$(AsBridgeSourceDir)\build\msbuild</AsBridgeBuildDir>
+	</PropertyGroup>
 
-  <Target Name="BuildAsBridge" BeforeTargets="Build" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-    <Exec Command="cmake -S &quot;$(AsBridgeSourceDir)&quot; -B &quot;$(AsBridgeBuildDir)&quot;" />
-    <Exec Command="cmake --build &quot;$(AsBridgeBuildDir)&quot; --config Release" />
-  </Target>
+	<Target Name="BuildAsBridge" BeforeTargets="Build" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+		<Exec Command="cmake -S &quot;$(AsBridgeSourceDir)&quot; -B &quot;$(AsBridgeBuildDir)&quot;" />
+		<Exec Command="cmake --build &quot;$(AsBridgeBuildDir)&quot; --config Release" />
+	</Target>
 
-  <Target Name="CopyAsBridge" AfterTargets="BuildAsBridge" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-    <PropertyGroup>
-      <!-- Single-config generators (Ninja) emit to bin\, multi-config (Visual Studio) to bin\<Config>\. -->
-      <AsBridgeExe>$(AsBridgeBuildDir)\bin\asbridge.exe</AsBridgeExe>
-      <AsBridgeExe Condition="!Exists('$(AsBridgeExe)')">$(AsBridgeBuildDir)\bin\Release\asbridge.exe</AsBridgeExe>
-    </PropertyGroup>
-    <Error Condition="!Exists('$(AsBridgeExe)')" Text="asbridge.exe not found after CMake build at $(AsBridgeBuildDir)" />
-    <Copy SourceFiles="$(AsBridgeExe)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
-  </Target>
+	<Target Name="CopyAsBridge" AfterTargets="BuildAsBridge" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+		<PropertyGroup>
+			<!-- Single-config generators (Ninja) emit to bin\, multi-config (Visual Studio) to bin\<Config>\. -->
+			<AsBridgeExe>$(AsBridgeBuildDir)\bin\asbridge.exe</AsBridgeExe>
+			<AsBridgeExe Condition="!Exists('$(AsBridgeExe)')">$(AsBridgeBuildDir)\bin\Release\asbridge.exe</AsBridgeExe>
+		</PropertyGroup>
+		<Error Condition="!Exists('$(AsBridgeExe)')" Text="asbridge.exe not found after CMake build at $(AsBridgeBuildDir)" />
+		<Copy SourceFiles="$(AsBridgeExe)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+	</Target>
 </Project>

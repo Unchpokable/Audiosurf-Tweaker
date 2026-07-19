@@ -1,0 +1,30 @@
+{
+    "editor.formatOnSave": true,
+    "terminal.integrated.fontFamily": "monospace",
+    "editor.fontFamily": "Comic Mono",
+    "editor.semanticTokenColorCustomizations": {
+        "rules": {
+            "enumMember": "#b8d7a3",
+            "macro": "#bd63c5",
+            "property": "#d296d6",
+            "concept": "#6aaaff",
+            "variable": "#b9d9ec"
+        }
+    },
+    "C_Cpp.intelliSenseEngine": "disabled",
+    "[cpp]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+    },
+    "[c]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+    },
+    "clangd.arguments": [
+        "--compile-commands-dir=build",
+        "--background-index",
+        "-j=4",
+        "--fallback-style=LLVM"
+    ],
+    "cmake.buildEnvironment": {
+        "VSLANG": "1033"
+    }
+}
