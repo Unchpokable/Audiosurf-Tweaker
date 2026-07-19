@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
@@ -30,6 +29,26 @@ namespace TweakerUI.ViewModels
     // "Edit on Disk" mode is dropped entirely - not part of this revival (see roadmap Phase 4.3 notes).
     public partial class SkinChangerViewModel : ViewModelBase
     {
+        // Path.GetDirectoryName(Environment.ProcessPath), NOT AppContext.BaseDirectory and NOT a bare
+        // relative "Skins" literal - both of the latter broke under Deploy.ps1's self-contained
+        // single-file publish, confirmed by adding the logging below and reading it back:
+        //   SkinsRootPath='C:\Users\...\AppData\Local\Temp\.net\TweakerUI\<hash>\Skins' (exists=False)
+        // A relative "Skins" path resolves against the process's current working directory, not the
+        // exe's own folder - those only coincide by accident (e.g. double-clicking from the same
+        // folder), which is what made the app's behavior depend on launch method/CWD instead of where
+        // the exe actually lives. Switching to AppContext.BaseDirectory looked like the fix (it's the
+        // commonly-cited single-file-safe alternative to Assembly.Location) but is ALSO wrong here:
+        // Deploy.ps1 publishes with IncludeNativeLibrariesForSelfExtract/IncludeAllContentForSelfExtract
+        // (needed so SkiaSharp/HarfBuzzSharp's native assets can run at all from inside a single-file
+        // bundle), and once content self-extraction is enabled, AppContext.BaseDirectory reports the
+        // %TEMP%\.net\TweakerUI\<hash>\ extraction folder, not the folder containing TweakerUI.exe.
+        // Environment.ProcessPath is unaffected by self-extraction - it's the actual apphost .exe's own
+        // path in every publish mode - confirmed by ConfigurationManager.ExePath (already on
+        // Environment.ProcessPath) correctly landing TweakerUI.exe.config next to the real exe under
+        // the exact same single-file bundle.
+        internal static readonly string AppDirectory = Path.GetDirectoryName(Environment.ProcessPath);
+        internal static readonly string SkinsRootPath = Path.Combine(AppDirectory, "Skins");
+
         public SkinChangerViewModel()
         {
             ShouldInstallSkyspheres = true;
@@ -63,9 +82,6 @@ namespace TweakerUI.ViewModels
 
         [ObservableProperty]
         private SkinCard selectedItem;
-
-        [ObservableProperty]
-        private string changerStatus;
 
         [ObservableProperty]
         private bool loadingVisible;
@@ -134,14 +150,13 @@ namespace TweakerUI.ViewModels
                     return;
                 }
 
-                ChangerStatus = "Working...";
+                using var status = StatusService.Manager.Begin(StatusToken.DiskProcess, "Skin Changer", $"Installing {Path.GetFileName(pathToOrigin)}...");
 
                 if (target.Equals(SettingsProvider.GameTexturesPath, StringComparison.InvariantCultureIgnoreCase))
                 {
                     if (SettingsProvider.SafeInstall && !EnvironmentChecker.CheckEnvironment(target, out FolderHashInfo _))
                     {
                         ApplicationNotificationManager.Manager.ShowWarning("Skin installation restriction", "Current texture set is unsaved. Skin installation prohibited");
-                        ChangerStatus = "Ready";
                         return;
                     }
 
@@ -150,7 +165,6 @@ namespace TweakerUI.ViewModels
                         if (!await ApplicationNotificationManager.Manager.AskForAction("Danger action warning",
                                 "Your current texture set is unsaved. Installing a skin will overwrite unsaved changes and you will lose them. Do you want to continue?"))
                         {
-                            ChangerStatus = "Ready";
                             return;
                         }
                     }
@@ -168,7 +182,6 @@ namespace TweakerUI.ViewModels
                     AudiosurfHandle.Instance.Command(GameProtocol.Command(GameProtocol.ReloadTextures));
 
                 ApplicationNotificationManager.Manager.ShowSuccess("Done!", $"Skin \"{skinName}\" successfully installed. Enjoy! ^_^");
-                ChangerStatus = "Ready";
             }
             finally
             {
@@ -186,19 +199,20 @@ namespace TweakerUI.ViewModels
             if (!await ApplicationNotificationManager.Manager.AskForAction("Remove Skin", "Do you want to remove file too?"))
                 return;
 
-            ChangerStatus = "Working...";
-            await Task.Run(() =>
+            using (StatusService.Manager.Begin(StatusToken.DiskProcess, "Skin Changer", $"Removing {target.Name}..."))
             {
-                File.Delete(target.PathToOrigin);
-                var cacheDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-                if (LoadingCache.TryFind(cacheDir, out LoadingCache cache))
+                await Task.Run(() =>
                 {
-                    cache.Data.RemoveAll(x => x.Name == target.Name);
-                    cache.Serialize(cacheDir);
-                    Utils.DisposeAndClear(cache);
-                }
-            });
-            ChangerStatus = "Ready";
+                    File.Delete(target.PathToOrigin);
+                    var cacheDir = AppDirectory;
+                    if (LoadingCache.TryFind(cacheDir, out LoadingCache cache))
+                    {
+                        cache.Data.RemoveAll(x => x.Name == target.Name);
+                        cache.Serialize(cacheDir);
+                        Utils.DisposeAndClear(cache);
+                    }
+                });
+            }
             ApplicationNotificationManager.Manager.ShowInformation("", "Operation completed");
         }
 
@@ -235,7 +249,7 @@ namespace TweakerUI.ViewModels
                 return;
             }
 
-            var newPath = $@"Skins\{Path.GetFileName(path)}";
+            var newPath = Path.Combine(SkinsRootPath, Path.GetFileName(path));
             if (File.Exists(newPath))
             {
                 if (await ApplicationNotificationManager.Manager.AskForAction("Skin Exists", "Given skin already in skins list. Do you want to overwrite it?"))
@@ -258,7 +272,7 @@ namespace TweakerUI.ViewModels
             Skins.Add(card);
             SelectedItem = card;
 
-            var cacheDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            var cacheDir = AppDirectory;
             await Task.Run(() =>
             {
                 if (LoadingCache.TryFind(cacheDir, out LoadingCache cache))
@@ -292,7 +306,7 @@ namespace TweakerUI.ViewModels
             }
 
             skin.Name = "New exported skin";
-            var source = $@"Skins\{skin.Name}{EnvironmentalVeriables.ActualSkinExtention}";
+            var source = Path.Combine(SkinsRootPath, skin.Name + EnvironmentalVeriables.ActualSkinExtention);
 
             var card = new SkinCard(skin, source, this);
             var existing = Skins.FirstOrDefault(c => c.PathToOrigin.Equals(card.PathToOrigin, StringComparison.OrdinalIgnoreCase));
@@ -304,7 +318,7 @@ namespace TweakerUI.ViewModels
 
             await Task.Run(() =>
             {
-                SkinPackager.CompileToPath(skin, "Skins");
+                SkinPackager.CompileToPath(skin, SkinsRootPath);
                 Utils.DisposeAndClear(skin);
             });
 
@@ -391,40 +405,53 @@ namespace TweakerUI.ViewModels
 
         private async Task LoadSkinsAsync(bool rebuildCache)
         {
-            ChangerStatus = "Loading...";
             LoadingVisible = true;
             ReloadButtonUnlocked = false;
 
-            await Task.Run(() => LoadSkinsCoreAsync(rebuildCache));
+            using (var status = StatusService.Manager.Begin(StatusToken.DiskProcess, "Skin Changer", "Loading skins..."))
+                await Task.Run(() => LoadSkinsCoreAsync(rebuildCache, status));
 
             LoadingVisible = false;
-            ChangerStatus = "Ready";
             ReloadButtonUnlocked = true;
         }
 
-        private async Task LoadSkinsCoreAsync(bool rebuildCache)
+        private static readonly Logger _logger = new Logger();
+
+        private async Task LoadSkinsCoreAsync(bool rebuildCache, StatusHandle status)
         {
-            if (!Directory.Exists("Skins"))
+            var skinsRootExists = Directory.Exists(SkinsRootPath);
+            // AppContext.BaseDirectory and Environment.CurrentDirectory are logged purely for
+            // comparison, not used for path resolution (see AppDirectory/SkinsRootPath comment above) -
+            // AppContext.BaseDirectory in particular pointed at a %TEMP%\.net\... self-extraction folder
+            // under Deploy.ps1's single-file publish, which is exactly what this line's own output
+            // caught the first time this was diagnosed.
+            _logger.Log("SkinChanger.LoadSkins",
+                $"SkinsRootPath='{SkinsRootPath}' (exists={skinsRootExists}); AppDirectory='{AppDirectory}'; " +
+                $"AppContext.BaseDirectory='{AppContext.BaseDirectory}'; Environment.CurrentDirectory='{Environment.CurrentDirectory}'; " +
+                $"AdditionalSkinsFolderPath='{SettingsProvider.SkinsFolderPath}' (exists={Directory.Exists(SettingsProvider.SkinsFolderPath)})");
+
+            if (!skinsRootExists)
             {
                 await Dispatcher.UIThread.InvokeAsync(() => ApplicationNotificationManager.Manager.ShowError("File system error", "Root skins directory not found. Unable to load"));
                 return;
             }
 
             var files = CollectSkinFiles();
-            var cacheDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            var cacheDir = AppDirectory;
+            _logger.Log("SkinChanger.LoadSkins", $"Collected {files.Count} skin file(s) from '{SkinsRootPath}' (+ additional folder if configured); cacheDir='{cacheDir}'");
 
             if (!rebuildCache && LoadingCache.TryFind(cacheDir, out LoadingCache cache) &&
                 UnorderedSequenceEquals(files, cache.Data.Select(x => x.PathToOriginFile).ToList()))
             {
-                await LoadSkinsFromCacheAsync(cache);
+                await LoadSkinsFromCacheAsync(cache, status);
             }
             else
             {
-                await LoadSkinsFullAsync(files, cacheDir);
+                await LoadSkinsFullAsync(files, cacheDir, status);
             }
         }
 
-        private async Task LoadSkinsFromCacheAsync(LoadingCache cache)
+        private async Task LoadSkinsFromCacheAsync(LoadingCache cache, StatusHandle status)
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
@@ -432,14 +459,19 @@ namespace TweakerUI.ViewModels
                 CurrentLoadStep = 0;
             });
 
+            var total = cache.Data.Count;
+            var i = 0;
             foreach (var cachedSkin in cache.Data.OrderBy(x => x?.Name))
             {
                 if (cachedSkin == null)
                 {
                     await Dispatcher.UIThread.InvokeAsync(() => ApplicationNotificationManager.Manager.ShowError("", "Cache error occurred. Skins will be loaded from source files"));
-                    await LoadSkinsFullAsync(CollectSkinFiles(), Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
+                    await LoadSkinsFullAsync(CollectSkinFiles(), AppDirectory, status);
                     return;
                 }
+
+                i++;
+                status.Update($"Loading {cachedSkin.Name} ({i}/{total})...");
 
                 var card = new SkinCard(cachedSkin, this);
                 await Dispatcher.UIThread.InvokeAsync(() =>
@@ -452,7 +484,7 @@ namespace TweakerUI.ViewModels
             Utils.DisposeAndClear(cache);
         }
 
-        private async Task LoadSkinsFullAsync(List<string> files, string cacheDir)
+        private async Task LoadSkinsFullAsync(List<string> files, string cacheDir, StatusHandle status)
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
@@ -461,22 +493,37 @@ namespace TweakerUI.ViewModels
                 CurrentLoadStep = 0;
             });
 
+            void OnConversionStarted(string path) => status.Update(StatusToken.DiskProcess, $"Converting legacy skin {Path.GetFileName(path)}...");
+            LegacyConverter.ConversionStarted += OnConversionStarted;
+
             var cache = new LoadingCache();
-            foreach (var file in files)
+            try
             {
-                var skin = SkinPackager.Decompile(file);
-                if (skin == null)
-                    continue;
-
-                cache.Data.Add(new LoadedSkinData(skin, file));
-                var card = new SkinCard(skin, file, this);
-                skin.Dispose();
-
-                await Dispatcher.UIThread.InvokeAsync(() =>
+                var total = files.Count;
+                var i = 0;
+                foreach (var file in files)
                 {
-                    Skins.Add(card);
-                    CurrentLoadStep++;
-                });
+                    i++;
+                    status.Update($"Loading {Path.GetFileName(file)} ({i}/{total})...");
+
+                    var skin = SkinPackager.Decompile(file);
+                    if (skin == null)
+                        continue;
+
+                    cache.Data.Add(new LoadedSkinData(skin, file));
+                    var card = new SkinCard(skin, file, this);
+                    skin.Dispose();
+
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        Skins.Add(card);
+                        CurrentLoadStep++;
+                    });
+                }
+            }
+            finally
+            {
+                LegacyConverter.ConversionStarted -= OnConversionStarted;
             }
 
             cache.Serialize(cacheDir);
@@ -485,7 +532,7 @@ namespace TweakerUI.ViewModels
 
         private static List<string> CollectSkinFiles()
         {
-            var files = Directory.EnumerateFiles("Skins").ToList();
+            var files = Directory.EnumerateFiles(SkinsRootPath).ToList();
             if (Directory.Exists(SettingsProvider.SkinsFolderPath))
                 files.AddRange(Directory.EnumerateFiles(SettingsProvider.SkinsFolderPath));
             return files;

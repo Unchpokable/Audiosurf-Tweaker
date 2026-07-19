@@ -1,4 +1,5 @@
 using System;
+using System.Collections.ObjectModel;
 using System.Threading.Tasks;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -11,6 +12,8 @@ namespace TweakerUI.ViewModels
 {
     public partial class MainWindowViewModel : ViewModelBase
     {
+        private static readonly Logger _logger = new Logger();
+
         public MainWindowViewModel()
         {
             // Mirrors the donor MainViewModel's constructor order exactly: config has to be loaded into
@@ -25,6 +28,7 @@ namespace TweakerUI.ViewModels
             SkinChangerVM = new SkinChangerViewModel();
             ColorsVM = new ColorsConfiguratorViewModel();
             TweakerVM = new TweakerViewModel();
+            QuickPlayerVM = new QuickPlayerViewModel();
             SettingsVM = new SettingViewModel();
 
             currentView = SkinChangerVM;
@@ -36,6 +40,7 @@ namespace TweakerUI.ViewModels
         public SkinChangerViewModel SkinChangerVM { get; }
         public ColorsConfiguratorViewModel ColorsVM { get; }
         public TweakerViewModel TweakerVM { get; }
+        public QuickPlayerViewModel QuickPlayerVM { get; }
         public SettingViewModel SettingsVM { get; }
 
         [ObservableProperty]
@@ -44,6 +49,11 @@ namespace TweakerUI.ViewModels
         public string AudiosurfStatusMessage => _asHandle.StateMessage;
 
         public IBrush AudiosurfStatusBrush => Brush.Parse(_asHandle.StateColor ?? "#ff0000");
+
+        // Passthrough to the StatusService singleton - bound from MainWindow.axaml's status bar row.
+        // Every View binds through its ViewModel rather than a static directly, same as everywhere
+        // else in this codebase.
+        public ObservableCollection<StatusEntry> ActiveStatuses => StatusService.Manager.ActiveStatuses;
 
         private readonly AudiosurfHandle _asHandle;
 
@@ -55,6 +65,9 @@ namespace TweakerUI.ViewModels
 
         [RelayCommand]
         private void ShowTweaker() => CurrentView = TweakerVM;
+
+        [RelayCommand]
+        private void ShowQuickPlayer() => CurrentView = QuickPlayerVM;
 
         [RelayCommand]
         private void ShowSettings() => CurrentView = SettingsVM;
@@ -78,6 +91,12 @@ namespace TweakerUI.ViewModels
         // timing (see SkinChangerView's rename-focus handling).
         private static void OnConfigurationFault(Exception exception)
         {
+            // Previously this only showed an ephemeral toast/dialog - once the window closed there was
+            // no record of what actually went wrong (which path OpenExeConfiguration resolved to, what
+            // the underlying exception was), making exactly this class of bug (config silently missing
+            // under some publish mode) unreachable without a debugger. See SkinChangerViewModel's
+            // LoadSkinsCoreAsync logging for the same reasoning applied to the Skins folder lookup.
+            _logger.Log("ConfigurationManager", exception.ToString());
             Dispatcher.UIThread.Post(() => ApplicationNotificationManager.Manager.ShowErrorWnd(
                 "Settings initialization error",
                 "Could not detect the Audiosurf installation. Check the Settings tab, set the game textures path manually, then restart Audiosurf Tweaker."),

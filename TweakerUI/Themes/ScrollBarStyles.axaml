@@ -1,0 +1,227 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ============================================================================
+    Slim accent scrollbar (2026-07-14, fixed 2026-07-15) - replaces FluentTheme's default
+    ScrollBar/ScrollViewer look app-wide (this file has no per-module prefix on purpose - it
+    targets the bare `ScrollBar` type selector, not a Class, so every ScrollViewer/ListBox/TextBox
+    in the app picks it up with zero per-view changes). Four separate problems with the stock
+    look, all traced against the real Avalonia 12.0.5 source
+    (src/Avalonia.Themes.Fluent/Controls/ScrollBar.xaml and ScrollViewer.xaml) rather than guessed:
+
+    1. It overlaps content. ScrollViewer's default ControlTemplate lays out content in a
+       Grid ColumnDefinitions="*,Auto" (content | scrollbar), but its `^[AllowAutoHide=True]`
+       style (AllowAutoHide defaults to True) makes the content presenter span BOTH columns/rows,
+       so the scrollbar's own column sits visually on top of the tail end of the content instead
+       of reserving its own space. Fixed below by forcing AllowAutoHide="False" app-wide - content
+       always stays in column/row 0, the scrollbar's Auto column/row is genuinely reserved, never
+       overlaid.
+    2. It's the plain gray Win32-style bar, and FluentTheme's own thumb additionally "expands" on
+       hover via a RenderTransform scale reset (see `^[IsExpanded=true]` in the real ScrollBar.xaml)
+       - which would fight a fixed slim width anyway. Rather than fight that per-state animation,
+       ScrollBar's whole Template is replaced below with a plain fixed-width Track (no expand
+       state, no page-arrow buttons - modern slim scrollbars don't need click-arrows, matches the
+       already-established "own the whole template" approach from FlatButtonTemplate/
+       SCSkinListItemTemplate/CCTextBoxTemplate for the same reason: FluentTheme's per-state
+       Setters target template-internal parts and can't be reliably overridden piecemeal).
+    3. (Found 2026-07-15, reported as "accent color applies inconsistently / animation resets at
+       random moments / everywhere else just plain gray with no animation".) The first pass at #2
+       only overrode ScrollBar's `Template` via a plain external `<Style Selector="ScrollBar:...">`
+       Setter, but never replaced ScrollBar's whole `Theme` - so FluentTheme's own implicit
+       ControlTheme (`x:Key="{x:Type ScrollBar}"`, still the active Theme for every ScrollBar since
+       nothing overrode it) stayed fully active underneath, INCLUDING its own nested
+       `^[IsExpanded=true] -> ^ /template/ Thumb` style, which sets Background to FluentTheme's own
+       neutral ScrollBarThumbBackgroundColor and resets RenderTransform to "none" whenever the
+       ScrollBar's IsExpanded pseudo-class flips true (which Avalonia sets internally on hover,
+       unrelated to which Template is in effect). `/template/ Thumb` walks whatever template is
+       ACTUALLY in use for that instance - including our own SlimVerticalScrollBarTemplate's Thumb
+       - so FluentTheme's own ControlTheme kept clobbering our Thumb's Background every time the
+       user hovered, fighting our SlimScrollThumbTheme's :pointerover/:pressed Setters and our
+       BrushTransition in a way that looked "random" (tied to hover/IsExpanded timing, not any
+       specific view). Fixed by replacing the ENTIRE `{x:Type ScrollBar}` ControlTheme below
+       (matching FluentTheme's own resource key so ours wins the lookup, not just patching
+       Template) - no `[IsExpanded=true]` style exists in ours at all, so nothing is left to
+       compete with SlimScrollThumbTheme's own state Setters.
+    4. (Found 2026-07-15, reported as the skins list's scrollbar sitting on top of a card's right
+       edge, screenshot at Fuckups/Scroll_over_content.png - the exact "overlap" point 1 above was
+       meant to fix, but only for that ONE control.) Point 1's `<Style Selector="ScrollViewer">`
+       Setter never reaches a ListBox's own internal scroll area: FluentTheme's real
+       `x:Key="{x:Type ListBox}"` template hosts `ScrollViewer Name="PART_ScrollViewer"` with
+       `AllowAutoHide="{TemplateBinding (ScrollViewer.AllowAutoHide)}"` - a TemplateBinding to the
+       ATTACHED property as set on the ListBox itself, not a local default. First attempt: set that
+       attached property broadly (`<Style Selector="Control"><Setter Property=
+       "ScrollViewer.AllowAutoHide".../></Style>` below) so the TemplateBinding would forward it -
+       theoretically sound (confirmed FluentTheme's own ListBox ControlTheme sets other
+       ScrollViewer.* attached properties the exact same way) but did NOT fix the bug on rebuild/
+       retest, for a reason not fully pinned down (possibly a style-application-timing gap between
+       when the attached property resolves on the ListBox and when its own Template's
+       TemplateBinding first reads it). Rather than keep chasing that indirection, applied this
+       project's own established fallback for exactly this situation (see point 2's own reasoning,
+       and CCTextBoxTemplate/FlatButtonTemplate/SCSkinListItemTemplate elsewhere): own the WHOLE
+       `{x:Type ListBox}` ControlTheme too, hardcoding `AllowAutoHide="False"` as a literal value
+       directly on `PART_ScrollViewer` instead of forwarding it through any binding at all - removes
+       the indirection instead of trying to win it. The attached-property Style below is left in
+       place as a harmless no-op / defense in depth for any other TemplateBinding-forwarding control
+       (ComboBox, multi-line TextBox) that might need the same treatment later.
+
+    Thumb color tiers (AccentScrollThumbBrush/AccentScrollThumbHoverBrush) live in
+    AccentColors.axaml alongside the app's other accent tiers, not as local literals here - same
+    "single source of truth per theme" reasoning as everywhere else, and it's what makes this
+    scrollbar re-tint correctly on light/dark switch for free.
+    ============================================================================ -->
+
+    <Styles.Resources>
+        <!-- Own ControlTheme (not just a ControlTemplate) so the thumb's :pointerover/:pressed
+        states can each carry their own Background - same pattern as FluentTheme's own
+        FluentScrollBarThumb, just re-pointed at this app's accent tokens instead of FluentTheme's
+        neutral ScrollBarThumbFill* resources. Pressed reuses the fully-opaque AccentPrimaryBrush
+        directly rather than a third baked-alpha tier - see AccentColors.axaml's own comment. -->
+        <ControlTheme x:Key="SlimScrollThumbTheme" TargetType="Thumb">
+            <Setter Property="Background" Value="{DynamicResource AccentScrollThumbBrush}"/>
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Background="{TemplateBinding Background}"
+                            CornerRadius="{TemplateBinding CornerRadius}">
+                        <Border.Transitions>
+                            <Transitions>
+                                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                            </Transitions>
+                        </Border.Transitions>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+            <Style Selector="^:pointerover">
+                <Setter Property="Background" Value="{DynamicResource AccentScrollThumbHoverBrush}"/>
+            </Style>
+            <Style Selector="^:pressed">
+                <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
+            </Style>
+        </ControlTheme>
+
+        <!-- Invisible click-to-page hit areas either side of the thumb - functional (clicking the
+        track still pages the scroll position) but undecorated, same as FluentTheme's own
+        FluentScrollBarPageButton. -->
+        <ControlTemplate x:Key="SlimScrollPageButtonTemplate" TargetType="RepeatButton">
+            <Border Background="Transparent"/>
+        </ControlTemplate>
+
+        <ControlTemplate x:Key="SlimVerticalScrollBarTemplate" TargetType="ScrollBar">
+            <Track Minimum="{TemplateBinding Minimum}"
+                   Maximum="{TemplateBinding Maximum}"
+                   Value="{TemplateBinding Value, Mode=TwoWay}"
+                   ViewportSize="{TemplateBinding ViewportSize}"
+                   Orientation="Vertical"
+                   IsDirectionReversed="True">
+                <Track.DecreaseButton>
+                    <RepeatButton Template="{StaticResource SlimScrollPageButtonTemplate}" Focusable="False"/>
+                </Track.DecreaseButton>
+                <Track.IncreaseButton>
+                    <RepeatButton Template="{StaticResource SlimScrollPageButtonTemplate}" Focusable="False"/>
+                </Track.IncreaseButton>
+                <Thumb Theme="{StaticResource SlimScrollThumbTheme}"
+                       Width="6" MinHeight="24" CornerRadius="3"
+                       HorizontalAlignment="Center"/>
+            </Track>
+        </ControlTemplate>
+
+        <ControlTemplate x:Key="SlimHorizontalScrollBarTemplate" TargetType="ScrollBar">
+            <Track Minimum="{TemplateBinding Minimum}"
+                   Maximum="{TemplateBinding Maximum}"
+                   Value="{TemplateBinding Value, Mode=TwoWay}"
+                   ViewportSize="{TemplateBinding ViewportSize}"
+                   Orientation="Horizontal">
+                <Track.DecreaseButton>
+                    <RepeatButton Template="{StaticResource SlimScrollPageButtonTemplate}" Focusable="False"/>
+                </Track.DecreaseButton>
+                <Track.IncreaseButton>
+                    <RepeatButton Template="{StaticResource SlimScrollPageButtonTemplate}" Focusable="False"/>
+                </Track.IncreaseButton>
+                <Thumb Theme="{StaticResource SlimScrollThumbTheme}"
+                       Height="6" MinWidth="24" CornerRadius="3"
+                       VerticalAlignment="Center"/>
+            </Track>
+        </ControlTemplate>
+
+        <!-- Replaces FluentTheme's own x:Key="{x:Type ScrollBar}" ControlTheme outright (same key,
+        so ours wins the resource lookup) instead of patching individual properties via an external
+        Style - see point 3 above. Mirrors FluentTheme's own ^:vertical/^:horizontal nested-Template
+        pattern, but deliberately has no [IsExpanded=true] style at all: that's the one FluentTheme
+        relies on to "expand" its own default thumb on hover, and it's exactly what was fighting our
+        thumb colors. -->
+        <ControlTheme x:Key="{x:Type ScrollBar}" TargetType="ScrollBar">
+            <Setter Property="Background" Value="Transparent"/>
+            <!-- 10px reserved column/row - a 6px thumb with 2px breathing room either side,
+            "narrow" per the brief without being fiddly to grab. -->
+            <Setter Property="MinWidth" Value="10"/>
+            <Setter Property="MinHeight" Value="10"/>
+
+            <Style Selector="^:vertical">
+                <Setter Property="Template" Value="{StaticResource SlimVerticalScrollBarTemplate}"/>
+            </Style>
+            <Style Selector="^:horizontal">
+                <Setter Property="Template" Value="{StaticResource SlimHorizontalScrollBarTemplate}"/>
+            </Style>
+        </ControlTheme>
+
+        <!-- Replaces FluentTheme's own x:Key="{x:Type ListBox}" ControlTheme outright - see point 4
+        above. Identical to the real one (src/Avalonia.Themes.Fluent/Controls/ListBox.xaml, 12.0.5)
+        except AllowAutoHide is a literal "False" on PART_ScrollViewer instead of
+        "{TemplateBinding (ScrollViewer.AllowAutoHide)}" - no attached-property forwarding left to
+        get wrong. Only ListBox.SCSkinsList (Skin Changer) uses ListBox anywhere in this app today,
+        but this lives here rather than SkinChangerStyles.axaml so any future ListBox usage gets the
+        fix for free, matching this file's own "zero per-view opt-in" design. -->
+        <ControlTheme x:Key="{x:Type ListBox}" TargetType="ListBox">
+            <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundChromeMediumLowBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+            <Setter Property="BorderThickness" Value="{DynamicResource ListBoxBorderThemeThickness}" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+            <Setter Property="ScrollViewer.IsScrollChainingEnabled" Value="True" />
+            <Setter Property="ScrollViewer.IsScrollInertiaEnabled" Value="True" />
+            <Setter Property="Template">
+                <ControlTemplate>
+                    <Border Name="border"
+                            ClipToBounds="{TemplateBinding ClipToBounds}"
+                            Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="{TemplateBinding CornerRadius}">
+                        <ScrollViewer Name="PART_ScrollViewer"
+                                      AllowAutoHide="False"
+                                      VerticalSnapPointsType="{TemplateBinding (ScrollViewer.VerticalSnapPointsType)}"
+                                      HorizontalSnapPointsType="{TemplateBinding (ScrollViewer.HorizontalSnapPointsType)}"
+                                      HorizontalScrollBarVisibility="{TemplateBinding (ScrollViewer.HorizontalScrollBarVisibility)}"
+                                      VerticalScrollBarVisibility="{TemplateBinding (ScrollViewer.VerticalScrollBarVisibility)}"
+                                      IsScrollChainingEnabled="{TemplateBinding (ScrollViewer.IsScrollChainingEnabled)}"
+                                      IsScrollInertiaEnabled="{TemplateBinding (ScrollViewer.IsScrollInertiaEnabled)}"
+                                      IsDeferredScrollingEnabled="{TemplateBinding (ScrollViewer.IsDeferredScrollingEnabled)}"
+                                      BringIntoViewOnFocusChange="{TemplateBinding (ScrollViewer.BringIntoViewOnFocusChange)}">
+                            <ItemsPresenter Name="PART_ItemsPresenter"
+                                            ItemsPanel="{TemplateBinding ItemsPanel}"
+                                            Margin="{TemplateBinding Padding}"/>
+                        </ScrollViewer>
+                    </Border>
+                </ControlTemplate>
+            </Setter>
+        </ControlTheme>
+    </Styles.Resources>
+
+    <!-- Reserve space instead of overlaying - see point 1 above. Covers bare ScrollViewer
+    instances used standalone (e.g. the Skin Changer's Screenshots panel). -->
+    <Style Selector="ScrollViewer">
+        <Setter Property="AllowAutoHide" Value="False"/>
+    </Style>
+
+    <!-- Covers ScrollViewer instances hosted INSIDE another control's own template (ListBox,
+    ComboBox, multi-line TextBox, ...) - see point 4 above. Those forward AllowAutoHide via
+    TemplateBinding to this attached property as set on the host control itself, which outranks
+    the plain ScrollViewer Style above regardless of selector specificity. Applied broadly to
+    Control rather than enumerating every host type - harmless no-op on anything that never reads
+    it via TemplateBinding, matches this file's existing "global override, zero per-view opt-in"
+    approach. -->
+    <Style Selector="Control">
+        <Setter Property="ScrollViewer.AllowAutoHide" Value="False"/>
+    </Style>
+
+</Styles>

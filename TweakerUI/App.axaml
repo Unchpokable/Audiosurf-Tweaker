@@ -27,9 +27,12 @@
 
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="avares://TweakerUI/Themes/ScrollBarStyles.axaml"/>
         <StyleInclude Source="avares://TweakerUI/Themes/Styles.axaml"/>
         <StyleInclude Source="avares://TweakerUI/Themes/SkinChangerStyles.axaml"/>
         <StyleInclude Source="avares://TweakerUI/Themes/TweakerStyles.axaml"/>
         <StyleInclude Source="avares://TweakerUI/Themes/SettingsStyles.axaml"/>
+        <StyleInclude Source="avares://TweakerUI/Themes/StatusBarStyles.axaml"/>
+        <StyleInclude Source="avares://TweakerUI/Themes/QuickPlayerStyles.axaml"/>
     </Application.Styles>
 </Application>

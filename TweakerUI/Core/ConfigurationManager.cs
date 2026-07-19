@@ -21,10 +21,19 @@ namespace TweakerUI.Core
         // OpenExeConfiguration(path) looks for "<path>.config". AppDomain.CurrentDomain.FriendlyName
         // was "audiosurftweaker.exe" on .NET Framework (matching the shipped audiosurftweaker.exe.config),
         // but on modern .NET it's just "audiosurftweaker" with no extension - which doesn't match the
-        // config file the SDK actually produces (audiosurftweaker.dll.config), so every read/write here
-        // silently missed the real config. The assembly's own on-disk path always matches the config
-        // file's name on both runtimes, so use that instead.
-        private static string ExePath => System.Reflection.Assembly.GetExecutingAssembly().Location;
+        // config file the SDK actually produces, so every read/write here silently missed the real
+        // config. Previously fixed with Assembly.GetExecutingAssembly().Location (giving
+        // TweakerUI.dll.config, which the SDK does produce on a normal multi-file publish) - but that
+        // broke again under Deploy.ps1's self-contained single-file publish: Assembly.Location returns
+        // an empty string for assemblies loaded from a PublishSingleFile bundle (documented .NET
+        // behavior, no separate .dll on disk to report a path for), so every OpenExeConfiguration call
+        // below silently failed and every setting silently sat on its C# default - same failure class
+        // as the FriendlyName bug this comment used to describe, just re-triggered by a different publish
+        // mode. Environment.ProcessPath (the actual apphost .exe, not the managed assembly) resolves
+        // correctly in every publish mode - framework-dependent, self-contained multi-file, and
+        // single-file alike - and gives TweakerUI.exe.config, which OpenExeConfiguration creates fresh
+        // via the self-healing path below (EnsureDefaultKeysExist) if it isn't there yet.
+        private static string ExePath => Environment.ProcessPath;
 
         // Mirrors the <appSettings> keys shipped in App.config. Read by EnsureDefaultKeysExist below -
         // OpenExeConfiguration on a missing/incomplete config file returns a non-null but empty

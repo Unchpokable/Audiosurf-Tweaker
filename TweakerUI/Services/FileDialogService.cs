@@ -29,6 +29,30 @@ namespace TweakerUI.Services
             return result.Count > 0 ? result[0].TryGetLocalPath() : null;
         }
 
+        public static async Task<IReadOnlyList<string>> OpenFilesAsync(string title, IReadOnlyList<FilePickerFileType> fileTypes = null, string suggestedStartLocation = null)
+        {
+            var window = AppShell.MainWindow;
+            if (window == null) return System.Array.Empty<string>();
+
+            var startFolder = await ResolveStartFolderAsync(window, suggestedStartLocation);
+            var result = await window.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = title,
+                AllowMultiple = true,
+                FileTypeFilter = fileTypes,
+                SuggestedStartLocation = startFolder,
+            });
+
+            var paths = new List<string>(result.Count);
+            foreach (var file in result)
+            {
+                var path = file.TryGetLocalPath();
+                if (path != null)
+                    paths.Add(path);
+            }
+            return paths;
+        }
+
         public static async Task<string> OpenFolderAsync(string title)
         {
             var window = AppShell.MainWindow;

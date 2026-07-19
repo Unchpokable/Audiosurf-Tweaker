@@ -8,6 +8,10 @@
 /Fuckups/
 /Skins/
 /Storage/
+/TweakerUI/Skins/
+
+# Deploy bundle output (Scripts/Deploy.ps1) - built, not source
+/distr/
 *.pltc
 *.palette
 

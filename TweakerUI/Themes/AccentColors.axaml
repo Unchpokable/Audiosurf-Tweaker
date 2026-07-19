@@ -48,7 +48,7 @@
 
     <!-- Baked-alpha reference table (rounded to the nearest hex digit, alpha = Opacity*255):
     Light: Primary=#7A4FC7, Secondary=#A97FD6 - 5%=0D 10%=1A 18%=2E 30%=4D 36%=5C 45%=73
-    Dark:  Primary=#2DD4BF               - 15%=26 20%=33 25%=40 36%=5C 45%=73 -->
+    Dark:  Primary=#2DD4BF               - 15%=26 20%=33 25%=40 30%=4D 36%=5C 45%=73 -->
 
     <ResourceDictionary.ThemeDictionaries>
         <ResourceDictionary x:Key="Light">
@@ -69,6 +69,15 @@
             before the real hue "arrives" - starting from the same hue at 0 alpha keeps R/G/B constant
             for the whole transition, so only alpha visibly ramps, i.e. a clean fade-in of the tint. -->
             <SolidColorBrush x:Key="AccentGhostBrush" Color="#007A4FC7"/>
+
+            <!-- Scrollbar thumb tiers (Фаза 4.7 follow-up, 2026-07-14) - same baked-alpha
+            technique as the tiers above, own tokens rather than reusing e.g. AccentSelectedBrush
+            because those are tuned for a specific unrelated role and could drift independently
+            later. Pressed/dragging deliberately reuses AccentPrimaryBrush itself (opaque) rather
+            than a third baked tier - a scrollbar thumb being actively dragged should read as
+            "fully on", same convention as FluentTheme's own default thumb. -->
+            <SolidColorBrush x:Key="AccentScrollThumbBrush" Color="#4D7A4FC7"/>
+            <SolidColorBrush x:Key="AccentScrollThumbHoverBrush" Color="#737A4FC7"/>
 
             <!-- Mockup's own "gradient" and "buttonGradient" fields are identical in Light (both
             #7A4FC7 -> #A97FD6), so the CTA-button gradient just reuses the same two stops as the
@@ -109,6 +118,10 @@
             <SolidColorBrush x:Key="AccentSelectedBrush" Color="#732DD4BF"/>
             <!-- See Light's own comment - same zero-alpha-same-hue reasoning, dark accent hue. -->
             <SolidColorBrush x:Key="AccentGhostBrush" Color="#002DD4BF"/>
+
+            <!-- See Light's own comment - same tiers, dark accent hue. -->
+            <SolidColorBrush x:Key="AccentScrollThumbBrush" Color="#4D2DD4BF"/>
+            <SolidColorBrush x:Key="AccentScrollThumbHoverBrush" Color="#732DD4BF"/>
 
             <!-- Same two stops as the decorative gradient below (Primary -> Secondary), unlike Light -
             see AccentButtonGradientBrush's own comment for why the CTA button needs a separate, richer

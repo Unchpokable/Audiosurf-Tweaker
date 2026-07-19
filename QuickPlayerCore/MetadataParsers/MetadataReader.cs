@@ -1,6 +1,4 @@
-﻿using QuickPlayerCore.PackedPresenters;
-using System;
-using System.Linq;
+﻿using System;
 using TagLib;
 
 namespace QuickPlayerCore.MetadataParsers
@@ -12,26 +10,25 @@ namespace QuickPlayerCore.MetadataParsers
             if (!System.IO.File.Exists(pathToFile))
                 throw new ArgumentException($"Path does not exists: {pathToFile}");
 
-            var file = File.Create(pathToFile);
-            var tagsContainer = new GenericTagsContainer();
-            tagsContainer.SongName = file.Tag.Title;
-            tagsContainer.ArtistName = file.Tag.FirstPerformer;
-            tagsContainer.Album = file.Tag.Album;
-            tagsContainer.Duration = file.Properties.Duration;
-            tagsContainer.SamplingParams = new SamplingParams
+            SupportedAudioFormats.TryGetCodec(pathToFile, out var codec);
+
+            var file = TagLib.File.Create(pathToFile);
+            var tagsContainer = new GenericTagsContainer
             {
-                BitDepth = (StandardBitDepth)file.Properties.BitsPerSample,
-                SamplingRate = (StandardSamplingRates)file.Properties.AudioSampleRate,
-                TotalBitrate = (uint)file.Properties.AudioBitrate,
+                SongName = file.Tag.Title,
+                ArtistName = file.Tag.FirstPerformer,
+                Album = file.Tag.Album,
+                Duration = file.Properties.Duration,
+                IsLossless = codec is PackedPresenters.Codec.Flac or PackedPresenters.Codec.Wav,
+                SamplingParams = new PackedPresenters.SamplingParams
+                {
+                    BitDepth = (PackedPresenters.StandardBitDepth)file.Properties.BitsPerSample,
+                    SamplingRate = (PackedPresenters.StandardSamplingRates)file.Properties.AudioSampleRate,
+                    TotalBitrate = (uint)file.Properties.AudioBitrate,
+                    Codec = codec,
+                }
             };
 
-            if (new[] { ".flac", ".m4a", ".wav", ".wave" }.Any(x => System.IO.Path.GetExtension(pathToFile) == x))
-                tagsContainer.IsLossless = true;
-
-            if (Enum.TryParse(System.IO.Path.GetExtension(pathToFile), out Codec codec))
-                tagsContainer.SamplingParams.Codec = codec;
-            else
-                tagsContainer.SamplingParams.Codec = Codec.Unsupported;
             return tagsContainer;
         }
     }

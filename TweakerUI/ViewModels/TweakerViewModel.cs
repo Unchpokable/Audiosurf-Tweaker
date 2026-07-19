@@ -26,43 +26,43 @@ namespace TweakerUI.ViewModels
         private bool invisibleRoadTweakActive;
 
         partial void OnInvisibleRoadTweakActiveChanged(bool value) =>
-            _audiosurfHandle.Command(GameProtocol.Config(GameProtocol.RoadVisible, !value));
+            GameConfigState.Manager.Set(GameProtocol.RoadVisible, !value);
 
         [ObservableProperty]
         private bool hiddenSongTweakActive;
 
         partial void OnHiddenSongTweakActiveChanged(bool value) =>
-            _audiosurfHandle.Command(GameProtocol.Config(GameProtocol.ShowSongName, !value));
+            GameConfigState.Manager.Set(GameProtocol.ShowSongName, !value);
 
         [ObservableProperty]
         private bool sidewinderCameraTweakActive;
 
         partial void OnSidewinderCameraTweakActiveChanged(bool value) =>
-            _audiosurfHandle.Command(GameProtocol.Config(GameProtocol.Sidewinder, value));
+            GameConfigState.Manager.Set(GameProtocol.Sidewinder, value);
 
         [ObservableProperty]
         private bool bankingCameraTweakActive;
 
         partial void OnBankingCameraTweakActiveChanged(bool value) =>
-            _audiosurfHandle.Command(GameProtocol.Config(GameProtocol.UseBankingCamera, value));
+            GameConfigState.Manager.Set(GameProtocol.UseBankingCamera, value);
 
         [ObservableProperty]
         private bool freerideNoBlocksTweakActive;
 
         partial void OnFreerideNoBlocksTweakActiveChanged(bool value) =>
-            _audiosurfHandle.Command(GameProtocol.Config(GameProtocol.FreerideBlocks, !value));
+            GameConfigState.Manager.Set(GameProtocol.FreerideBlocks, !value);
 
         [ObservableProperty]
         private bool freerideBlocksCaterpillarsTweakActive;
 
         partial void OnFreerideBlocksCaterpillarsTweakActiveChanged(bool value) =>
-            _audiosurfHandle.Command(GameProtocol.Config(GameProtocol.FreerideCaterpillars, value));
+            GameConfigState.Manager.Set(GameProtocol.FreerideCaterpillars, value);
 
         [ObservableProperty]
         private bool freerideAutoAdvanceDisableTweakActive;
 
         partial void OnFreerideAutoAdvanceDisableTweakActiveChanged(bool value) =>
-            _audiosurfHandle.Command(GameProtocol.Config(GameProtocol.FreerideAutoAdvance, !value));
+            GameConfigState.Manager.Set(GameProtocol.FreerideAutoAdvance, !value);
 
         public string ConsoleContent => _console.ToString();
 
