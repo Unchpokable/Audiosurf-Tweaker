@@ -18,9 +18,16 @@ target_include_directories(smoke_test PRIVATE
 
 target_link_libraries(smoke_test PRIVATE
     tweaker_ui
+    tweaker_resource
     opengl32
     gdi32
+    windowscodecs
 )
+
+# Embed the same packed assets as the DLL so resource::initialize can be tested.
+if(TWEAKER_ASSETS_RC)
+    target_sources(smoke_test PRIVATE "${TWEAKER_ASSETS_RC}")
+endif()
 
 set_target_properties(smoke_test PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"

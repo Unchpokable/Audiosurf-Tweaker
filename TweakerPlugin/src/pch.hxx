@@ -40,8 +40,15 @@
 
 // Standard library
 #include <cassert>
+#include <cstddef>
+#include <cstdint>
+#include <expected>
 #include <fstream>
 #include <initializer_list>
+#include <span>
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <unordered_map>
+#include <utility>
+#include <vector>
