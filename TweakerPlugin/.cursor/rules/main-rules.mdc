@@ -21,6 +21,25 @@ src/ui/              — отрисовка UI (ImGui) через callback из 
 
 - Корневой namespace: `tw::`, подпространства по слоям: `tw::plugin`, `tw::framework`, `tw::ui`.
 - Публичный API — в заголовках; детали реализации (хуки, оригиналы, file-local state) — в **anonymous namespace** в `.cxx`.
+- В `.cxx` anonymous namespace объявляется **вне** именованных, **над** ними, сразу после блока `#include`:
+
+```cpp
+#include "pch.hxx"
+
+#include "framework/foo.hxx"
+
+namespace
+{
+// file-local helpers, hooks, state
+} // namespace
+
+namespace tw::framework
+{
+// public API definitions
+} // namespace tw::framework
+```
+
+- Не вкладывать anonymous namespace внутрь `tw::*`.
 - Закрывающие комментарии namespace: `} // namespace tw::framework::d3d9`.
 - Глобальное состояние — только там, где необходимо; префикс `g_` (`g_engine`, `g_ui_draw`).
 - Vendored-код (`ImGui/`, `Detours/`, SDK) ТРОГАТЬ ЗАПРЕЩЕНО.
@@ -37,24 +56,39 @@ Hot-path: `EndScene`, `CallChannel`, любой код, вызываемый к�
 - Инициализация, Detours-транзакции, bootstrap D3D9 — cold-path; там допустима более читаемая логика.
 - Для очевидных if\else путей допустимы аннотации компилятора [[likely]]\[[unlikely]], если явное указание возможности\невозможности пути может увеличить перф.
 
-## Именование (snake_case)
+## Именование (из `.clang-tidy`)
 
-Полный **snake_case** для всего проектного кода. Исключение — имена библиотечных/системных типов и функций (`IDirect3DDevice9`, `HRESULT`, `DetourAttach`).
+Источник правды — `readability-identifier-naming` в `.clang-tidy`. Всё проектное — **lower_case** (snake_case). Исключение — имена библиотечных/системных типов и функций (`IDirect3DDevice9`, `HRESULT`, `DetourAttach`).
+
+| Сущность (clang-tidy key) | Case | Prefix | Пример |
+|---------------------------|------|--------|--------|
+| Namespace | `lower_case` | — | `tw::framework::detour` |
+| Class / Struct | `lower_case` | — | `binding`, `resource` |
+| Function / Method | `lower_case` | — | `attach`, `draw_frame` |
+| Variable / Parameter | `lower_case` | — | `device`, `module_handle` |
+| TypeAlias | `lower_case` | — | `end_scene_fn`, `ui_plugin_draw_fn` |
+| Enum / EnumConstant | `lower_case` | — | `resource_type::texture` |
+| MemberPrivate | `lower_case` | `m_` | `m_device` |
+| MemberProtected | `lower_case` | `m_` | `m_engine` |
+| MemberPublic | `lower_case` | *(нет)* | `target`, `replacement` |
+| TemplateParameter | `CamelCase` | — | `T`, `TValue`, `TResult` |
+| TemplateTemplateParameter | `CamelCase` | — | `TContainer` |
+
+Дополнительно по кодовой базе (не в clang-tidy, но принято):
 
 | Сущность | Стиль | Пример |
 |----------|-------|--------|
-| namespace, struct, function | snake_case | `tw::framework::detour::attach` |
-| private/protected members | `m_` + snake_case | `m_device` |
-| file-local / global state | `g_` prefix | `g_bound_device` |
-| type alias (fn ptr) | snake_case + `_fn` | `end_scene_fn`, `ui_plugin_draw_fn` |
+| file-local / global state | `g_` + snake_case | `g_bound_device`, `g_ui_draw` |
 | hook / original | `hk_*` / `o_*` / `true_*` | `hk_end_scene`, `o_reset` |
-| template parameter | CamelCase | `T`, `TValue` |
+
+`.clang-format` naming не задаёт — только layout (см. «Форматирование»).
 
 Расширения C++: **всегда** `.hxx` (заголовки) и `.cxx` (translation units). `.h`/`.cpp` не использовать.
 
 ## Precompiled headers
 
-- **Все** third-party / SDK `#include` — **только** в `src/pch.hxx`.
+- Используется PCH (`src/pch.hxx`). Нужен системный или библиотечный заголовок — **сначала смотри в `pch.hxx`**. Если его там нет — **добавь в `pch.hxx`**, не в `.cxx`/`.hxx`.
+- В `.cxx`/проектных заголовках **не** писать `#include` системных/SDK/STL заголовков напрямую.
 - В `.cxx`: `#include "pch.hxx"` первым, затем свой заголовок, затем проектные.
 - **Не** forward-declare системные и библиотечные типы (`HMODULE`, `HWND`, `IDirect3DDevice9`) — они уже в PCH.
 - Forward-declare допустим только для **собственных** неполных типов в заголовках (`class EngineInterface;`).
@@ -72,7 +106,7 @@ Hot-path: `EndScene`, `CallChannel`, любой код, вызываемый к�
 #include "ui/baz.hxx"
 ```
 
-Группы разделять **пустой строкой**. Внутри группы — сортировка clang-format (`SortIncludes: true`). Библиотечные include вне `pch.hxx` не добавлять.
+Группы разделять **пустой строкой**. Внутри группы — сортировка clang-format (`SortIncludes: true`). Системные/библиотечные include — только через `pch.hxx` (см. выше).
 
 ## Обработка ошибок
 
