@@ -1,5 +1,10 @@
-#include <Windows.h>
-#include <d3d9.h>
+#pragma once
+
+namespace tw::ui 
+{
+void initialize() noexcept;
+void shutdown() noexcept;
+}
 
 namespace tw::ui
 {

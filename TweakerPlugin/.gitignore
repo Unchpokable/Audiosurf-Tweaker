@@ -1,3 +1,12 @@
-/deps/Quest3D SDK/
-/deps/Detours/
-/deps/DirectX-SDK-June2010/
+# CMake / build
+/build/
+/out/
+CMakeUserPresets.json
+compile_commands.json
+
+# Vendored SDKs: proprietary/copyrighted, not redistributable - fetch
+# locally per cmake/Quest3DSDK.cmake and cmake/DirectXSDK.cmake.
+/Quest3D-SDK/
+/DirectX-SDK-June2010/
+/ImGui/
+/Detours/

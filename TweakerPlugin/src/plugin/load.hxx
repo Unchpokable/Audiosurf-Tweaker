@@ -1,4 +1,6 @@
-namespace tw::plugin 
+#pragma once
+
+namespace tw::plugin
 {
-void load_thead_entry(void* parameter);
+void load_thread(void* module_handle);
 }

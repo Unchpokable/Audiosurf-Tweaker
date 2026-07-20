@@ -19,7 +19,7 @@
         "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
     },
     "clangd.arguments": [
-        "--compile-commands-dir=build",
+        "--compile-commands-dir=${workspaceFolder}",
         "--background-index",
         "-j=4",
         "--fallback-style=LLVM"

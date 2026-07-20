@@ -1,0 +1,117 @@
+---
+description: Core coding standards for TweakerPlugin injectable DLL
+globs: TweakerPlugin/src/**
+alwaysApply: false
+---
+
+# TweakerPlugin — правила проекта
+
+## Контекст
+
+Внедряемая **x86 DLL** для Audiosurf (32-bit процесс). Стек: **C++23**, Win32 API, **DirectX 9** (June 2010 SDK), **Microsoft Detours**, **Quest3D SDK**, **ImGui** (UI). Сборка: CMake + Ninja, MSVC, precompiled headers.
+
+## Архитектура
+
+```
+dllmain.cxx            — минимальный DllMain, инициализация в отдельном потоке
+src/plugin/          — lifecycle, глобальное состояние, Quest3D state
+src/framework/       — хуки (Detours, D3D9, Quest3D channel)
+src/ui/              — отрисовка UI (ImGui) через callback из D3D9 hook
+```
+
+- Корневой namespace: `tw::`, подпространства по слоям: `tw::plugin`, `tw::framework`, `tw::ui`.
+- Публичный API — в заголовках; детали реализации (хуки, оригиналы, file-local state) — в **anonymous namespace** в `.cxx`.
+- Закрывающие комментарии namespace: `} // namespace tw::framework::d3d9`.
+- Глобальное состояние — только там, где необходимо; префикс `g_` (`g_engine`, `g_ui_draw`).
+- Vendored-код (`ImGui/`, `Detours/`, SDK) ТРОГАТЬ ЗАПРЕЩЕНО.
+
+## Performance (hot-path)
+
+Hot-path: `EndScene`, `CallChannel`, любой код, вызываемый каждый кадр.
+
+- **Performance > readability** на hot-path, но без бессмысленного говнокода.
+- Минимум аллокаций, виртуальных вызовов, логирования, блокировок.
+- Ранние `return`; проверки дешевле тяжёлой работы.
+- **Никаких exceptions, try/catch, RTTI** в hot-path.
+- Не вызывать в hot-path API, которые могут бросать исключения.
+- Инициализация, Detours-транзакции, bootstrap D3D9 — cold-path; там допустима более читаемая логика.
+- Для очевидных if\else путей допустимы аннотации компилятора [[likely]]\[[unlikely]], если явное указание возможности\невозможности пути может увеличить перф.
+
+## Именование (snake_case)
+
+Полный **snake_case** для всего проектного кода. Исключение — имена библиотечных/системных типов и функций (`IDirect3DDevice9`, `HRESULT`, `DetourAttach`).
+
+| Сущность | Стиль | Пример |
+|----------|-------|--------|
+| namespace, struct, function | snake_case | `tw::framework::detour::attach` |
+| private/protected members | `m_` + snake_case | `m_device` |
+| file-local / global state | `g_` prefix | `g_bound_device` |
+| type alias (fn ptr) | snake_case + `_fn` | `end_scene_fn`, `ui_plugin_draw_fn` |
+| hook / original | `hk_*` / `o_*` / `true_*` | `hk_end_scene`, `o_reset` |
+| template parameter | CamelCase | `T`, `TValue` |
+
+Расширения C++: **всегда** `.hxx` (заголовки) и `.cxx` (translation units). `.h`/`.cpp` не использовать.
+
+## Precompiled headers
+
+- **Все** third-party / SDK `#include` — **только** в `src/pch.hxx`.
+- В `.cxx`: `#include "pch.hxx"` первым, затем свой заголовок, затем проектные.
+- **Не** forward-declare системные и библиотечные типы (`HMODULE`, `HWND`, `IDirect3DDevice9`) — они уже в PCH.
+- Forward-declare допустим только для **собственных** неполных типов в заголовках (`class EngineInterface;`).
+- Quest3D SDK: порядок include в `pch.hxx` фиксирован; блок `// clang-format off/on` не трогать.
+
+## Порядок include
+
+```cpp
+#include "pch.hxx"
+
+#include "framework/foo.hxx"    // свой заголовок
+
+#include "plugin/bar.hxx"       // другие слои — группировать по root-пути
+
+#include "ui/baz.hxx"
+```
+
+Группы разделять **пустой строкой**. Внутри группы — сортировка clang-format (`SortIncludes: true`). Библиотечные include вне `pch.hxx` не добавлять.
+
+## Обработка ошибок
+
+Functional-style, **без exceptions** в проектном коде.
+
+- Предпочитать `std::expected<T, E>` или `bool` / enum error-code.
+- Win32/D3D: `SUCCEEDED`/`FAILED`, проверка `nullptr`, `NO_ERROR` для Detours.
+- При ошибке — откат состояния (см. `install_d3d9_hooks`: обнуление указателей при failed attach).
+- `try/catch` — **только** при обёртке внешних API, которые гарантированно бросают, и **только** вне hot-path.
+- `assert` — только для инвариантов в debug; не как механизм обработки ошибок в runtime.
+
+## Форматирование
+
+Следовать `.clang-format` (LLVM-base, column limit **140**, CRLF, 4 spaces, tabs запрещены).
+
+- `SpaceBeforeParens: Never` → `if(condition)`, `for(auto& x : items)`.
+- Скобки функций/namespace — на новой строке; `if`/`for`/`while` — на той же.
+- `AlwaysBreakTemplateDeclarations: Yes`.
+- `BinPackArguments/Parameters: false` — длинные списки аргументов переносить.
+- Форматирование: clangd (`formatOnSave`).
+
+## Паттерны хуков
+
+- Оригиналы: `o_*` или `true_*`; хуки: `hk_*` / `*_hook`.
+- Типы оригиналов — `using ..._fn = ...` рядом с указателями.
+- Множественные Detours — через `tw::framework::detour::attach({...})`, не дублировать транзакционную логику.
+- D3D9 vtable resolve — cold-path bootstrap; не повторять в hot-path.
+- UI подключается callback'ом (`attach_ui_plugin`), не жёсткой зависимостью framework → ui.
+
+## CMake / сборка
+
+- Только **x86** (32-bit). C++23, `/std:c++latest` на MSVC.
+- Новые `.cxx` — в `CMakeLists.txt` соответствующего подкаталога `src/`.
+- `target_include_directories(TweakerPlugin PRIVATE src)` — include-пути от `src/`: `"framework/foo.hxx"`, не относительные `../`.
+
+## Чего избегать
+
+- Exceptions, `throw`, тяжёлые `catch` в hot-path и в новом коде по умолчанию.
+- `#include` SDK/STL в заголовках проекта (кроме PCH).
+- Логика в `DllMain` кроме минимального bootstrap.
+- Модификация vendored-зависимостей под стиль проекта.
+- PascalCase/camelCase для проектных имён (кроме template-параметров).

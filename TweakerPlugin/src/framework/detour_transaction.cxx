@@ -1,17 +1,10 @@
-#include "pch.h"
+#include "pch.hxx"
 
-#include "hooks/detour_transaction.h"
+#include "framework/detour_transaction.hxx"
 
 namespace
 {
 
-// Detours patches function prologues in place; any thread whose instruction
-// pointer is currently inside one of those prologues when the patch lands
-// would crash. DetourUpdateThread() tells a pending transaction to suspend a
-// given thread while it commits, but only for threads handed to it
-// explicitly - this DLL can be injected while the game's own render thread
-// is already running, so every other thread in the process has to be
-// enumerated by hand and registered.
 template<typename thread_fn>
 void for_each_other_thread(thread_fn&& fn)
 {
@@ -33,11 +26,10 @@ void for_each_other_thread(thread_fn&& fn)
             if(entry.th32OwnerProcessID != this_process || entry.th32ThreadID == this_thread)
                 continue;
 
-            // A thread can legitimately have exited between the snapshot and
-            // here - OpenThread failing for that reason isn't an error.
             HANDLE thread = OpenThread(THREAD_ALL_ACCESS, FALSE, entry.th32ThreadID);
             if(thread != nullptr) {
                 fn(thread);
+                CloseHandle(thread);
             }
         } while(Thread32Next(snapshot, &entry));
     }
@@ -45,7 +37,7 @@ void for_each_other_thread(thread_fn&& fn)
     CloseHandle(snapshot);
 }
 
-bool run_transaction(std::initializer_list<hooks::detour::binding> bindings, bool is_attach)
+bool run_transaction(std::initializer_list<tw::framework::detour::binding> bindings, bool is_attach)
 {
     if(DetourTransactionBegin() != NO_ERROR) {
         return false;
@@ -72,7 +64,7 @@ bool run_transaction(std::initializer_list<hooks::detour::binding> bindings, boo
 
 } // namespace
 
-namespace hooks::detour
+namespace tw::framework::detour
 {
 
 bool attach(std::initializer_list<binding> bindings)
@@ -85,4 +77,4 @@ bool detach(std::initializer_list<binding> bindings)
     return run_transaction(bindings, false);
 }
 
-} // namespace hooks::detour
+} // namespace tw::framework::detour

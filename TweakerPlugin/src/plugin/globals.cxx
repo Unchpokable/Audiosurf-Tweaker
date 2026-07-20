@@ -1,6 +1,8 @@
-#include "globals.hxx"
+#include "pch.hxx"
 
-namespace tw::plugin::globals 
+#include "plugin/globals.hxx"
+
+namespace tw::plugin::globals
 {
 HMODULE module_handle = nullptr;
 }

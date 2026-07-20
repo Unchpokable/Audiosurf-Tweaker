@@ -1,0 +1,3 @@
+[submodule "TweakerPlugin/Detours"]
+	path = TweakerPlugin/Detours
+	url = https://github.com/microsoft/Detours.git
