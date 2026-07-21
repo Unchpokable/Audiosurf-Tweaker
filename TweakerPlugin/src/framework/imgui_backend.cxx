@@ -29,6 +29,7 @@ namespace
 bool g_context_created = false;
 bool g_initialized = false;
 IDirect3DDevice9* g_device = nullptr;
+HWND g_hwnd = nullptr;
 std::string g_config_path;
 
 // TweakerPlugin.dll -> .../TweakerPlugin.overlay.cfg, next to the DLL itself. Same
@@ -172,6 +173,7 @@ bool initialize(IDirect3DDevice9* device, HWND hwnd)
         return false;
     }
 
+    g_hwnd = hwnd;
     g_initialized = true;
     return true;
 }
@@ -186,6 +188,7 @@ void unbind()
     ImGui_ImplWin32_Shutdown();
 
     g_device = nullptr;
+    g_hwnd = nullptr;
     g_initialized = false;
 }
 
@@ -248,14 +251,58 @@ bool wndproc_bridge(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam, LRESULT& 
         return false;
     }
 
+    // Always let ImGui observe the message (input state must stay current even while the menu is
+    // closed) - the return value only decides whether we ALSO hide it from the game.
     ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam);
 
     const ImGuiIO& io = ImGui::GetIO();
-    if(!io.WantCaptureMouse && !io.WantCaptureKeyboard) {
+
+    // Swallow ONLY the message classes ImGui genuinely consumes, and only when it wants them.
+    // Blanket-swallowing every message on WantCapture (the old behavior) was a trap: while the menu
+    // is open WantCaptureKeyboard is true, so WM_NCHITTEST got swallowed too - and returning our
+    // out_result (0 == HTNOWHERE) for WM_NCHITTEST makes Windows stop generating client mouse
+    // messages (WM_LBUTTONDOWN...) for the window entirely. That's exactly the "hover works, clicks
+    // don't" symptom: cursor position still arrives (ImGui polls it via GetCursorPos every frame in
+    // ImGui_ImplWin32_NewFrame), but no button message ever reaches the handler above. Gate on the
+    // message itself so non-input messages (WM_NCHITTEST, WM_SETCURSOR, WM_MOUSEACTIVATE, ...) are
+    // always forwarded to the game untouched.
+    switch(msg) {
+    case WM_MOUSEMOVE:
+    case WM_NCMOUSEMOVE:
+    case WM_LBUTTONDOWN:
+    case WM_LBUTTONDBLCLK:
+    case WM_LBUTTONUP:
+    case WM_RBUTTONDOWN:
+    case WM_RBUTTONDBLCLK:
+    case WM_RBUTTONUP:
+    case WM_MBUTTONDOWN:
+    case WM_MBUTTONDBLCLK:
+    case WM_MBUTTONUP:
+    case WM_XBUTTONDOWN:
+    case WM_XBUTTONDBLCLK:
+    case WM_XBUTTONUP:
+    case WM_MOUSEWHEEL:
+    case WM_MOUSEHWHEEL:
+        if(io.WantCaptureMouse) {
+            out_result = 0;
+            return true;
+        }
+        return false;
+
+    case WM_KEYDOWN:
+    case WM_KEYUP:
+    case WM_SYSKEYDOWN:
+    case WM_SYSKEYUP:
+    case WM_CHAR:
+    case WM_SYSCHAR:
+        if(io.WantCaptureKeyboard) {
+            out_result = 0;
+            return true;
+        }
+        return false;
+
+    default:
         return false;
     }
-
-    out_result = 0;
-    return true;
 }
 } // namespace tw::framework::imgui_backend

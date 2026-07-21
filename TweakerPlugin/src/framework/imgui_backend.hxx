@@ -38,9 +38,12 @@ void render();
 
 // Matches tw::framework::wndproc::handler_fn - register once via wndproc::subscribe_all(). Always
 // feeds the message to ImGui (mouse/keyboard state must stay current even while the menu is
-// closed), but only swallows it (returns true) when ImGui actually wants capture. Static widgets
-// draw via GetBackgroundDrawList() and never set WantCaptureMouse/Keyboard, so input passes
-// through to the game untouched whenever no interactive ImGui window is open. No-op (returns
-// false) before initialize() has run.
+// closed), but only swallows (returns true) actual input messages - and only when ImGui wants that
+// class of input (mouse messages under WantCaptureMouse, keyboard under WantCaptureKeyboard). Every
+// other message, including non-input ones like WM_NCHITTEST, is always forwarded to the game; see
+// the .cxx for why swallowing WM_NCHITTEST silently kills all clicking. Static widgets draw via
+// GetBackgroundDrawList() and never set WantCaptureMouse/Keyboard, so input passes through to the
+// game untouched whenever no interactive ImGui window is open. No-op (returns false) before
+// initialize() has run.
 bool wndproc_bridge(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam, LRESULT& out_result);
 } // namespace tw::framework::imgui_backend

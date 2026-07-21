@@ -65,14 +65,20 @@ void bind_device(LPDIRECT3DDEVICE9 device)
 
 void unbind_device()
 {
-    if(g_ui_unbind != nullptr) {
-        g_ui_unbind();
-    }
-
+    // Clear our own tracking state BEFORE notifying the listener. The on_unbind listener drives
+    // ImGui_ImplDX9_Shutdown(), which calls Release() on this same device - and since Release is
+    // detoured, that lands straight back in hk_release(). With g_bound_device already nulled here,
+    // that re-entrant call fails the `== g_bound_device` guard and simply forwards to o_release()
+    // instead of recursing into a second unbind_device() - which would re-run
+    // ImGui_ImplDX9_Shutdown() on an already-deleted backend and trip its IM_ASSERT(bd != nullptr).
     g_bound_device = nullptr;
     g_bound_window = nullptr;
 
     tw::framework::wndproc::uninstall();
+
+    if(g_ui_unbind != nullptr) {
+        g_ui_unbind();
+    }
 }
 
 bool is_rendering_to_back_buffer(LPDIRECT3DDEVICE9 device)
@@ -155,6 +161,11 @@ long __stdcall hk_end_scene(LPDIRECT3DDEVICE9 p_device)
 
 ULONG __stdcall hk_release(LPDIRECT3DDEVICE9 p_device)
 {
+    // Detours patches IDirect3DDevice9::Release in place, so this fires for the Release() of *any*
+    // object whose vtable slot 2 resolves to that same implementation - which, with optimized
+    // builds/COM aggregation, can be objects other than our device. The `== g_bound_device` guard
+    // is what keeps us from acting on such a foreign object, and it also scopes the AddRef/o_release
+    // refcount probe to the one device we actually track.
     if(p_device == g_bound_device) {
         const ULONG live_refs_before_this_call = p_device->AddRef() - 1;
         o_release(p_device);
