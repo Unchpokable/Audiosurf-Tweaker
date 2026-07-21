@@ -53,8 +53,13 @@ namespace TweakerUI.Models
                 var option = TagOptions.FirstOrDefault(o => o.Definition.Token == tag.Token);
                 if (option == null)
                     continue;
-                option.IsEnabled = true;
+                // ParameterText before IsEnabled: IsEnabled's setter synchronously fires
+                // OnTagsOrModsChanged -> RefreshBadges, which reads ParsedParameter - setting it the
+                // other way round meant a restored parameterized tag was briefly "enabled" with no
+                // parameter yet, which RefreshBadges' own guard below now tolerates, but there's no
+                // reason to pass through that invalid state at all here.
                 option.ParameterText = tag.Parameter?.ToString();
+                option.IsEnabled = true;
             }
 
             foreach (var mod in ModOptions)
@@ -150,9 +155,19 @@ namespace TweakerUI.Models
             }
 
             foreach (var tag in TagOptions.Where(o => o.IsEnabled))
-                ActiveBadges.Add(tag.HasParameter && tag.ParsedParameter.HasValue
+            {
+                // A parameterized tag can be enabled with no parameter yet - e.g. right after the user
+                // checks it, before typing into the parameter box (OnIsEnabledChanged fires this
+                // synchronously), or transiently while TrackCardViewModel restores a saved entry.
+                // Definition.Format() throws for HasParameter tags given no parameter, so there's
+                // nothing valid to show yet - skip the badge instead of crashing.
+                if (tag.HasParameter && !tag.ParsedParameter.HasValue)
+                    continue;
+
+                ActiveBadges.Add(tag.HasParameter
                     ? tag.Definition.Format(tag.ParsedParameter)
                     : tag.BracketPreview ?? tag.Definition.Format());
+            }
             foreach (var mod in ModOptions.Where(o => o.IsEnabled))
                 ActiveBadges.Add(mod.Label);
         }
