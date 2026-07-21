@@ -35,6 +35,8 @@ namespace TweakerUI.ViewModels
 
             _asHandle = AudiosurfHandle.Instance;
             _asHandle.StateChanged += OnAudiosurfStateChanged;
+
+            OverlayHelper.Initialize();
         }
 
         public SkinChangerViewModel SkinChangerVM { get; }

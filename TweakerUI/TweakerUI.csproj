@@ -76,4 +76,87 @@
 		<Error Condition="!Exists('$(AsBridgeExe)')" Text="asbridge.exe not found after CMake build at $(AsBridgeBuildDir)" />
 		<Copy SourceFiles="$(AsBridgeExe)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
 	</Target>
+
+	<!--
+    InjectHelper.exe must be a genuine 32-bit binary - Audiosurf (QuestViewer.exe) is a 32-bit
+    process, and the injector's own remote-thread trick (GetProcAddress against its own,
+    same-bitness kernel32.dll) only works when injector and target share bitness. This MSBuild
+    target itself typically runs from an x64 Developer environment, so plain `cmake -S/-B`
+    (which would follow the ambient PATH/INCLUDE/LIB) cannot be trusted to produce an x86 binary.
+    The Visual Studio generator sidesteps that: with an explicit -A Win32 it resolves the x86
+    cl.exe/link.exe toolset itself via the registered VS install, independent of the invoking
+    shell's environment - no vcvarsall dance needed. No -G is passed on purpose: CMake's default
+    generator already resolves to the newest installed Visual Studio (confirmed on this machine -
+    "Visual Studio 18 2026" - while some vcxproj files elsewhere in the repo still pin the older
+    v143/VS2022 toolset), and -A Win32 works the same way regardless of which VS version that is,
+    so hardcoding a generator name here would only make this brittle across machines/VS updates.
+  -->
+	<PropertyGroup>
+		<InjectHelperSourceDir>$(MSBuildThisFileDirectory)..\InjectHelper</InjectHelperSourceDir>
+		<InjectHelperBuildDir>$(InjectHelperSourceDir)\build\msbuild</InjectHelperBuildDir>
+	</PropertyGroup>
+
+	<Target Name="BuildInjectHelper" BeforeTargets="Build" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+		<Exec Command="cmake -A Win32 -S &quot;$(InjectHelperSourceDir)&quot; -B &quot;$(InjectHelperBuildDir)&quot;" />
+		<Exec Command="cmake --build &quot;$(InjectHelperBuildDir)&quot; --config Release" />
+	</Target>
+
+	<Target Name="CopyInjectHelper" AfterTargets="BuildInjectHelper" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+		<PropertyGroup>
+			<!-- Visual Studio generator is multi-config - always bin\<Config>\, no Ninja-style fallback needed. -->
+			<InjectHelperExe>$(InjectHelperBuildDir)\bin\Release\InjectHelper.exe</InjectHelperExe>
+		</PropertyGroup>
+		<Error Condition="!Exists('$(InjectHelperExe)')" Text="InjectHelper.exe not found after CMake build at $(InjectHelperBuildDir)" />
+		<Copy SourceFiles="$(InjectHelperExe)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+	</Target>
+
+	<!--
+    TweakerPlugin.dll (the in-game overlay, Phase 7b) - same -A Win32 reasoning as InjectHelper
+    above, but unlike InjectHelper/asbridge this build is best-effort, not required: its
+    CMakeLists.txt (TweakerPlugin/cmake/{DirectXSDK,Quest3DSDK,ImGui}.cmake) needs the DirectX
+    SDK (June 2010), the proprietary Quest3D SDK, a vendored ImGui tree, and the Detours git
+    submodule - none of which are guaranteed to be present on every machine/checkout (all
+    gitignored except the Detours submodule). A missing prerequisite makes `cmake configure` exit
+    non-zero with a precise FATAL_ERROR pointing at the fix (see those .cmake files) - IgnoreExitCode
+    + reading the Output ExitCode below turns that into a <Warning> instead of failing the whole
+    `dotnet build`, since the overlay is an opt-in [Experimental] Settings toggle and OverlayHelper
+    already tolerates a missing TweakerPlugin.dll at runtime.
+
+    Deliberately its own build/msbuild directory, distinct from the CMakePresets.json Ninja
+    presets (build/x86-debug, build/x86-release) the developer uses locally for clangd's
+    compile_commands.json - the two build trees never touch each other, so this never disturbs
+    that workflow and never forces a from-scratch rebuild of Detours/DirectX/Quest3D/ImGui on
+    every dotnet build (MSBuild's own incremental build applies here across repeated runs, same
+    as it already does for ASBridge/InjectHelper above).
+  -->
+	<PropertyGroup>
+		<TweakerPluginSourceDir>$(MSBuildThisFileDirectory)..\TweakerPlugin</TweakerPluginSourceDir>
+		<TweakerPluginBuildDir>$(TweakerPluginSourceDir)\build\msbuild</TweakerPluginBuildDir>
+	</PropertyGroup>
+
+	<Target Name="BuildTweakerPlugin" BeforeTargets="Build" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+		<Exec Command="cmake -A Win32 -S &quot;$(TweakerPluginSourceDir)&quot; -B &quot;$(TweakerPluginBuildDir)&quot;"
+		      IgnoreExitCode="true" ContinueOnError="WarnAndContinue">
+			<Output TaskParameter="ExitCode" PropertyName="TweakerPluginConfigureExitCode" />
+		</Exec>
+		<Warning Condition="'$(TweakerPluginConfigureExitCode)' != '0'"
+		         Text="TweakerPlugin CMake configure failed (exit $(TweakerPluginConfigureExitCode)) - likely a missing DirectX SDK / Quest3D SDK / ImGui / Detours submodule (see TweakerPlugin/cmake/*.cmake for exact setup steps). Skipping the in-game overlay plugin for this build; TweakerUI itself is unaffected." />
+
+		<Exec Command="cmake --build &quot;$(TweakerPluginBuildDir)&quot; --config Release"
+		      Condition="'$(TweakerPluginConfigureExitCode)' == '0'"
+		      IgnoreExitCode="true" ContinueOnError="WarnAndContinue">
+			<Output TaskParameter="ExitCode" PropertyName="TweakerPluginBuildExitCode" />
+		</Exec>
+		<Warning Condition="'$(TweakerPluginConfigureExitCode)' == '0' AND '$(TweakerPluginBuildExitCode)' != '0'"
+		         Text="TweakerPlugin build failed (exit $(TweakerPluginBuildExitCode)). Skipping the in-game overlay plugin for this build." />
+	</Target>
+
+	<Target Name="CopyTweakerPlugin" AfterTargets="BuildTweakerPlugin" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
+		<PropertyGroup>
+			<TweakerPluginDll>$(TweakerPluginBuildDir)\bin\Release\TweakerPlugin.dll</TweakerPluginDll>
+		</PropertyGroup>
+		<!-- No <Error> here - a missing dll just means the overlay wasn't built this time (see above). -->
+		<Copy SourceFiles="$(TweakerPluginDll)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true"
+		      Condition="Exists('$(TweakerPluginDll)')" />
+	</Target>
 </Project>

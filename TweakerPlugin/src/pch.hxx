@@ -3,11 +3,13 @@
 // their own matching header and nothing else library-related.
 #pragma once
 
+// clang-format off
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
 #include <process.h>
 #include <tlhelp32.h>
+// clang-format on
 
 // DirectX 9. Pulled exclusively from the vendored DirectX SDK (June 2010, see
 // cmake/DirectXSDK.cmake) rather than the Windows SDK's d3d9.h, so the whole

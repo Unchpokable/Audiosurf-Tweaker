@@ -198,7 +198,9 @@ void handle_tw_ovl_op(std::string_view payload)
 
     if(op == "SKIN_LIST") {
         std::vector<std::string> names;
-        for_each_token(rest, [&names](std::string_view token) { names.push_back(percent_decode(token)); });
+        for_each_token(rest, [&names](std::string_view token) {
+            names.push_back(percent_decode(token));
+        });
         tw::ui::overlay_state::set_skin_list(std::move(names));
         return;
     }
@@ -250,8 +252,8 @@ bool handle_copydata(HWND /*hwnd*/, UINT /*msg*/, WPARAM /*wparam*/, LPARAM lpar
         data.pop_back();
     }
 
-    const bool is_tw_ovl = data.size() >= k_tw_ovl_prefix.size()
-        && std::equal(k_tw_ovl_prefix.begin(), k_tw_ovl_prefix.end(), data.begin());
+    const bool is_tw_ovl =
+        data.size() >= k_tw_ovl_prefix.size() && std::equal(k_tw_ovl_prefix.begin(), k_tw_ovl_prefix.end(), data.begin());
 
     if(!is_tw_ovl) {
         return false;

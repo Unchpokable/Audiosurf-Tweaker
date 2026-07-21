@@ -59,6 +59,14 @@ set_target_properties(TweakerPlugin PROPERTIES
 
 # Each preset writes compile_commands.json under build/<preset>/, but clangd
 # wants a single stable path at the project root. Refresh it on every build.
+#
+# Only Ninja/Makefiles generators actually write compile_commands.json - the automated
+# dotnet-triggered build (TweakerUI.csproj's BuildTweakerPlugin target) forces the Visual Studio
+# generator in its own separate build/msbuild tree (to get x86 output regardless of the calling
+# shell's architecture, same reasoning as InjectHelper's build hook), and VS never produces that
+# file. Gating on CMAKE_GENERATOR at configure time means the target simply doesn't exist there,
+# rather than existing and failing on a copy_if_different against a file that will never appear.
+if(CMAKE_GENERATOR MATCHES "Ninja|Makefiles")
 add_custom_target(copy_compile_commands ALL
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different
         "${CMAKE_BINARY_DIR}/compile_commands.json"
@@ -67,3 +75,4 @@ add_custom_target(copy_compile_commands ALL
     COMMENT "Copying compile_commands.json (${CMAKE_BUILD_TYPE}) to project root"
     VERBATIM
 )
+endif()

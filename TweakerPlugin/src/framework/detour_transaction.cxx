@@ -13,7 +13,7 @@ void for_each_other_thread(thread_fn&& fn)
         return;
     }
 
-    THREADENTRY32 entry{};
+    THREADENTRY32 entry {};
     entry.dwSize = sizeof(entry);
 
     const DWORD this_process = GetCurrentProcessId();
@@ -43,11 +43,14 @@ bool run_transaction(std::initializer_list<tw::framework::detour::binding> bindi
         return false;
     }
 
-    for_each_other_thread([](HANDLE thread) { DetourUpdateThread(thread); });
+    for_each_other_thread([](HANDLE thread) {
+        DetourUpdateThread(thread);
+    });
 
     bool ok = true;
     for(const auto& binding : bindings) {
-        const LONG error = is_attach ? DetourAttach(binding.target, binding.replacement) : DetourDetach(binding.target, binding.replacement);
+        const LONG error =
+            is_attach ? DetourAttach(binding.target, binding.replacement) : DetourDetach(binding.target, binding.replacement);
         if(error != NO_ERROR) {
             ok = false;
             break;

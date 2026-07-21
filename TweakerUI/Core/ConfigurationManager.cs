@@ -59,6 +59,7 @@ namespace TweakerUI.Core
             ("UWPNotificationsAllowed", "false"),
             ("UWPNotificationSilent", "true"),
             ("DarkTheme", "false"),
+            ("EnableInGameOverlay", "false"),
         };
 
         public static void SetUpDefaultSettings()
@@ -140,6 +141,7 @@ namespace TweakerUI.Core
                 Settings.IsUWPNotificationsAllowed = bool.Parse(Get("UWPNotificationsAllowed"));
                 Settings.IsUWPNotificationSilent = bool.Parse(Get("UWPNotificationSilent"));
                 Settings.IsDarkTheme = bool.Parse(Get("DarkTheme"));
+                Settings.EnableInGameOverlay = bool.Parse(Get("EnableInGameOverlay"));
             }
             catch (Exception e)
             {
@@ -165,6 +167,7 @@ namespace TweakerUI.Core
                 cfg.AppSettings.Settings["UWPNotificationsAllowed"].Value = Settings.IsUWPNotificationsAllowed.ToString();
                 cfg.AppSettings.Settings["UWPNotificationSilent"].Value = Settings.IsUWPNotificationSilent.ToString();
                 cfg.AppSettings.Settings["DarkTheme"].Value = Settings.IsDarkTheme.ToString();
+                cfg.AppSettings.Settings["EnableInGameOverlay"].Value = Settings.EnableInGameOverlay.ToString();
                 cfg.Save();
             }
             catch (Exception e)

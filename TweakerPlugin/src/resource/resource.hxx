@@ -13,8 +13,7 @@ enum class error {
     wrong_type,
 };
 
-struct view
-{
+struct view {
     type kind {};
     std::span<const std::byte> bytes;
 

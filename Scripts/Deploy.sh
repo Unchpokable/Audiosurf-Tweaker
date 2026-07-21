@@ -76,6 +76,28 @@ fi
 cp -f "$ASBRIDGE_EXE" "$TWEAKER_OUT/"
 echo "    $ASBRIDGE_EXE -> $TWEAKER_OUT"
 
+echo "==> Locating InjectHelper.exe from the CMake pre-build hook"
+INJECT_HELPER_EXE="$(find "$REPO_ROOT/TweakerUI/bin" -iname "InjectHelper.exe" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)"
+if [ -z "$INJECT_HELPER_EXE" ]; then
+    echo "ERROR: InjectHelper.exe not found under TweakerUI/bin - did the CMake pre-build hook run/fail silently?" >&2
+    exit 1
+fi
+cp -f "$INJECT_HELPER_EXE" "$TWEAKER_OUT/"
+echo "    $INJECT_HELPER_EXE -> $TWEAKER_OUT"
+
+# TweakerPlugin.dll is optional - its CMake build needs the DirectX/Quest3D SDKs and a vendored
+# ImGui tree (none guaranteed present, see TweakerUI.csproj's BuildTweakerPlugin target), and the
+# overlay itself is an opt-in [Experimental] Settings toggle - a bundle without it is still a
+# complete, working Tweaker.
+echo "==> Locating TweakerPlugin.dll from the CMake pre-build hook (optional - in-game overlay)"
+TWEAKER_PLUGIN_DLL="$(find "$REPO_ROOT/TweakerUI/bin" -iname "TweakerPlugin.dll" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)"
+if [ -n "$TWEAKER_PLUGIN_DLL" ]; then
+    cp -f "$TWEAKER_PLUGIN_DLL" "$TWEAKER_OUT/"
+    echo "    $TWEAKER_PLUGIN_DLL -> $TWEAKER_OUT"
+else
+    echo "    TweakerPlugin.dll not found - in-game overlay will be unavailable in this bundle (see TweakerPlugin/cmake/*.cmake)."
+fi
+
 # --- 2. LegacyDataConverter: old-style net481 csproj, needs full MSBuild, not dotnet CLI ---------
 echo "==> Locating MSBuild.exe (LegacyDataConverter is net481, dotnet CLI can't build it)"
 VSWHERE="/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe"

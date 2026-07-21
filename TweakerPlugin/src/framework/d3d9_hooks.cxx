@@ -29,7 +29,7 @@ HWND g_bound_window = nullptr;
 bool handle_activate_app(HWND hwnd, UINT /*msg*/, WPARAM wparam, LPARAM /*lparam*/, LRESULT& /*out_result*/)
 {
     if(wparam == FALSE && g_bound_device != nullptr) {
-        D3DDEVICE_CREATION_PARAMETERS params{};
+        D3DDEVICE_CREATION_PARAMETERS params {};
         g_bound_device->GetCreationParameters(&params);
         if(params.hFocusWindow == hwnd) {
             ::ShowWindow(hwnd, SW_MINIMIZE);
@@ -41,7 +41,7 @@ bool handle_activate_app(HWND hwnd, UINT /*msg*/, WPARAM wparam, LPARAM /*lparam
 
 void bind_device(LPDIRECT3DDEVICE9 device)
 {
-    D3DDEVICE_CREATION_PARAMETERS params{};
+    D3DDEVICE_CREATION_PARAMETERS params {};
     device->GetCreationParameters(&params);
 
     if(device == g_bound_device && params.hFocusWindow == g_bound_window) {
@@ -81,10 +81,16 @@ bool is_rendering_to_back_buffer(LPDIRECT3DDEVICE9 device)
     return matches;
 }
 
-long __stdcall hk_create_device(LPDIRECT3D9 p_d3d9, UINT adapter, D3DDEVTYPE device_type, HWND focus_window, DWORD behavior_flags,
-    D3DPRESENT_PARAMETERS* p_presentation_parameters, LPDIRECT3DDEVICE9* pp_returned_device_interface)
+long __stdcall hk_create_device(LPDIRECT3D9 p_d3d9,
+    UINT adapter,
+    D3DDEVTYPE device_type,
+    HWND focus_window,
+    DWORD behavior_flags,
+    D3DPRESENT_PARAMETERS* p_presentation_parameters,
+    LPDIRECT3DDEVICE9* pp_returned_device_interface)
 {
-    const long result = o_create_device(p_d3d9, adapter, device_type, focus_window, behavior_flags, p_presentation_parameters, pp_returned_device_interface);
+    const long result = o_create_device(
+        p_d3d9, adapter, device_type, focus_window, behavior_flags, p_presentation_parameters, pp_returned_device_interface);
 
     if(SUCCEEDED(result) && pp_returned_device_interface != nullptr && *pp_returned_device_interface != nullptr) {
         bind_device(*pp_returned_device_interface);
@@ -95,7 +101,7 @@ long __stdcall hk_create_device(LPDIRECT3D9 p_d3d9, UINT adapter, D3DDEVTYPE dev
 
 long __stdcall hk_reset(LPDIRECT3DDEVICE9 p_device, D3DPRESENT_PARAMETERS* p_presentation_parameters)
 {
-  return o_reset(p_device, p_presentation_parameters);
+    return o_reset(p_device, p_presentation_parameters);
 }
 
 long __stdcall hk_end_scene(LPDIRECT3DDEVICE9 p_device)
@@ -139,28 +145,34 @@ bool resolve_d3d9_functions(void*& out_create_device, void*& out_reset, void*& o
         return false;
     }
 
-    WNDCLASSEX window_class{};
+    WNDCLASSEX window_class {};
     window_class.cbSize = sizeof(window_class);
     window_class.lpfnWndProc = DefWindowProc;
     window_class.hInstance = GetModuleHandle(nullptr);
     window_class.lpszClassName = L"TweakerPluginBootstrap";
     RegisterClassEx(&window_class);
 
-    HWND window = CreateWindow(window_class.lpszClassName, L"", WS_OVERLAPPEDWINDOW, 0, 0, 100, 100, nullptr, nullptr, window_class.hInstance, nullptr);
+    HWND window = CreateWindow(
+        window_class.lpszClassName, L"", WS_OVERLAPPEDWINDOW, 0, 0, 100, 100, nullptr, nullptr, window_class.hInstance, nullptr);
 
     bool resolved = false;
 
     IDirect3D9* d3d9 = direct3d_create9(D3D_SDK_VERSION);
     if(d3d9 != nullptr) {
-        D3DPRESENT_PARAMETERS params{};
+        D3DPRESENT_PARAMETERS params {};
         params.Windowed = TRUE;
         params.SwapEffect = D3DSWAPEFFECT_DISCARD;
         params.hDeviceWindow = window;
         params.BackBufferFormat = D3DFMT_UNKNOWN;
 
         LPDIRECT3DDEVICE9 device = nullptr;
-        if(SUCCEEDED(d3d9->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, window, D3DCREATE_SOFTWARE_VERTEXPROCESSING | D3DCREATE_DISABLE_DRIVER_MANAGEMENT, &params, &device)) &&
-            device != nullptr) {
+        if(SUCCEEDED(d3d9->CreateDevice(D3DADAPTER_DEFAULT,
+               D3DDEVTYPE_HAL,
+               window,
+               D3DCREATE_SOFTWARE_VERTEXPROCESSING | D3DCREATE_DISABLE_DRIVER_MANAGEMENT,
+               &params,
+               &device))
+            && device != nullptr) {
             void** d3d9_vtable = *reinterpret_cast<void***>(d3d9);
             void** device_vtable = *reinterpret_cast<void***>(device);
 
@@ -215,10 +227,10 @@ bool install_d3d9_hooks()
     o_release = reinterpret_cast<release_fn>(p_release);
 
     const bool ok = tw::framework::detour::attach({
-        {reinterpret_cast<void**>(&o_create_device), reinterpret_cast<void*>(hk_create_device)},
-        {reinterpret_cast<void**>(&o_reset),         reinterpret_cast<void*>(hk_reset)        },
-        {reinterpret_cast<void**>(&o_end_scene),     reinterpret_cast<void*>(hk_end_scene)    },
-        {reinterpret_cast<void**>(&o_release),       reinterpret_cast<void*>(hk_release)      },
+        { reinterpret_cast<void**>(&o_create_device), reinterpret_cast<void*>(hk_create_device) },
+        { reinterpret_cast<void**>(&o_reset), reinterpret_cast<void*>(hk_reset) },
+        { reinterpret_cast<void**>(&o_end_scene), reinterpret_cast<void*>(hk_end_scene) },
+        { reinterpret_cast<void**>(&o_release), reinterpret_cast<void*>(hk_release) },
     });
 
     if(!ok) {
@@ -226,7 +238,8 @@ bool install_d3d9_hooks()
         o_reset = nullptr;
         o_end_scene = nullptr;
         o_release = nullptr;
-    } else {
+    }
+    else {
         tw::framework::wndproc::subscribe(WM_ACTIVATEAPP, &handle_activate_app);
     }
 

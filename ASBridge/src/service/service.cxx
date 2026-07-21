@@ -32,6 +32,8 @@ constexpr UINT k_liveness_timer_interval_ms = 30;
 
 constexpr std::size_t k_pipe_buffer_size = 4096;
 constexpr int k_pipe_poll_ms = 30;
+
+constexpr std::string_view k_tw_ovl_prefix = "TW_OVL ";
 } // namespace
 
 namespace
@@ -176,11 +178,23 @@ LRESULT process_wm_copydata(HWND, WPARAM, LPARAM lparam)
             data.pop_back();
         }
 
-        push_report({
-            .header = as::proto::asbridge_msg_header::server_report,
-            .msg = as::proto::asbridge_msg_type::broadcast_forward,
-            .details = { std::move(data) },
-        });
+        const bool is_tw_ovl = data.size() >= k_tw_ovl_prefix.size()
+            && std::equal(k_tw_ovl_prefix.begin(), k_tw_ovl_prefix.end(), data.begin());
+
+        if(is_tw_ovl) {
+            const auto inner = data.substr(k_tw_ovl_prefix.size());
+            push_report({
+                .header = as::proto::asbridge_msg_header::server_report,
+                .msg = as::proto::asbridge_msg_type::overlay_forward,
+                .details = { std::string(inner) },
+            });
+        } else {
+            push_report({
+                .header = as::proto::asbridge_msg_header::server_report,
+                .msg = as::proto::asbridge_msg_type::broadcast_forward,
+                .details = { std::move(data) },
+            });
+        }
     }
 
     return TRUE;
@@ -311,19 +325,55 @@ bool send_to_audiosurf(HWND target, const std::string& detail)
 
 void handle_client_command(const as::proto::asbridge_msg& msg)
 {
-    if(msg.header != as::proto::asbridge_msg_header::client_command || msg.msg != as::proto::asbridge_msg_type::send) {
+    if(msg.header != as::proto::asbridge_msg_header::client_command) {
         return;
     }
 
     HWND target = cached_audiosurf_hwnd.load(std::memory_order_relaxed);
-    bool delivered = target != nullptr && send_to_audiosurf(target, msg.details.front());
+    if(target == nullptr) {
+        // still ack with FAILED so the managed side does not block indefinitely on an assumed SendMessage delivery
+        if(msg.msg == as::proto::asbridge_msg_type::send) {
+            push_report({
+                .header = as::proto::asbridge_msg_header::server_report,
+                .msg = as::proto::asbridge_msg_type::failed,
+                .details = { "audiosurf window unavailable or SendMessage failed" },
+            });
+        } else if(msg.msg == as::proto::asbridge_msg_type::overlay_send) {
+            push_report({
+                .header = as::proto::asbridge_msg_header::server_report,
+                .msg = as::proto::asbridge_msg_type::overlay_failed,
+                .details = { "audiosurf window unavailable or SendMessage failed" },
+            });
+        }
+        return;
+    }
 
-    push_report({
-        .header = as::proto::asbridge_msg_header::server_report,
-        .msg = delivered ? as::proto::asbridge_msg_type::ok : as::proto::asbridge_msg_type::failed,
-        .details = delivered ? std::vector<std::string> {}
-                              : std::vector<std::string> { "audiosurf window unavailable or SendMessage failed" },
-    });
+    if(msg.msg == as::proto::asbridge_msg_type::send) {
+        bool delivered = send_to_audiosurf(target, msg.details.front());
+        push_report({
+            .header = as::proto::asbridge_msg_header::server_report,
+            .msg = delivered ? as::proto::asbridge_msg_type::ok : as::proto::asbridge_msg_type::failed,
+            .details = delivered ? std::vector<std::string> {}
+                                  : std::vector<std::string> { "audiosurf window unavailable or SendMessage failed" },
+        });
+        return;
+    }
+
+    if(msg.msg == as::proto::asbridge_msg_type::overlay_send) {
+        const auto& payload = msg.details.front();
+        std::string envelope;
+        envelope.reserve(k_tw_ovl_prefix.size() + payload.size());
+        envelope.append(k_tw_ovl_prefix.begin(), k_tw_ovl_prefix.end());
+        envelope.append(payload);
+
+        bool delivered = send_to_audiosurf(target, envelope);
+        push_report({
+            .header = as::proto::asbridge_msg_header::server_report,
+            .msg = delivered ? as::proto::asbridge_msg_type::overlay_ok : as::proto::asbridge_msg_type::overlay_failed,
+            .details = delivered ? std::vector<std::string> {}
+                                  : std::vector<std::string> { "audiosurf window unavailable or SendMessage failed" },
+        });
+    }
 }
 
 void drain_reports_to_pipe(std::unique_lock<std::mutex>& lock)

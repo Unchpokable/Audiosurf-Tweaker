@@ -5,4 +5,4 @@
 namespace tw::plugin::globals
 {
 extern HMODULE module_handle;
-}
+} // namespace tw::plugin::globals

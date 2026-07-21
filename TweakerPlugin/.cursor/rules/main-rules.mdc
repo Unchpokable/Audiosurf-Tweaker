@@ -118,16 +118,102 @@ Functional-style, **без exceptions** в проектном коде.
 - `try/catch` — **только** при обёртке внешних API, которые гарантированно бросают, и **только** вне hot-path.
 - `assert` — только для инвариантов в debug; не как механизм обработки ошибок в runtime.
 
-## Форматирование
+## Форматирование (из `.clang-format`)
 
-Следовать `.clang-format` (LLVM-base, column limit **140**, CRLF, 4 spaces, tabs запрещены).
+Источник правды — корневой `.clang-format`. Писать код сразу в этом стиле; не полагаться на «поправлю потом».
 
-- `SpaceBeforeParens: Never` → `if(condition)`, `for(auto& x : items)`.
-- Скобки функций/namespace — на новой строке; `if`/`for`/`while` — на той же.
-- `AlwaysBreakTemplateDeclarations: Yes`.
-- `BinPackArguments/Parameters: false` — длинные списки аргументов переносить.
-- Форматирование: clangd (`formatOnSave`).
+### База
 
+- Язык: C++ (`Standard: c++20` для форматтера; проект собирается как C++23).
+- Отступ: **4 пробела**, табы запрещены (`UseTab: Never`).
+- Концы строк: **CRLF** (`LineEnding: CRLF`, `UseCRLF: true`).
+- Ширина строки: **140** символов (`ColumnLimit: 140`).
+- Максимум одна подряд пустая строка (`MaxEmptyLinesToKeep: 1`); пустых строк в начале блоков быть не должно.
+- Указатели/ссылки: `*` и `&` слева от имени (`PointerAlignment: Left`) → `int* p`, `const T& ref`. Квалификатор вокруг указателя — пробел **перед** ним (`SpaceAroundPointerQualifiers: Before`) → `const int* const`.
+
+### Скобки (`BreakBeforeBraces: Custom`)
+
+- **Функции и namespace** — открывающая `{` на **новой строке**; пустые тела тоже разбиваются (`SplitEmptyFunction/Record/Namespace: true`).
+- **class / struct / enum / union / if / for / while / switch** — `{` на **той же строке**.
+- `else` и `catch` — на новой строке перед собой (`BeforeElse` / `BeforeCatch: true`).
+- Тело лямбды — `{` на той же строке (`BeforeLambdaBody: false`).
+- Короткие блоки, if, циклы, лямбды, case-метки, функции — **не** сжимать в одну строку (`AllowShort*: Never` / `None` / `false`). Исключение: короткие enum можно в одну строку (`AllowShortEnumsOnASingleLine: true`).
+
+```cpp
+void draw_frame(IDirect3DDevice9* device)
+{
+    if(device == nullptr) {
+        return;
+    }
+    else {
+        render(device);
+    }
+}
+
+namespace tw::ui
+{
+} // namespace tw::ui
+```
+
+### Пробелы вокруг синтаксиса
+
+- **Нет пробела** перед `(` у `if`/`for`/`while`/`switch`/вызовов (`SpaceBeforeParens: Never`) → `if(x)`, `foo(a, b)`.
+- Нет пробелов внутри `()`, `[]`, `<>`, в условии (`SpacesInParentheses/SquareBrackets/Angles/ConditionalStatement: false`) → `if(a && b)`, `arr[i]`, `vector<int>`.
+- Нет пробела после C-cast и после `!` → `(int)x`, `!flag`.
+- Нет пробела после `template` → `template<typename T>`.
+- Есть пробел перед assignment (`=`, `+=`, …) и перед `:` у range-for → `for(auto& x : items)`.
+- Нет пробела перед `:` у `case` → `case 1:`.
+- Есть пробел перед `{` у braced-init (`SpaceBeforeCpp11BracedList: true`), но стиль списка — **не** «компактный Cpp11» (`Cpp11BracedListStyle: false`) → `params{ }`, элементы с пробелами как у классических списков.
+- Пробел перед `:` у наследования и ctor-initializer.
+
+### Переносы и упаковка аргументов
+
+- Аргументы и параметры **не** bin-pack'ать (`BinPackArguments/Parameters: false`): либо всё в одну строку (если влезает в 140), либо **каждый на своей**.
+- После открывающей `(` аргументы **не** выравнивать в столбец (`AlignAfterOpenBracket: DontAlign`) — обычный continuation indent 4.
+- Неassignment бинарные операторы — перенос **перед** оператором (`BreakBeforeBinaryOperators: NonAssignment`).
+- Тернарный оператор — перенос перед `?`/`:` (`BreakBeforeTernaryOperators: true`).
+- `template<...>` у деклараций — всегда с переносом после (`AlwaysBreakTemplateDeclarations: Yes`).
+- Concepts — break before (`BreakBeforeConceptDeclarations: true`).
+- Список наследования и ctor-initializer — `:` на предыдущей строке не оставлять: break **перед** `:` (`BreakInheritanceList` / `BreakConstructorInitializers: BeforeColon`).
+- Операнды выравнивать (`AlignOperands: Align`); последовательные присваивания/декларации/битфилды — **не** выравнивать; макросы — выравнивать (`AlignConsecutiveMacros: Consecutive`).
+- Escaped newlines в макросах — влево (`AlignEscapedNewlines: Left`).
+- Trailing comments выравнивать (`AlignTrailingComments`), в т.ч. через одну пустую строку.
+
+### Namespace, class, includes
+
+- Namespace **не** индентить содержимое (`NamespaceIndentation: None`); не схлопывать `a::b::c` в одну строку файла (`CompactNamespaces: false`).
+- Короткие namespace всё равно с newline после `{` (`ShortNamespaceLines: 0`).
+- Закрывающие комментарии namespace чинить автоматически (`FixNamespaceComments: true`) → `} // namespace tw::ui`.
+- Access modifiers (`public:` / …) с отступом −4 от членов (`AccessModifierOffset: -4`); пустая строка перед ними по логическим блокам (`EmptyLineBeforeAccessModifier: LogicalBlock`).
+- `case` и блоки case — с отступом (`IndentCaseLabels` / `IndentCaseBlocks: true`).
+- `#` директивы без доп. отступа (`IndentPPDirectives: None`).
+- `#include` и `using` — сортировать (`SortIncludes` / `SortUsingDeclarations: true`).
+- Комментарии можно переформатировать по ширине (`ReflowComments: true`).
+
+### Краткий чеклист «как выглядит локально»
+
+```cpp
+template<typename TValue>
+class resource
+{
+public:
+    TValue* data;
+
+private:
+    int m_refcount;
+};
+
+bool ok = attach({
+    { &o_reset, reinterpret_cast<void*>(hk_reset) },
+    { &o_end_scene, reinterpret_cast<void*>(hk_end_scene) },
+});
+
+if(!ok || device == nullptr) {
+    return false;
+}
+```
+
+Форматирование в IDE: clangd + `formatOnSave` (см. `.vscode/settings.json`).
 ## Паттерны хуков
 
 - Оригиналы: `o_*` или `true_*`; хуки: `hk_*` / `*_hook`.

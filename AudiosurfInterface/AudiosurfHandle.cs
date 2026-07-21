@@ -19,6 +19,7 @@ namespace AudiosurfInterface
         {
             _currentState = ASHandleState.NotConnected;
             _queuedCommands = new Queue<string>();
+            _queuedOverlayCommands = new Queue<string>();
 
             // The legacy WndProc listener delivered everything on the UI thread; the pipe pump is a
             // background thread. Capture the creating thread's context (the singleton is first
@@ -35,6 +36,7 @@ namespace AudiosurfInterface
         public event EventHandler StateChanged;
         public event EventHandler Registered;
         public event MessageEventHandler MessageResieved;
+        public event MessageEventHandler OverlayMessageReceived;
         public event EventHandler<CommandInfo> CommandSent;
         public event EventHandler MessageServiceInitialized;
 
@@ -49,6 +51,7 @@ namespace AudiosurfInterface
         private AsBridgeConnection _connection;
         private ASHandleState _currentState;
         private readonly Queue<string> _queuedCommands;
+        private readonly Queue<string> _queuedOverlayCommands;
         private readonly SynchronizationContext _syncContext;
         private static AudiosurfHandle _instance;
 
@@ -132,6 +135,22 @@ namespace AudiosurfInterface
             }
         }
 
+        public void OverlayCommand(string overlay_payload)
+        {
+            lock (_lockObject)
+            {
+                if (_currentState != ASHandleState.Connected)
+                {
+                    _queuedOverlayCommands.Enqueue(overlay_payload);
+                    return;
+                }
+
+                var delivered = _connection.SendOverlay(overlay_payload);
+                if (!delivered)
+                    _queuedOverlayCommands.Enqueue(overlay_payload);
+            }
+        }
+
         private void OnReportReceived(AsBridgeReport report)
         {
             Dispatch(() => HandleReport(report));
@@ -162,6 +181,15 @@ namespace AudiosurfInterface
                     case AsBridgeReportType.Ok:
                     case AsBridgeReportType.Failed:
                         // Per-command acks; the console already logs the Sent event, nothing to do.
+                        break;
+
+                    case AsBridgeReportType.OverlayForward:
+                        HandleOverlayBroadcast(report.Details.Count > 0 ? report.Details[0] : string.Empty);
+                        break;
+
+                    case AsBridgeReportType.OverlayOk:
+                    case AsBridgeReportType.OverlayFailed:
+                        // Per-overlay acks; no-op for now.
                         break;
                 }
             }
@@ -211,6 +239,14 @@ namespace AudiosurfInterface
             MessageResieved?.Invoke(this, content);
         }
 
+        private void HandleOverlayBroadcast(string content)
+        {
+            if (string.IsNullOrEmpty(content))
+                return;
+
+            OverlayMessageReceived?.Invoke(this, content);
+        }
+
         private void OnBridgeConnectionLost()
         {
             Dispatch(() =>
@@ -236,6 +272,12 @@ namespace AudiosurfInterface
                 var command = _queuedCommands.Dequeue();
                 _connection.Send(command);
                 CommandSent?.Invoke(this, new CommandInfo(command, CommandInfo.CommandStatus.Sent));
+            }
+
+            while (_queuedOverlayCommands.Count > 0)
+            {
+                var overlayPayload = _queuedOverlayCommands.Dequeue();
+                _connection.SendOverlay(overlayPayload);
             }
         }
 

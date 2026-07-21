@@ -72,6 +72,27 @@ if (-not $asbridgeExe) { throw "asbridge.exe not found under TweakerUI\bin - did
 Copy-Item $asbridgeExe.FullName -Destination $tweakerOut -Force
 Write-Host "    $($asbridgeExe.FullName) -> $tweakerOut"
 
+Write-Host "==> Locating InjectHelper.exe from the CMake pre-build hook"
+$injectHelperExe = Get-ChildItem -Path (Join-Path $repoRoot "TweakerUI\bin") -Recurse -Filter "InjectHelper.exe" -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if (-not $injectHelperExe) { throw "InjectHelper.exe not found under TweakerUI\bin - did the CMake pre-build hook run/fail silently?" }
+Copy-Item $injectHelperExe.FullName -Destination $tweakerOut -Force
+Write-Host "    $($injectHelperExe.FullName) -> $tweakerOut"
+
+# TweakerPlugin.dll is optional - its CMake build needs the DirectX/Quest3D SDKs and a vendored
+# ImGui tree (none guaranteed present, see TweakerUI.csproj's BuildTweakerPlugin target), and the
+# overlay itself is an opt-in [Experimental] Settings toggle - a bundle without it is still a
+# complete, working Tweaker.
+Write-Host "==> Locating TweakerPlugin.dll from the CMake pre-build hook (optional - in-game overlay)"
+$tweakerPluginDll = Get-ChildItem -Path (Join-Path $repoRoot "TweakerUI\bin") -Recurse -Filter "TweakerPlugin.dll" -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if ($tweakerPluginDll) {
+    Copy-Item $tweakerPluginDll.FullName -Destination $tweakerOut -Force
+    Write-Host "    $($tweakerPluginDll.FullName) -> $tweakerOut"
+} else {
+    Write-Host "    TweakerPlugin.dll not found - in-game overlay will be unavailable in this bundle (see TweakerPlugin/cmake/*.cmake)." -ForegroundColor Yellow
+}
+
 # --- 2. LegacyDataConverter: old-style net481 csproj, needs full MSBuild, not dotnet CLI -------
 Write-Host "==> Locating MSBuild.exe (LegacyDataConverter is net481, dotnet CLI can't build it)"
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"

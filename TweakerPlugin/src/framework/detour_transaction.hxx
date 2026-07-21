@@ -2,8 +2,7 @@
 
 namespace tw::framework::detour
 {
-struct binding
-{
+struct binding {
     void** target;
     void* replacement;
 };

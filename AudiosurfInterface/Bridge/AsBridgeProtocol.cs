@@ -7,7 +7,10 @@ namespace AudiosurfInterface.Bridge
     {
         Ok,
         Failed,
+        OverlayOk,
+        OverlayFailed,
         BroadcastForward,
+        OverlayForward,
         Service
     }
 
@@ -39,6 +42,11 @@ namespace AudiosurfInterface.Bridge
             return $"CCOMMAND SEND \"{command}\" ";
         }
 
+        public static string SerializeOverlaySend(string payload)
+        {
+            return $"CCOMMAND OVERLAY_SEND \"{payload}\" ";
+        }
+
         public static bool TryParseReport(string raw, out AsBridgeReport report)
         {
             report = null;
@@ -58,7 +66,10 @@ namespace AudiosurfInterface.Bridge
             {
                 case "OK": type = AsBridgeReportType.Ok; break;
                 case "FAILED": type = AsBridgeReportType.Failed; break;
+                case "OVERLAY_OK": type = AsBridgeReportType.OverlayOk; break;
+                case "OVERLAY_FAILED": type = AsBridgeReportType.OverlayFailed; break;
                 case "BROADCAST_FORWARD": type = AsBridgeReportType.BroadcastForward; break;
+                case "OVERLAY_FORWARD": type = AsBridgeReportType.OverlayForward; break;
                 case "SERVICE": type = AsBridgeReportType.Service; break;
                 default: return false;
             }

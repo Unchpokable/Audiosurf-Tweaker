@@ -5,4 +5,4 @@
 namespace tw::plugin::globals
 {
 HMODULE module_handle = nullptr;
-}
+} // namespace tw::plugin::globals

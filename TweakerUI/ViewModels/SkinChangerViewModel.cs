@@ -59,11 +59,22 @@ namespace TweakerUI.ViewModels
             ReloadButtonUnlocked = true;
 
             Skins = new ObservableCollection<SkinCard>();
+            // Single hook for the overlay's SKIN_LIST sync, rather than patching every Skins.Add/Remove
+            // call site across this file - catches Add/Remove/Reset alike.
+            Skins.CollectionChanged += (_, _) => OverlayHelper.PushSkinList(Skins.Select(c => c.Name));
 
             if (EnvironmentChecker.CheckEnvironment(SettingsProvider.GameTexturesPath, out FolderHashInfo state))
                 CurrentInstalledSkinRaw = state.StateName;
 
+            OverlayHelper.OverlayReady += (_, _) => PushOverlaySnapshot();
+
             _ = LoadSkinsAsync(rebuildCache: false);
+        }
+
+        private void PushOverlaySnapshot()
+        {
+            OverlayHelper.PushSkinList(Skins.Select(c => c.Name));
+            OverlayHelper.PushCurrentSkin(CurrentInstalledSkinRaw);
         }
 
         public ObservableCollection<SkinCard> Skins { get; }
@@ -120,7 +131,11 @@ namespace TweakerUI.ViewModels
 
         public bool HasSelection => SelectedItem != null;
 
-        partial void OnCurrentInstalledSkinRawChanged(string value) => OnPropertyChanged(nameof(CurrentInstalledSkin));
+        partial void OnCurrentInstalledSkinRawChanged(string value)
+        {
+            OnPropertyChanged(nameof(CurrentInstalledSkin));
+            OverlayHelper.PushCurrentSkin(value);
+        }
 
         partial void OnSelectedItemChanged(SkinCard value)
         {

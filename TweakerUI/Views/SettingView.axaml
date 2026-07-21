@@ -85,6 +85,21 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Overlay -->
+                <Border Classes="STCard">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="Overlay" Classes="STCardTitle" Margin="0,0,0,8"/>
+
+                        <Border Classes="STToggleRow"
+                                ToolTip.Tip="Injects TweakerPlugin.dll into the game once connected, for Skin Changer / Tweaker controls in-game. Experimental - requires TweakerPlugin.dll and InjectHelper.exe next to TweakerUI.exe">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="[Experimental] Enable in-game overlay" Classes="STToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsInGameOverlayEnabled, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+
                 <!-- Textures Watcher -->
                 <Border Classes="STCard">
                     <StackPanel Spacing="2">

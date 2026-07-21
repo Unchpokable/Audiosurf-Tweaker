@@ -82,6 +82,28 @@ namespace AudiosurfInterface.Bridge
             }
         }
 
+        public bool SendOverlay(string payload)
+        {
+            var pipe = _pipe;
+            if (pipe == null || !pipe.IsConnected)
+                return false;
+
+            try
+            {
+                var wirePayload = Encoding.UTF8.GetBytes(AsBridgeProtocol.SerializeOverlaySend(payload));
+                lock (_writeLock)
+                {
+                    pipe.Write(wirePayload, 0, wirePayload.Length);
+                    pipe.Flush();
+                }
+                return true;
+            }
+            catch (Exception ex) when (ex is IOException || ex is ObjectDisposedException || ex is InvalidOperationException)
+            {
+                return false;
+            }
+        }
+
         private void PumpLoop(CancellationToken token)
         {
             while (!token.IsCancellationRequested)

@@ -33,14 +33,26 @@ asbridge_msg_type msg_type_from_string(std::string_view token) noexcept
     if(token == rules::message_msg_send) {
         return asbridge_msg_type::send;
     }
+    if(token == rules::message_msg_overlay_send) {
+        return asbridge_msg_type::overlay_send;
+    }
     if(token == rules::message_msg_ok) {
         return asbridge_msg_type::ok;
     }
     if(token == rules::message_msg_failed) {
         return asbridge_msg_type::failed;
     }
+    if(token == rules::message_msg_overlay_ok) {
+        return asbridge_msg_type::overlay_ok;
+    }
+    if(token == rules::message_msg_overlay_failed) {
+        return asbridge_msg_type::overlay_failed;
+    }
     if(token == rules::message_msg_broadcast_forward) {
         return asbridge_msg_type::broadcast_forward;
+    }
+    if(token == rules::message_msg_overlay_forward) {
+        return asbridge_msg_type::overlay_forward;
     }
     if(token == rules::message_msg_service) {
         return asbridge_msg_type::service;
@@ -94,7 +106,14 @@ bool parse_details(std::string_view s, std::vector<std::string>& out)
 vd::result validate(const asbridge_msg& msg) noexcept
 {
     if(msg.header == asbridge_msg_header::client_command) {
-        return rules::asbridge_msg_client_command_send_check.check(msg);
+        switch(msg.msg) {
+            case asbridge_msg_type::send:
+                return rules::asbridge_msg_client_command_send_check.check(msg);
+            case asbridge_msg_type::overlay_send:
+                return rules::asbridge_msg_client_command_overlay_send_check.check(msg);
+            default:
+                return rules::asbridge_msg_client_command_send_check.check(msg);
+        }
     }
 
     if(msg.header == asbridge_msg_header::server_report) {
@@ -103,6 +122,10 @@ vd::result validate(const asbridge_msg& msg) noexcept
                 return rules::asbridge_msg_failed_check.check(msg);
             case asbridge_msg_type::broadcast_forward:
                 return rules::asbridge_msg_broadcast_forward_check.check(msg);
+            case asbridge_msg_type::overlay_failed:
+                return rules::asbridge_msg_overlay_failed_check.check(msg);
+            case asbridge_msg_type::overlay_forward:
+                return rules::asbridge_msg_overlay_forward_check.check(msg);
             case asbridge_msg_type::service:
                 return rules::asbridge_msg_service_check.check(msg);
             default:

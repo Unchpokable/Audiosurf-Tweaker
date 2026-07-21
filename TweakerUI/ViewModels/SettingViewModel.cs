@@ -31,6 +31,7 @@ namespace TweakerUI.ViewModels
             // time this VM is constructed (App.axaml.cs applies it before the window is shown), so
             // there's no need to call ThemeService.Apply a second time for the value it started at.
             isDarkTheme = SettingsProvider.IsDarkTheme;
+            isInGameOverlayEnabled = SettingsProvider.EnableInGameOverlay;
 
             // Assigned directly (not through the property setters below) so StartWatcher can read the
             // persisted temp-file preferences without re-triggering their side effects twice.
@@ -53,6 +54,15 @@ namespace TweakerUI.ViewModels
             SettingsProvider.IsDarkTheme = value;
             ApplySettings();
             ThemeService.Apply(value);
+        }
+
+        [ObservableProperty]
+        private bool isInGameOverlayEnabled;
+
+        partial void OnIsInGameOverlayEnabledChanged(bool value)
+        {
+            SettingsProvider.EnableInGameOverlay = value;
+            ApplySettings();
         }
 
         [ObservableProperty]

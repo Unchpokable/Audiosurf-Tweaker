@@ -16,6 +16,7 @@ namespace TweakerUI.Core
         internal static bool IsUWPNotificationsAllowed { get; set; }
         internal static bool IsUWPNotificationSilent { get; set; }
         internal static bool IsDarkTheme { get; set; }
+        internal static bool EnableInGameOverlay { get; set; }
 
         internal static string WatcherDefaultTemp => @"Storage\temp.tasp";
     }

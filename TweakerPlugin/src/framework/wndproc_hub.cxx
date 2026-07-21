@@ -63,8 +63,7 @@ void install(HWND hwnd) noexcept
         uninstall();
     }
 
-    g_original_wndproc = reinterpret_cast<wndproc_fn>(
-        ::SetWindowLongPtrW(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&hub_wndproc)));
+    g_original_wndproc = reinterpret_cast<wndproc_fn>(::SetWindowLongPtrW(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&hub_wndproc)));
     g_hooked_hwnd = hwnd;
 }
 

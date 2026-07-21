@@ -4,8 +4,7 @@
 
 namespace
 {
-struct enum_context
-{
+struct enum_context {
     HMODULE module = nullptr;
     tw::resource::type kind {};
     LPCWSTR type_name = nullptr;
@@ -25,8 +24,7 @@ bool wide_to_utf8(const wchar_t* wide, std::string& out)
     }
 
     out.resize(static_cast<std::size_t>(bytes - 1));
-    const int written =
-        WideCharToMultiByte(CP_UTF8, 0, wide, -1, out.data(), bytes, nullptr, nullptr);
+    const int written = WideCharToMultiByte(CP_UTF8, 0, wide, -1, out.data(), bytes, nullptr, nullptr);
     if(written <= 0) {
         return false;
     }
@@ -91,18 +89,12 @@ BOOL CALLBACK enum_names_proc(HMODULE module, LPCWSTR /*type*/, LPWSTR name, LON
     tw::resource::self_extract::entry e;
     e.kind = ctx->kind;
     e.key = std::move(key);
-    e.bytes = std::span<const std::byte>(
-        static_cast<const std::byte*>(locked),
-        static_cast<std::size_t>(size));
+    e.bytes = std::span<const std::byte>(static_cast<const std::byte*>(locked), static_cast<std::size_t>(size));
     ctx->out->push_back(std::move(e));
     return TRUE;
 }
 
-bool enumerate_type(
-    HMODULE module,
-    tw::resource::type kind,
-    LPCWSTR type_name,
-    std::vector<tw::resource::self_extract::entry>& out)
+bool enumerate_type(HMODULE module, tw::resource::type kind, LPCWSTR type_name, std::vector<tw::resource::self_extract::entry>& out)
 {
     enum_context ctx;
     ctx.module = module;
@@ -114,8 +106,7 @@ bool enumerate_type(
     // EnumResourceNamesW returns FALSE when there are no resources of that type
     // OR on hard failure. Distinguish via GetLastError.
     SetLastError(ERROR_SUCCESS);
-    const BOOL enumerated =
-        EnumResourceNamesW(module, type_name, enum_names_proc, reinterpret_cast<LONG_PTR>(&ctx));
+    const BOOL enumerated = EnumResourceNamesW(module, type_name, enum_names_proc, reinterpret_cast<LONG_PTR>(&ctx));
     if(!ctx.ok) {
         return false;
     }
@@ -126,7 +117,7 @@ bool enumerate_type(
     const DWORD err = GetLastError();
     // No resources of this type is fine (e.g. no .png / .txt yet).
     return err == ERROR_SUCCESS || err == ERROR_RESOURCE_TYPE_NOT_FOUND || err == ERROR_RESOURCE_DATA_NOT_FOUND
-        || err == ERROR_RESOURCE_NAME_NOT_FOUND;
+           || err == ERROR_RESOURCE_NAME_NOT_FOUND;
 }
 } // namespace
 

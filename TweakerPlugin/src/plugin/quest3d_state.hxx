@@ -8,4 +8,4 @@ namespace tw::plugin::quest3d
 {
 extern EngineInterface* g_engine;
 extern HWND g_game_handle;
-}
+} // namespace tw::plugin::quest3d

@@ -24,15 +24,15 @@ namespace tw::framework
 {
 bool install_channel_hook() noexcept
 {
-    true_call_channel = reinterpret_cast<void(__thiscall*)(A3d_Channel*)>(
-        DetourFindFunction("highpoly.dll", "?CallChannel@A3d_Channel@@UAEXXZ"));
+    true_call_channel =
+        reinterpret_cast<void(__thiscall*)(A3d_Channel*)>(DetourFindFunction("highpoly.dll", "?CallChannel@A3d_Channel@@UAEXXZ"));
 
     if(!true_call_channel) {
         return false;
     }
 
     return tw::framework::detour::attach({
-        {reinterpret_cast<void**>(&true_call_channel), reinterpret_cast<void*>(call_channel_hook)},
+        { reinterpret_cast<void**>(&true_call_channel), reinterpret_cast<void*>(call_channel_hook) },
     });
 }
 } // namespace tw::framework

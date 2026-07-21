@@ -7,8 +7,7 @@
 
 namespace tw::resource::self_extract
 {
-struct entry
-{
+struct entry {
     type kind {};
     std::string key;
     std::span<const std::byte> bytes;
