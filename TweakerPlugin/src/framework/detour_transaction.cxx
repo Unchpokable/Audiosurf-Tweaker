@@ -26,10 +26,17 @@ void for_each_other_thread(thread_fn&& fn)
             if(entry.th32OwnerProcessID != this_process || entry.th32ThreadID == this_thread)
                 continue;
 
+            // DetourUpdateThread() suspends `thread` immediately and keeps this exact handle to
+            // resume it later in DetourTransactionCommit()/Abort(). Closing it here would race
+            // against that: the thread stays suspended (SuspendThread already ran) while the
+            // handle value could get closed or even recycled by the OS before Commit's
+            // ResumeThread() runs on it - a permanently-hung thread, not a mere leak. Detours
+            // never closes these handles itself, so leaking one HANDLE per other thread per
+            // transaction (attach/detach only happen a handful of times per process) is the
+            // correct, deliberate trade-off here - matching Quest3DTamperer's reference hook.
             HANDLE thread = OpenThread(THREAD_ALL_ACCESS, FALSE, entry.th32ThreadID);
             if(thread != nullptr) {
                 fn(thread);
-                CloseHandle(thread);
             }
         } while(Thread32Next(snapshot, &entry));
     }

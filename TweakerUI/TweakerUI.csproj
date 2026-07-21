@@ -63,7 +63,16 @@
 	</PropertyGroup>
 
 	<Target Name="BuildAsBridge" BeforeTargets="Build" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-		<Exec Command="cmake -S &quot;$(AsBridgeSourceDir)&quot; -B &quot;$(AsBridgeBuildDir)&quot;" />
+		<!-- The ‑‑fresh flag (CMake 3.24+) discards any existing cache before configuring. Without it,
+		     a stale build dir - e.g. one that was ever configured while an outdated CMake or an
+		     nmake/cl.exe-on-PATH shell (Visual Studio Developer Command Prompt) caused the wrong
+		     generator to be picked - keeps reusing that wrong generator in CMakeCache.txt forever,
+		     regardless of which shell invokes `cmake -S/-B` on it next. If that cached generator can't
+		     honor -A Win32 (see BuildInjectHelper), the mismatch surfaces downstream as
+		     "CMAKE_CXX_COMPILER not set after EnableLanguage". ‑‑fresh forces every configure to
+		     re-resolve the generator from scratch; it only affects the configure step, not incremental
+		     compilation in the build step below. -->
+		<Exec Command="cmake --fresh -S &quot;$(AsBridgeSourceDir)&quot; -B &quot;$(AsBridgeBuildDir)&quot;" />
 		<Exec Command="cmake --build &quot;$(AsBridgeBuildDir)&quot; --config Release" />
 	</Target>
 
@@ -90,6 +99,19 @@
     "Visual Studio 18 2026" - while some vcxproj files elsewhere in the repo still pin the older
     v143/VS2022 toolset), and -A Win32 works the same way regardless of which VS version that is,
     so hardcoding a generator name here would only make this brittle across machines/VS updates.
+
+    That default-resolves-to-VS-generator assumption depends on the `cmake` on PATH actually knowing
+    the installed VS version's generator name. Hit in practice on this machine: the standalone Kitware
+    CMake install was 4.1.2, which predates the "Visual Studio 18 2026" generator (added in CMake 4.2)
+    - with no matching VS generator to fall back on, and a Developer Command Prompt's nmake/cl.exe
+    already resolvable on PATH, CMake's auto-detection silently dropped to NMake Makefiles instead,
+    which doesn't support -A Win32 and fails downstream with "CMAKE_CXX_COMPILER not set after
+    EnableLanguage". Fix was upgrading the standalone CMake (`winget upgrade Kitware.CMake`), not
+    pinning a -G here - keep the system CMake current with whatever VS version is installed. The
+    ‑‑fresh flag below is a separate, complementary guard: once a build dir's CMakeCache.txt has a
+    generator pinned (right or wrong), every later `cmake -S/-B` on it reuses that cached generator
+    regardless of which shell invokes it next - ‑‑fresh forces every configure to re-resolve the
+    generator from scratch instead of trusting a possibly-stale cache.
   -->
 	<PropertyGroup>
 		<InjectHelperSourceDir>$(MSBuildThisFileDirectory)..\InjectHelper</InjectHelperSourceDir>
@@ -97,7 +119,7 @@
 	</PropertyGroup>
 
 	<Target Name="BuildInjectHelper" BeforeTargets="Build" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-		<Exec Command="cmake -A Win32 -S &quot;$(InjectHelperSourceDir)&quot; -B &quot;$(InjectHelperBuildDir)&quot;" />
+		<Exec Command="cmake --fresh -A Win32 -S &quot;$(InjectHelperSourceDir)&quot; -B &quot;$(InjectHelperBuildDir)&quot;" />
 		<Exec Command="cmake --build &quot;$(InjectHelperBuildDir)&quot; --config Release" />
 	</Target>
 
@@ -135,7 +157,7 @@
 	</PropertyGroup>
 
 	<Target Name="BuildTweakerPlugin" BeforeTargets="Build" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-		<Exec Command="cmake -A Win32 -S &quot;$(TweakerPluginSourceDir)&quot; -B &quot;$(TweakerPluginBuildDir)&quot;"
+		<Exec Command="cmake --fresh -A Win32 -S &quot;$(TweakerPluginSourceDir)&quot; -B &quot;$(TweakerPluginBuildDir)&quot;"
 		      IgnoreExitCode="true" ContinueOnError="WarnAndContinue">
 			<Output TaskParameter="ExitCode" PropertyName="TweakerPluginConfigureExitCode" />
 		</Exec>

@@ -8,13 +8,31 @@
 
 #include "ipc/overlay_ipc.hxx"
 
-#include "plugin/quest3d_state.hxx"
-
 #include "ui/overlay_state.hxx"
 #include "ui/plugins/interactive/menu.hxx"
 #include "ui/plugins/static/notefeed.hxx"
 #include "ui/plugins/static/pins.hxx"
 #include "ui/plugins/static/watermark.hxx"
+
+namespace
+{
+// (Re)targets the ImGui backend at whatever device d3d9_hooks just bound - fires from
+// bind_device() for every new CreateDevice, the hk_end_scene late-load path, and any Reset() that
+// changes the focus window without recreating the device. See
+// tw::framework::d3d9::attach_device_bind_listener for the exact firing conditions.
+void on_device_bound(IDirect3DDevice9* device, HWND hwnd)
+{
+    tw::framework::imgui_backend::initialize(device, hwnd);
+}
+
+// Fires from hk_release() while the bound device is still valid but about to hit refcount 0 -
+// tears down just the DX9/Win32 backends, keeping the ImGui context alive for whatever device
+// binds next (if any).
+void on_device_unbound()
+{
+    tw::framework::imgui_backend::unbind();
+}
+} // namespace
 
 namespace tw::ui
 {
@@ -23,6 +41,7 @@ void initialize() noexcept
     tw::framework::d3d9::attach_ui_plugin(draw_frame);
     tw::framework::d3d9::attach_device_reset_listener(
         &tw::framework::imgui_backend::on_lost_device, &tw::framework::imgui_backend::on_reset_device);
+    tw::framework::d3d9::attach_device_bind_listener(&on_device_bound, &on_device_unbound);
     tw::framework::wndproc::subscribe_all(&tw::framework::imgui_backend::wndproc_bridge);
 
     tw::ui::plugins::statics::watermark::initialize();
@@ -37,6 +56,7 @@ void shutdown() noexcept
 {
     tw::framework::d3d9::detach_ui_plugin();
     tw::framework::d3d9::detach_device_reset_listener();
+    tw::framework::d3d9::detach_device_bind_listener();
 
     tw::ui::plugins::interactive::menu::shutdown();
     tw::ui::plugins::statics::notefeed::shutdown();
@@ -95,13 +115,13 @@ namespace tw::ui
 {
 void draw_frame(IDirect3DDevice9* device)
 {
+    // d3d9_hooks.cxx only ever calls this with a device that has already gone through
+    // bind_device() (either just now, on hk_end_scene's own late-load path, or earlier from
+    // hk_create_device/hk_reset) - and bind_device() always fires the on_device_bound listener
+    // (see ui_main::initialize()) before returning, which drives imgui_backend::initialize().
+    // If that init failed (e.g. a missing embedded font resource), there's nothing to retry here.
     if(!tw::framework::imgui_backend::is_initialized()) {
-        // First frame with a bound device/window - bind_device() in d3d9_hooks.cxx has already
-        // installed the wndproc hook on tw::plugin::quest3d::g_game_handle by the time EndScene
-        // (and therefore this function) is ever called, so it's populated here.
-        if(!tw::framework::imgui_backend::initialize(device, tw::plugin::quest3d::g_game_handle)) {
-            return;
-        }
+        return;
     }
 
     // Non-blocking: on contention (the IPC thread is mid-write) this just keeps last frame's

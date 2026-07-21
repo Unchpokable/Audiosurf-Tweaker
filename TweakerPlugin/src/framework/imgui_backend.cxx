@@ -21,6 +21,12 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg
 
 namespace
 {
+// g_context_created tracks the ImGui context/fonts/theme (process lifetime, torn down only by
+// shutdown()). g_initialized tracks whether the DX9/Win32 backends are currently bound to
+// g_device - it can go false and true again several times per process, once per device change,
+// without the context ever being touched. Kept distinct so a device swap doesn't pay for a font
+// atlas reparse + theme reapply every time.
+bool g_context_created = false;
 bool g_initialized = false;
 IDirect3DDevice9* g_device = nullptr;
 std::string g_config_path;
@@ -113,36 +119,56 @@ namespace tw::framework::imgui_backend
 {
 bool initialize(IDirect3DDevice9* device, HWND hwnd)
 {
-    if(g_initialized || device == nullptr || hwnd == nullptr) {
+    if(device == nullptr || hwnd == nullptr) {
         return g_initialized;
+    }
+
+    if(g_initialized && device == g_device) {
+        return true;
+    }
+
+    // Either first bind, or the bound device actually changed (new CreateDevice, or Reset()
+    // swapped the focus window) - tear down just the backends, keeping the ImGui context/fonts/
+    // theme alive if they already exist, then (re)target everything at the new device/window.
+    if(g_initialized) {
+        unbind();
     }
 
     g_device = device;
     tw::ui::texture_cache::set_backend(&d3d9_upload_texture);
+    // Icons already uploaded belong to whatever device we were bound to before (or none) - those
+    // IDirect3DTexture9 pointers are dangling now, not just stale. Drop them so the next
+    // get_or_load() re-decodes and re-uploads through the new device.
+    tw::ui::texture_cache::clear();
 
-    g_config_path = compute_config_path();
-    if(!g_config_path.empty()) {
-        tw::ui::overlay_config::load(g_config_path);
+    if(!g_context_created) {
+        g_config_path = compute_config_path();
+        if(!g_config_path.empty()) {
+            tw::ui::overlay_config::load(g_config_path);
+        }
+
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+
+        ImGuiIO& io = ImGui::GetIO();
+        io.IniFilename = nullptr; // no imgui.ini next to the game exe - geometry persists via overlay_config
+
+        if(!load_font()) {
+            ImGui::DestroyContext();
+            g_device = nullptr;
+            return false;
+        }
+
+        tw::ui::theme::apply_dark();
+        tw::ui::theme::from_config(tw::ui::overlay_config::theme_overrides());
+        ImGui::StyleColorsDark();
+
+        g_context_created = true;
     }
-
-    IMGUI_CHECKVERSION();
-    ImGui::CreateContext();
-
-    ImGuiIO& io = ImGui::GetIO();
-    io.IniFilename = nullptr; // no imgui.ini next to the game exe - geometry persists via overlay_config
-
-    if(!load_font()) {
-        ImGui::DestroyContext();
-        return false;
-    }
-
-    tw::ui::theme::apply_dark();
-    tw::ui::theme::from_config(tw::ui::overlay_config::theme_overrides());
-    ImGui::StyleColorsDark();
 
     if(!ImGui_ImplWin32_Init(hwnd) || !ImGui_ImplDX9_Init(device)) {
         ImGui_ImplWin32_Shutdown();
-        ImGui::DestroyContext();
+        g_device = nullptr;
         return false;
     }
 
@@ -150,18 +176,30 @@ bool initialize(IDirect3DDevice9* device, HWND hwnd)
     return true;
 }
 
-void shutdown()
+void unbind()
 {
     if(!g_initialized) {
         return;
     }
 
-    tw::ui::overlay_config::save();
-
     ImGui_ImplDX9_Shutdown();
     ImGui_ImplWin32_Shutdown();
-    ImGui::DestroyContext();
+
+    g_device = nullptr;
     g_initialized = false;
+}
+
+void shutdown()
+{
+    if(!g_context_created) {
+        return;
+    }
+
+    unbind();
+
+    tw::ui::overlay_config::save();
+    ImGui::DestroyContext();
+    g_context_created = false;
 }
 
 void on_lost_device()

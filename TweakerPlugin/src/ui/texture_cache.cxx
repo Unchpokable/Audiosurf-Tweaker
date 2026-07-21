@@ -72,4 +72,9 @@ ImTextureID get_or_load(std::string_view resource_key)
     g_cache.emplace(key, tex);
     return tex;
 }
+
+void clear() noexcept
+{
+    g_cache.clear();
+}
 } // namespace tw::ui::texture_cache

@@ -20,4 +20,10 @@ void set_backend(upload_fn fn) noexcept;
 // decode, or no backend is registered yet - callers should treat that as "skip the icon", not an
 // error worth asserting on (matches list_item's existing ImTextureID_Invalid handling).
 [[nodiscard]] ImTextureID get_or_load(std::string_view resource_key);
+
+// Drops every cached ImTextureID without releasing the underlying renderer resource - callers own
+// that (see framework/imgui_backend.cxx, which clears this right after a device change makes the
+// cached D3D9 textures dangling, since the device itself already destroyed them). The next
+// get_or_load() for a given key re-decodes and re-uploads through the current backend.
+void clear() noexcept;
 } // namespace tw::ui::texture_cache

@@ -21,6 +21,8 @@ release_fn o_release = nullptr;
 tw::framework::d3d9::ui_plugin_draw_fn g_ui_draw = nullptr;
 tw::framework::d3d9::device_reset_listener_fn g_ui_reset_pre = nullptr;
 tw::framework::d3d9::device_reset_listener_fn g_ui_reset_post = nullptr;
+tw::framework::d3d9::device_bind_fn g_ui_bind = nullptr;
+tw::framework::d3d9::device_unbind_fn g_ui_unbind = nullptr;
 
 LPDIRECT3DDEVICE9 g_bound_device = nullptr;
 HWND g_bound_window = nullptr;
@@ -55,10 +57,18 @@ void bind_device(LPDIRECT3DDEVICE9 device)
     tw::plugin::quest3d::g_game_handle = params.hFocusWindow;
 
     tw::framework::wndproc::install(params.hFocusWindow);
+
+    if(g_ui_bind != nullptr) {
+        g_ui_bind(device, params.hFocusWindow);
+    }
 }
 
 void unbind_device()
 {
+    if(g_ui_unbind != nullptr) {
+        g_ui_unbind();
+    }
+
     g_bound_device = nullptr;
     g_bound_window = nullptr;
 
@@ -103,14 +113,26 @@ long __stdcall hk_create_device(LPDIRECT3D9 p_d3d9,
 
 long __stdcall hk_reset(LPDIRECT3DDEVICE9 p_device, D3DPRESENT_PARAMETERS* p_presentation_parameters)
 {
-    if(g_ui_reset_pre != nullptr) {
+    // Reset() is a method call on an *existing* device, never how the game hands us a brand new
+    // one (that's hk_create_device's job) - only touch listener/rebind state if this is actually
+    // the device we're bound to right now.
+    const bool bound_here = p_device == g_bound_device;
+
+    if(bound_here && g_ui_reset_pre != nullptr) {
         g_ui_reset_pre();
     }
 
     const long result = o_reset(p_device, p_presentation_parameters);
 
-    if(SUCCEEDED(result) && g_ui_reset_post != nullptr) {
-        g_ui_reset_post();
+    if(bound_here && SUCCEEDED(result)) {
+        if(g_ui_reset_post != nullptr) {
+            g_ui_reset_post();
+        }
+
+        // Reset() can swap the focus window (e.g. a windowed<->exclusive-fullscreen toggle)
+        // without recreating the device itself - re-run bind_device() to catch that; it no-ops if
+        // neither the device nor the window actually changed.
+        bind_device(p_device);
     }
 
     return result;
@@ -232,6 +254,18 @@ void detach_device_reset_listener()
 {
     g_ui_reset_pre = nullptr;
     g_ui_reset_post = nullptr;
+}
+
+void attach_device_bind_listener(device_bind_fn on_bind, device_unbind_fn on_unbind)
+{
+    g_ui_bind = on_bind;
+    g_ui_unbind = on_unbind;
+}
+
+void detach_device_bind_listener()
+{
+    g_ui_bind = nullptr;
+    g_ui_unbind = nullptr;
 }
 
 bool install_d3d9_hooks()
