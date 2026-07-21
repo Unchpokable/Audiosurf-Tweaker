@@ -1,4 +1,4 @@
-# Visual smoke harness for tw::ui::widgets (Win32 + OpenGL3).
+# Visual smoke harness for the real TweakerPlugin overlay UI (Win32 + OpenGL3) - see main.cxx.
 # Not part of the default ALL build — request explicitly:
 #   cmake --build --preset x86-release --target smoke_test
 # or:
@@ -19,9 +19,9 @@ target_include_directories(smoke_test PRIVATE
 target_link_libraries(smoke_test PRIVATE
     tweaker_ui
     tweaker_resource
+    libstb
     opengl32
     gdi32
-    windowscodecs
 )
 
 # Embed the same packed assets as the DLL so resource::initialize can be tested.

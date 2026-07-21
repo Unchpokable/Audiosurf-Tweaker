@@ -32,6 +32,14 @@ constexpr std::size_t k_tweak_count = 7;
 // Maps a TW_OVL wire token (e.g. "InvisibleRoad") to its tweak_id, or tweak_id::unknown.
 tweak_id resolve_tweak_id(std::string_view wire_name) noexcept;
 
+// Human-readable label for display purposes only (pins, menu Tweaks tab) - not part of the wire
+// protocol. Empty for tweak_id::unknown.
+[[nodiscard]] std::string_view tweak_display_name(tweak_id id) noexcept;
+
+// All 7 known tweak ids, in the same order as k_tweak_count/tweak_index - convenient for widgets
+// that need to iterate every tweak (menu Tweaks tab, pins).
+[[nodiscard]] const std::array<tweak_id, k_tweak_count>& all_tweak_ids() noexcept;
+
 // Writer side - called only from the IPC thread (inside the WM_COPYDATA WndProc handler), once
 // per parsed op. Takes a short blocking lock; the only contention is against refresh()'s
 // try_lock() below, which never holds it longer than a few field copies, so any wait here is

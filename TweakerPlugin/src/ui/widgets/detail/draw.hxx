@@ -26,7 +26,20 @@ inline ImVec4 lerp(const ImVec4& a, const ImVec4& b, float t) noexcept
 
 inline ImU32 to_u32(const ImVec4& c) noexcept
 {
-    return ImGui::ColorConvertFloat4ToU32(c);
+    // Match ImGui::GetColorU32 — respect stacked StyleVar_Alpha (tab_view crossfade).
+    ImVec4 m = c;
+    m.w *= ImGui::GetStyle().Alpha;
+    return ImGui::ColorConvertFloat4ToU32(m);
+}
+
+inline ImU32 apply_style_alpha(ImU32 col) noexcept
+{
+    const float a = ImGui::GetStyle().Alpha;
+    if (a >= 0.999f)
+        return col;
+    ImVec4 f = ImGui::ColorConvertU32ToFloat4(col);
+    f.w *= a;
+    return ImGui::ColorConvertFloat4ToU32(f);
 }
 
 inline void add_rect_filled_rounded(
@@ -78,7 +91,7 @@ inline void add_image_keep_aspect(
         slot_min.y + (slot.y - fitted.y) * 0.5f,
     };
     const ImVec2 p_max{p_min.x + fitted.x, p_min.y + fitted.y};
-    draw->AddImage(ImTextureRef{tex}, p_min, p_max, ImVec2{0.f, 0.f}, ImVec2{1.f, 1.f}, col);
+    draw->AddImage(ImTextureRef{tex}, p_min, p_max, ImVec2{0.f, 0.f}, ImVec2{1.f, 1.f}, apply_style_alpha(col));
 }
 
 inline ImVec2 resolve_size(ImVec2 size, float default_w, float default_h) noexcept
@@ -90,5 +103,75 @@ inline ImVec2 resolve_size(ImVec2 size, float default_w, float default_h) noexce
     if (size.y <= 0.f)
         size.y = default_h;
     return size;
+}
+
+// Soft glow via offset AddText copies (no shaders). strength in [0, 1].
+inline void add_text_glow(
+    ImDrawList* draw,
+    const ImVec2& pos,
+    const char* text,
+    ImU32 text_col,
+    ImVec4 glow_col,
+    float strength) noexcept
+{
+    if (draw == nullptr || text == nullptr || text[0] == '\0')
+        return;
+
+    strength = std::clamp(strength, 0.f, 1.f);
+    if (strength > 0.01f)
+    {
+        const float glow_a = glow_col.w * strength * 0.15f;
+        const ImU32 glow_u32 = to_u32(ImVec4{glow_col.x, glow_col.y, glow_col.z, glow_a});
+        constexpr float k_off = 1.f;
+        const ImVec2 offsets[] = {
+            {-k_off, 0.f},
+            {k_off, 0.f},
+            {0.f, -k_off},
+            {0.f, k_off},
+            {-k_off, -k_off},
+            {k_off, -k_off},
+            {-k_off, k_off},
+            {k_off, k_off},
+        };
+        for (const ImVec2& o : offsets)
+            draw->AddText(ImVec2{pos.x + o.x, pos.y + o.y}, glow_u32, text);
+    }
+
+    draw->AddText(pos, text_col, text);
+}
+
+// Soft glow around a rounded rect border via several expanding, fading outline copies (no
+// shaders) - same technique as add_text_glow above. strength in [0, 1].
+inline void add_rect_glow(
+    ImDrawList* draw,
+    const ImVec2& p_min,
+    const ImVec2& p_max,
+    float rounding,
+    ImVec4 glow_col,
+    float strength) noexcept
+{
+    if (draw == nullptr)
+        return;
+
+    strength = std::clamp(strength, 0.f, 1.f);
+    if (strength <= 0.01f)
+        return;
+
+    constexpr int k_layers = 4;
+    constexpr float k_max_offset = 6.f;
+    for (int i = k_layers; i >= 1; --i)
+    {
+        const float t = static_cast<float>(i) / static_cast<float>(k_layers);
+        const float offset = k_max_offset * t;
+        const float a = glow_col.w * strength * 0.16f * (1.f - t) + glow_col.w * strength * 0.03f;
+        const ImU32 col = to_u32(ImVec4{glow_col.x, glow_col.y, glow_col.z, a});
+        draw->AddRect(
+            ImVec2{p_min.x - offset, p_min.y - offset},
+            ImVec2{p_max.x + offset, p_max.y + offset},
+            col,
+            rounding + offset,
+            0,
+            1.5f);
+    }
 }
 } // namespace tw::ui::widgets::detail

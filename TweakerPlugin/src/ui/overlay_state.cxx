@@ -1,5 +1,5 @@
-#include "pch.hxx"
-
+// No TweakerPlugin PCH here - this TU is shared with smoke_test (see src/ui/CMakeLists.txt) and
+// has no D3D9/Quest3D dependency, only STL (pulled in via ui/overlay_state.hxx + the two below).
 #include "ui/overlay_state.hxx"
 
 #include <mutex>
@@ -75,6 +75,34 @@ tweak_id resolve_tweak_id(std::string_view wire_name) noexcept
     }
 
     return tweak_id::unknown;
+}
+
+std::string_view tweak_display_name(tweak_id id) noexcept
+{
+    switch(id) {
+        case tweak_id::invisible_road: return "Invisible road";
+        case tweak_id::hidden_song_title: return "Hidden song title";
+        case tweak_id::sidewinder_camera: return "Sidewinder camera";
+        case tweak_id::banking_camera: return "Banking camera";
+        case tweak_id::freeride_no_blocks: return "Freeride: no blocks";
+        case tweak_id::freeride_blocks_caterpillars: return "Freeride: block caterpillars";
+        case tweak_id::freeride_auto_advance_disable: return "Freeride: disable auto-advance";
+        default: return {};
+    }
+}
+
+const std::array<tweak_id, k_tweak_count>& all_tweak_ids() noexcept
+{
+    static constexpr std::array<tweak_id, k_tweak_count> k_ids {
+        tweak_id::invisible_road,
+        tweak_id::hidden_song_title,
+        tweak_id::sidewinder_camera,
+        tweak_id::banking_camera,
+        tweak_id::freeride_no_blocks,
+        tweak_id::freeride_blocks_caterpillars,
+        tweak_id::freeride_auto_advance_disable,
+    };
+    return k_ids;
 }
 
 void set_tweak(tweak_id id, bool enabled)

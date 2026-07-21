@@ -19,6 +19,8 @@ end_scene_fn o_end_scene = nullptr;
 release_fn o_release = nullptr;
 
 tw::framework::d3d9::ui_plugin_draw_fn g_ui_draw = nullptr;
+tw::framework::d3d9::device_reset_listener_fn g_ui_reset_pre = nullptr;
+tw::framework::d3d9::device_reset_listener_fn g_ui_reset_post = nullptr;
 
 LPDIRECT3DDEVICE9 g_bound_device = nullptr;
 HWND g_bound_window = nullptr;
@@ -101,7 +103,17 @@ long __stdcall hk_create_device(LPDIRECT3D9 p_d3d9,
 
 long __stdcall hk_reset(LPDIRECT3DDEVICE9 p_device, D3DPRESENT_PARAMETERS* p_presentation_parameters)
 {
-    return o_reset(p_device, p_presentation_parameters);
+    if(g_ui_reset_pre != nullptr) {
+        g_ui_reset_pre();
+    }
+
+    const long result = o_reset(p_device, p_presentation_parameters);
+
+    if(SUCCEEDED(result) && g_ui_reset_post != nullptr) {
+        g_ui_reset_post();
+    }
+
+    return result;
 }
 
 long __stdcall hk_end_scene(LPDIRECT3DDEVICE9 p_device)
@@ -208,6 +220,18 @@ void attach_ui_plugin(ui_plugin_draw_fn fn)
 void detach_ui_plugin()
 {
     g_ui_draw = nullptr;
+}
+
+void attach_device_reset_listener(device_reset_listener_fn pre, device_reset_listener_fn post)
+{
+    g_ui_reset_pre = pre;
+    g_ui_reset_post = post;
+}
+
+void detach_device_reset_listener()
+{
+    g_ui_reset_pre = nullptr;
+    g_ui_reset_post = nullptr;
 }
 
 bool install_d3d9_hooks()
