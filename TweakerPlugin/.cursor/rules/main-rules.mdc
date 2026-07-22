@@ -138,6 +138,7 @@ Functional-style, **без exceptions** в проектном коде.
 - `else` и `catch` — на новой строке перед собой (`BeforeElse` / `BeforeCatch: true`).
 - Тело лямбды — `{` на той же строке (`BeforeLambdaBody: false`).
 - Короткие блоки, if, циклы, лямбды, case-метки, функции — **не** сжимать в одну строку (`AllowShort*: Never` / `None` / `false`). Исключение: короткие enum можно в одну строку (`AllowShortEnumsOnASingleLine: true`).
+- **операторы if, for, while, etc.** ВСЕГДА оборачивают тело выражения в скобки. Операторы **case** внутри **switch** могут НЕ использовать скобки для однострочных выражений.
 
 ```cpp
 void draw_frame(IDirect3DDevice9* device)

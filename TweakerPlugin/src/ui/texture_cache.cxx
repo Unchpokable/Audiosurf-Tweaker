@@ -23,14 +23,14 @@
 
 #include "libstb/stb_image.h"
 
-namespace tw::ui::texture_cache
-{
 namespace
 {
-upload_fn g_upload = nullptr;
+tw::ui::texture_cache::upload_fn g_upload = nullptr;
 std::unordered_map<std::string, ImTextureID> g_cache;
 } // namespace
 
+namespace tw::ui::texture_cache
+{
 void set_backend(upload_fn fn) noexcept
 {
     g_upload = fn;
@@ -55,8 +55,7 @@ ImTextureID get_or_load(std::string_view resource_key)
     int width = 0;
     int height = 0;
     int components = 0;
-    stbi_uc* pixels = stbi_load_from_memory(
-        reinterpret_cast<const stbi_uc*>(res->bytes.data()),
+    stbi_uc* pixels = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(res->bytes.data()),
         static_cast<int>(res->bytes.size()),
         &width,
         &height,

@@ -5,16 +5,14 @@
 #include <fstream>
 #include <sstream>
 
-namespace tw::ui::overlay_config
-{
 namespace
 {
-side g_feed_side = side::left;
-side g_pins_side = side::right;
+tw::ui::overlay_config::side g_feed_side = tw::ui::overlay_config::side::left;
+tw::ui::overlay_config::side g_pins_side = tw::ui::overlay_config::side::right;
 std::string g_theme_overrides;
-std::string g_loaded_path; // remembered by load(), used by the no-arg save()
-ImVec2 g_menu_pos {-1.f, -1.f}; // sentinel: never persisted / first run - caller picks a default
-ImVec2 g_menu_size {420.f, 520.f};
+std::string g_loaded_path;        // remembered by load(), used by the no-arg save()
+ImVec2 g_menu_pos { -1.f, -1.f }; // sentinel: never persisted / first run - caller picks a default
+ImVec2 g_menu_size { 420.f, 520.f };
 
 std::string_view trim(std::string_view s) noexcept
 {
@@ -34,28 +32,30 @@ float parse_float(std::string_view s, float fallback) noexcept
     return value;
 }
 
-side parse_side(std::string_view s, side fallback) noexcept
+tw::ui::overlay_config::side parse_side(std::string_view s, tw::ui::overlay_config::side fallback) noexcept
 {
     if(s == "left") {
-        return side::left;
+        return tw::ui::overlay_config::side::left;
     }
     if(s == "right") {
-        return side::right;
+        return tw::ui::overlay_config::side::right;
     }
     return fallback;
 }
 
-const char* side_to_string(side s) noexcept
+const char* side_to_string(tw::ui::overlay_config::side s) noexcept
 {
-    return s == side::left ? "left" : "right";
+    return s == tw::ui::overlay_config::side::left ? "left" : "right";
 }
 } // namespace
 
+namespace tw::ui::overlay_config
+{
 void load(std::string_view path)
 {
     g_loaded_path.assign(path);
 
-    std::ifstream file {g_loaded_path};
+    std::ifstream file { g_loaded_path };
     if(!file.is_open()) {
         return;
     }
@@ -120,7 +120,7 @@ void save()
         return;
     }
 
-    std::ofstream file {g_loaded_path, std::ios::trunc};
+    std::ofstream file { g_loaded_path, std::ios::trunc };
     if(!file.is_open()) {
         return;
     }

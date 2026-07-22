@@ -6,14 +6,6 @@
 
 #include "ui/overlay_state.hxx"
 
-#include <algorithm>
-#include <array>
-#include <atomic>
-#include <string>
-#include <string_view>
-#include <utility>
-#include <vector>
-
 namespace
 {
 constexpr std::string_view k_tw_ovl_prefix = "TW_OVL ";

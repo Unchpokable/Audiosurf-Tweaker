@@ -2,9 +2,6 @@
 
 #include "framework/wndproc_hub.hxx"
 
-#include <utility>
-#include <vector>
-
 namespace
 {
 using wndproc_fn = LRESULT(__stdcall*)(HWND, UINT, WPARAM, LPARAM);
@@ -29,9 +26,8 @@ bool g_hooked_unicode = false;
 LRESULT call_original_wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
     if(g_original_wndproc != nullptr) {
-        return g_hooked_unicode
-            ? ::CallWindowProcW(reinterpret_cast<WNDPROC>(g_original_wndproc), hwnd, msg, wparam, lparam)
-            : ::CallWindowProcA(reinterpret_cast<WNDPROC>(g_original_wndproc), hwnd, msg, wparam, lparam);
+        return g_hooked_unicode ? ::CallWindowProcW(reinterpret_cast<WNDPROC>(g_original_wndproc), hwnd, msg, wparam, lparam)
+                                : ::CallWindowProcA(reinterpret_cast<WNDPROC>(g_original_wndproc), hwnd, msg, wparam, lparam);
     }
 
     return g_hooked_unicode ? ::DefWindowProcW(hwnd, msg, wparam, lparam) : ::DefWindowProcA(hwnd, msg, wparam, lparam);
@@ -86,9 +82,8 @@ void install(HWND hwnd) noexcept
     // so this must be queried per-window, not assumed.
     g_hooked_unicode = ::IsWindowUnicode(hwnd) != FALSE;
 
-    const LONG_PTR previous = g_hooked_unicode
-        ? ::SetWindowLongPtrW(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&hub_wndproc))
-        : ::SetWindowLongPtrA(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&hub_wndproc));
+    const LONG_PTR previous = g_hooked_unicode ? ::SetWindowLongPtrW(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&hub_wndproc))
+                                               : ::SetWindowLongPtrA(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&hub_wndproc));
 
     g_original_wndproc = reinterpret_cast<wndproc_fn>(previous);
     g_hooked_hwnd = hwnd;

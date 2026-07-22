@@ -8,10 +8,9 @@
 
 namespace tw::ui::widgets
 {
-class toggle
-{
+class toggle {
 public:
-    explicit toggle(const char* id, ImVec2 size = {40.f, 22.f});
+    explicit toggle(const char* id, ImVec2 size = { 40.f, 22.f });
 
     void set_size(ImVec2 size) noexcept;
     void set_checked(bool checked) noexcept;

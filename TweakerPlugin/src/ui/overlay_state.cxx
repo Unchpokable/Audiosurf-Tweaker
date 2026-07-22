@@ -30,14 +30,22 @@ std::string g_current_skin_name;
 std::size_t tweak_index(tweak_id id) noexcept
 {
     switch(id) {
-        case tweak_id::invisible_road: return 0;
-        case tweak_id::hidden_song_title: return 1;
-        case tweak_id::sidewinder_camera: return 2;
-        case tweak_id::banking_camera: return 3;
-        case tweak_id::freeride_no_blocks: return 4;
-        case tweak_id::freeride_blocks_caterpillars: return 5;
-        case tweak_id::freeride_auto_advance_disable: return 6;
-        default: return 0;
+        case tweak_id::invisible_road:
+            return 0;
+        case tweak_id::hidden_song_title:
+            return 1;
+        case tweak_id::sidewinder_camera:
+            return 2;
+        case tweak_id::banking_camera:
+            return 3;
+        case tweak_id::freeride_no_blocks:
+            return 4;
+        case tweak_id::freeride_blocks_caterpillars:
+            return 5;
+        case tweak_id::freeride_auto_advance_disable:
+            return 6;
+        default:
+            return 0;
     }
 }
 } // namespace
@@ -80,14 +88,22 @@ tweak_id resolve_tweak_id(std::string_view wire_name) noexcept
 std::string_view tweak_display_name(tweak_id id) noexcept
 {
     switch(id) {
-        case tweak_id::invisible_road: return "Invisible road";
-        case tweak_id::hidden_song_title: return "Hidden song title";
-        case tweak_id::sidewinder_camera: return "Sidewinder camera";
-        case tweak_id::banking_camera: return "Banking camera";
-        case tweak_id::freeride_no_blocks: return "Freeride: no blocks";
-        case tweak_id::freeride_blocks_caterpillars: return "Freeride: block caterpillars";
-        case tweak_id::freeride_auto_advance_disable: return "Freeride: disable auto-advance";
-        default: return {};
+        case tweak_id::invisible_road:
+            return "Invisible road";
+        case tweak_id::hidden_song_title:
+            return "Hidden song title";
+        case tweak_id::sidewinder_camera:
+            return "Sidewinder camera";
+        case tweak_id::banking_camera:
+            return "Banking camera";
+        case tweak_id::freeride_no_blocks:
+            return "Freeride: no blocks";
+        case tweak_id::freeride_blocks_caterpillars:
+            return "Freeride: block caterpillars";
+        case tweak_id::freeride_auto_advance_disable:
+            return "Freeride: disable auto-advance";
+        default:
+            return {};
     }
 }
 

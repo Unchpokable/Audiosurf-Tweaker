@@ -21,10 +21,12 @@ void for_each_other_thread(thread_fn&& fn)
 
     if(Thread32First(snapshot, &entry)) {
         do {
-            if(entry.dwSize < FIELD_OFFSET(THREADENTRY32, th32OwnerProcessID) + sizeof(entry.th32OwnerProcessID))
+            if(entry.dwSize < FIELD_OFFSET(THREADENTRY32, th32OwnerProcessID) + sizeof(entry.th32OwnerProcessID)) {
                 continue;
-            if(entry.th32OwnerProcessID != this_process || entry.th32ThreadID == this_thread)
+            }
+            if(entry.th32OwnerProcessID != this_process || entry.th32ThreadID == this_thread) {
                 continue;
+            }
 
             // DetourUpdateThread() suspends `thread` immediately and keeps this exact handle to
             // resume it later in DetourTransactionCommit()/Abort(). Closing it here would race

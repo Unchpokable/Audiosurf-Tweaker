@@ -11,10 +11,6 @@
 
 // Renderer-agnostic (no D3D9/GL, no TweakerPlugin PCH) - shared with smoke_test, same convention
 // as overlay_state.cxx/texture_cache.cxx (see src/ui/CMakeLists.txt).
-namespace tw::ui::plugins::statics::watermark
-{
-namespace detail = tw::ui::widgets::detail;
-
 namespace
 {
 constexpr float k_margin = 16.f;
@@ -28,6 +24,10 @@ constexpr float k_rounding = 8.f;
 constexpr const char* k_icon_key = "textures/TweakerIcon-5.png";
 constexpr const char* k_label = "Audiosurf Tweaker";
 } // namespace
+
+namespace tw::ui::plugins::statics::watermark
+{
+namespace detail = tw::ui::widgets::detail;
 
 void initialize() noexcept
 {
@@ -59,28 +59,28 @@ void update() noexcept
     const float box_w = content_w + k_pad_x * 2.f;
     const float x = watermark_right ? viewport.x - k_margin - box_w : k_margin;
 
-    const ImVec2 p_min {x, k_margin};
-    const ImVec2 p_max {x + box_w, k_margin + k_height};
+    const ImVec2 p_min { x, k_margin };
+    const ImVec2 p_max { x + box_w, k_margin + k_height };
 
     detail::add_rect_glow(draw, p_min, p_max, k_rounding, theme::accent_primary, 1.f);
 
-    const ImVec4 bg {theme::surface.x, theme::surface.y, theme::surface.z, theme::surface.w * 0.85f};
+    const ImVec4 bg { theme::surface.x, theme::surface.y, theme::surface.z, theme::surface.w * 0.85f };
     draw->AddRectFilled(p_min, p_max, detail::to_u32(bg), k_rounding);
     draw->AddRect(p_min, p_max, detail::to_u32(theme::accent_border), k_rounding);
 
     float cursor_x = p_min.x + k_pad_x;
     if(icon != ImTextureID_Invalid) {
-        const ImVec2 icon_min {cursor_x, p_min.y + (k_height - k_icon_size) * 0.5f};
-        const ImVec2 icon_max {icon_min.x + k_icon_size, icon_min.y + k_icon_size};
-        detail::add_image_keep_aspect(draw, icon, ImVec2 {0.f, 0.f}, icon_min, icon_max);
+        const ImVec2 icon_min { cursor_x, p_min.y + (k_height - k_icon_size) * 0.5f };
+        const ImVec2 icon_max { icon_min.x + k_icon_size, icon_min.y + k_icon_size };
+        detail::add_image_keep_aspect(draw, icon, ImVec2 { 0.f, 0.f }, icon_min, icon_max);
         cursor_x = icon_max.x + 8.f;
     }
 
-    const ImVec2 label_pos {cursor_x, p_min.y + (k_height - label_size.y) * 0.5f};
+    const ImVec2 label_pos { cursor_x, p_min.y + (k_height - label_size.y) * 0.5f };
     draw->AddText(label_pos, detail::to_u32(theme::text_primary), k_label);
     cursor_x += label_size.x + 10.f;
 
-    const ImVec2 fps_pos {cursor_x, p_min.y + (k_height - fps_size.y) * 0.5f};
+    const ImVec2 fps_pos { cursor_x, p_min.y + (k_height - fps_size.y) * 0.5f };
     draw->AddText(fps_pos, detail::to_u32(theme::text_muted), fps_buf);
 }
 } // namespace tw::ui::plugins::statics::watermark

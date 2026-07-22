@@ -52,8 +52,7 @@ void reset();
 // Reader side - a UI-owned snapshot, refreshed opportunistically once per frame via refresh().
 // Never blocks the render thread: on lock contention (the writer is mid-update) refresh() just
 // leaves the previous frame's snapshot untouched and returns false.
-struct cache
-{
+struct cache {
     std::array<std::uint8_t, k_tweak_count> tweak_enabled {};
     std::vector<std::string> skin_names;
     std::string current_skin_name;

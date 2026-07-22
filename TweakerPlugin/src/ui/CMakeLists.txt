@@ -12,6 +12,9 @@ add_library(tweaker_ui STATIC
     widgets/list_item.cxx
     widgets/list_view.cxx
     widgets/tab_view.cxx
+    widgets/item_group.cxx
+    widgets/popup_menu.cxx
+    widgets/color_picker.cxx
     plugins/static/notefeed.cxx
     plugins/static/pins.cxx
     plugins/static/watermark.cxx

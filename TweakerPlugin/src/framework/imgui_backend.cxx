@@ -14,9 +14,6 @@
 #include <imgui_impl_dx9.h>
 #include <imgui_impl_win32.h>
 
-#include <cstdint>
-#include <string>
-
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
 namespace
@@ -70,7 +67,7 @@ ImTextureID d3d9_upload_texture(const unsigned char* rgba, int width, int height
     IDirect3DTexture9* texture = nullptr;
     if(FAILED(g_device->CreateTexture(
            static_cast<UINT>(width), static_cast<UINT>(height), 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &texture, nullptr))
-       || texture == nullptr) {
+        || texture == nullptr) {
         return ImTextureID_Invalid;
     }
 
@@ -108,11 +105,8 @@ bool load_font()
     ImFontConfig font_cfg;
     font_cfg.FontDataOwnedByAtlas = false; // bytes live in PE LockResource memory - never freed by ImGui
     return io.Fonts->AddFontFromMemoryTTF(
-               const_cast<void*>(static_cast<const void*>(font->bytes.data())),
-               static_cast<int>(font->bytes.size()),
-               18.0f,
-               &font_cfg)
-        != nullptr;
+               const_cast<void*>(static_cast<const void*>(font->bytes.data())), static_cast<int>(font->bytes.size()), 18.0f, &font_cfg)
+           != nullptr;
 }
 } // namespace
 
@@ -267,42 +261,42 @@ bool wndproc_bridge(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam, LRESULT& 
     // message itself so non-input messages (WM_NCHITTEST, WM_SETCURSOR, WM_MOUSEACTIVATE, ...) are
     // always forwarded to the game untouched.
     switch(msg) {
-    case WM_MOUSEMOVE:
-    case WM_NCMOUSEMOVE:
-    case WM_LBUTTONDOWN:
-    case WM_LBUTTONDBLCLK:
-    case WM_LBUTTONUP:
-    case WM_RBUTTONDOWN:
-    case WM_RBUTTONDBLCLK:
-    case WM_RBUTTONUP:
-    case WM_MBUTTONDOWN:
-    case WM_MBUTTONDBLCLK:
-    case WM_MBUTTONUP:
-    case WM_XBUTTONDOWN:
-    case WM_XBUTTONDBLCLK:
-    case WM_XBUTTONUP:
-    case WM_MOUSEWHEEL:
-    case WM_MOUSEHWHEEL:
-        if(io.WantCaptureMouse) {
-            out_result = 0;
-            return true;
-        }
-        return false;
+        case WM_MOUSEMOVE:
+        case WM_NCMOUSEMOVE:
+        case WM_LBUTTONDOWN:
+        case WM_LBUTTONDBLCLK:
+        case WM_LBUTTONUP:
+        case WM_RBUTTONDOWN:
+        case WM_RBUTTONDBLCLK:
+        case WM_RBUTTONUP:
+        case WM_MBUTTONDOWN:
+        case WM_MBUTTONDBLCLK:
+        case WM_MBUTTONUP:
+        case WM_XBUTTONDOWN:
+        case WM_XBUTTONDBLCLK:
+        case WM_XBUTTONUP:
+        case WM_MOUSEWHEEL:
+        case WM_MOUSEHWHEEL:
+            if(io.WantCaptureMouse) {
+                out_result = 0;
+                return true;
+            }
+            return false;
 
-    case WM_KEYDOWN:
-    case WM_KEYUP:
-    case WM_SYSKEYDOWN:
-    case WM_SYSKEYUP:
-    case WM_CHAR:
-    case WM_SYSCHAR:
-        if(io.WantCaptureKeyboard) {
-            out_result = 0;
-            return true;
-        }
-        return false;
+        case WM_KEYDOWN:
+        case WM_KEYUP:
+        case WM_SYSKEYDOWN:
+        case WM_SYSKEYUP:
+        case WM_CHAR:
+        case WM_SYSCHAR:
+            if(io.WantCaptureKeyboard) {
+                out_result = 0;
+                return true;
+            }
+            return false;
 
-    default:
-        return false;
+        default:
+            return false;
     }
 }
 } // namespace tw::framework::imgui_backend

@@ -11,10 +11,9 @@
 
 namespace tw::ui::widgets
 {
-class tab_view
-{
+class tab_view {
 public:
-    explicit tab_view(const char* id, ImVec2 size = {0.f, 0.f});
+    explicit tab_view(const char* id, ImVec2 size = { 0.f, 0.f });
 
     void set_size(ImVec2 size) noexcept;
     void set_rounding(float rounding) noexcept;
@@ -29,8 +28,7 @@ public:
     [[nodiscard]] bool selection_changed() const noexcept;
 
 private:
-    struct tab_button_state
-    {
+    struct tab_button_state {
         float hover_t = 0.f;
         float press_t = 0.f;
         float select_t = 0.f;

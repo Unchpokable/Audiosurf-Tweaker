@@ -9,10 +9,9 @@
 
 namespace tw::ui::widgets
 {
-class button
-{
+class button {
 public:
-    explicit button(const char* id, ImVec2 size = {120.f, 32.f});
+    explicit button(const char* id, ImVec2 size = { 120.f, 32.f });
 
     void set_size(ImVec2 size) noexcept;
     void set_label(std::string_view label);

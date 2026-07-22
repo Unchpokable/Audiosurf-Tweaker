@@ -10,10 +10,9 @@
 
 namespace tw::ui::widgets
 {
-class list_view
-{
+class list_view {
 public:
-    explicit list_view(const char* id, ImVec2 size = {0.f, 200.f});
+    explicit list_view(const char* id, ImVec2 size = { 0.f, 200.f });
 
     void set_size(ImVec2 size) noexcept;
     void set_items(std::span<const list_item_content> items);

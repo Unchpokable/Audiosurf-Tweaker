@@ -40,12 +40,15 @@
 #include "ui/texture_cache.hxx"
 #include "ui/theme.hxx"
 #include "ui/widgets/button.hxx"
+#include "ui/widgets/color_picker.hxx"
+#include "ui/widgets/item_group.hxx"
+#include "ui/widgets/list_item.hxx"
+#include "ui/widgets/popup_menu.hxx"
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace
 {
-struct wgl_window_data
-{
+struct wgl_window_data {
     HDC hdc = nullptr;
 };
 
@@ -108,19 +111,31 @@ void draw_smoke_controls()
 {
     using namespace tw::ui::widgets;
 
-    static button push_toast_btn {"smoke_push_toast", {200.f, 32.f}};
-    static button toggle_skin_btn {"smoke_toggle_skin", {200.f, 32.f}};
+    static button push_toast_btn { "smoke_push_toast", { 200.f, 32.f } };
+    static button toggle_skin_btn { "smoke_toggle_skin", { 200.f, 32.f } };
+    static button open_popup_btn { "smoke_open_popup", { 200.f, 32.f } };
+    static item_group actions { "smoke_actions", "Actions" };
+    static item_group color_group { "smoke_color", "Color" };
+    static color_picker accent_picker { "smoke_accent", { 280.f, 0.f } };
+    static ImVec4 bound_color { 0.2f, 0.83f, 0.75f, 1.f };
+    static popup_menu ctx_menu { "smoke_ctx_menu", "Context" };
+    static list_item ctx_copy { "smoke_ctx_copy", { 160.f, 28.f } };
+    static list_item ctx_paste { "smoke_ctx_paste", { 160.f, 28.f } };
     static int toast_count = 0;
     static bool alt_skin = false;
+    static int ctx_action = 0;
 
-    ImGui::SetNextWindowSize(ImVec2 {360.f, 220.f}, ImGuiCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2 { 360.f, 520.f }, ImGuiCond_FirstUseEver);
     ImGui::Begin("Smoke controls");
 
     ImGui::TextUnformatted("Real TweakerPlugin overlay modules, fed with fake overlay_state data.");
     ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
     ImGui::TextUnformatted("Press Insert to toggle the menu (drag title bar to move, corner to resize).");
+    ImGui::TextUnformatted("RMB in this window opens popup_menu; LMB on Open popup too.");
     ImGui::Separator();
 
+    actions.set_inner_padding({ 10.f, 8.f });
+    actions.begin();
     push_toast_btn.update("Push notefeed toast");
     if(push_toast_btn.clicked()) {
         ++toast_count;
@@ -139,7 +154,53 @@ void draw_smoke_controls()
         tw::ui::overlay_state::set_current_skin(alt_skin ? "Void Runner" : "Neon Pulse");
     }
 
+    open_popup_btn.update("Open popup (LMB)");
+    if(open_popup_btn.clicked()) {
+        ctx_menu.open();
+    }
+    actions.end();
+
+    color_group.set_inner_padding({ 10.f, 8.f });
+    color_group.begin();
+    accent_picker.update(bound_color);
+    ImGui::ColorButton("##smoke_swatch", bound_color, ImGuiColorEditFlags_AlphaPreviewHalf, ImVec2 { 48.f, 24.f });
+    ImGui::SameLine();
+    ImGui::Text(
+        "RGBA %.2f %.2f %.2f %.2f%s",
+        bound_color.x,
+        bound_color.y,
+        bound_color.z,
+        bound_color.w,
+        accent_picker.changed() ? " *" : "");
+    color_group.end();
+
+    if(ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) && ImGui::IsMouseClicked(ImGuiMouseButton_Right)
+        && !ctx_menu.opened()) {
+        ctx_menu.open();
+    }
+
+    if(ctx_action != 0) {
+        ImGui::Text("Last popup action: %s", ctx_action == 1 ? "Copy" : "Paste");
+    }
+
     ImGui::End();
+
+    if(ctx_menu.opened()) {
+        ctx_menu.begin();
+        ctx_copy.set_content({ .text = "Copy" });
+        ctx_copy.update();
+        if(ctx_copy.clicked()) {
+            ctx_action = 1;
+            ctx_menu.close();
+        }
+        ctx_paste.set_content({ .text = "Paste" });
+        ctx_paste.update();
+        if(ctx_paste.clicked()) {
+            ctx_action = 2;
+            ctx_menu.close();
+        }
+        ctx_menu.end();
+    }
 }
 
 bool create_device_wgl(HWND hwnd, wgl_window_data* data)
@@ -221,8 +282,7 @@ int main(int, char**)
     tw::ui::theme::from_config(tw::ui::overlay_config::theme_overrides());
 
     ImGui_ImplWin32_EnableDpiAwareness();
-    const float main_scale = ImGui_ImplWin32_GetDpiScaleForMonitor(
-        ::MonitorFromPoint(POINT{0, 0}, MONITOR_DEFAULTTOPRIMARY));
+    const float main_scale = ImGui_ImplWin32_GetDpiScaleForMonitor(::MonitorFromPoint(POINT { 0, 0 }, MONITOR_DEFAULTTOPRIMARY));
 
     WNDCLASSEXW wc = {
         sizeof(wc),
@@ -240,8 +300,7 @@ int main(int, char**)
     };
     ::RegisterClassExW(&wc);
 
-    HWND hwnd = ::CreateWindowW(
-        wc.lpszClassName,
+    HWND hwnd = ::CreateWindowW(wc.lpszClassName,
         L"TweakerPlugin UI Smoke",
         WS_OVERLAPPEDWINDOW,
         100,
@@ -272,8 +331,7 @@ int main(int, char**)
     {
         ImFontConfig font_cfg;
         font_cfg.FontDataOwnedByAtlas = false; // bytes live in PE LockResource memory
-        ImFont* loaded = io.Fonts->AddFontFromMemoryTTF(
-            const_cast<void*>(static_cast<const void*>(font->bytes.data())),
+        ImFont* loaded = io.Fonts->AddFontFromMemoryTTF(const_cast<void*>(static_cast<const void*>(font->bytes.data())),
             static_cast<int>(font->bytes.size()),
             18.0f * main_scale,
             &font_cfg);

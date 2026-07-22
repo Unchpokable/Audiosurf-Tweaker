@@ -11,10 +11,6 @@
 
 // Renderer-agnostic (no D3D9/GL, no TweakerPlugin PCH) - shared with smoke_test, same convention
 // as overlay_state.cxx/texture_cache.cxx (see src/ui/CMakeLists.txt).
-namespace tw::ui::plugins::statics::pins
-{
-namespace detail = tw::ui::widgets::detail;
-
 namespace
 {
 constexpr float k_row_h = 28.f;
@@ -23,6 +19,10 @@ constexpr float k_margin = 16.f;
 constexpr float k_pad_x = 10.f;
 constexpr float k_rounding = 6.f;
 } // namespace
+
+namespace tw::ui::plugins::statics::pins
+{
+namespace detail = tw::ui::widgets::detail;
 
 void initialize() noexcept
 {
@@ -62,13 +62,13 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
         const float box_w = text_size.x + k_pad_x * 2.f;
         const float x = right ? viewport.x - k_margin - box_w : k_margin;
 
-        const ImVec2 p_min {x, y};
-        const ImVec2 p_max {x + box_w, y + k_row_h};
+        const ImVec2 p_min { x, y };
+        const ImVec2 p_max { x + box_w, y + k_row_h };
 
-        const ImVec4 bg {theme::surface.x, theme::surface.y, theme::surface.z, theme::surface.w * 0.55f};
+        const ImVec4 bg { theme::surface.x, theme::surface.y, theme::surface.z, theme::surface.w * 0.55f };
         draw->AddRectFilled(p_min, p_max, detail::to_u32(bg), k_rounding);
 
-        const ImVec2 text_pos {p_min.x + k_pad_x, p_min.y + (k_row_h - text_size.y) * 0.5f};
+        const ImVec2 text_pos { p_min.x + k_pad_x, p_min.y + (k_row_h - text_size.y) * 0.5f };
         detail::add_text_glow(draw, text_pos, label.c_str(), IM_COL32_WHITE, theme::accent_primary, 1.f);
 
         y += k_row_h + k_row_gap;

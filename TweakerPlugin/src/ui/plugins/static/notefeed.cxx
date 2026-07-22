@@ -15,10 +15,6 @@
 
 // Renderer-agnostic (no D3D9/GL, no TweakerPlugin PCH) - shared with smoke_test, same convention
 // as overlay_state.cxx/texture_cache.cxx (see src/ui/CMakeLists.txt).
-namespace tw::ui::plugins::statics::notefeed
-{
-namespace detail = tw::ui::widgets::detail;
-
 namespace
 {
 constexpr float k_lifetime_ms = 10000.f;
@@ -31,8 +27,7 @@ constexpr float k_margin = 16.f;
 constexpr float k_width = 300.f;
 constexpr float k_rounding = 8.f;
 
-struct entry
-{
+struct entry {
     std::string text;
     ImTextureID icon = ImTextureID_Invalid;
     double spawn_time_ms = 0.0;
@@ -47,10 +42,15 @@ void retarget_positions()
 {
     for(std::size_t i = 0; i < g_entries.size(); ++i) {
         const float target = static_cast<float>(i) * (k_row_h + k_row_gap);
-        g_entries[i].y_tween = tweeny::from(g_entries[i].y_current).to(target).during(static_cast<int>(k_reflow_ms)).via(tweeny::easing::cubicOut);
+        g_entries[i].y_tween =
+            tweeny::from(g_entries[i].y_current).to(target).during(static_cast<int>(k_reflow_ms)).via(tweeny::easing::cubicOut);
     }
 }
 } // namespace
+
+namespace tw::ui::plugins::statics::notefeed
+{
+namespace detail = tw::ui::widgets::detail;
 
 void initialize() noexcept
 {
@@ -121,25 +121,25 @@ void update() noexcept
         }
 
         const float top = k_margin + e.y_current;
-        const ImVec2 p_min {origin_x, top};
-        const ImVec2 p_max {origin_x + k_width, top + k_row_h};
+        const ImVec2 p_min { origin_x, top };
+        const ImVec2 p_max { origin_x + k_width, top + k_row_h };
 
-        const ImVec4 bg {theme::surface.x, theme::surface.y, theme::surface.z, theme::surface.w * 0.92f * alpha};
-        const ImVec4 border {theme::border.x, theme::border.y, theme::border.z, theme::border.w * alpha};
+        const ImVec4 bg { theme::surface.x, theme::surface.y, theme::surface.z, theme::surface.w * 0.92f * alpha };
+        const ImVec4 border { theme::border.x, theme::border.y, theme::border.z, theme::border.w * alpha };
         draw->AddRectFilled(p_min, p_max, detail::to_u32(bg), k_rounding);
         draw->AddRect(p_min, p_max, detail::to_u32(border), k_rounding);
 
         float text_x = p_min.x + 12.f;
         if(e.icon != ImTextureID_Invalid) {
-            const ImVec2 icon_min {p_min.x + 8.f, p_min.y + 6.f};
-            const ImVec2 icon_max {icon_min.x + (k_row_h - 12.f), p_max.y - 6.f};
+            const ImVec2 icon_min { p_min.x + 8.f, p_min.y + 6.f };
+            const ImVec2 icon_max { icon_min.x + (k_row_h - 12.f), p_max.y - 6.f };
             const ImU32 icon_col = IM_COL32(255, 255, 255, static_cast<int>(alpha * 255.f + 0.5f));
-            detail::add_image_keep_aspect(draw, e.icon, ImVec2 {0.f, 0.f}, icon_min, icon_max, icon_col);
+            detail::add_image_keep_aspect(draw, e.icon, ImVec2 { 0.f, 0.f }, icon_min, icon_max, icon_col);
             text_x = icon_max.x + 8.f;
         }
 
-        const ImVec4 text_col {theme::text_primary.x, theme::text_primary.y, theme::text_primary.z, theme::text_primary.w * alpha};
-        const ImVec2 text_pos {text_x, p_min.y + (k_row_h - ImGui::GetTextLineHeight()) * 0.5f};
+        const ImVec4 text_col { theme::text_primary.x, theme::text_primary.y, theme::text_primary.z, theme::text_primary.w * alpha };
+        const ImVec2 text_pos { text_x, p_min.y + (k_row_h - ImGui::GetTextLineHeight()) * 0.5f };
         draw->AddText(text_pos, detail::to_u32(text_col), e.text.c_str());
     }
 }

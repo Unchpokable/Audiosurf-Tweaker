@@ -25,10 +25,6 @@
 #include <string>
 #include <vector>
 
-namespace tw::ui::plugins::interactive::menu
-{
-namespace detail = tw::ui::widgets::detail;
-
 namespace
 {
 using tw::ui::widgets::button;
@@ -41,19 +37,19 @@ constexpr float k_rounding = 5.f;
 constexpr float k_title_h = 32.f;
 constexpr float k_resize_grip = 16.f;
 constexpr float k_padding = 10.f;
-constexpr ImVec2 k_min_size {320.f, 260.f};
+constexpr ImVec2 k_min_size { 320.f, 260.f };
 constexpr const char* k_title = "Audiosurf Tweaker";
 
 bool g_visible = false;
 bool g_insert_was_down = false;
 
-tab_view g_tabs {"menu_tabs"};
-list_view g_skins_list {"menu_skins"};
+tab_view g_tabs { "menu_tabs" };
+list_view g_skins_list { "menu_skins" };
 std::vector<toggle> g_tweak_toggles;
 bool g_widgets_ready = false;
 
-ImVec2 g_pos {-1.f, -1.f}; // sentinel: pick a centered default on first show
-ImVec2 g_size {420.f, 520.f};
+ImVec2 g_pos { -1.f, -1.f }; // sentinel: pick a centered default on first show
+ImVec2 g_size { 420.f, 520.f };
 
 bool g_dragging_move = false;
 bool g_dragging_resize = false;
@@ -65,11 +61,11 @@ std::vector<std::string> g_last_skin_names;
 char g_theme_buf[2048] = {};
 bool g_theme_seeded = false;
 
-button g_feed_left {"menu_feed_left", {90.f, 28.f}};
-button g_feed_right {"menu_feed_right", {90.f, 28.f}};
-button g_pins_left {"menu_pins_left", {90.f, 28.f}};
-button g_pins_right {"menu_pins_right", {90.f, 28.f}};
-button g_theme_apply {"menu_theme_apply", {120.f, 32.f}};
+button g_feed_left { "menu_feed_left", { 90.f, 28.f } };
+button g_feed_right { "menu_feed_right", { 90.f, 28.f } };
+button g_pins_left { "menu_pins_left", { 90.f, 28.f } };
+button g_pins_right { "menu_pins_right", { 90.f, 28.f } };
+button g_theme_apply { "menu_theme_apply", { 120.f, 32.f } };
 
 void ensure_widgets_ready()
 {
@@ -77,7 +73,7 @@ void ensure_widgets_ready()
         return;
     }
 
-    static const std::string_view labels[] = {"Skins", "Tweaks", "Settings"};
+    static const std::string_view labels[] = { "Skins", "Tweaks", "Settings" };
     g_tabs.set_tabs(labels);
     g_tabs.set_rounding(k_rounding);
 
@@ -109,7 +105,7 @@ void draw_skins_tab(const tw::ui::overlay_state::cache& snapshot)
         std::vector<list_item_content> items;
         items.reserve(snapshot.skin_names.size());
         for(const auto& name : snapshot.skin_names) {
-            items.push_back(list_item_content {.text = name});
+            items.push_back(list_item_content { .text = name });
         }
         g_skins_list.set_items(items);
         g_last_skin_names = snapshot.skin_names;
@@ -123,7 +119,7 @@ void draw_skins_tab(const tw::ui::overlay_state::cache& snapshot)
     // reverse-sync (overlay -> host) isn't implemented yet, see overlay-protocol.md. The next
     // TW_OVL update from the host is the only thing that changes current_skin_name above.
     const float list_h = (std::max)(80.f, ImGui::GetContentRegionAvail().y);
-    g_skins_list.set_size(ImVec2 {0.f, list_h});
+    g_skins_list.set_size(ImVec2 { 0.f, list_h });
     g_skins_list.update();
 }
 
@@ -143,7 +139,11 @@ void draw_tweaks_tab(const tw::ui::overlay_state::cache& snapshot)
     }
 }
 
-void draw_side_row(const char* label, tw::ui::overlay_config::side current, button& left_btn, button& right_btn, void (*setter)(tw::ui::overlay_config::side))
+void draw_side_row(const char* label,
+    tw::ui::overlay_config::side current,
+    button& left_btn,
+    button& right_btn,
+    void (*setter)(tw::ui::overlay_config::side))
 {
     using tw::ui::overlay_config::side;
 
@@ -165,7 +165,11 @@ void draw_side_row(const char* label, tw::ui::overlay_config::side current, butt
 
 void draw_settings_tab()
 {
-    draw_side_row("Notefeed / watermark corner", tw::ui::overlay_config::feed_side(), g_feed_left, g_feed_right, &tw::ui::overlay_config::set_feed_side);
+    draw_side_row("Notefeed / watermark corner",
+        tw::ui::overlay_config::feed_side(),
+        g_feed_left,
+        g_feed_right,
+        &tw::ui::overlay_config::set_feed_side);
     ImGui::Spacing();
     draw_side_row("Pins side", tw::ui::overlay_config::pins_side(), g_pins_left, g_pins_right, &tw::ui::overlay_config::set_pins_side);
 
@@ -183,7 +187,7 @@ void draw_settings_tab()
 
     ImGui::TextUnformatted("Theme overrides (key=#RRGGBB per line, groundwork for a future theme editor)");
     const float edit_h = (std::max)(80.f, ImGui::GetContentRegionAvail().y - 44.f);
-    ImGui::InputTextMultiline("##theme_overrides", g_theme_buf, sizeof(g_theme_buf), ImVec2 {0.f, edit_h});
+    ImGui::InputTextMultiline("##theme_overrides", g_theme_buf, sizeof(g_theme_buf), ImVec2 { 0.f, edit_h });
 
     g_theme_apply.update("Apply");
     if(g_theme_apply.clicked()) {
@@ -194,6 +198,10 @@ void draw_settings_tab()
     }
 }
 } // namespace
+
+namespace tw::ui::plugins::interactive::menu
+{
+namespace detail = tw::ui::widgets::detail;
 
 void initialize() noexcept
 {
@@ -220,15 +228,15 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
 
     if(g_pos.x < 0.f || g_pos.y < 0.f) {
         const ImVec2 viewport = ImGui::GetIO().DisplaySize;
-        g_pos = ImVec2 {(viewport.x - g_size.x) * 0.5f, (viewport.y - g_size.y) * 0.5f};
+        g_pos = ImVec2 { (viewport.x - g_size.x) * 0.5f, (viewport.y - g_size.y) * 0.5f };
     }
 
     ImGui::SetNextWindowPos(g_pos, ImGuiCond_Always);
     ImGui::SetNextWindowSize(g_size, ImGuiCond_Always);
 
     constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove
-        | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing
-        | ImGuiWindowFlags_NoNav;
+                                       | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings
+                                       | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
 
     // NoBackground only skips ImGui's own ImGuiCol_WindowBg fill - it still draws its own
     // straight-cornered ImGuiCol_Border outline (WindowBorderSize=0 below) and, since the window
@@ -238,7 +246,7 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
     // is the only outline that should ever show.
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.f);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, k_rounding);
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4 {0.f, 0.f, 0.f, 0.f});
+    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4 { 0.f, 0.f, 0.f, 0.f });
     ImGui::Begin("##tweaker_menu", nullptr, flags);
     ImGui::PopStyleColor();
     ImGui::PopStyleVar(2);
@@ -246,19 +254,19 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
     const ImVec2 win_pos = ImGui::GetWindowPos();
     const ImVec2 win_size = ImGui::GetWindowSize();
     const ImVec2 p_min = win_pos;
-    const ImVec2 p_max {win_pos.x + win_size.x, win_pos.y + win_size.y};
+    const ImVec2 p_max { win_pos.x + win_size.x, win_pos.y + win_size.y };
 
     ImDrawList* draw = ImGui::GetWindowDrawList();
     draw->AddRectFilled(p_min, p_max, detail::to_u32(theme::surface), k_rounding);
     draw->AddRect(p_min, p_max, detail::to_u32(theme::border_window), k_rounding);
 
     const ImVec2 title_min = p_min;
-    const ImVec2 title_max {p_max.x, p_min.y + k_title_h};
+    const ImVec2 title_max { p_max.x, p_min.y + k_title_h };
     draw->AddRectFilled(title_min, title_max, detail::to_u32(theme::surface_elevated), k_rounding, ImDrawFlags_RoundCornersTop);
 
     const ImVec2 title_text_size = ImGui::CalcTextSize(k_title);
     draw->AddText(
-        ImVec2 {title_min.x + 12.f, title_min.y + (k_title_h - title_text_size.y) * 0.5f}, detail::to_u32(theme::text_primary), k_title);
+        ImVec2 { title_min.x + 12.f, title_min.y + (k_title_h - title_text_size.y) * 0.5f }, detail::to_u32(theme::text_primary), k_title);
 
     // Drag-move: hit-test the title bar, own the whole gesture (window has NoMove - ImGui never
     // does this for us).
@@ -271,7 +279,8 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
     if(g_dragging_move) {
         if(ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
             const ImVec2 mouse = ImGui::GetMousePos();
-            g_pos = ImVec2 {g_drag_start_value.x + (mouse.x - g_drag_start_mouse.x), g_drag_start_value.y + (mouse.y - g_drag_start_mouse.y)};
+            g_pos =
+                ImVec2 { g_drag_start_value.x + (mouse.x - g_drag_start_mouse.x), g_drag_start_value.y + (mouse.y - g_drag_start_mouse.y) };
         }
         else {
             g_dragging_move = false;
@@ -285,13 +294,12 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
     // touching the true corner point - a filled triangle anchored at p_max pokes out past the
     // rounded background's silhouette there (the background's corner curve cuts inward before
     // reaching p_max), reading as a stray straight-edged nub.
-    const ImVec2 grip_min {p_max.x - k_resize_grip, p_max.y - k_resize_grip};
-    const ImVec2 grip_anchor {p_max.x - k_rounding - 2.f, p_max.y - k_rounding - 2.f};
+    const ImVec2 grip_min { p_max.x - k_resize_grip, p_max.y - k_resize_grip };
+    const ImVec2 grip_anchor { p_max.x - k_rounding - 2.f, p_max.y - k_rounding - 2.f };
     const ImU32 grip_col = detail::to_u32(theme::border_strong);
     for(int i = 0; i < 3; ++i) {
         const float d = static_cast<float>(i) * 4.5f + 3.f;
-        draw->AddLine(
-            ImVec2 {grip_anchor.x - d, grip_anchor.y + 2.f}, ImVec2 {grip_anchor.x + 2.f, grip_anchor.y - d}, grip_col, 1.5f);
+        draw->AddLine(ImVec2 { grip_anchor.x - d, grip_anchor.y + 2.f }, ImVec2 { grip_anchor.x + 2.f, grip_anchor.y - d }, grip_col, 1.5f);
     }
 
     const bool mouse_in_grip = ImGui::IsMouseHoveringRect(grip_min, p_max);
@@ -303,7 +311,7 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
     if(g_dragging_resize) {
         if(ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
             const ImVec2 mouse = ImGui::GetMousePos();
-            const ImVec2 delta {mouse.x - g_drag_start_mouse.x, mouse.y - g_drag_start_mouse.y};
+            const ImVec2 delta { mouse.x - g_drag_start_mouse.x, mouse.y - g_drag_start_mouse.y };
             g_size = ImVec2 {
                 (std::max)(k_min_size.x, g_drag_start_value.x + delta.x),
                 (std::max)(k_min_size.y, g_drag_start_value.y + delta.y),
@@ -316,11 +324,11 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
         }
     }
 
-    ImGui::SetCursorScreenPos(ImVec2 {p_min.x + k_padding, title_max.y + k_padding});
+    ImGui::SetCursorScreenPos(ImVec2 { p_min.x + k_padding, title_max.y + k_padding });
     const float content_w = win_size.x - k_padding * 2.f;
     const float content_h = win_size.y - k_title_h - k_padding * 2.f;
 
-    g_tabs.set_size(ImVec2 {content_w, content_h});
+    g_tabs.set_size(ImVec2 { content_w, content_h });
     g_tabs.begin();
     if(g_tabs.begin_view(0)) {
         draw_skins_tab(snapshot);

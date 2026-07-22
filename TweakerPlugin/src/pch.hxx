@@ -41,6 +41,9 @@
 // clang-format on
 
 // Standard library
+#include <algorithm>
+#include <array>
+#include <atomic>
 #include <cassert>
 #include <cstddef>
 #include <cstdint>

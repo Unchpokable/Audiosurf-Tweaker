@@ -8,17 +8,15 @@
 
 namespace tw::ui::widgets
 {
-struct list_item_content
-{
+struct list_item_content {
     std::string text;
     ImTextureID icon = ImTextureID_Invalid;
-    ImVec2 icon_size = {0.f, 0.f}; // source px; 0 = fit slot as square
+    ImVec2 icon_size = { 0.f, 0.f }; // source px; 0 = fit slot as square
 };
 
-class list_item
-{
+class list_item {
 public:
-    explicit list_item(const char* id, ImVec2 size = {0.f, 36.f});
+    explicit list_item(const char* id, ImVec2 size = { 0.f, 36.f });
 
     void set_size(ImVec2 size) noexcept;
     void set_content(list_item_content content);

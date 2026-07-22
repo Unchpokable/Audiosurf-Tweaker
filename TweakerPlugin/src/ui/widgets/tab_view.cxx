@@ -25,9 +25,7 @@ constexpr int k_content_ms = 200;
 
 namespace tw::ui::widgets
 {
-tab_view::tab_view(const char* id, ImVec2 size)
-    : m_id(id ? id : "tab_view")
-    , m_size(size)
+tab_view::tab_view(const char* id, ImVec2 size) : m_id(id ? id : "tab_view"), m_size(size)
 {
 }
 
@@ -48,27 +46,26 @@ void tab_view::set_tabs(std::span<const std::string_view> labels)
     m_labels.reserve(labels.size());
     m_tab_states.reserve(labels.size());
 
-    for (const std::string_view label : labels)
-    {
+    for(const std::string_view label : labels) {
         m_labels.emplace_back(label.begin(), label.end());
         m_tab_states.emplace_back();
     }
 
-    if (m_labels.empty())
-    {
+    if(m_labels.empty()) {
         m_selected_tab = -1;
         m_previous_tab = -1;
         return;
     }
 
-    if (m_selected_tab < 0 || m_selected_tab >= static_cast<int>(m_labels.size()))
+    if(m_selected_tab < 0 || m_selected_tab >= static_cast<int>(m_labels.size())) {
         m_selected_tab = 0;
+    }
 
-    if (m_previous_tab >= static_cast<int>(m_labels.size()))
+    if(m_previous_tab >= static_cast<int>(m_labels.size())) {
         m_previous_tab = -1;
+    }
 
-    for (std::size_t i = 0; i < m_tab_states.size(); ++i)
-    {
+    for(std::size_t i = 0; i < m_tab_states.size(); ++i) {
         const bool selected = static_cast<int>(i) == m_selected_tab;
         m_tab_states[i].select_t = selected ? 1.f : 0.f;
         m_tab_states[i].was_selected = selected;
@@ -77,16 +74,17 @@ void tab_view::set_tabs(std::span<const std::string_view> labels)
 
 void tab_view::retarget_content(float target)
 {
-    m_content_tween =
-        tweeny::from(m_content_t).to(target).during(k_content_ms).via(tweeny::easing::cubicOut);
+    m_content_tween = tweeny::from(m_content_t).to(target).during(k_content_ms).via(tweeny::easing::cubicOut);
 }
 
 void tab_view::select_tab(int index)
 {
-    if (index < 0 || index >= static_cast<int>(m_labels.size()))
+    if(index < 0 || index >= static_cast<int>(m_labels.size())) {
         return;
-    if (index == m_selected_tab)
+    }
+    if(index == m_selected_tab) {
         return;
+    }
 
     m_previous_tab = m_selected_tab;
     m_selected_tab = index;
@@ -111,35 +109,31 @@ void tab_view::begin()
     m_origin = ImGui::GetCursorScreenPos();
 
     float max_label_w = 0.f;
-    for (const std::string& label : m_labels)
-    {
+    for(const std::string& label : m_labels) {
         const ImVec2 ts = ImGui::CalcTextSize(label.c_str());
-        if (ts.x > max_label_w)
+        if(ts.x > max_label_w) {
             max_label_w = ts.x;
+        }
     }
     m_nav_width = max_label_w + k_tab_pad_x * 2.f + k_nav_pad * 2.f;
-    if (m_nav_width > m_widget_size.x * 0.5f)
+    if(m_nav_width > m_widget_size.x * 0.5f) {
         m_nav_width = m_widget_size.x * 0.5f;
+    }
 
-    const ImRect outer{
+    const ImRect outer {
         m_origin,
-        ImVec2{m_origin.x + m_widget_size.x, m_origin.y + m_widget_size.y},
+        ImVec2 { m_origin.x + m_widget_size.x, m_origin.y + m_widget_size.y },
     };
 
     ImDrawList* draw = ImGui::GetWindowDrawList();
-    detail::add_rect_filled_rounded(
-        draw,
-        outer.Min,
-        outer.Max,
-        detail::to_u32(theme::surface_muted),
-        m_rounding);
+    detail::add_rect_filled_rounded(draw, outer.Min, outer.Max, detail::to_u32(theme::surface_muted), m_rounding);
     draw->AddRect(outer.Min, outer.Max, detail::to_u32(theme::border), m_rounding);
 
     const auto dt = detail::dt_ms();
-    if (!m_content_tween.isFinished())
+    if(!m_content_tween.isFinished()) {
         m_content_t = m_content_tween.step(dt);
-    if (m_content_t >= 0.999f && m_previous_tab >= 0)
-    {
+    }
+    if(m_content_t >= 0.999f && m_previous_tab >= 0) {
         m_content_t = 1.f;
         m_previous_tab = -1;
     }
@@ -147,16 +141,15 @@ void tab_view::begin()
     const float tab_w = m_nav_width - k_nav_pad * 2.f;
     float tab_y = m_origin.y + k_nav_pad;
 
-    for (std::size_t i = 0; i < m_labels.size(); ++i)
-    {
+    for(std::size_t i = 0; i < m_labels.size(); ++i) {
         tab_button_state& st = m_tab_states[i];
         const bool selected = static_cast<int>(i) == m_selected_tab;
 
         ImGui::PushID(static_cast<int>(i));
 
-        const ImVec2 tab_min{m_origin.x + k_nav_pad, tab_y};
-        const ImVec2 tab_max{tab_min.x + tab_w, tab_min.y + k_tab_height};
-        const ImRect bb{tab_min, tab_max};
+        const ImVec2 tab_min { m_origin.x + k_nav_pad, tab_y };
+        const ImVec2 tab_max { tab_min.x + tab_w, tab_min.y + k_tab_height };
+        const ImRect bb { tab_min, tab_max };
 
         // Absolute hit targets — parent space claimed later via Dummy(m_widget_size).
         const ImGuiID imgui_id = ImGui::GetID("##tab");
@@ -165,43 +158,34 @@ void tab_view::begin()
         bool hovered = false;
         bool held = false;
         const bool clicked = ImGui::ButtonBehavior(bb, imgui_id, &hovered, &held);
-        if (clicked)
+        if(clicked) {
             select_tab(static_cast<int>(i));
+        }
 
-        if (hovered != st.was_hovered)
-        {
-            st.hover_tween = tweeny::from(st.hover_t)
-                                 .to(hovered ? 1.f : 0.f)
-                                 .during(k_hover_ms)
-                                 .via(tweeny::easing::cubicOut);
+        if(hovered != st.was_hovered) {
+            st.hover_tween = tweeny::from(st.hover_t).to(hovered ? 1.f : 0.f).during(k_hover_ms).via(tweeny::easing::cubicOut);
         }
-        if (held != st.was_held)
-        {
-            st.press_tween = tweeny::from(st.press_t)
-                                 .to(held ? 1.f : 0.f)
-                                 .during(k_press_ms)
-                                 .via(tweeny::easing::quadraticOut);
+        if(held != st.was_held) {
+            st.press_tween = tweeny::from(st.press_t).to(held ? 1.f : 0.f).during(k_press_ms).via(tweeny::easing::quadraticOut);
         }
-        if (selected != st.was_selected)
-        {
-            st.select_tween = tweeny::from(st.select_t)
-                                  .to(selected ? 1.f : 0.f)
-                                  .during(k_select_ms)
-                                  .via(tweeny::easing::cubicOut);
+        if(selected != st.was_selected) {
+            st.select_tween = tweeny::from(st.select_t).to(selected ? 1.f : 0.f).during(k_select_ms).via(tweeny::easing::cubicOut);
         }
         st.was_hovered = hovered;
         st.was_held = held;
         st.was_selected = selected;
 
-        if (!st.hover_tween.isFinished())
+        if(!st.hover_tween.isFinished()) {
             st.hover_t = st.hover_tween.step(dt);
-        if (!st.press_tween.isFinished())
+        }
+        if(!st.press_tween.isFinished()) {
             st.press_t = st.press_tween.step(dt);
-        if (!st.select_tween.isFinished())
+        }
+        if(!st.select_tween.isFinished()) {
             st.select_t = st.select_tween.step(dt);
+        }
 
-        if (st.select_t > 0.01f)
-        {
+        if(st.select_t > 0.01f) {
             ImVec4 bg = theme::accent_soft;
             bg.w *= st.select_t;
             detail::add_rect_filled_rounded(draw, tab_min, tab_max, detail::to_u32(bg), m_rounding);
@@ -211,7 +195,7 @@ void tab_view::begin()
         const ImVec2 text_size = ImGui::CalcTextSize(text);
         const float scale = 1.f - 0.04f * st.press_t;
         const float text_h = text_size.y * scale;
-        const ImVec2 text_pos{
+        const ImVec2 text_pos {
             tab_min.x + k_tab_pad_x,
             tab_min.y + (k_tab_height - text_h) * 0.5f,
         };
@@ -222,18 +206,10 @@ void tab_view::begin()
         ImVec4 glow_col = detail::lerp(theme::accent_primary, theme::accent_text, st.select_t);
         glow_col.w *= st.select_t;
 
-        if (st.select_t > 0.01f)
-        {
-            detail::add_text_glow(
-                draw,
-                text_pos,
-                text,
-                detail::to_u32(text_col),
-                glow_col,
-                st.select_t);
+        if(st.select_t > 0.01f) {
+            detail::add_text_glow(draw, text_pos, text, detail::to_u32(text_col), glow_col, st.select_t);
         }
-        else
-        {
+        else {
             draw->AddText(text_pos, detail::to_u32(text_col), text);
         }
 
@@ -246,31 +222,28 @@ void tab_view::begin()
     // Nav column claims left width; content child sits on the same line — one layout pass, no
     // trailing full-size Dummy (that was double-counting height and forcing parent scroll).
     ImGui::SetCursorScreenPos(m_origin);
-    ImGui::Dummy(ImVec2{m_nav_width, m_widget_size.y});
+    ImGui::Dummy(ImVec2 { m_nav_width, m_widget_size.y });
     ImGui::SameLine(0.f, 0.f);
 
     ImGui::PushStyleColor(ImGuiCol_ChildBg, theme::surface);
     ImGui::PushStyleColor(ImGuiCol_Border, theme::border_subtle);
     ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, m_rounding);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{k_content_pad, k_content_pad});
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2 { k_content_pad, k_content_pad });
 
     m_child_begun = true;
-    m_child_visible = ImGui::BeginChild(
-        "##content",
-        ImVec2{content_w, m_widget_size.y},
+    m_child_visible = ImGui::BeginChild("##content",
+        ImVec2 { content_w, m_widget_size.y },
         ImGuiChildFlags_Borders,
         ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 
-    if (m_child_visible)
-    {
+    if(m_child_visible) {
         // Fixed page slot so overlapping crossfade views share one layout size.
         m_page_pos = ImGui::GetCursorPos();
         m_page_size = ImGui::GetContentRegionAvail();
     }
-    else
-    {
-        m_page_pos = ImVec2{0.f, 0.f};
-        m_page_size = ImVec2{0.f, 0.f};
+    else {
+        m_page_pos = ImVec2 { 0.f, 0.f };
+        m_page_size = ImVec2 { 0.f, 0.f };
     }
 }
 
@@ -279,26 +252,29 @@ bool tab_view::begin_view(int tab_index)
     assert(m_active && "tab_view::begin_view() without begin()");
     assert(!m_view_open && "tab_view::begin_view() while a view is already open");
 
-    if (!m_child_visible)
+    if(!m_child_visible) {
         return false;
-    if (tab_index < 0 || tab_index >= static_cast<int>(m_labels.size()))
+    }
+    if(tab_index < 0 || tab_index >= static_cast<int>(m_labels.size())) {
         return false;
+    }
 
     const bool is_selected = tab_index == m_selected_tab;
     const bool is_previous = tab_index == m_previous_tab && m_previous_tab >= 0;
-    if (!is_selected && !is_previous)
+    if(!is_selected && !is_previous) {
         return false;
+    }
 
     float alpha = 1.f;
-    if (m_previous_tab >= 0 && m_content_t < 1.f)
-    {
-        if (is_selected)
+    if(m_previous_tab >= 0 && m_content_t < 1.f) {
+        if(is_selected) {
             alpha = m_content_t;
-        else
+        }
+        else {
             alpha = 1.f - m_content_t;
+        }
     }
-    else if (!is_selected)
-    {
+    else if(!is_selected) {
         return false;
     }
 
@@ -307,24 +283,19 @@ bool tab_view::begin_view(int tab_index)
 
     // Isolated page: fixed size, no host scroll. Outgoing ignores input so the
     // incoming list_view keeps a stable scroll target during crossfade.
-    ImGuiWindowFlags page_flags =
-        ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings;
-    if (is_previous)
+    ImGuiWindowFlags page_flags = ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoSavedSettings;
+    if(is_previous) {
         page_flags |= ImGuiWindowFlags_NoInputs;
+    }
 
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4{0.f, 0.f, 0.f, 0.f});
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{0.f, 0.f});
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImVec4 { 0.f, 0.f, 0.f, 0.f });
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2 { 0.f, 0.f });
     m_page_begun = true;
-    const bool page_visible = ImGui::BeginChild(
-        "##page",
-        m_page_size,
-        ImGuiChildFlags_None,
-        page_flags);
+    const bool page_visible = ImGui::BeginChild("##page", m_page_size, ImGuiChildFlags_None, page_flags);
     ImGui::PopStyleVar();
     ImGui::PopStyleColor();
 
-    if (!page_visible)
-    {
+    if(!page_visible) {
         ImGui::EndChild();
         ImGui::PopID();
         m_page_begun = false;
@@ -341,7 +312,7 @@ void tab_view::end_view()
     assert(m_view_open && "tab_view::end_view() without matching begin_view()");
     ImGui::PopStyleVar(); // Alpha
     assert(m_page_begun);
-    ImGui::EndChild(); // ##page
+    ImGui::EndChild();    // ##page
     ImGui::PopID();
     m_page_begun = false;
     m_view_open = false;
@@ -352,16 +323,16 @@ void tab_view::end()
     assert(m_active && "tab_view::end() without begin()");
     assert(!m_view_open && "tab_view::end() with unclosed begin_view()");
 
-    if (m_child_visible)
-    {
+    if(m_child_visible) {
         // One layout item for the overlapping pages — avoids SetCursorPos extend warning
         // when no page was submitted (or cursor was reset between pages).
         ImGui::SetCursorPos(m_page_pos);
         ImGui::Dummy(m_page_size);
     }
 
-    if (m_child_begun)
+    if(m_child_begun) {
         ImGui::EndChild();
+    }
 
     ImGui::PopStyleVar(2);
     ImGui::PopStyleColor(2);
