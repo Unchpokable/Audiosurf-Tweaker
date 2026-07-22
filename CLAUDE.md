@@ -1,0 +1,238 @@
+---
+description: Core coding standards for TweakerPlugin injectable DLL
+globs: TweakerPlugin/src/**
+alwaysApply: false
+---
+
+# TweakerPlugin — правила проекта
+
+## Контекст
+
+Внедряемая **x86 DLL** для Audiosurf (32-bit процесс). Стек: **C++23**, Win32 API, **DirectX 9** (June 2010 SDK), **Microsoft Detours**, **Quest3D SDK**, **ImGui** (UI). Сборка: CMake + Ninja, MSVC, precompiled headers.
+
+## Архитектура
+
+```
+dllmain.cxx            — минимальный DllMain, инициализация в отдельном потоке
+src/plugin/          — lifecycle, глобальное состояние, Quest3D state
+src/framework/       — хуки (Detours, D3D9, Quest3D channel)
+src/ui/              — отрисовка UI (ImGui) через callback из D3D9 hook
+```
+
+- Корневой namespace: `tw::`, подпространства по слоям: `tw::plugin`, `tw::framework`, `tw::ui`.
+- Публичный API — в заголовках; детали реализации (хуки, оригиналы, file-local state) — в **anonymous namespace** в `.cxx`.
+- В `.cxx` anonymous namespace объявляется **вне** именованных, **над** ними, сразу после блока `#include`:
+
+```cpp
+#include "pch.hxx"
+
+#include "framework/foo.hxx"
+
+namespace
+{
+// file-local helpers, hooks, state
+} // namespace
+
+namespace tw::framework
+{
+// public API definitions
+} // namespace tw::framework
+```
+
+- Не вкладывать anonymous namespace внутрь `tw::*`.
+- Закрывающие комментарии namespace: `} // namespace tw::framework::d3d9`.
+- Глобальное состояние — только там, где необходимо; префикс `g_` (`g_engine`, `g_ui_draw`).
+- Vendored-код (`ImGui/`, `Detours/`, SDK) ТРОГАТЬ ЗАПРЕЩЕНО.
+
+## Performance (hot-path)
+
+Hot-path: `EndScene`, `CallChannel`, любой код, вызываемый каждый кадр.
+
+- **Performance > readability** на hot-path, но без бессмысленного говнокода.
+- Минимум аллокаций, виртуальных вызовов, логирования, блокировок.
+- Ранние `return`; проверки дешевле тяжёлой работы.
+- **Никаких exceptions, try/catch, RTTI** в hot-path.
+- Не вызывать в hot-path API, которые могут бросать исключения.
+- Инициализация, Detours-транзакции, bootstrap D3D9 — cold-path; там допустима более читаемая логика.
+- Для очевидных if\else путей допустимы аннотации компилятора [[likely]]\[[unlikely]], если явное указание возможности\невозможности пути может увеличить перф.
+
+## Именование (из `.clang-tidy`)
+
+Источник правды — `readability-identifier-naming` в `.clang-tidy`. Всё проектное — **lower_case** (snake_case). Исключение — имена библиотечных/системных типов и функций (`IDirect3DDevice9`, `HRESULT`, `DetourAttach`).
+
+| Сущность (clang-tidy key) | Case | Prefix | Пример |
+|---------------------------|------|--------|--------|
+| Namespace | `lower_case` | — | `tw::framework::detour` |
+| Class / Struct | `lower_case` | — | `binding`, `resource` |
+| Function / Method | `lower_case` | — | `attach`, `draw_frame` |
+| Variable / Parameter | `lower_case` | — | `device`, `module_handle` |
+| TypeAlias | `lower_case` | — | `end_scene_fn`, `ui_plugin_draw_fn` |
+| Enum / EnumConstant | `lower_case` | — | `resource_type::texture` |
+| MemberPrivate | `lower_case` | `m_` | `m_device` |
+| MemberProtected | `lower_case` | `m_` | `m_engine` |
+| MemberPublic | `lower_case` | *(нет)* | `target`, `replacement` |
+| TemplateParameter | `CamelCase` | — | `T`, `TValue`, `TResult` |
+| TemplateTemplateParameter | `CamelCase` | — | `TContainer` |
+
+Дополнительно по кодовой базе (не в clang-tidy, но принято):
+
+| Сущность | Стиль | Пример |
+|----------|-------|--------|
+| file-local / global state | `g_` + snake_case | `g_bound_device`, `g_ui_draw` |
+| hook / original | `hk_*` / `o_*` / `true_*` | `hk_end_scene`, `o_reset` |
+
+`.clang-format` naming не задаёт — только layout (см. «Форматирование»).
+
+Расширения C++: **всегда** `.hxx` (заголовки) и `.cxx` (translation units). `.h`/`.cpp` не использовать.
+
+## Precompiled headers
+
+- Используется PCH (`src/pch.hxx`). Нужен системный или библиотечный заголовок — **сначала смотри в `pch.hxx`**. Если его там нет — **добавь в `pch.hxx`**, не в `.cxx`/`.hxx`.
+- В `.cxx`/проектных заголовках **не** писать `#include` системных/SDK/STL заголовков напрямую.
+- В `.cxx`: `#include "pch.hxx"` первым, затем свой заголовок, затем проектные.
+- **Не** forward-declare системные и библиотечные типы (`HMODULE`, `HWND`, `IDirect3DDevice9`) — они уже в PCH.
+- Forward-declare допустим только для **собственных** неполных типов в заголовках (`class EngineInterface;`).
+- Quest3D SDK: порядок include в `pch.hxx` фиксирован; блок `// clang-format off/on` не трогать.
+
+## Порядок include
+
+```cpp
+#include "pch.hxx"
+
+#include "framework/foo.hxx"    // свой заголовок
+
+#include "plugin/bar.hxx"       // другие слои — группировать по root-пути
+
+#include "ui/baz.hxx"
+```
+
+Группы разделять **пустой строкой**. Внутри группы — сортировка clang-format (`SortIncludes: true`). Системные/библиотечные include — только через `pch.hxx` (см. выше).
+
+## Обработка ошибок
+
+Functional-style, **без exceptions** в проектном коде.
+
+- Предпочитать `std::expected<T, E>` или `bool` / enum error-code.
+- Win32/D3D: `SUCCEEDED`/`FAILED`, проверка `nullptr`, `NO_ERROR` для Detours.
+- При ошибке — откат состояния (см. `install_d3d9_hooks`: обнуление указателей при failed attach).
+- `try/catch` — **только** при обёртке внешних API, которые гарантированно бросают, и **только** вне hot-path.
+- `assert` — только для инвариантов в debug; не как механизм обработки ошибок в runtime.
+
+## Форматирование (из `.clang-format`)
+
+Источник правды — корневой `.clang-format`. Писать код сразу в этом стиле; не полагаться на «поправлю потом».
+
+### База
+
+- Язык: C++ (`Standard: c++20` для форматтера; проект собирается как C++23).
+- Отступ: **4 пробела**, табы запрещены (`UseTab: Never`).
+- Концы строк: **CRLF** (`LineEnding: CRLF`, `UseCRLF: true`).
+- Ширина строки: **140** символов (`ColumnLimit: 140`).
+- Максимум одна подряд пустая строка (`MaxEmptyLinesToKeep: 1`); пустых строк в начале блоков быть не должно.
+- Указатели/ссылки: `*` и `&` слева от имени (`PointerAlignment: Left`) → `int* p`, `const T& ref`. Квалификатор вокруг указателя — пробел **перед** ним (`SpaceAroundPointerQualifiers: Before`) → `const int* const`.
+
+### Скобки (`BreakBeforeBraces: Custom`)
+
+- **Функции и namespace** — открывающая `{` на **новой строке**; пустые тела тоже разбиваются (`SplitEmptyFunction/Record/Namespace: true`).
+- **class / struct / enum / union / if / for / while / switch** — `{` на **той же строке**.
+- `else` и `catch` — на новой строке перед собой (`BeforeElse` / `BeforeCatch: true`).
+- Тело лямбды — `{` на той же строке (`BeforeLambdaBody: false`).
+- Короткие блоки, if, циклы, лямбды, case-метки, функции — **не** сжимать в одну строку (`AllowShort*: Never` / `None` / `false`). Исключение: короткие enum можно в одну строку (`AllowShortEnumsOnASingleLine: true`).
+- **операторы if, for, while, etc.** ВСЕГДА оборачивают тело выражения в скобки. Операторы **case** внутри **switch** могут НЕ использовать скобки для однострочных выражений.
+
+```cpp
+void draw_frame(IDirect3DDevice9* device)
+{
+    if(device == nullptr) {
+        return;
+    }
+    else {
+        render(device);
+    }
+}
+
+namespace tw::ui
+{
+} // namespace tw::ui
+```
+
+### Пробелы вокруг синтаксиса
+
+- **Нет пробела** перед `(` у `if`/`for`/`while`/`switch`/вызовов (`SpaceBeforeParens: Never`) → `if(x)`, `foo(a, b)`.
+- Нет пробелов внутри `()`, `[]`, `<>`, в условии (`SpacesInParentheses/SquareBrackets/Angles/ConditionalStatement: false`) → `if(a && b)`, `arr[i]`, `vector<int>`.
+- Нет пробела после C-cast и после `!` → `(int)x`, `!flag`.
+- Нет пробела после `template` → `template<typename T>`.
+- Есть пробел перед assignment (`=`, `+=`, …) и перед `:` у range-for → `for(auto& x : items)`.
+- Нет пробела перед `:` у `case` → `case 1:`.
+- Есть пробел перед `{` у braced-init (`SpaceBeforeCpp11BracedList: true`), но стиль списка — **не** «компактный Cpp11» (`Cpp11BracedListStyle: false`) → `params{ }`, элементы с пробелами как у классических списков.
+- Пробел перед `:` у наследования и ctor-initializer.
+
+### Переносы и упаковка аргументов
+
+- Аргументы и параметры **не** bin-pack'ать (`BinPackArguments/Parameters: false`): либо всё в одну строку (если влезает в 140), либо **каждый на своей**.
+- После открывающей `(` аргументы **не** выравнивать в столбец (`AlignAfterOpenBracket: DontAlign`) — обычный continuation indent 4.
+- Неassignment бинарные операторы — перенос **перед** оператором (`BreakBeforeBinaryOperators: NonAssignment`).
+- Тернарный оператор — перенос перед `?`/`:` (`BreakBeforeTernaryOperators: true`).
+- `template<...>` у деклараций — всегда с переносом после (`AlwaysBreakTemplateDeclarations: Yes`).
+- Concepts — break before (`BreakBeforeConceptDeclarations: true`).
+- Список наследования и ctor-initializer — `:` на предыдущей строке не оставлять: break **перед** `:` (`BreakInheritanceList` / `BreakConstructorInitializers: BeforeColon`).
+- Операнды выравнивать (`AlignOperands: Align`); последовательные присваивания/декларации/битфилды — **не** выравнивать; макросы — выравнивать (`AlignConsecutiveMacros: Consecutive`).
+- Escaped newlines в макросах — влево (`AlignEscapedNewlines: Left`).
+- Trailing comments выравнивать (`AlignTrailingComments`), в т.ч. через одну пустую строку.
+
+### Namespace, class, includes
+
+- Namespace **не** индентить содержимое (`NamespaceIndentation: None`); не схлопывать `a::b::c` в одну строку файла (`CompactNamespaces: false`).
+- Короткие namespace всё равно с newline после `{` (`ShortNamespaceLines: 0`).
+- Закрывающие комментарии namespace чинить автоматически (`FixNamespaceComments: true`) → `} // namespace tw::ui`.
+- Access modifiers (`public:` / …) с отступом −4 от членов (`AccessModifierOffset: -4`); пустая строка перед ними по логическим блокам (`EmptyLineBeforeAccessModifier: LogicalBlock`).
+- `case` и блоки case — с отступом (`IndentCaseLabels` / `IndentCaseBlocks: true`).
+- `#` директивы без доп. отступа (`IndentPPDirectives: None`).
+- `#include` и `using` — сортировать (`SortIncludes` / `SortUsingDeclarations: true`).
+- Комментарии можно переформатировать по ширине (`ReflowComments: true`).
+
+### Краткий чеклист «как выглядит локально»
+
+```cpp
+template<typename TValue>
+class resource
+{
+public:
+    TValue* data;
+
+private:
+    int m_refcount;
+};
+
+bool ok = attach({
+    { &o_reset, reinterpret_cast<void*>(hk_reset) },
+    { &o_end_scene, reinterpret_cast<void*>(hk_end_scene) },
+});
+
+if(!ok || device == nullptr) {
+    return false;
+}
+```
+
+Форматирование в IDE: clangd + `formatOnSave` (см. `.vscode/settings.json`).
+## Паттерны хуков
+
+- Оригиналы: `o_*` или `true_*`; хуки: `hk_*` / `*_hook`.
+- Типы оригиналов — `using ..._fn = ...` рядом с указателями.
+- Множественные Detours — через `tw::framework::detour::attach({...})`, не дублировать транзакционную логику.
+- D3D9 vtable resolve — cold-path bootstrap; не повторять в hot-path.
+- UI подключается callback'ом (`attach_ui_plugin`), не жёсткой зависимостью framework → ui.
+
+## CMake / сборка
+
+- Только **x86** (32-bit). C++23, `/std:c++latest` на MSVC.
+- Новые `.cxx` — в `CMakeLists.txt` соответствующего подкаталога `src/`.
+- `target_include_directories(TweakerPlugin PRIVATE src)` — include-пути от `src/`: `"framework/foo.hxx"`, не относительные `../`.
+
+## Чего избегать
+
+- Exceptions, `throw`, тяжёлые `catch` в hot-path и в новом коде по умолчанию.
+- `#include` SDK/STL в заголовках проекта (кроме PCH).
+- Логика в `DllMain` кроме минимального bootstrap.
+- Модификация vendored-зависимостей под стиль проекта.
+- PascalCase/camelCase для проектных имён (кроме template-параметров).
