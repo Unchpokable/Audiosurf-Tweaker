@@ -27,3 +27,9 @@
 
 ==================
 - *Experimental features can cause some unexpected problems, expecially with fact that Audiosurf even without any third-party things have some technical problems. Im working on it
+
+---
+## Credits & Licences
+* Project uses [Tweeny](https://github.com/mobius3/tweeny) C++ library for Tween animations for [Injectible Plugin](/TweakerPlugin/) and [stb](https://github.com/nothings/stb) C libraries (stb_image) for working with textures and images.
+* Both libraries licensed under MIT licence.
+* Source files of this libraries included as [libtweeny](/TweakerPlugin/src/libtweeny) and [libstb](/TweakerPlugin/src/libstb)
