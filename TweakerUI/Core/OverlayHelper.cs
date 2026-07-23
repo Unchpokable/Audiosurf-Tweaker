@@ -22,6 +22,8 @@ namespace TweakerUI.Core
         private const string InjectorFileName = "InjectHelper.exe";
         private const string PluginFileName = "TweakerPlugin.dll";
         private const string HandshakeAckPayload = "HANDSHAKE_ACK";
+        private const string NotifyTweakPrefix = "NOTIFY_TWEAK ";
+        private const string NotifySkinPrefix = "NOTIFY_SKIN ";
 
         private static readonly TimeSpan HandshakeTimeout = TimeSpan.FromSeconds(5);
         private static readonly Logger _logger = new Logger();
@@ -37,6 +39,18 @@ namespace TweakerUI.Core
         /// initial snapshot, the same methods they call afterwards on every live change.
         /// </summary>
         internal static event EventHandler OverlayReady;
+
+        /// <summary>
+        /// Reverse-sync (Docs/Internal/overlay-protocol.md, "Reverse-sync: NOTIFY_TWEAK/NOTIFY_SKIN"):
+        /// the user clicked a tweak/skin directly in the in-game overlay. TweakerViewModel/
+        /// SkinChangerViewModel subscribe and apply the request through the exact same setters/methods
+        /// the desktop UI itself uses - that's what makes those setters' existing SetTweak/
+        /// PushCurrentSkin re-push act as the plugin's confirmation, with no separate ACK op needed.
+        /// OverlayHelper deliberately doesn't call into the ViewModels itself (would invert the
+        /// dependency direction every other OverlayHelper touchpoint uses - see OverlayReady above).
+        /// </summary>
+        internal static event EventHandler<TweakRequestedEventArgs> TweakRequested;
+        internal static event EventHandler<string> SkinRequested;
 
         internal static void Initialize()
         {
@@ -213,17 +227,40 @@ namespace TweakerUI.Core
 
         private static void OnOverlayMessageReceived(object sender, string content)
         {
-            if (!string.Equals(content, HandshakeAckPayload, StringComparison.Ordinal))
-                return;
-
-            TaskCompletionSource<bool> tcs;
-            lock (_lock)
+            if (string.Equals(content, HandshakeAckPayload, StringComparison.Ordinal))
             {
-                tcs = _handshakeAckTcs;
-                _handshakeAckTcs = null;
+                TaskCompletionSource<bool> tcs;
+                lock (_lock)
+                {
+                    tcs = _handshakeAckTcs;
+                    _handshakeAckTcs = null;
+                }
+
+                tcs?.TrySetResult(true);
+                return;
             }
 
-            tcs?.TrySetResult(true);
+            if (content.StartsWith(NotifyTweakPrefix, StringComparison.Ordinal))
+            {
+                // "<WireName> <true|false>" - same fixed shape as TWEAK_SET's own tokens, just the
+                // reverse direction (see overlay-protocol.md's L3 token table).
+                var rest = content.Substring(NotifyTweakPrefix.Length);
+                var spaceIndex = rest.IndexOf(' ');
+                if (spaceIndex < 0)
+                    return;
+
+                var wireName = rest.Substring(0, spaceIndex);
+                var valueToken = rest.Substring(spaceIndex + 1);
+                var enabled = valueToken == "true" || valueToken == "1";
+                TweakRequested?.Invoke(null, new TweakRequestedEventArgs(wireName, enabled));
+                return;
+            }
+
+            if (content.StartsWith(NotifySkinPrefix, StringComparison.Ordinal))
+            {
+                var name = Uri.UnescapeDataString(content.Substring(NotifySkinPrefix.Length));
+                SkinRequested?.Invoke(null, name);
+            }
         }
 
         [DllImport("psapi.dll")]
@@ -232,4 +269,6 @@ namespace TweakerUI.Core
         [DllImport("psapi.dll", CharSet = CharSet.Unicode)]
         private static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, StringBuilder lpBaseName, uint nSize);
     }
+
+    internal readonly record struct TweakRequestedEventArgs(string WireName, bool Enabled);
 }

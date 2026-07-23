@@ -158,4 +158,28 @@ inline void add_rect_glow(
             ImVec2 { p_min.x - offset, p_min.y - offset }, ImVec2 { p_max.x + offset, p_max.y + offset }, col, rounding + offset, 0, 1.5f);
     }
 }
+
+// Soft glow around a circle via several expanding, fading outline copies (no shaders) - same
+// technique as add_rect_glow above. strength in [0, 1].
+inline void add_circle_glow(ImDrawList* draw, const ImVec2& center, float radius, ImVec4 glow_col, float strength) noexcept
+{
+    if(draw == nullptr) {
+        return;
+    }
+
+    strength = std::clamp(strength, 0.f, 1.f);
+    if(strength <= 0.01f) {
+        return;
+    }
+
+    constexpr int k_layers = 4;
+    constexpr float k_max_offset = 6.f;
+    for(int i = k_layers; i >= 1; --i) {
+        const float t = static_cast<float>(i) / static_cast<float>(k_layers);
+        const float offset = k_max_offset * t;
+        const float a = glow_col.w * strength * 0.16f * (1.f - t) + glow_col.w * strength * 0.03f;
+        const ImU32 col = to_u32(ImVec4 { glow_col.x, glow_col.y, glow_col.z, a });
+        draw->AddCircle(center, radius + offset, col, 0, 1.5f);
+    }
+}
 } // namespace tw::ui::widgets::detail

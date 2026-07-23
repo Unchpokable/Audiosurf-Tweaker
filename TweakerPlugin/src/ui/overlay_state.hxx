@@ -36,6 +36,11 @@ tweak_id resolve_tweak_id(std::string_view wire_name) noexcept;
 // protocol. Empty for tweak_id::unknown.
 [[nodiscard]] std::string_view tweak_display_name(tweak_id id) noexcept;
 
+// Inverse of resolve_tweak_id() - the TW_OVL wire token for a known tweak_id (e.g.
+// "InvisibleRoad"). Used by pending_actions to build outbound NOTIFY_TWEAK ops. Empty for
+// tweak_id::unknown.
+[[nodiscard]] std::string_view tweak_wire_name(tweak_id id) noexcept;
+
 // All 7 known tweak ids, in the same order as k_tweak_count/tweak_index - convenient for widgets
 // that need to iterate every tweak (menu Tweaks tab, pins).
 [[nodiscard]] const std::array<tweak_id, k_tweak_count>& all_tweak_ids() noexcept;

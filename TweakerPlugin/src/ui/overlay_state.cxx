@@ -107,6 +107,28 @@ std::string_view tweak_display_name(tweak_id id) noexcept
     }
 }
 
+std::string_view tweak_wire_name(tweak_id id) noexcept
+{
+    switch(id) {
+        case tweak_id::invisible_road:
+            return k_tweak_invisible_road;
+        case tweak_id::hidden_song_title:
+            return k_tweak_hidden_song_title;
+        case tweak_id::sidewinder_camera:
+            return k_tweak_sidewinder_camera;
+        case tweak_id::banking_camera:
+            return k_tweak_banking_camera;
+        case tweak_id::freeride_no_blocks:
+            return k_tweak_freeride_no_blocks;
+        case tweak_id::freeride_blocks_caterpillars:
+            return k_tweak_freeride_blocks_caterpillars;
+        case tweak_id::freeride_auto_advance_disable:
+            return k_tweak_freeride_auto_advance_disable;
+        default:
+            return {};
+    }
+}
+
 const std::array<tweak_id, k_tweak_count>& all_tweak_ids() noexcept
 {
     static constexpr std::array<tweak_id, k_tweak_count> k_ids {

@@ -20,6 +20,27 @@ namespace TweakerUI.ViewModels
             _console.ContentUpdated += (_, _) => OnPropertyChanged(nameof(ConsoleContent));
 
             OverlayHelper.OverlayReady += (_, _) => PushOverlaySnapshot();
+            OverlayHelper.TweakRequested += OnOverlayTweakRequested;
+        }
+
+        // Reverse-sync (Docs/Internal/overlay-protocol.md, NOTIFY_TWEAK): the user flipped a tweak
+        // directly in the in-game overlay. Routed through the exact same property setters the
+        // desktop toggles use (On*TweakActiveChanged below), so it applies to the game AND re-pushes
+        // TWEAK_SET the same way a desktop click would - that re-push is what the plugin reads back
+        // as confirmation, no separate ACK needed. An unrecognized wire name is silently ignored,
+        // same convention as an unknown TWEAK_SET name on the plugin side.
+        private void OnOverlayTweakRequested(object sender, TweakRequestedEventArgs e)
+        {
+            switch (e.WireName)
+            {
+                case "InvisibleRoad": InvisibleRoadTweakActive = e.Enabled; break;
+                case "HiddenSongTitle": HiddenSongTweakActive = e.Enabled; break;
+                case "SidewinderCamera": SidewinderCameraTweakActive = e.Enabled; break;
+                case "BankingCamera": BankingCameraTweakActive = e.Enabled; break;
+                case "FreerideNoBlocks": FreerideNoBlocksTweakActive = e.Enabled; break;
+                case "FreerideBlocksCaterpillars": FreerideBlocksCaterpillarsTweakActive = e.Enabled; break;
+                case "FreerideAutoAdvanceDisable": FreerideAutoAdvanceDisableTweakActive = e.Enabled; break;
+            }
         }
 
         // Wire-name -> current value, one shot on OverlayHelper.OverlayReady (see PushOverlaySnapshot).

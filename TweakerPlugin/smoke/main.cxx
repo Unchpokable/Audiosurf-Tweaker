@@ -33,6 +33,7 @@
 
 #include "ui/overlay_config.hxx"
 #include "ui/overlay_state.hxx"
+#include "ui/pending_actions.hxx"
 #include "ui/plugins/interactive/menu.hxx"
 #include "ui/plugins/static/notefeed.hxx"
 #include "ui/plugins/static/pins.hxx"
@@ -83,6 +84,77 @@ ImTextureID gl_upload_texture(const unsigned char* rgba, int width, int height)
     glBindTexture(GL_TEXTURE_2D, 0);
 
     return tex != 0 ? static_cast<ImTextureID>(tex) : ImTextureID_Invalid;
+}
+
+// Toggled from the smoke controls window - see draw_smoke_controls(). Lets both pending_actions
+// branches (Docs/Internal/overlay-protocol.md, "Reverse-sync") be eyeballed without a real host:
+// on, requests "round-trip" instantly; off, they're swallowed and pending_actions' own timeout +
+// notefeed failure toast fires ~5s later.
+bool g_smoke_auto_confirm = true;
+
+// Mirrors overlay_ipc.cxx's percent_decode - smoke has no ipc/ dependency of its own, so this is a
+// small local copy rather than exposing that file-local helper across TUs for one call site.
+std::string smoke_percent_decode(std::string_view s)
+{
+    const auto from_hex = [](char c) -> int {
+        if(c >= '0' && c <= '9') {
+            return c - '0';
+        }
+        if(c >= 'a' && c <= 'f') {
+            return 10 + c - 'a';
+        }
+        if(c >= 'A' && c <= 'F') {
+            return 10 + c - 'A';
+        }
+        return -1;
+    };
+
+    std::string out;
+    out.reserve(s.size());
+    for(std::size_t i = 0; i < s.size();) {
+        if(s[i] == '%' && i + 2 < s.size()) {
+            const int hi = from_hex(s[i + 1]);
+            const int lo = from_hex(s[i + 2]);
+            if(hi >= 0 && lo >= 0) {
+                out.push_back(static_cast<char>((hi << 4) | lo));
+                i += 3;
+                continue;
+            }
+        }
+        out.push_back(s[i]);
+        ++i;
+    }
+    return out;
+}
+
+// pending_actions' send backend (see ui/pending_actions.hxx) - stands in for tw::ipc::send_overlay_command,
+// which doesn't exist in this build (no real TW_OVL IPC here). When g_smoke_auto_confirm is on, applies
+// the request straight into overlay_state, as if the host had echoed TWEAK_SET/CURRENT_SKIN back
+// immediately; when off, it's a no-op "sent into the void" so pending_actions' own deadline fires.
+bool smoke_send_overlay_command(std::string_view op_line)
+{
+    if(!g_smoke_auto_confirm) {
+        return true;
+    }
+
+    const auto space = op_line.find(' ');
+    const std::string_view op = space == std::string_view::npos ? op_line : op_line.substr(0, space);
+    const std::string_view rest = space == std::string_view::npos ? std::string_view {} : op_line.substr(space + 1);
+
+    if(op == "NOTIFY_TWEAK") {
+        const auto sp2 = rest.find(' ');
+        if(sp2 == std::string_view::npos) {
+            return true;
+        }
+        const auto id = tw::ui::overlay_state::resolve_tweak_id(rest.substr(0, sp2));
+        const bool enabled = rest.substr(sp2 + 1) == "true";
+        tw::ui::overlay_state::set_tweak(id, enabled);
+    }
+    else if(op == "NOTIFY_SKIN") {
+        tw::ui::overlay_state::set_current_skin(smoke_percent_decode(rest));
+    }
+
+    return true;
 }
 
 // Bypasses real TW_OVL IPC entirely - overlay_state's setters are public API, so smoke just calls
@@ -158,6 +230,8 @@ void draw_smoke_controls()
     if(open_popup_btn.clicked()) {
         ctx_menu.open();
     }
+    ImGui::Checkbox("Auto-confirm NOTIFY_TWEAK/NOTIFY_SKIN (simulate host online)", &g_smoke_auto_confirm);
+    ImGui::TextUnformatted("Off = requests time out after ~5s and show a notefeed failure toast.");
     actions.end();
 
     color_group.set_inner_padding({ 10.f, 8.f });
@@ -275,6 +349,7 @@ int main(int, char**)
     }
 
     tw::ui::texture_cache::set_backend(&gl_upload_texture);
+    tw::ui::pending_actions::set_send_backend(&smoke_send_overlay_command);
     tw::ui::overlay_config::load("smoke_overlay.cfg");
     seed_fake_overlay_state();
 
@@ -359,7 +434,9 @@ int main(int, char**)
     tw::ui::plugins::statics::notefeed::initialize();
     tw::ui::plugins::interactive::menu::initialize();
 
-    const ImVec4 clear_color = tw::ui::theme::app_background;
+    // Smoke-harness-only backdrop - a real overlay has no window background to paint, so this
+    // isn't part of tw::ui::theme (matches former theme::app_background's dark value, #FF1B1D21).
+    constexpr ImVec4 clear_color { 0x1B / 255.f, 0x1D / 255.f, 0x21 / 255.f, 1.f };
 
     bool done = false;
     while(!done) {
@@ -385,6 +462,7 @@ int main(int, char**)
 
         static tw::ui::overlay_state::cache cache;
         tw::ui::overlay_state::refresh(cache);
+        tw::ui::pending_actions::update(cache);
 
         draw_smoke_controls();
         tw::ui::plugins::statics::watermark::update();

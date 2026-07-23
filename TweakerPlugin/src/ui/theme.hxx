@@ -2,6 +2,7 @@
 
 #include <imgui.h>
 
+#include <string>
 #include <string_view>
 
 namespace tw::ui::theme
@@ -19,7 +20,6 @@ inline ImVec4 accent_selected {};
 inline ImVec4 accent_ghost {};
 
 // Surfaces
-inline ImVec4 app_background {};
 inline ImVec4 surface {};
 inline ImVec4 surface_muted {};
 inline ImVec4 surface_soft {};
@@ -51,4 +51,8 @@ inline ImVec4 text_on_accent {};
 
 void apply_dark() noexcept;
 void from_config(std::string_view config) noexcept;
+
+// Serializes the current (possibly live-edited) theme back to the same `key=#AARRGGBB` per-line
+// format that from_config() parses - used to persist runtime color-picker edits.
+[[nodiscard]] std::string to_config() noexcept;
 } // namespace tw::ui::theme

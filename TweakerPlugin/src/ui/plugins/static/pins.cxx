@@ -1,6 +1,7 @@
 #include "ui/plugins/static/pins.hxx"
 
 #include "ui/overlay_config.hxx"
+#include "ui/pending_actions.hxx"
 #include "ui/theme.hxx"
 #include "ui/widgets/detail/draw.hxx"
 
@@ -34,14 +35,18 @@ void shutdown() noexcept
 
 void update(const tw::ui::overlay_state::cache& snapshot) noexcept
 {
+    // Reads through pending_actions rather than the raw snapshot, so a click in the menu shows up
+    // here too while its NOTIFY_TWEAK/NOTIFY_SKIN confirmation is still in flight (see
+    // ui/pending_actions.hxx).
     std::vector<std::string> labels;
     for(const auto id : tw::ui::overlay_state::all_tweak_ids()) {
-        if(tw::ui::overlay_state::is_tweak_enabled(snapshot, id)) {
+        if(tw::ui::pending_actions::tweak_display_enabled(snapshot, id)) {
             labels.emplace_back(tw::ui::overlay_state::tweak_display_name(id));
         }
     }
-    if(!snapshot.current_skin_name.empty()) {
-        labels.push_back("Skin: " + snapshot.current_skin_name);
+    const std::string_view skin_name = tw::ui::pending_actions::skin_display_name(snapshot);
+    if(!skin_name.empty()) {
+        labels.push_back("Skin: " + std::string(skin_name));
     }
 
     if(labels.empty()) {

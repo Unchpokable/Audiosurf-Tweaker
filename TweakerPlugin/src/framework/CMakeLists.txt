@@ -2,6 +2,7 @@ target_sources(TweakerPlugin PRIVATE
     channel_hook.cxx
     d3d9_hooks.cxx
     detour_transaction.cxx
+    dinput8_hooks.cxx
     imgui_backend.cxx
     wndproc_hub.cxx
 )
@@ -21,6 +22,10 @@ set_source_files_properties(
     "${IMGUI_DIR}/backends/imgui_impl_win32.cpp"
     PROPERTIES SKIP_PRECOMPILE_HEADERS ON
 )
+
+# dxguid supplies the storage for the IID_/GUID_ constants (IID_IDirectInput8A/W, GUID_SysMouse,
+# ...) that dinput.h only declares extern - dinput8.lib itself is functions-only.
+target_link_libraries(TweakerPlugin PRIVATE dinput8 dxguid)
 
 if(MSVC)
     set_source_files_properties(

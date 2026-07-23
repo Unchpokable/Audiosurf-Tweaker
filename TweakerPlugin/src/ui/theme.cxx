@@ -1,8 +1,11 @@
 #include "ui/theme.hxx"
 
+#include <algorithm>
 #include <cctype>
 #include <charconv>
 #include <cstdint>
+#include <cstdio>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 
@@ -54,6 +57,58 @@ std::string_view trim(std::string_view s) noexcept
     return s;
 }
 
+void format_hex_argb(char* buf, std::size_t buf_size, const ImVec4& rgba) noexcept
+{
+    const auto ch = [](float f) -> int {
+        return std::clamp(static_cast<int>(f * 255.f + 0.5f), 0, 255);
+    };
+    std::snprintf(buf, buf_size, "#%02X%02X%02X%02X", ch(rgba.w), ch(rgba.x), ch(rgba.y), ch(rgba.z));
+}
+
+// Shared key/pointer table for both from_config() (parse) and to_config() (serialize) - keeps the
+// key list in exactly one place.
+const std::unordered_map<std::string_view, ImVec4*>& theme_keys() noexcept
+{
+    using namespace tw::ui::theme;
+    static const std::unordered_map<std::string_view, ImVec4*> k_keys = {
+        { "accent_primary", &accent_primary },
+        { "accent_secondary", &accent_secondary },
+        { "accent_text", &accent_text },
+        { "accent_selection", &accent_selection },
+        { "accent_soft", &accent_soft },
+        { "accent_hover", &accent_hover },
+        { "accent_pressed", &accent_pressed },
+        { "accent_border", &accent_border },
+        { "accent_selected", &accent_selected },
+        { "accent_ghost", &accent_ghost },
+        { "surface", &surface },
+        { "surface_muted", &surface_muted },
+        { "surface_soft", &surface_soft },
+        { "surface_hover", &surface_hover },
+        { "surface_input", &surface_input },
+        { "surface_row", &surface_row },
+        { "surface_row_hover", &surface_row_hover },
+        { "surface_skeleton", &surface_skeleton },
+        { "surface_badge", &surface_badge },
+        { "surface_elevated", &surface_elevated },
+        { "control_track_off", &control_track_off },
+        { "control_thumb", &control_thumb },
+        { "border", &border },
+        { "border_subtle", &border_subtle },
+        { "border_strong", &border_strong },
+        { "border_divider", &border_divider },
+        { "border_window", &border_window },
+        { "text_primary", &text_primary },
+        { "text_secondary", &text_secondary },
+        { "text_muted", &text_muted },
+        { "text_subtle", &text_subtle },
+        { "text_faint", &text_faint },
+        { "text_glyph_muted", &text_glyph_muted },
+        { "text_on_accent", &text_on_accent },
+    };
+    return k_keys;
+}
+
 struct theme_init {
     theme_init() noexcept
     {
@@ -81,7 +136,6 @@ void apply_dark() noexcept
     accent_ghost = from_argb(0x002DD4BF);
 
     // NeutralColors.axaml Dark
-    app_background = from_argb(0xFF1B1D21);
     surface = from_argb(0xFF24262B);
     surface_muted = from_argb(0xFF17181B);
     surface_soft = from_argb(0xFF1E2024);
@@ -117,43 +171,7 @@ void from_config(std::string_view config) noexcept
         return;
     }
 
-    static const std::unordered_map<std::string_view, ImVec4*> k_keys = {
-        { "accent_primary", &accent_primary },
-        { "accent_secondary", &accent_secondary },
-        { "accent_text", &accent_text },
-        { "accent_selection", &accent_selection },
-        { "accent_soft", &accent_soft },
-        { "accent_hover", &accent_hover },
-        { "accent_pressed", &accent_pressed },
-        { "accent_border", &accent_border },
-        { "accent_selected", &accent_selected },
-        { "accent_ghost", &accent_ghost },
-        { "app_background", &app_background },
-        { "surface", &surface },
-        { "surface_muted", &surface_muted },
-        { "surface_soft", &surface_soft },
-        { "surface_hover", &surface_hover },
-        { "surface_input", &surface_input },
-        { "surface_row", &surface_row },
-        { "surface_row_hover", &surface_row_hover },
-        { "surface_skeleton", &surface_skeleton },
-        { "surface_badge", &surface_badge },
-        { "surface_elevated", &surface_elevated },
-        { "control_track_off", &control_track_off },
-        { "control_thumb", &control_thumb },
-        { "border", &border },
-        { "border_subtle", &border_subtle },
-        { "border_strong", &border_strong },
-        { "border_divider", &border_divider },
-        { "border_window", &border_window },
-        { "text_primary", &text_primary },
-        { "text_secondary", &text_secondary },
-        { "text_muted", &text_muted },
-        { "text_subtle", &text_subtle },
-        { "text_faint", &text_faint },
-        { "text_glyph_muted", &text_glyph_muted },
-        { "text_on_accent", &text_on_accent },
-    };
+    const auto& keys = theme_keys();
 
     while(!config.empty()) {
         const auto nl = config.find('\n');
@@ -171,8 +189,8 @@ void from_config(std::string_view config) noexcept
 
         const auto key = trim(line.substr(0, eq));
         const auto value = trim(line.substr(eq + 1));
-        const auto it = k_keys.find(key);
-        if(it == k_keys.end()) {
+        const auto it = keys.find(key);
+        if(it == keys.end()) {
             continue;
         }
 
@@ -181,5 +199,16 @@ void from_config(std::string_view config) noexcept
             *it->second = parsed;
         }
     }
+}
+
+std::string to_config() noexcept
+{
+    std::ostringstream out;
+    for(const auto& [key, ptr] : theme_keys()) {
+        char buf[16];
+        format_hex_argb(buf, sizeof(buf), *ptr);
+        out << key << '=' << buf << '\n';
+    }
+    return out.str();
 }
 } // namespace tw::ui::theme

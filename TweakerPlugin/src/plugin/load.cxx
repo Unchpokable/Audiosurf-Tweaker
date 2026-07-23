@@ -2,6 +2,7 @@
 
 #include "framework/channel_hook.hxx"
 #include "framework/d3d9_hooks.hxx"
+#include "framework/dinput8_hooks.hxx"
 
 #include "plugin/globals.hxx"
 #include "plugin/load.hxx"
@@ -29,5 +30,6 @@ void load_thread(void* module_handle)
 
     tw::framework::install_channel_hook();
     tw::framework::d3d9::install_d3d9_hooks();
+    tw::framework::dinput::install_hooks();
 }
 } // namespace tw::plugin

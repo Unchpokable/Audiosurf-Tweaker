@@ -67,6 +67,7 @@ namespace TweakerUI.ViewModels
                 CurrentInstalledSkinRaw = state.StateName;
 
             OverlayHelper.OverlayReady += (_, _) => PushOverlaySnapshot();
+            OverlayHelper.SkinRequested += OnOverlaySkinRequested;
 
             _ = LoadSkinsAsync(rebuildCache: false);
         }
@@ -75,6 +76,21 @@ namespace TweakerUI.ViewModels
         {
             OverlayHelper.PushSkinList(Skins.Select(c => c.Name));
             OverlayHelper.PushCurrentSkin(CurrentInstalledSkinRaw);
+        }
+
+        // Reverse-sync (Docs/Internal/overlay-protocol.md, NOTIFY_SKIN): the user pressed "Apply" on
+        // a skin directly in the in-game overlay's Skins tab. Mirrors InstallSelectedInternal(clear:
+        // false) below - the desktop "Install" button's own defaults - just resolving the target by
+        // name instead of SelectedItem, since the overlay's own selection is local to the plugin.
+        // An unrecognized name (stale SKIN_LIST snapshot, race with a rename/removal) is silently
+        // ignored - the plugin's own pending request will simply time out and show a notefeed toast.
+        private void OnOverlaySkinRequested(object sender, string name)
+        {
+            var card = Skins.FirstOrDefault(c => c.Name == name);
+            if (card == null || !File.Exists(card.PathToOrigin))
+                return;
+
+            InstallSkin(card.PathToOrigin, SettingsProvider.GameTexturesPath);
         }
 
         public ObservableCollection<SkinCard> Skins { get; }

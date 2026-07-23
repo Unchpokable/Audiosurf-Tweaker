@@ -5,6 +5,7 @@
 #include "framework/wndproc_hub.hxx"
 
 #include "ui/overlay_state.hxx"
+#include "ui/pending_actions.hxx"
 
 namespace
 {
@@ -276,5 +277,11 @@ void shutdown() noexcept
     g_bridge_hwnd.store(nullptr, std::memory_order_relaxed);
     g_handshake_complete.store(false, std::memory_order_relaxed);
     tw::ui::overlay_state::reset();
+    tw::ui::pending_actions::reset();
+}
+
+bool send_overlay_command(std::string_view op_line)
+{
+    return send_payload_to_bridge(op_line);
 }
 } // namespace tw::ipc

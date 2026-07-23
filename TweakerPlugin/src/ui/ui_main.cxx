@@ -3,12 +3,14 @@
 #include "ui/ui_main.hxx"
 
 #include "framework/d3d9_hooks.hxx"
+#include "framework/dinput8_hooks.hxx"
 #include "framework/imgui_backend.hxx"
 #include "framework/wndproc_hub.hxx"
 
 #include "ipc/overlay_ipc.hxx"
 
 #include "ui/overlay_state.hxx"
+#include "ui/pending_actions.hxx"
 #include "ui/plugins/interactive/menu.hxx"
 #include "ui/plugins/static/notefeed.hxx"
 #include "ui/plugins/static/pins.hxx"
@@ -43,11 +45,14 @@ void initialize() noexcept
         &tw::framework::imgui_backend::on_lost_device, &tw::framework::imgui_backend::on_reset_device);
     tw::framework::d3d9::attach_device_bind_listener(&on_device_bound, &on_device_unbound);
     tw::framework::wndproc::subscribe_all(&tw::framework::imgui_backend::wndproc_bridge);
+    tw::framework::dinput::attach_input_gate(&tw::ui::plugins::interactive::menu::is_visible);
 
     tw::ui::plugins::statics::watermark::initialize();
     tw::ui::plugins::statics::pins::initialize();
     tw::ui::plugins::statics::notefeed::initialize();
     tw::ui::plugins::interactive::menu::initialize();
+
+    tw::ui::pending_actions::set_send_backend(&tw::ipc::send_overlay_command);
 
     tw::ipc::initialize();
 }
@@ -57,6 +62,7 @@ void shutdown() noexcept
     tw::framework::d3d9::detach_ui_plugin();
     tw::framework::d3d9::detach_device_reset_listener();
     tw::framework::d3d9::detach_device_bind_listener();
+    tw::framework::dinput::detach_input_gate();
 
     tw::ui::plugins::interactive::menu::shutdown();
     tw::ui::plugins::statics::notefeed::shutdown();
@@ -131,6 +137,11 @@ void draw_frame(IDirect3DDevice9* device)
     }
 
     tw::framework::imgui_backend::new_frame();
+
+    // Ticks pending NOTIFY_TWEAK/NOTIFY_SKIN confirmations/timeouts every frame, independent of
+    // menu visibility - a request must keep waiting even if the user closes the menu right after
+    // clicking (see ui/pending_actions.hxx).
+    tw::ui::pending_actions::update(g_overlay_cache);
 
     tw::ui::plugins::statics::watermark::update();
     tw::ui::plugins::statics::pins::update(g_overlay_cache);

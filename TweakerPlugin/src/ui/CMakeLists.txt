@@ -6,6 +6,7 @@ add_library(tweaker_ui STATIC
     theme.cxx
     overlay_state.cxx
     overlay_config.cxx
+    pending_actions.cxx
     texture_cache.cxx
     widgets/button.cxx
     widgets/toggle.cxx
