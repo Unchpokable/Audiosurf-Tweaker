@@ -30,6 +30,7 @@ namespace AudiosurfInterface
             _connection = new AsBridgeConnection(caption);
             _connection.ReportReceived += OnReportReceived;
             _connection.ConnectionLost += OnBridgeConnectionLost;
+            _connection.Diagnostic += OnConnectionDiagnostic;
             _connection.Start();
         }
 
@@ -39,6 +40,7 @@ namespace AudiosurfInterface
         public event MessageEventHandler OverlayMessageReceived;
         public event EventHandler<CommandInfo> CommandSent;
         public event EventHandler MessageServiceInitialized;
+        public event Action<AsBridgeDiagnostic> Diagnostic;
 
         public bool IsValid { get; private set; }
         public int GamePID { get; private set; }
@@ -53,19 +55,12 @@ namespace AudiosurfInterface
         private readonly Queue<string> _queuedCommands;
         private readonly Queue<string> _queuedOverlayCommands;
         private readonly SynchronizationContext _syncContext;
-        private static AudiosurfHandle _instance;
+        private static readonly Lazy<AudiosurfHandle> _lazyInstance =
+            new Lazy<AudiosurfHandle>(() => new AudiosurfHandle(), LazyThreadSafetyMode.ExecutionAndPublication);
 
         private readonly object _lockObject = new object();
 
-        public static AudiosurfHandle Instance
-        {
-            get
-            {
-                if (_instance != null) return _instance;
-                _instance = new AudiosurfHandle();
-                return _instance;
-            }
-        }
+        public static AudiosurfHandle Instance => _lazyInstance.Value;
 
         /// <summary>
         /// Tears down and recreates the bridge subprocess + pipe. Historically this recreated the
@@ -82,20 +77,32 @@ namespace AudiosurfInterface
                     _currentState = ASHandleState.NotConnected;
                     StateChanged?.Invoke(this, EventArgs.Empty);
 
-                    _connection.ReportReceived -= OnReportReceived;
-                    _connection.ConnectionLost -= OnBridgeConnectionLost;
-                    _connection.Dispose();
-
+                    // Build and start the replacement fully before touching the field: if construction
+                    // or Start() throws, _connection must still be left pointing at a live object
+                    // (the old one) rather than a disposed/half-wired one.
                     var caption = "AsMsgHandler_" + Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Substring(0, 5);
-                    _connection = new AsBridgeConnection(caption);
-                    _connection.ReportReceived += OnReportReceived;
-                    _connection.ConnectionLost += OnBridgeConnectionLost;
-                    _connection.Start();
+                    var next = new AsBridgeConnection(caption);
+                    next.ReportReceived += OnReportReceived;
+                    next.ConnectionLost += OnBridgeConnectionLost;
+                    next.Diagnostic += OnConnectionDiagnostic;
+                    next.Start();
+
+                    var previous = _connection;
+                    _connection = next;
+
+                    previous.ReportReceived -= OnReportReceived;
+                    previous.ConnectionLost -= OnBridgeConnectionLost;
+                    previous.Diagnostic -= OnConnectionDiagnostic;
+                    previous.Dispose();
 
                     MessageServiceInitialized?.Invoke(this, EventArgs.Empty);
                     return true;
                 }
-                catch { return false; }
+                catch (Exception ex)
+                {
+                    Diagnostic?.Invoke(new AsBridgeDiagnostic(AsBridgeDiagnosticLevel.Error, "Reinitialize", ex.Message, ex));
+                    return false;
+                }
             }
         }
 
@@ -115,13 +122,15 @@ namespace AudiosurfInterface
             return IsValid;
         }
 
+        private static readonly string ReloadTexturesCommand = GameProtocol.Command(GameProtocol.ReloadTextures);
+
         public void Command(string message)
         {
             lock (_lockObject)
             {
                 if (_currentState != ASHandleState.Connected)
                 {
-                    if (message.Contains("reloadtextures")) return; //No need to enqueue reloadtextures command
+                    if (message == ReloadTexturesCommand) return; //No need to enqueue reloadtextures command
                     _queuedCommands.Enqueue(message);
                     CommandSent?.Invoke(this, new CommandInfo(message, CommandInfo.CommandStatus.Enqueued));
                     return;
@@ -130,7 +139,7 @@ namespace AudiosurfInterface
                 var delivered = _connection.Send(message);
                 CommandSent?.Invoke(this,
                     new CommandInfo(message, delivered ? CommandInfo.CommandStatus.Sent : CommandInfo.CommandStatus.Enqueued));
-                if (!delivered && !message.Contains("reloadtextures"))
+                if (!delivered && message != ReloadTexturesCommand)
                     _queuedCommands.Enqueue(message);
             }
         }
@@ -154,6 +163,11 @@ namespace AudiosurfInterface
         private void OnReportReceived(AsBridgeReport report)
         {
             Dispatch(() => HandleReport(report));
+        }
+
+        private void OnConnectionDiagnostic(AsBridgeDiagnostic diagnostic)
+        {
+            Diagnostic?.Invoke(diagnostic);
         }
 
         private void Dispatch(Action action)
@@ -270,14 +284,30 @@ namespace AudiosurfInterface
             while (_queuedCommands.Count > 0)
             {
                 var command = _queuedCommands.Dequeue();
-                _connection.Send(command);
-                CommandSent?.Invoke(this, new CommandInfo(command, CommandInfo.CommandStatus.Sent));
+                var delivered = _connection.Send(command);
+                CommandSent?.Invoke(this,
+                    new CommandInfo(command, delivered ? CommandInfo.CommandStatus.Sent : CommandInfo.CommandStatus.Enqueued));
+                if (!delivered)
+                {
+                    // Pipe is presumably dead - put it back and stop draining; the next successful
+                    // registration will retry the whole queue rather than losing the rest silently.
+                    _queuedCommands.Enqueue(command);
+                    Diagnostic?.Invoke(new AsBridgeDiagnostic(AsBridgeDiagnosticLevel.Warning, "OnRegistered",
+                        "queued command flush failed, pipe likely dropped"));
+                    break;
+                }
             }
 
             while (_queuedOverlayCommands.Count > 0)
             {
                 var overlayPayload = _queuedOverlayCommands.Dequeue();
-                _connection.SendOverlay(overlayPayload);
+                if (!_connection.SendOverlay(overlayPayload))
+                {
+                    _queuedOverlayCommands.Enqueue(overlayPayload);
+                    Diagnostic?.Invoke(new AsBridgeDiagnostic(AsBridgeDiagnosticLevel.Warning, "OnRegistered",
+                        "queued overlay command flush failed, pipe likely dropped"));
+                    break;
+                }
             }
         }
 

@@ -23,6 +23,7 @@ namespace AudiosurfInterface.Bridge
         public event Action<AsBridgeReport> ReportReceived;
         public event Action ConnectionEstablished;
         public event Action ConnectionLost;
+        public event Action<AsBridgeDiagnostic> Diagnostic;
 
         public bool IsConnected => _pipe != null && _pipe.IsConnected;
         public string ListenerWindowCaption { get; }
@@ -120,11 +121,12 @@ namespace AudiosurfInterface.Bridge
                 {
                     return;
                 }
-                catch
+                catch (Exception ex)
                 {
                     // Any failure - bridge missing, spawn failure, pipe refusing to connect -
-                    // degrades to "not connected, retry shortly" rather than surfacing anywhere;
-                    // the game simply shows as disconnected until the chain comes back.
+                    // degrades to "not connected, retry shortly" rather than throwing out of the
+                    // pump thread; Diagnostic still surfaces it to whoever wants to log it.
+                    Diagnostic?.Invoke(new AsBridgeDiagnostic(AsBridgeDiagnosticLevel.Warning, "PumpLoop", ex.Message, ex));
                 }
 
                 TeardownPipe();
@@ -165,7 +167,7 @@ namespace AudiosurfInterface.Bridge
             try
             {
                 pipe.Connect(PipeConnectTimeoutMs);
-                pipe.ReadMode = PipeTransmissionMode.Message;
+                pipe.ReadMode = PipeTransmissionMode.Message; // warn: Windows only!
             }
             catch
             {
@@ -186,17 +188,23 @@ namespace AudiosurfInterface.Bridge
             {
                 int read = _pipe.Read(buffer, 0, buffer.Length);
                 if (read <= 0)
+                {
                     return; // peer gone
+                }
 
                 message.Write(buffer, 0, read);
                 if (!_pipe.IsMessageComplete)
+                {
                     continue;
+                }
 
                 var raw = Encoding.UTF8.GetString(message.GetBuffer(), 0, (int)message.Length);
                 message.SetLength(0);
 
                 if (AsBridgeProtocol.TryParseReport(raw, out var report))
+                {
                     ReportReceived?.Invoke(report);
+                }
             }
         }
 
@@ -209,7 +217,10 @@ namespace AudiosurfInterface.Bridge
 
         private static string GetBridgePath()
         {
-            return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, BridgeExecutableName);
+            // Environment.ProcessPath (the actual apphost .exe), not AppDomain.CurrentDomain.BaseDirectory -
+            // the latter resolves to a %TEMP%\.net\... self-extraction folder on a self-contained
+            // single-file deploy, not the directory asbridge.exe is actually copied next to.
+            return Path.Combine(Path.GetDirectoryName(Environment.ProcessPath), BridgeExecutableName);
         }
 
         public void Dispose()

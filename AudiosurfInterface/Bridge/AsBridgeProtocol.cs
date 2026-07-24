@@ -30,7 +30,9 @@ namespace AudiosurfInterface.Bridge
     /// Managed mirror of the asbridge text protocol (ASBridge/src/proto/message.hxx):
     /// client sends "CCOMMAND SEND \"command\"", server replies with
     /// "SREPORT OK|FAILED|BROADCAST_FORWARD|SERVICE \"detail\" ..." - details are double-quoted,
-    /// whitespace-separated, no escaping.
+    /// whitespace-separated; '\' and '"' inside a detail are backslash-escaped (mirrored in
+    /// ASBridge/src/proto/message.cxx - both sides must stay in lockstep, it's a private wire
+    /// format between two binaries built from this same repo).
     /// </summary>
     public static class AsBridgeProtocol
     {
@@ -39,12 +41,27 @@ namespace AudiosurfInterface.Bridge
 
         public static string SerializeSend(string command)
         {
-            return $"CCOMMAND SEND \"{command}\" ";
+            return $"CCOMMAND SEND \"{Escape(command)}\" ";
         }
 
         public static string SerializeOverlaySend(string payload)
         {
-            return $"CCOMMAND OVERLAY_SEND \"{payload}\" ";
+            return $"CCOMMAND OVERLAY_SEND \"{Escape(payload)}\" ";
+        }
+
+        private static string Escape(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+                return value;
+
+            var builder = new StringBuilder(value.Length);
+            foreach (var c in value)
+            {
+                if (c == '\\' || c == '"')
+                    builder.Append('\\');
+                builder.Append(c);
+            }
+            return builder.ToString();
         }
 
         public static bool TryParseReport(string raw, out AsBridgeReport report)
@@ -118,12 +135,32 @@ namespace AudiosurfInterface.Bridge
                 if (s[pos] != '"')
                     return false;
 
-                var close = s.IndexOf('"', pos + 1);
-                if (close < 0)
+                pos++; // past opening quote
+                var builder = new StringBuilder();
+                var closed = false;
+                while (pos < s.Length)
+                {
+                    var c = s[pos];
+                    if (c == '\\' && pos + 1 < s.Length && (s[pos + 1] == '\\' || s[pos + 1] == '"'))
+                    {
+                        builder.Append(s[pos + 1]);
+                        pos += 2;
+                        continue;
+                    }
+                    if (c == '"')
+                    {
+                        closed = true;
+                        pos++;
+                        break;
+                    }
+                    builder.Append(c);
+                    pos++;
+                }
+
+                if (!closed)
                     return false;
 
-                details.Add(s.Substring(pos + 1, close - pos - 1));
-                pos = close + 1;
+                details.Add(builder.ToString());
             }
         }
     }

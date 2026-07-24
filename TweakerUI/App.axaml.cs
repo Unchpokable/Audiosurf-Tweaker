@@ -2,6 +2,8 @@ using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using AudiosurfInterface;
+using AudiosurfInterface.Bridge;
 using TweakerCore.Engine;
 using TweakerUI.Core;
 using TweakerUI.Core.Dialogs;
@@ -37,6 +39,7 @@ namespace TweakerUI
                 // the theme has to happen after this line, before the window is actually shown, or the user
                 // briefly sees the XAML-default Light variant flash before flipping to their saved choice.
                 var mainViewModel = new MainWindowViewModel();
+                AudiosurfHandle.Instance.Diagnostic += OnAudiosurfBridgeDiagnostic;
                 ThemeService.Apply(SettingsProvider.IsDarkTheme);
 
                 desktop.MainWindow = new MainWindow
@@ -56,6 +59,13 @@ namespace TweakerUI
         private void OnLegacyConversionFailed(string path, Exception exception)
         {
             _logger.Log("LegacyConverter", $"Failed to convert '{path}': {exception}");
+        }
+
+        private void OnAudiosurfBridgeDiagnostic(AsBridgeDiagnostic diagnostic)
+        {
+            _logger.Log($"AudiosurfBridge/{diagnostic.Context}", diagnostic.Exception != null
+                ? $"{diagnostic.Message}\n{diagnostic.Exception}"
+                : diagnostic.Message);
         }
 
         // The logger itself couldn't write to disk (restricted MyDocuments path, log dir deleted while

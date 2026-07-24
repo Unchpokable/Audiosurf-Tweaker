@@ -40,10 +40,15 @@ namespace AudiosurfInterface
         {
             bool previous;
 
+            // Read the prior value and write the override under one lock acquisition, so a concurrent
+            // Set/PushOverride on the same key can't land between the read and the write.
             lock (_lock)
+            {
                 _lastKnownValues.TryGetValue(key, out previous); // false when the key was never set - the game's own default
+                _lastKnownValues[key] = value;
+            }
 
-            Set(key, value);
+            AudiosurfHandle.Instance.Command(GameProtocol.Config(key, value));
             return new ConfigOverrideHandle(this, key, previous);
         }
 

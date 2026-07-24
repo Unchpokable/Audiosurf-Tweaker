@@ -8,9 +8,24 @@ namespace
 {
 using namespace as::proto;
 
-constexpr std::string quoted(const std::string& str)
+// Mirrored in AudiosurfInterface/Bridge/AsBridgeProtocol.cs (AsBridgeProtocol.Escape) - both sides
+// of this wire format must stay in lockstep.
+std::string escape(const std::string& str)
 {
-    return std::string("\"") + str + "\"";
+    std::string result;
+    result.reserve(str.size());
+    for(char c : str) {
+        if(c == '\\' || c == '"') {
+            result.push_back('\\');
+        }
+        result.push_back(c);
+    }
+    return result;
+}
+
+std::string quoted(const std::string& str)
+{
+    return std::string("\"") + escape(str) + "\"";
 }
 
 constexpr auto invalid_header = static_cast<asbridge_msg_header>(0xFF);
@@ -77,7 +92,8 @@ std::pair<std::string_view, std::string_view> next_word(std::string_view s) noex
     return { s.substr(start, end - start), s.substr(end + 1) };
 }
 
-// Expects `s` to be a whitespace-separated sequence of double-quoted strings (no escaping). Returns false on malformed input.
+// Expects `s` to be a whitespace-separated sequence of double-quoted strings; '\\' and '\"' inside
+// a string are backslash-escaped (mirrors AsBridgeProtocol.TryParseDetails). Returns false on malformed input.
 bool parse_details(std::string_view s, std::vector<std::string>& out)
 {
     std::size_t pos = 0;
@@ -92,13 +108,30 @@ bool parse_details(std::string_view s, std::vector<std::string>& out)
             return false;
         }
 
-        const auto close = s.find('"', pos + 1);
-        if(close == std::string_view::npos) {
+        ++pos; // past opening quote
+        std::string value;
+        bool closed = false;
+        while(pos < s.size()) {
+            const char c = s[pos];
+            if(c == '\\' && pos + 1 < s.size() && (s[pos + 1] == '\\' || s[pos + 1] == '"')) {
+                value.push_back(s[pos + 1]);
+                pos += 2;
+                continue;
+            }
+            if(c == '"') {
+                closed = true;
+                ++pos;
+                break;
+            }
+            value.push_back(c);
+            ++pos;
+        }
+
+        if(!closed) {
             return false;
         }
 
-        out.emplace_back(s.substr(pos + 1, close - pos - 1));
-        pos = close + 1;
+        out.push_back(std::move(value));
     }
 }
 

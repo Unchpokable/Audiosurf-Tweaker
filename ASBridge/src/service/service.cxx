@@ -403,6 +403,9 @@ void pipe_pump_loop(std::stop_token stop_token)
     as::overlapped_ptr pending_read;
     std::vector<std::byte> read_buffer(k_pipe_buffer_size);
 
+    // Accumulates across ERROR_MORE_DATA continuations - see the more_data branch below.
+    std::vector<std::byte> message_accum;
+
     while(!stop_token.stop_requested()) {
         if(!pipe_channel->connected()) {
             pipe_channel->accept(k_pipe_poll_ms);
@@ -418,18 +421,28 @@ void pipe_pump_loop(std::stop_token stop_token)
 
         if(result == as::duplex_pipe::io_result::disconnected) {
             pending_read.reset();
+            message_accum.clear();
             reset_pipe();
-        } else if(result != as::duplex_pipe::io_result::pending) {
-            if(result == as::duplex_pipe::io_result::ok) {
-                std::string raw(reinterpret_cast<const char*>(read_buffer.data()), transferred);
-                if(auto parsed = as::proto::parse_message(raw); parsed.has_value()) {
-                    handle_client_command(*parsed);
-                }
-                // malformed input (parse error) is silently dropped - nothing meaningful to ack.
+        } else if(result == as::duplex_pipe::io_result::more_data) {
+            // Message-mode ERROR_MORE_DATA: read_buffer was smaller than the message. The *next*
+            // ReadFile on this handle continues this SAME message, not a new one - accumulate and
+            // keep reading until it completes, rather than handing this fragment to parse_message
+            // on its own (which fails to parse and silently desyncs framing for every message after it).
+            message_accum.insert(message_accum.end(), read_buffer.begin(), read_buffer.begin() + transferred);
+            pending_read = pipe_channel->read_to_overlapped(read_buffer);
+        } else if(result == as::duplex_pipe::io_result::ok) {
+            message_accum.insert(message_accum.end(), read_buffer.begin(), read_buffer.begin() + transferred);
+
+            std::string raw(reinterpret_cast<const char*>(message_accum.data()), message_accum.size());
+            if(auto parsed = as::proto::parse_message(raw); parsed.has_value()) {
+                handle_client_command(*parsed);
             }
-            // over-sized message (more_data) is dropped the same way - protocol lines are expected to be short.
+            // malformed input (parse error) is silently dropped - nothing meaningful to ack.
+
+            message_accum.clear();
             pending_read.reset();
         }
+        // pending: nothing completed yet, fall through to the report-drain wait below and re-poll.
 
         std::unique_lock lock(reports_mutex);
         if(reports_to_send.empty()) {
