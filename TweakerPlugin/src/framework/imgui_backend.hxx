@@ -36,14 +36,32 @@ void render();
 
 [[nodiscard]] bool is_initialized() noexcept;
 
-// Matches tw::framework::wndproc::handler_fn - register once via wndproc::subscribe_all(). Always
-// feeds the message to ImGui (mouse/keyboard state must stay current even while the menu is
-// closed), but only swallows (returns true) actual input messages - and only when ImGui wants that
-// class of input (mouse messages under WantCaptureMouse, keyboard under WantCaptureKeyboard). Every
-// other message, including non-input ones like WM_NCHITTEST, is always forwarded to the game; see
-// the .cxx for why swallowing WM_NCHITTEST silently kills all clicking. Static widgets draw via
-// GetBackgroundDrawList() and never set WantCaptureMouse/Keyboard, so input passes through to the
-// game untouched whenever no interactive ImGui window is open. No-op (returns false) before
-// initialize() has run.
+// Decides whether ImGui is allowed to see input at all - wire to menu::is_visible via
+// attach_input_gate() (see ui_main.cxx). Mirrors tw::framework::dinput::input_gate_fn so both
+// input paths are gated on the same predicate and cannot drift apart.
+using input_gate_fn = bool (*)();
+
+void attach_input_gate(input_gate_fn fn) noexcept;
+void detach_input_gate() noexcept;
+
+// Matches tw::framework::wndproc::handler_fn - register once via wndproc::subscribe_all().
+//
+// While the gate is closed (menu hidden) ImGui is fed *nothing* except the few messages that carry
+// no Win32 side effects (focus, IME language, window destruction), and every message is forwarded
+// to the game untouched. That is deliberate and not merely an optimization:
+// ImGui_ImplWin32_WndProcHandler is not a passive observer - it calls ::SetCapture on any mouse
+// button down, ::ReleaseCapture on button up, and ::TrackMouseEvent on mouse move. Handing it the
+// game's messages while the overlay is idle means ImGui releases mouse capture the game itself had
+// taken (mouse-look, drag gestures), and registers WM_MOUSELEAVE tracking the game never asked
+// for. Mouse position does not suffer from being cut off: ImGui_ImplWin32_NewFrame polls
+// ::GetCursorPos every frame whenever no WM_MOUSEMOVE tracking is active, so the cursor is already
+// correct on the first frame after the menu opens.
+//
+// While the gate is open, ImGui sees everything and every input-class message is swallowed - same
+// contract as the dinput8 gate, which zeroes the game's raw device reads over exactly the same
+// interval. Non-input messages (WM_NCHITTEST, WM_SETCURSOR, WM_MOUSEACTIVATE, ...) are still always
+// forwarded; see the .cxx for why swallowing WM_NCHITTEST silently kills all clicking.
+//
+// No-op (returns false) before initialize() has run.
 bool wndproc_bridge(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam, LRESULT& out_result);
 } // namespace tw::framework::imgui_backend

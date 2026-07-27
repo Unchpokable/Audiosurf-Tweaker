@@ -24,6 +24,11 @@
 // Microsoft Detours
 #include <detours.h>
 
+// Vendored logging (src/libuulog, see its LICENCE). Lives in the PCH so the LOG_* macros - and the
+// TW_LOG_* release-stripping wrappers in plugin/diagnostics.hxx that sit on top of them - are
+// usable from any TU without a per-file include.
+#include "libuulog/uulog.hh"
+
 // Quest3D SDK. Proprietary, obtained separately by whoever builds this DLL
 // (see cmake/Quest3DSDK.cmake / Q3D_SDK_DIR) - not part of this repository.
 // These headers are 2000s-era MFC-style headers that rely on being included

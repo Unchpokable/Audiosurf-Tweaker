@@ -4,6 +4,8 @@
 
 #include "framework/wndproc_hub.hxx"
 
+#include "plugin/diagnostics.hxx"
+
 #include "ui/overlay_state.hxx"
 #include "ui/pending_actions.hxx"
 
@@ -144,6 +146,12 @@ bool send_payload_to_bridge(std::string_view inner_payload)
 {
     const HWND target = g_bridge_hwnd.load(std::memory_order_relaxed);
     if(target == nullptr) {
+        // Expected on every build where asbridge still doesn't send HANDSHAKE_BEGIN (see
+        // Docs/Internal/overlay-protocol.md, "Чего пока нет") - which means every outgoing
+        // NOTIFY_TWEAK/NOTIFY_SKIN is dropped here and the overlay's optimistic toggle will roll
+        // back with a "Failed to ..." toast ~5s later. Logged so that symptom is traceable to its
+        // actual cause instead of looking like a plugin bug.
+        TW_LOG_WARNING("ipc: dropping outbound '{}' - no bridge window (HANDSHAKE_BEGIN never arrived)", inner_payload);
         return false;
     }
 
@@ -169,6 +177,8 @@ void handle_tw_ovl_op(std::string_view payload)
         return;
     }
 
+    TW_LOG_DEBUG("ipc: <- '{}'", payload);
+
     if(op == "HANDSHAKE_BEGIN") {
         std::size_t token_count = 0;
         const auto tokens = split_fixed_tokens(rest, token_count);
@@ -178,8 +188,20 @@ void handle_tw_ovl_op(std::string_view payload)
 
         const std::string caption { tokens[0] };
 
-        g_bridge_hwnd.store(::FindWindowA(nullptr, caption.c_str()), std::memory_order_relaxed);
+        const HWND bridge = ::FindWindowA(nullptr, caption.c_str());
+        g_bridge_hwnd.store(bridge, std::memory_order_relaxed);
         g_handshake_complete.store(true, std::memory_order_relaxed);
+
+        if(bridge == nullptr) {
+            // Most likely cause is a caption containing a space: L3 tokens are split on spaces and
+            // the caption, unlike skin names, is not percent-encoded, so tokens[0] holds only the
+            // first word. See Docs/Internal/overlay-protocol.md, HANDSHAKE_BEGIN.
+            TW_LOG_ERROR("ipc: HANDSHAKE_BEGIN caption '{}' resolved to no window - outbound channel stays closed", caption);
+        }
+        else {
+            TW_LOG_INFO("ipc: handshake complete, bridge window={} (caption '{}')", static_cast<const void*>(bridge), caption);
+        }
+
         send_payload_to_bridge("HANDSHAKE_ACK");
         return;
     }

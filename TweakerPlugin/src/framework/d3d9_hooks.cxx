@@ -4,6 +4,7 @@
 #include "framework/detour_transaction.hxx"
 #include "framework/wndproc_hub.hxx"
 
+#include "plugin/diagnostics.hxx"
 #include "plugin/quest3d_state.hxx"
 
 namespace
@@ -25,20 +26,71 @@ tw::framework::d3d9::device_bind_fn g_ui_bind = nullptr;
 tw::framework::d3d9::device_unbind_fn g_ui_unbind = nullptr;
 
 LPDIRECT3DDEVICE9 g_bound_device = nullptr;
-HWND g_bound_window = nullptr;
+
+// The two facts about the bound device that a *different* thread needs to read.
+//
+// handle_activate_app runs on whichever thread owns the game window's message pump, while
+// bind_device/unbind_device run on the render thread. Reaching for g_bound_device from the message
+// side to re-query GetCreationParameters was a use-after-free waiting to happen: the pointer can be
+// released between the null check and the call, and no amount of atomics on the pointer itself
+// would fix that. Caching the two values at bind time removes the need to touch the device object
+// from the window thread at all - what's left is a pair of plain scalars, and those an atomic
+// genuinely does make safe.
+//
+// x86-only target, so both are pointer-or-smaller and always lock-free.
+std::atomic<HWND> g_bound_window { nullptr };
+std::atomic<bool> g_bound_windowed { true };
+
+static_assert(std::atomic<HWND>::is_always_lock_free, "d3d9 hook state must be lock-free: it is read from a WndProc");
+static_assert(std::atomic<bool>::is_always_lock_free, "d3d9 hook state must be lock-free: it is read from a WndProc");
+
+// Reads Windowed off the device's implicit swap chain. GetCreationParameters, which is what the
+// rest of bind_device uses, does not carry it - and the present parameters passed to
+// CreateDevice/Reset are not available on the hk_end_scene late-load path at all, so querying the
+// swap chain is the one way to answer this identically for all three bind sites. Cold path: runs
+// once per bind, never per frame.
+bool query_windowed(LPDIRECT3DDEVICE9 device) noexcept
+{
+    IDirect3DSwapChain9* swap_chain = nullptr;
+    if(FAILED(device->GetSwapChain(0, &swap_chain)) || swap_chain == nullptr) {
+        // Unknown - assume windowed, the conservative answer: it only suppresses the minimize
+        // below, and a game that fails to minimize is a far smaller problem than a windowed game
+        // that minimizes itself every time the user clicks another app.
+        return true;
+    }
+
+    D3DPRESENT_PARAMETERS params {};
+    const bool ok = SUCCEEDED(swap_chain->GetPresentParameters(&params));
+    swap_chain->Release();
+
+    return ok ? params.Windowed != FALSE : true;
+}
 
 // Observer only - never swallows WM_ACTIVATEAPP, it just mirrors the minimize-on-focus-loss
 // behavior Quest3DTamperer's hk_wnd_proc had (see ../Quest3DTamperer/Quest3DTamperer/src/hooks/d3d9_hooks.cpp),
 // which got lost when this hook was ported into TweakerPlugin.
+//
+// Only ever minimizes an exclusive-fullscreen device. Fullscreen is the case that actually needs
+// it (a fullscreen D3D9 device that keeps the display mode while another app is in front leaves
+// the desktop in a broken state); a windowed game minimizing itself the moment the user clicks the
+// Tweaker desktop window is just hostile - and, since a minimized device fails
+// TestCooperativeLevel, it also silently stops the overlay from drawing.
 bool handle_activate_app(HWND hwnd, UINT /*msg*/, WPARAM wparam, LPARAM /*lparam*/, LRESULT& /*out_result*/)
 {
-    if(wparam == FALSE && g_bound_device != nullptr) {
-        D3DDEVICE_CREATION_PARAMETERS params {};
-        g_bound_device->GetCreationParameters(&params);
-        if(params.hFocusWindow == hwnd) {
-            ::ShowWindow(hwnd, SW_MINIMIZE);
-        }
+    if(wparam != FALSE) {
+        return false;
     }
+
+    if(g_bound_windowed.load(std::memory_order_relaxed)) {
+        return false;
+    }
+
+    if(hwnd != g_bound_window.load(std::memory_order_relaxed)) {
+        return false;
+    }
+
+    TW_LOG_INFO("d3d9: WM_ACTIVATEAPP(FALSE) on fullscreen device, minimizing hwnd={}", static_cast<const void*>(hwnd));
+    ::ShowWindow(hwnd, SW_MINIMIZE);
 
     return false;
 }
@@ -48,13 +100,23 @@ void bind_device(LPDIRECT3DDEVICE9 device)
     D3DDEVICE_CREATION_PARAMETERS params {};
     device->GetCreationParameters(&params);
 
-    if(device == g_bound_device && params.hFocusWindow == g_bound_window) {
+    const bool windowed = query_windowed(device);
+
+    if(device == g_bound_device && params.hFocusWindow == g_bound_window.load(std::memory_order_relaxed)) {
+        // Same device and window, but a Reset() may still have flipped windowed<->fullscreen.
+        g_bound_windowed.store(windowed, std::memory_order_relaxed);
         return;
     }
 
     g_bound_device = device;
-    g_bound_window = params.hFocusWindow;
+    g_bound_window.store(params.hFocusWindow, std::memory_order_relaxed);
+    g_bound_windowed.store(windowed, std::memory_order_relaxed);
     tw::plugin::quest3d::g_game_handle = params.hFocusWindow;
+
+    TW_LOG_INFO("d3d9: bind_device device={} hwnd={} windowed={}",
+        static_cast<const void*>(device),
+        static_cast<const void*>(params.hFocusWindow),
+        windowed);
 
     tw::framework::wndproc::install(params.hFocusWindow);
 
@@ -65,6 +127,8 @@ void bind_device(LPDIRECT3DDEVICE9 device)
 
 void unbind_device()
 {
+    TW_LOG_INFO("d3d9: unbind_device device={}", static_cast<const void*>(g_bound_device));
+
     // Clear our own tracking state BEFORE notifying the listener. The on_unbind listener drives
     // ImGui_ImplDX9_Shutdown(), which calls Release() on this same device - and since Release is
     // detoured, that lands straight back in hk_release(). With g_bound_device already nulled here,
@@ -72,7 +136,8 @@ void unbind_device()
     // instead of recursing into a second unbind_device() - which would re-run
     // ImGui_ImplDX9_Shutdown() on an already-deleted backend and trip its IM_ASSERT(bd != nullptr).
     g_bound_device = nullptr;
-    g_bound_window = nullptr;
+    g_bound_window.store(nullptr, std::memory_order_relaxed);
+    g_bound_windowed.store(true, std::memory_order_relaxed);
 
     tw::framework::wndproc::uninstall();
 
@@ -111,7 +176,11 @@ long __stdcall hk_create_device(LPDIRECT3D9 p_d3d9,
         p_d3d9, adapter, device_type, focus_window, behavior_flags, p_presentation_parameters, pp_returned_device_interface);
 
     if(SUCCEEDED(result) && pp_returned_device_interface != nullptr && *pp_returned_device_interface != nullptr) {
+        TW_LOG_INFO("d3d9: hk_create_device succeeded, focus_window={}", static_cast<const void*>(focus_window));
         bind_device(*pp_returned_device_interface);
+    }
+    else if(FAILED(result)) {
+        TW_LOG_WARNING("d3d9: hk_create_device failed, hr=0x{:08X}", static_cast<unsigned long>(result));
     }
 
     return result;
@@ -128,7 +197,16 @@ long __stdcall hk_reset(LPDIRECT3DDEVICE9 p_device, D3DPRESENT_PARAMETERS* p_pre
         g_ui_reset_pre();
     }
 
+    if(bound_here) {
+        TW_LOG_INFO("d3d9: hk_reset on bound device (windowed={})",
+            p_presentation_parameters != nullptr ? (p_presentation_parameters->Windowed != FALSE) : true);
+    }
+
     const long result = o_reset(p_device, p_presentation_parameters);
+
+    if(bound_here && FAILED(result)) {
+        TW_LOG_WARNING("d3d9: Reset failed, hr=0x{:08X} - device objects stay invalidated", static_cast<unsigned long>(result));
+    }
 
     if(bound_here && SUCCEEDED(result)) {
         if(g_ui_reset_post != nullptr) {
@@ -170,7 +248,17 @@ ULONG __stdcall hk_release(LPDIRECT3DDEVICE9 p_device)
         const ULONG live_refs_before_this_call = p_device->AddRef() - 1;
         o_release(p_device);
 
+        // Instrumented on purpose. The claim this branch rests on - that we can spot the game's
+        // final Release by probing the refcount - is suspect: ImGui_ImplDX9_Init takes its own
+        // reference on the device (imgui_impl_dx9.cpp), so while the overlay is bound the count
+        // cannot be 1 at the moment the game lets go, and unbind_device() would never run. If this
+        // log never reports refs==1 across an alt-tab / fullscreen toggle / device recreation,
+        // then the crash-free behavior everyone is relying on is "we never unbind" rather than
+        // "we unbind at the right time", and this should be rewritten to say so explicitly.
+        TW_LOG_DEBUG("d3d9: hk_release on bound device, refs_before={}", static_cast<unsigned long>(live_refs_before_this_call));
+
         if(live_refs_before_this_call == 1) {
+            TW_LOG_INFO("d3d9: bound device reached its final Release, unbinding");
             unbind_device();
         }
     }
@@ -287,6 +375,7 @@ bool install_d3d9_hooks()
     void* p_release = nullptr;
 
     if(!resolve_d3d9_functions(p_create_device, p_reset, p_end_scene, p_release)) {
+        TW_LOG_ERROR("d3d9: could not resolve vtable entries off a bootstrap device - no overlay this session");
         return false;
     }
 
@@ -294,6 +383,18 @@ bool install_d3d9_hooks()
     o_reset = reinterpret_cast<reset_fn>(p_reset);
     o_end_scene = reinterpret_cast<end_scene_fn>(p_end_scene);
     o_release = reinterpret_cast<release_fn>(p_release);
+
+    // Subscribe BEFORE the detours go live, not after. attach() publishes hk_end_scene to the
+    // render thread the instant it commits, and that thread's very first frame runs bind_device ->
+    // wndproc::install, at which point hub_wndproc starts iterating the subscriber vectors. A
+    // subscribe() landing in that window pushes into a std::vector while another thread walks it -
+    // reallocation under an active iteration, i.e. undefined behavior on a code path that only
+    // misbehaves during the first few frames after injection.
+    //
+    // Subscribing early is free: subscriptions are inert until wndproc::install() runs, and if the
+    // attach below fails the handler simply never fires (its own guards return false when nothing
+    // is bound).
+    tw::framework::wndproc::subscribe(WM_ACTIVATEAPP, &handle_activate_app);
 
     const bool ok = tw::framework::detour::attach({
         { reinterpret_cast<void**>(&o_create_device), reinterpret_cast<void*>(hk_create_device) },
@@ -303,13 +404,14 @@ bool install_d3d9_hooks()
     });
 
     if(!ok) {
+        TW_LOG_ERROR("d3d9: DetourAttach failed - no overlay this session");
         o_create_device = nullptr;
         o_reset = nullptr;
         o_end_scene = nullptr;
         o_release = nullptr;
     }
     else {
-        tw::framework::wndproc::subscribe(WM_ACTIVATEAPP, &handle_activate_app);
+        TW_LOG_INFO("d3d9: hooks installed (CreateDevice/Reset/EndScene/Release)");
     }
 
     return ok;

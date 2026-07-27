@@ -2,6 +2,7 @@
 
 #include "framework/imgui_backend.hxx"
 
+#include "plugin/diagnostics.hxx"
 #include "plugin/globals.hxx"
 
 #include "resource/resource.hxx"
@@ -28,6 +29,74 @@ bool g_initialized = false;
 IDirect3DDevice9* g_device = nullptr;
 HWND g_hwnd = nullptr;
 std::string g_config_path;
+
+// Input gate (see imgui_backend.hxx). g_input_open tracks the gate's value as of the last message
+// so the open->closed / closed->open edges can be detected and cleaned up after.
+std::atomic<tw::framework::imgui_backend::input_gate_fn> g_input_gate { nullptr };
+bool g_input_open = false;
+
+// Drops every scrap of input state ImGui is holding, and gives back any mouse capture ImGui took.
+// Run on both edges of the gate:
+//   closing - a button still physically down when the menu closes would otherwise leave ImGui with
+//             a stuck ActiveId (next open starts with a widget already "held") and, worse, leave
+//             ::SetCapture pointing at us with no button-up ever coming to release it.
+//   opening - symmetric: nothing the game did while the gate was shut should look like a click or
+//             a keypress aimed at the menu on its very first frame.
+void reset_input_state(HWND hwnd)
+{
+    ImGuiIO& io = ImGui::GetIO();
+    io.ClearEventsQueue();
+    io.ClearInputKeys();
+    io.ClearInputMouse();
+
+    if(hwnd != nullptr && ::GetCapture() == hwnd) {
+        ::ReleaseCapture();
+    }
+}
+
+// Messages ImGui must keep seeing regardless of the gate. None of these touch capture, cursor
+// tracking or any other shared Win32 state - they only update ImGui's own bookkeeping, and letting
+// it go stale causes real bugs (a menu opened after an alt-tab believing the window is unfocused,
+// or an IME codepage from three keyboard layouts ago).
+bool is_always_observed(UINT msg) noexcept
+{
+    return msg == WM_SETFOCUS || msg == WM_KILLFOCUS || msg == WM_INPUTLANGCHANGE || msg == WM_DESTROY;
+}
+
+// The message classes ImGui genuinely consumes. Swallowed wholesale while the gate is open; never
+// touched while it is closed.
+bool is_input_message(UINT msg) noexcept
+{
+    switch(msg) {
+        case WM_MOUSEMOVE:
+        case WM_NCMOUSEMOVE:
+        case WM_MOUSELEAVE:
+        case WM_NCMOUSELEAVE:
+        case WM_LBUTTONDOWN:
+        case WM_LBUTTONDBLCLK:
+        case WM_LBUTTONUP:
+        case WM_RBUTTONDOWN:
+        case WM_RBUTTONDBLCLK:
+        case WM_RBUTTONUP:
+        case WM_MBUTTONDOWN:
+        case WM_MBUTTONDBLCLK:
+        case WM_MBUTTONUP:
+        case WM_XBUTTONDOWN:
+        case WM_XBUTTONDBLCLK:
+        case WM_XBUTTONUP:
+        case WM_MOUSEWHEEL:
+        case WM_MOUSEHWHEEL:
+        case WM_KEYDOWN:
+        case WM_KEYUP:
+        case WM_SYSKEYDOWN:
+        case WM_SYSKEYUP:
+        case WM_CHAR:
+        case WM_SYSCHAR:
+            return true;
+        default:
+            return false;
+    }
+}
 
 // TweakerPlugin.dll -> .../TweakerPlugin.overlay.cfg, next to the DLL itself. Same
 // GetModuleFileNameW + WideCharToMultiByte(CP_UTF8) pattern as resource/self_extract.cxx.
@@ -149,6 +218,7 @@ bool initialize(IDirect3DDevice9* device, HWND hwnd)
         io.IniFilename = nullptr; // no imgui.ini next to the game exe - geometry persists via overlay_config
 
         if(!load_font()) {
+            TW_LOG_ERROR("imgui_backend: embedded font fonts/Roboto-Regular.ttf missing or unusable, overlay disabled");
             ImGui::DestroyContext();
             g_device = nullptr;
             return false;
@@ -159,9 +229,21 @@ bool initialize(IDirect3DDevice9* device, HWND hwnd)
         ImGui::StyleColorsDark();
 
         g_context_created = true;
+        TW_LOG_INFO("imgui_backend: context created (config='{}')", g_config_path);
     }
 
-    if(!ImGui_ImplWin32_Init(hwnd) || !ImGui_ImplDX9_Init(device)) {
+    // Torn apart rather than short-circuited: ImGui_ImplWin32_Shutdown() asserts on a null backend,
+    // so the old `!Init(hwnd) || !Init(device)` + unconditional Win32 shutdown would trip its own
+    // IM_ASSERT precisely when the Win32 init was the half that failed - and leak the DX9 backend
+    // in the other direction.
+    if(!ImGui_ImplWin32_Init(hwnd)) {
+        TW_LOG_ERROR("imgui_backend: ImGui_ImplWin32_Init failed (hwnd={})", static_cast<const void*>(hwnd));
+        g_device = nullptr;
+        return false;
+    }
+
+    if(!ImGui_ImplDX9_Init(device)) {
+        TW_LOG_ERROR("imgui_backend: ImGui_ImplDX9_Init failed (device={})", static_cast<const void*>(device));
         ImGui_ImplWin32_Shutdown();
         g_device = nullptr;
         return false;
@@ -169,6 +251,7 @@ bool initialize(IDirect3DDevice9* device, HWND hwnd)
 
     g_hwnd = hwnd;
     g_initialized = true;
+    TW_LOG_INFO("imgui_backend: bound to device={} hwnd={}", static_cast<const void*>(device), static_cast<const void*>(hwnd));
     return true;
 }
 
@@ -178,12 +261,17 @@ void unbind()
         return;
     }
 
+    TW_LOG_INFO("imgui_backend: unbinding from device={} hwnd={}", static_cast<const void*>(g_device), static_cast<const void*>(g_hwnd));
+
     ImGui_ImplDX9_Shutdown();
     ImGui_ImplWin32_Shutdown();
 
     g_device = nullptr;
     g_hwnd = nullptr;
     g_initialized = false;
+    // The gate's edge tracking is meaningless without a live backend; re-arm it so the next bind
+    // re-runs reset_input_state() on its first open instead of assuming it already did.
+    g_input_open = false;
 }
 
 void shutdown()
@@ -191,6 +279,8 @@ void shutdown()
     if(!g_context_created) {
         return;
     }
+
+    TW_LOG_INFO("imgui_backend: shutting down context");
 
     unbind();
 
@@ -239,64 +329,62 @@ bool is_initialized() noexcept
     return g_initialized;
 }
 
+void attach_input_gate(input_gate_fn fn) noexcept
+{
+    g_input_gate.store(fn, std::memory_order_relaxed);
+}
+
+void detach_input_gate() noexcept
+{
+    g_input_gate.store(nullptr, std::memory_order_relaxed);
+}
+
 bool wndproc_bridge(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam, LRESULT& out_result)
 {
     if(!g_initialized) {
         return false;
     }
 
-    // Always let ImGui observe the message (input state must stay current even while the menu is
-    // closed) - the return value only decides whether we ALSO hide it from the game.
+    const input_gate_fn gate = g_input_gate.load(std::memory_order_relaxed);
+    const bool input_open = gate != nullptr && gate();
+
+    if(input_open != g_input_open) {
+        reset_input_state(hwnd);
+        g_input_open = input_open;
+    }
+
+    if(!input_open) {
+        // Gate shut: hand ImGui only the side-effect-free bookkeeping messages, and never claim
+        // anything - the game owns its input entirely. See imgui_backend.hxx for why merely
+        // *observing* the rest is not harmless.
+        if(is_always_observed(msg)) {
+            ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam);
+        }
+
+        return false;
+    }
+
     ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam);
 
-    const ImGuiIO& io = ImGui::GetIO();
-
-    // Swallow ONLY the message classes ImGui genuinely consumes, and only when it wants them.
-    // Blanket-swallowing every message on WantCapture (the old behavior) was a trap: while the menu
-    // is open WantCaptureKeyboard is true, so WM_NCHITTEST got swallowed too - and returning our
+    // Swallow ONLY the message classes ImGui genuinely consumes. Blanket-swallowing every message
+    // while the overlay is up was a trap: WM_NCHITTEST got swallowed too, and returning our
     // out_result (0 == HTNOWHERE) for WM_NCHITTEST makes Windows stop generating client mouse
     // messages (WM_LBUTTONDOWN...) for the window entirely. That's exactly the "hover works, clicks
     // don't" symptom: cursor position still arrives (ImGui polls it via GetCursorPos every frame in
     // ImGui_ImplWin32_NewFrame), but no button message ever reaches the handler above. Gate on the
     // message itself so non-input messages (WM_NCHITTEST, WM_SETCURSOR, WM_MOUSEACTIVATE, ...) are
     // always forwarded to the game untouched.
-    switch(msg) {
-        case WM_MOUSEMOVE:
-        case WM_NCMOUSEMOVE:
-        case WM_LBUTTONDOWN:
-        case WM_LBUTTONDBLCLK:
-        case WM_LBUTTONUP:
-        case WM_RBUTTONDOWN:
-        case WM_RBUTTONDBLCLK:
-        case WM_RBUTTONUP:
-        case WM_MBUTTONDOWN:
-        case WM_MBUTTONDBLCLK:
-        case WM_MBUTTONUP:
-        case WM_XBUTTONDOWN:
-        case WM_XBUTTONDBLCLK:
-        case WM_XBUTTONUP:
-        case WM_MOUSEWHEEL:
-        case WM_MOUSEHWHEEL:
-            if(io.WantCaptureMouse) {
-                out_result = 0;
-                return true;
-            }
-            return false;
-
-        case WM_KEYDOWN:
-        case WM_KEYUP:
-        case WM_SYSKEYDOWN:
-        case WM_SYSKEYUP:
-        case WM_CHAR:
-        case WM_SYSCHAR:
-            if(io.WantCaptureKeyboard) {
-                out_result = 0;
-                return true;
-            }
-            return false;
-
-        default:
-            return false;
+    //
+    // No WantCaptureMouse/WantCaptureKeyboard check here on purpose: visibility alone decides, so
+    // this stays in lockstep with the dinput8 gate, which zeroes the game's raw device reads over
+    // exactly the same interval. Consulting WantCapture* as well would mean input the game can
+    // still see through the window (cursor outside the menu rect) while dinput hides it - two
+    // gates, two answers, one very confusing bug report.
+    if(is_input_message(msg)) {
+        out_result = 0;
+        return true;
     }
+
+    return false;
 }
 } // namespace tw::framework::imgui_backend

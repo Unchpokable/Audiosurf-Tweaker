@@ -316,6 +316,14 @@ LRESULT WINAPI wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
     }
 
     switch(msg) {
+        // Mirrors the DLL's own toggle-key subscriber (ui_main.cxx, handle_toggle_key): the menu
+        // no longer polls the keyboard, the harness that owns the message pump tells it when the
+        // hotkey was pressed. Bit 30 of lparam is the previous key state - set means auto-repeat.
+        case WM_KEYDOWN:
+            if(wparam == VK_INSERT && (lparam & (LPARAM { 1 } << 30)) == 0) {
+                tw::ui::plugins::interactive::menu::toggle_visible();
+            }
+            return 0;
         case WM_SIZE:
             if(wparam != SIZE_MINIMIZED) {
                 g_width = LOWORD(lparam);

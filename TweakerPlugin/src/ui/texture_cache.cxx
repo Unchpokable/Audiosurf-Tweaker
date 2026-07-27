@@ -25,8 +25,22 @@
 
 namespace
 {
+// Transparent hash/equality so get_or_load() can probe the map with the std::string_view it was
+// handed, instead of materializing a std::string for every lookup. That matters because this is a
+// per-frame call: watermark::update() asks for its icon on every single frame, and the resource
+// keys ("textures/TweakerIcon-5.png") are comfortably past MSVC's 15-char small-string buffer, so
+// the old `const std::string key(resource_key)` was a heap allocation per frame per icon.
+struct transparent_string_hash {
+    using is_transparent = void;
+
+    [[nodiscard]] std::size_t operator()(std::string_view key) const noexcept
+    {
+        return std::hash<std::string_view> {}(key);
+    }
+};
+
 tw::ui::texture_cache::upload_fn g_upload = nullptr;
-std::unordered_map<std::string, ImTextureID> g_cache;
+std::unordered_map<std::string, ImTextureID, transparent_string_hash, std::equal_to<>> g_cache;
 } // namespace
 
 namespace tw::ui::texture_cache
@@ -38,17 +52,24 @@ void set_backend(upload_fn fn) noexcept
 
 ImTextureID get_or_load(std::string_view resource_key)
 {
-    const std::string key(resource_key);
-    if(const auto it = g_cache.find(key); it != g_cache.end()) {
+    // Heterogeneous lookup: no std::string is constructed unless this is a genuine miss and we are
+    // about to insert.
+    if(const auto it = g_cache.find(resource_key); it != g_cache.end()) {
         return it->second;
     }
 
+    // Not cached as a failure: no upload backend yet just means the D3D9/GL device hasn't bound,
+    // which the very next frame may fix. Caching Invalid here would make the icon never appear.
     if(g_upload == nullptr) {
         return ImTextureID_Invalid;
     }
 
     const auto res = tw::resource::get_resource(tw::resource::type::texture, resource_key);
     if(!res || res->bytes.empty() || res->bytes.size() > static_cast<std::size_t>(INT_MAX)) {
+        // Cached as a failure, unlike the case above: a key that isn't in the packed resources, or
+        // is too large to decode, will still not be there next frame. Without this the caller
+        // re-runs the resource lookup every frame forever - and callers here are per-frame.
+        g_cache.emplace(resource_key, ImTextureID_Invalid);
         return ImTextureID_Invalid;
     }
 
@@ -62,13 +83,15 @@ ImTextureID get_or_load(std::string_view resource_key)
         &components,
         STBI_rgb_alpha);
     if(pixels == nullptr || width <= 0 || height <= 0) {
+        // Same reasoning: undecodable bytes stay undecodable, so don't re-run stb_image per frame.
+        g_cache.emplace(resource_key, ImTextureID_Invalid);
         return ImTextureID_Invalid;
     }
 
     const ImTextureID tex = g_upload(pixels, width, height);
     stbi_image_free(pixels);
 
-    g_cache.emplace(key, tex);
+    g_cache.emplace(resource_key, tex);
     return tex;
 }
 

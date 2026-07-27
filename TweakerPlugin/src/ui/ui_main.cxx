@@ -9,6 +9,8 @@
 
 #include "ipc/overlay_ipc.hxx"
 
+#include "plugin/diagnostics.hxx"
+
 #include "ui/overlay_state.hxx"
 #include "ui/pending_actions.hxx"
 #include "ui/plugins/interactive/menu.hxx"
@@ -34,6 +36,33 @@ void on_device_unbound()
 {
     tw::framework::imgui_backend::unbind();
 }
+
+// The overlay's toggle key. Lives here, on the wndproc hub, rather than as a GetAsyncKeyState poll
+// inside the menu: a poll only runs on frames the overlay actually draws (so it misses presses
+// whenever the game is rendering to an offscreen target, or paused, or minimized), it fires for
+// key presses the game window never received at all, and it reads the global async key state -
+// which is exactly what a low-level input hook (DirectInput's own, among others) can render blind.
+// A WM_KEYDOWN subscriber has none of those failure modes: msg-specific subscribers run before the
+// catch-all ImGui bridge, so this sees the key first no matter what the overlay is doing.
+bool handle_toggle_key(HWND /*hwnd*/, UINT msg, WPARAM wparam, LPARAM lparam, LRESULT& out_result)
+{
+    if(wparam != VK_INSERT) {
+        return false;
+    }
+
+    // Bit 30 of lparam is the previous key state: set means this is an auto-repeat, which would
+    // otherwise strobe the menu open/closed for as long as the key is held.
+    constexpr LPARAM k_previous_key_state = LPARAM { 1 } << 30;
+    if(msg == WM_KEYDOWN && (lparam & k_previous_key_state) == 0) {
+        tw::ui::plugins::interactive::menu::toggle_visible();
+        TW_LOG_INFO("menu: toggled {} by VK_INSERT", tw::ui::plugins::interactive::menu::is_visible() ? "open" : "closed");
+    }
+
+    // Both edges are swallowed, repeats included: forwarding only the up half would hand the game
+    // an unpaired key-up and leave whatever it binds to Insert stuck down.
+    out_result = 0;
+    return true;
+}
 } // namespace
 
 namespace tw::ui
@@ -44,7 +73,18 @@ void initialize() noexcept
     tw::framework::d3d9::attach_device_reset_listener(
         &tw::framework::imgui_backend::on_lost_device, &tw::framework::imgui_backend::on_reset_device);
     tw::framework::d3d9::attach_device_bind_listener(&on_device_bound, &on_device_unbound);
+
+    // Msg-specific subscribers run ahead of catch-all ones (see wndproc_hub.hxx), so the toggle key
+    // is resolved before the ImGui bridge ever sees it - the menu can therefore always be closed
+    // again, even from a state where ImGui would have swallowed the keystroke.
+    tw::framework::wndproc::subscribe(WM_KEYDOWN, &handle_toggle_key);
+    tw::framework::wndproc::subscribe(WM_KEYUP, &handle_toggle_key);
     tw::framework::wndproc::subscribe_all(&tw::framework::imgui_backend::wndproc_bridge);
+
+    // Both input paths gate on the same predicate: window messages (ImGui) and the game's raw
+    // DirectInput reads. Same function, so they can never disagree about whether the overlay is
+    // currently eating input.
+    tw::framework::imgui_backend::attach_input_gate(&tw::ui::plugins::interactive::menu::is_visible);
     tw::framework::dinput::attach_input_gate(&tw::ui::plugins::interactive::menu::is_visible);
 
     tw::ui::plugins::statics::watermark::initialize();
@@ -62,6 +102,7 @@ void shutdown() noexcept
     tw::framework::d3d9::detach_ui_plugin();
     tw::framework::d3d9::detach_device_reset_listener();
     tw::framework::d3d9::detach_device_bind_listener();
+    tw::framework::imgui_backend::detach_input_gate();
     tw::framework::dinput::detach_input_gate();
 
     tw::ui::plugins::interactive::menu::shutdown();

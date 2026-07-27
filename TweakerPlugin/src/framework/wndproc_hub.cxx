@@ -2,6 +2,8 @@
 
 #include "framework/wndproc_hub.hxx"
 
+#include "plugin/diagnostics.hxx"
+
 namespace
 {
 using wndproc_fn = LRESULT(__stdcall*)(HWND, UINT, WPARAM, LPARAM);
@@ -87,6 +89,13 @@ void install(HWND hwnd) noexcept
 
     g_original_wndproc = reinterpret_cast<wndproc_fn>(previous);
     g_hooked_hwnd = hwnd;
+
+    TW_LOG_INFO("wndproc: hooked hwnd={} (unicode={}, previous proc={}, {} msg subs, {} catch-all subs)",
+        static_cast<const void*>(hwnd),
+        g_hooked_unicode,
+        reinterpret_cast<const void*>(g_original_wndproc),
+        g_msg_subscribers.size(),
+        g_catch_all_subscribers.size());
 }
 
 void uninstall() noexcept
@@ -96,13 +105,29 @@ void uninstall() noexcept
     }
 
     if(g_original_wndproc != nullptr) {
-        // Restore through the same A/W family used to install, so the window's proc-encoding flag
-        // ends up exactly as it started.
-        if(g_hooked_unicode) {
+        // Only unhook if we are still the window's current proc. Anyone who subclassed after us
+        // (Steam overlay, RivaTuner, another injected tool) chained to hub_wndproc and holds it as
+        // *their* "original" - blindly writing our saved pointer back would erase them from the
+        // chain and leave them calling into a proc nobody points at anymore. Leaving hub_wndproc
+        // installed is the safe direction: it keeps forwarding, and the plugin has no unload path
+        // that would turn it into a dangling address (see CLAUDE.md).
+        const LONG_PTR current = g_hooked_unicode ? ::GetWindowLongPtrW(g_hooked_hwnd, GWLP_WNDPROC)
+                                                  : ::GetWindowLongPtrA(g_hooked_hwnd, GWLP_WNDPROC);
+
+        if(current != reinterpret_cast<LONG_PTR>(&hub_wndproc)) {
+            TW_LOG_WARNING("wndproc: hwnd={} was subclassed by someone else after us (current proc={}), leaving our hook in place",
+                static_cast<const void*>(g_hooked_hwnd),
+                reinterpret_cast<const void*>(current));
+        }
+        else if(g_hooked_unicode) {
+            // Restore through the same A/W family used to install, so the window's proc-encoding
+            // flag ends up exactly as it started.
             ::SetWindowLongPtrW(g_hooked_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(g_original_wndproc));
+            TW_LOG_INFO("wndproc: restored original proc on hwnd={}", static_cast<const void*>(g_hooked_hwnd));
         }
         else {
             ::SetWindowLongPtrA(g_hooked_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(g_original_wndproc));
+            TW_LOG_INFO("wndproc: restored original proc on hwnd={}", static_cast<const void*>(g_hooked_hwnd));
         }
     }
 

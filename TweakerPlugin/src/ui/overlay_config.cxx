@@ -11,6 +11,7 @@ tw::ui::overlay_config::side g_feed_side = tw::ui::overlay_config::side::left;
 tw::ui::overlay_config::side g_pins_side = tw::ui::overlay_config::side::right;
 std::string g_theme_overrides;
 std::string g_loaded_path;        // remembered by load(), used by the no-arg save()
+bool g_dirty = false;             // set by request_save(), cleared by flush()/save()
 ImVec2 g_menu_pos { -1.f, -1.f }; // sentinel: never persisted / first run - caller picks a default
 ImVec2 g_menu_size { 420.f, 520.f };
 
@@ -114,8 +115,27 @@ void load(std::string_view path)
     g_theme_overrides = theme_block.str();
 }
 
+void request_save()
+{
+    g_dirty = true;
+}
+
+void flush()
+{
+    if(!g_dirty) {
+        return;
+    }
+
+    save();
+}
+
 void save()
 {
+    // Cleared unconditionally, not only on a successful write: a path that can't be opened (no
+    // permissions, read-only install dir) would otherwise leave the flag set and make flush()
+    // retry the same failing open every single frame.
+    g_dirty = false;
+
     if(g_loaded_path.empty()) {
         return;
     }

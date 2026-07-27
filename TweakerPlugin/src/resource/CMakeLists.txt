@@ -51,11 +51,13 @@ target_include_directories(tweaker_resource PUBLIC
     "${CMAKE_SOURCE_DIR}/src"
 )
 
-# Same pch.hxx as the DLL (needs DX/Detours/Quest3D include paths for the PCH).
+# Same pch.hxx as the DLL (needs DX/Detours/Quest3D include paths for the PCH, plus libuulog since
+# pch.hxx pulls in uulog.hh).
 target_link_libraries(tweaker_resource PRIVATE
     dxsdk
     detours
     quest3d_sdk
+    libuulog
 )
 target_precompile_headers(tweaker_resource PRIVATE "${CMAKE_SOURCE_DIR}/src/pch.hxx")
 

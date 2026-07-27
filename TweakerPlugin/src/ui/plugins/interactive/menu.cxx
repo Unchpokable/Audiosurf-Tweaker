@@ -1,14 +1,6 @@
 // No TweakerPlugin PCH here - shared with smoke_test, same convention as texture_cache.cxx.
-// GetAsyncKeyState/VK_INSERT works identically in both the injected DLL and the standalone smoke
-// Win32 window.
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
-
+// No windows.h either: the Insert hotkey is no longer polled from here, it arrives as a WndProc
+// message from whichever harness owns the message pump (see menu.hxx, toggle_visible()).
 #include <imgui.h>
 
 #include <libtweeny/tweeny.hxx>
@@ -153,8 +145,9 @@ constexpr int k_swatch_hover_ms = 150; // matches button.cxx's k_hover_ms
 constexpr ImVec2 k_min_size { 320.f, 260.f };
 constexpr const char* k_title = "Audiosurf Tweaker";
 
+// Written from the message-pump thread (toggle_visible/set_visible), read from the render thread
+// (update) and from the dinput hooks on whichever thread the game polls its devices.
 std::atomic<bool> g_visible = false;
-bool g_insert_was_down = false;
 
 tab_view g_tabs { "menu_tabs" };
 list_view g_skins_list { "menu_skins" };
@@ -209,15 +202,6 @@ void ensure_widgets_ready()
     g_size = tw::ui::overlay_config::menu_size();
 
     g_widgets_ready = true;
-}
-
-void poll_toggle_key() noexcept
-{
-    const bool down = (::GetAsyncKeyState(VK_INSERT) & 0x8000) != 0;
-    if(down && !g_insert_was_down) {
-        g_visible = !g_visible;
-    }
-    g_insert_was_down = down;
 }
 
 void draw_skins_tab(const tw::ui::overlay_state::cache& snapshot)
@@ -291,14 +275,14 @@ void draw_side_row(const char* label,
     left_btn.update();
     if(left_btn.clicked()) {
         setter(side::left);
-        tw::ui::overlay_config::save();
+        tw::ui::overlay_config::request_save();
     }
     ImGui::SameLine();
     right_btn.set_label(current == side::right ? "Right [*]" : "Right");
     right_btn.update();
     if(right_btn.clicked()) {
         setter(side::right);
-        tw::ui::overlay_config::save();
+        tw::ui::overlay_config::request_save();
     }
 }
 
@@ -307,7 +291,7 @@ void draw_side_row(const char* label,
 void persist_theme()
 {
     tw::ui::overlay_config::set_theme_overrides(tw::ui::theme::to_config());
-    tw::ui::overlay_config::save();
+    tw::ui::overlay_config::request_save();
 }
 
 // One row: outlined circle swatch (live-reflects *entry->color) + label; RMB opens a popup_menu
@@ -475,27 +459,46 @@ namespace detail = tw::ui::widgets::detail;
 void initialize() noexcept
 {
     g_widgets_ready = false;
-    g_visible = false;
-    g_insert_was_down = false;
+    g_visible.store(false, std::memory_order_relaxed);
     g_last_skin_names.clear();
 }
 
 void shutdown() noexcept
 {
-    g_visible = false;
+    g_visible.store(false, std::memory_order_relaxed);
 }
 
 bool is_visible() noexcept
 {
-    return g_visible;
+    return g_visible.load(std::memory_order_relaxed);
+}
+
+void toggle_visible() noexcept
+{
+    // Only ever called from the message-pump thread, so the read-modify-write needs no CAS loop -
+    // the atomic is there for the cross-thread *reads* (render thread, dinput hooks), not for
+    // concurrent writers.
+    g_visible.store(!g_visible.load(std::memory_order_relaxed), std::memory_order_relaxed);
+}
+
+void set_visible(bool visible) noexcept
+{
+    g_visible.store(visible, std::memory_order_relaxed);
 }
 
 void update(const tw::ui::overlay_state::cache& snapshot) noexcept
 {
     ensure_widgets_ready();
-    poll_toggle_key();
 
-    if(!g_visible) {
+    // Settings edited through this menu are written to disk lazily: every mutation marks the
+    // config dirty, and the actual file write happens here, on the first frame where no mouse
+    // button is held. Dragging a color picker or the resize grip therefore costs one write on
+    // release instead of one write per frame while dragging. See ui/overlay_config.hxx.
+    if(!ImGui::IsAnyMouseDown()) {
+        tw::ui::overlay_config::flush();
+    }
+
+    if(!g_visible.load(std::memory_order_relaxed)) {
         return;
     }
 
@@ -558,7 +561,7 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
         else {
             g_dragging_move = false;
             tw::ui::overlay_config::set_menu_pos(g_pos);
-            tw::ui::overlay_config::save();
+            tw::ui::overlay_config::request_save();
         }
     }
 
@@ -593,7 +596,7 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
         else {
             g_dragging_resize = false;
             tw::ui::overlay_config::set_menu_size(g_size);
-            tw::ui::overlay_config::save();
+            tw::ui::overlay_config::request_save();
         }
     }
 
