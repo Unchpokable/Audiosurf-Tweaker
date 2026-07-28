@@ -22,14 +22,19 @@ using device_unbind_fn = void (*)();
 
 // `on_bind` fires whenever the internally-tracked bound device/window pair actually changes: a
 // brand new device from CreateDevice, the late-load path in hk_end_scene, or Reset() swapping the
-// focus window (windowed<->exclusive-fullscreen) without recreating the device. Quest3D/highpoly
-// can tear a device down and build a replacement without releasing the old one first, so this can
-// fire again with a new device before `on_unbind` ever fires for the old one - consumers must
-// treat `on_bind` as "(re)target at this device", not "first-time init".
+// focus window (windowed<->exclusive-fullscreen) without recreating the device. Consumers must
+// treat it as "(re)target at this device", not "first-time init".
 //
-// `on_unbind` fires from hk_release() for the currently-bound device, while it is still a valid
-// COM object (see hk_release's AddRef/Release ordering) but about to hit refcount 0 - consumers
-// must release anything they hold against it here, not defer to a later frame.
+// `on_unbind` fires immediately before `on_bind` whenever a *different* device replaces the current
+// one, and from tw::ui::shutdown(). Consumers must release anything they hold against the outgoing
+// device there and then, not defer it to a later frame.
+//
+// What `on_unbind` deliberately does NOT do is fire when the game simply destroys its device
+// without creating a replacement - there is no Release hook to detect that (see the long note above
+// resolve_d3d9_functions in the .cxx for why the one that used to exist was unusable). In practice
+// that only happens at process exit, where nothing needs tearing down; the pointer held by a
+// consumer goes stale but is never dereferenced again, because hk_end_scene only ever calls out for
+// a device that matches the one currently bound.
 void attach_device_bind_listener(device_bind_fn on_bind, device_unbind_fn on_unbind);
 void detach_device_bind_listener();
 } // namespace tw::framework::d3d9

@@ -29,9 +29,9 @@ void on_device_bound(IDirect3DDevice9* device, HWND hwnd)
     tw::framework::imgui_backend::initialize(device, hwnd);
 }
 
-// Fires from hk_release() while the bound device is still valid but about to hit refcount 0 -
+// Fires just before a different device replaces the current one (and from tw::ui::shutdown) -
 // tears down just the DX9/Win32 backends, keeping the ImGui context alive for whatever device
-// binds next (if any).
+// binds next.
 void on_device_unbound()
 {
     tw::framework::imgui_backend::unbind();

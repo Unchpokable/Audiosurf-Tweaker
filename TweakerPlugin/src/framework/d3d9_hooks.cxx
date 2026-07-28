@@ -12,12 +12,10 @@ namespace
 using create_device_fn = long(__stdcall*)(LPDIRECT3D9, UINT, D3DDEVTYPE, HWND, DWORD, D3DPRESENT_PARAMETERS*, LPDIRECT3DDEVICE9*);
 using reset_fn = long(__stdcall*)(LPDIRECT3DDEVICE9, D3DPRESENT_PARAMETERS*);
 using end_scene_fn = long(__stdcall*)(LPDIRECT3DDEVICE9);
-using release_fn = ULONG(__stdcall*)(LPDIRECT3DDEVICE9);
 
 create_device_fn o_create_device = nullptr;
 reset_fn o_reset = nullptr;
 end_scene_fn o_end_scene = nullptr;
-release_fn o_release = nullptr;
 
 tw::framework::d3d9::ui_plugin_draw_fn g_ui_draw = nullptr;
 tw::framework::d3d9::device_reset_listener_fn g_ui_reset_pre = nullptr;
@@ -95,6 +93,9 @@ bool handle_activate_app(HWND hwnd, UINT /*msg*/, WPARAM wparam, LPARAM /*lparam
     return false;
 }
 
+// Defined below; bind_device() calls it to retire the previous device before adopting a new one.
+void unbind_device();
+
 void bind_device(LPDIRECT3DDEVICE9 device)
 {
     D3DDEVICE_CREATION_PARAMETERS params {};
@@ -106,6 +107,16 @@ void bind_device(LPDIRECT3DDEVICE9 device)
         // Same device and window, but a Reset() may still have flipped windowed<->fullscreen.
         g_bound_windowed.store(windowed, std::memory_order_relaxed);
         return;
+    }
+
+    // Something we were already bound to is being replaced - tear the old binding down first. With
+    // no Release hook this is the only place a device change is ever noticed, so the unbind listener
+    // has to be driven from here rather than left to the listener's own internal bookkeeping.
+    if(g_bound_device != nullptr) {
+        TW_LOG_INFO("d3d9: device changed {} -> {}, unbinding the old one",
+            static_cast<const void*>(g_bound_device),
+            static_cast<const void*>(device));
+        unbind_device();
     }
 
     g_bound_device = device;
@@ -129,12 +140,12 @@ void unbind_device()
 {
     TW_LOG_INFO("d3d9: unbind_device device={}", static_cast<const void*>(g_bound_device));
 
-    // Clear our own tracking state BEFORE notifying the listener. The on_unbind listener drives
-    // ImGui_ImplDX9_Shutdown(), which calls Release() on this same device - and since Release is
-    // detoured, that lands straight back in hk_release(). With g_bound_device already nulled here,
-    // that re-entrant call fails the `== g_bound_device` guard and simply forwards to o_release()
-    // instead of recursing into a second unbind_device() - which would re-run
-    // ImGui_ImplDX9_Shutdown() on an already-deleted backend and trip its IM_ASSERT(bd != nullptr).
+    // Tracking state is cleared before the listener runs, so anything the listener does while
+    // tearing itself down (ImGui_ImplDX9_Shutdown releases its own reference to this device) sees a
+    // plugin that already considers nothing bound. With the Release hook gone this is no longer
+    // load-bearing against re-entrancy - that release now goes straight to d3d9.dll - but the
+    // ordering stays: a listener is entitled to call back into this module, and finding it in a
+    // half-torn-down state is how the old crash cascade started.
     g_bound_device = nullptr;
     g_bound_window.store(nullptr, std::memory_order_relaxed);
     g_bound_windowed.store(true, std::memory_order_relaxed);
@@ -237,36 +248,26 @@ long __stdcall hk_end_scene(LPDIRECT3DDEVICE9 p_device)
     return o_end_scene(p_device);
 }
 
-ULONG __stdcall hk_release(LPDIRECT3DDEVICE9 p_device)
-{
-    // Detours patches IDirect3DDevice9::Release in place, so this fires for the Release() of *any*
-    // object whose vtable slot 2 resolves to that same implementation - which, with optimized
-    // builds/COM aggregation, can be objects other than our device. The `== g_bound_device` guard
-    // is what keeps us from acting on such a foreign object, and it also scopes the AddRef/o_release
-    // refcount probe to the one device we actually track.
-    if(p_device == g_bound_device) {
-        const ULONG live_refs_before_this_call = p_device->AddRef() - 1;
-        o_release(p_device);
-
-        // Instrumented on purpose. The claim this branch rests on - that we can spot the game's
-        // final Release by probing the refcount - is suspect: ImGui_ImplDX9_Init takes its own
-        // reference on the device (imgui_impl_dx9.cpp), so while the overlay is bound the count
-        // cannot be 1 at the moment the game lets go, and unbind_device() would never run. If this
-        // log never reports refs==1 across an alt-tab / fullscreen toggle / device recreation,
-        // then the crash-free behavior everyone is relying on is "we never unbind" rather than
-        // "we unbind at the right time", and this should be rewritten to say so explicitly.
-        TW_LOG_DEBUG("d3d9: hk_release on bound device, refs_before={}", static_cast<unsigned long>(live_refs_before_this_call));
-
-        if(live_refs_before_this_call == 1) {
-            TW_LOG_INFO("d3d9: bound device reached its final Release, unbinding");
-            unbind_device();
-        }
-    }
-
-    return o_release(p_device);
-}
-
-bool resolve_d3d9_functions(void*& out_create_device, void*& out_reset, void*& out_end_scene, void*& out_release)
+// There is deliberately no IDirect3DDevice9::Release hook.
+//
+// One used to live here, probing the refcount (AddRef() - 1) to spot the game's final Release and
+// unbind on it. Measured against the real game, that premise does not survive contact: Quest3D
+// churns the device refcount thousands of times per frame (GetDevice()-style borrow/return per
+// object), and the live count sits in the 3000+ range. The count never approaches 1 while the game
+// runs, so the unbind branch was dead code - and worse, the count *does* dip briefly during a
+// fullscreen transition, so the probe's only realistic chance of firing was a spurious unbind at
+// exactly the moment the device is most fragile.
+//
+// It also cost real work: a detour trampoline on the hottest COM path in the process, plus an extra
+// AddRef/Release pair on every one of those thousands of calls per frame, for a signal we could not
+// use. And it created the very re-entrancy it then needed guarding against - ImGui_ImplDX9_Shutdown
+// calls Release, which landed back inside the hook.
+//
+// Device changes are detected where they are actually visible instead: hk_create_device and
+// hk_reset both run bind_device(), which unbinds the previous device before adopting a new one. The
+// only case that leaves uncovered is a game that destroys its device and never makes another, which
+// happens at process exit, where there is nothing left to tear down.
+bool resolve_d3d9_functions(void*& out_create_device, void*& out_reset, void*& out_end_scene)
 {
     HMODULE d3d9_module = GetModuleHandle(L"d3d9.dll");
     if(d3d9_module == nullptr) {
@@ -310,7 +311,6 @@ bool resolve_d3d9_functions(void*& out_create_device, void*& out_reset, void*& o
             void** device_vtable = *reinterpret_cast<void***>(device);
 
             out_create_device = d3d9_vtable[16];
-            out_release = device_vtable[2];
             out_reset = device_vtable[16];
             out_end_scene = device_vtable[42];
 
@@ -372,9 +372,8 @@ bool install_d3d9_hooks()
     void* p_create_device = nullptr;
     void* p_reset = nullptr;
     void* p_end_scene = nullptr;
-    void* p_release = nullptr;
 
-    if(!resolve_d3d9_functions(p_create_device, p_reset, p_end_scene, p_release)) {
+    if(!resolve_d3d9_functions(p_create_device, p_reset, p_end_scene)) {
         TW_LOG_ERROR("d3d9: could not resolve vtable entries off a bootstrap device - no overlay this session");
         return false;
     }
@@ -382,7 +381,6 @@ bool install_d3d9_hooks()
     o_create_device = reinterpret_cast<create_device_fn>(p_create_device);
     o_reset = reinterpret_cast<reset_fn>(p_reset);
     o_end_scene = reinterpret_cast<end_scene_fn>(p_end_scene);
-    o_release = reinterpret_cast<release_fn>(p_release);
 
     // Subscribe BEFORE the detours go live, not after. attach() publishes hk_end_scene to the
     // render thread the instant it commits, and that thread's very first frame runs bind_device ->
@@ -400,7 +398,6 @@ bool install_d3d9_hooks()
         { reinterpret_cast<void**>(&o_create_device), reinterpret_cast<void*>(hk_create_device) },
         { reinterpret_cast<void**>(&o_reset), reinterpret_cast<void*>(hk_reset) },
         { reinterpret_cast<void**>(&o_end_scene), reinterpret_cast<void*>(hk_end_scene) },
-        { reinterpret_cast<void**>(&o_release), reinterpret_cast<void*>(hk_release) },
     });
 
     if(!ok) {
@@ -408,10 +405,9 @@ bool install_d3d9_hooks()
         o_create_device = nullptr;
         o_reset = nullptr;
         o_end_scene = nullptr;
-        o_release = nullptr;
     }
     else {
-        TW_LOG_INFO("d3d9: hooks installed (CreateDevice/Reset/EndScene/Release)");
+        TW_LOG_INFO("d3d9: hooks installed (CreateDevice/Reset/EndScene)");
     }
 
     return ok;
