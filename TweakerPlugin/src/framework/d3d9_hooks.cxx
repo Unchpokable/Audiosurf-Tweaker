@@ -64,10 +64,6 @@ bool query_windowed(LPDIRECT3DDEVICE9 device) noexcept
     return ok ? params.Windowed != FALSE : true;
 }
 
-// Observer only - never swallows WM_ACTIVATEAPP, it just mirrors the minimize-on-focus-loss
-// behavior Quest3DTamperer's hk_wnd_proc had (see ../Quest3DTamperer/Quest3DTamperer/src/hooks/d3d9_hooks.cpp),
-// which got lost when this hook was ported into TweakerPlugin.
-//
 // Only ever minimizes an exclusive-fullscreen device. Fullscreen is the case that actually needs
 // it (a fullscreen D3D9 device that keeps the display mode while another app is in front leaves
 // the desktop in a broken state); a windowed game minimizing itself the moment the user clicks the
