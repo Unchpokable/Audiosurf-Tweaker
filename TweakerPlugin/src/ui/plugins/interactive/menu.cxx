@@ -61,9 +61,8 @@ struct theme_color_row {
     tweeny::tween<float> hover_tween {};
 
     explicit theme_color_row(const theme_color_entry& e)
-        : entry(&e)
-        , popup((std::string("menu_theme_popup_") + e.key).c_str(), e.label)
-        , picker((std::string("menu_theme_picker_") + e.key).c_str(), ImVec2 { 260.f, 0.f })
+        : entry(&e), popup((std::string("menu_theme_popup_") + e.key).c_str(), e.label),
+          picker((std::string("menu_theme_picker_") + e.key).c_str(), ImVec2 { 260.f, 0.f })
     {
     }
 };
@@ -141,7 +140,7 @@ constexpr float k_title_h = 32.f;
 constexpr float k_resize_grip = 16.f;
 constexpr float k_padding = 10.f;
 constexpr float k_theme_group_gap = 12.f; // horizontal gap between theme item_groups sharing a row
-constexpr int k_swatch_hover_ms = 150; // matches button.cxx's k_hover_ms
+constexpr int k_swatch_hover_ms = 150;    // matches button.cxx's k_hover_ms
 constexpr ImVec2 k_min_size { 320.f, 260.f };
 constexpr const char* k_title = "Audiosurf Tweaker";
 
@@ -217,8 +216,7 @@ void draw_skins_tab(const tw::ui::overlay_state::cache& snapshot)
     }
 
     const std::string_view display_skin = tw::ui::pending_actions::skin_display_name(snapshot);
-    ImGui::TextUnformatted(
-        display_skin.empty() ? "Current skin: (none)" : ("Current skin: " + std::string(display_skin)).c_str());
+    ImGui::TextUnformatted(display_skin.empty() ? "Current skin: (none)" : ("Current skin: " + std::string(display_skin)).c_str());
     ImGui::Spacing();
 
     // Clicking a row only moves the local highlight - it does NOT send NOTIFY_SKIN by itself.
@@ -371,9 +369,10 @@ void draw_theme_groups()
 
     // Bootstrap: fall back to a single column until every group has a real measured size (see
     // theme_group::last_size) - self-corrects to the real layout on the following frame.
-    const std::size_t column_count = unmeasured
-        ? std::size_t { 1 }
-        : std::clamp<std::size_t>(static_cast<std::size_t>((avail_w + k_theme_group_gap) / (max_w + k_theme_group_gap)), 1, group_count);
+    const std::size_t column_count =
+        unmeasured ? std::size_t { 1 }
+                   : std::clamp<std::size_t>(
+                         static_cast<std::size_t>((avail_w + k_theme_group_gap) / (max_w + k_theme_group_gap)), 1, group_count);
 
     // Pass 1 - simulate placement on cached sizes only (no drawing): assign each group, in its
     // existing fixed order, to whichever column currently has the least accumulated height.
@@ -506,6 +505,8 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
         const ImVec2 viewport = ImGui::GetIO().DisplaySize;
         g_pos = ImVec2 { (viewport.x - g_size.x) * 0.5f, (viewport.y - g_size.y) * 0.5f };
     }
+
+    ImGui::GetIO().MouseDrawCursor = true;
 
     ImGui::SetNextWindowPos(g_pos, ImGuiCond_Always);
     ImGui::SetNextWindowSize(g_size, ImGuiCond_Always);
