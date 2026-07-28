@@ -300,13 +300,28 @@ bool resolve_d3d9_functions(void*& out_create_device, void*& out_reset, void*& o
         params.BackBufferFormat = D3DFMT_UNKNOWN;
 
         LPDIRECT3DDEVICE9 device = nullptr;
-        if(SUCCEEDED(d3d9->CreateDevice(D3DADAPTER_DEFAULT,
+        if(!SUCCEEDED(d3d9->CreateDevice(D3DADAPTER_DEFAULT,
                D3DDEVTYPE_HAL,
                window,
                D3DCREATE_SOFTWARE_VERTEXPROCESSING | D3DCREATE_DISABLE_DRIVER_MANAGEMENT,
                &params,
-               &device))
-            && device != nullptr) {
+               &device))) {
+            // Fallback, trying to create a NULLREF device in case when HAL device failed
+            // note: HAL device creation may fail when we're injecting in game when it run in fullscreen already
+            // note: for some application builds NULLREF device VTable may be different from HAL. But in case of Audiosurf - NULLREF mostly
+            // works
+            if(!SUCCEEDED(d3d9->CreateDevice(D3DADAPTER_DEFAULT,
+                   D3DDEVTYPE_NULLREF,
+                   window,
+                   D3DCREATE_SOFTWARE_VERTEXPROCESSING | D3DCREATE_DISABLE_DRIVER_MANAGEMENT,
+                   &params,
+                   &device))) {
+                TW_LOG_CRITICAL("Unable to create a dummy device to resolve D3D9 virtual table. Exiting...");
+                resolved = false;
+            }
+        }
+
+        if(device) {
             void** d3d9_vtable = *reinterpret_cast<void***>(d3d9);
             void** device_vtable = *reinterpret_cast<void***>(device);
 
