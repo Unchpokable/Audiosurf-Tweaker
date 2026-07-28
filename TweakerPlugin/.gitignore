@@ -10,3 +10,6 @@ compile_commands.json
 /DirectX-SDK-June2010/
 /ImGui/
 /Detours/
+
+# Service
+/Logs/
