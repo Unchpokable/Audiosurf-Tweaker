@@ -39,10 +39,17 @@ namespace AudiosurfInterface
         public const string CloseAudiosurf = "closeaudiosurf";
 
         // NOTE: registerlistenerwindow / quickstartregisterwindow / quickstartqueuecommand are
-        // deliberately NOT exposed here. asbridge.exe already sends these itself once it finds the
-        // game window (see Фаза 3c) - a second, managed-side registration would race/conflict with
-        // the one the bridge already performed. AudiosurfHandle.Command's own queue-until-Connected
-        // behavior already gives callers the same practical effect as quickstartqueuecommand.
+        // deliberately NOT exposed publicly here. asbridge.exe already sends one of the first two
+        // itself once it finds the game window (see Фаза 3c) - a second, managed-side registration
+        // right alongside that first one would race/conflict with it. AudiosurfHandle.Command's own
+        // queue-until-Connected behavior already gives callers the same practical effect as
+        // quickstartqueuecommand.
+        //
+        // RegisterListenerWindow below is the one exception: it's internal, used only by
+        // AudiosurfHandle's registration-ack watchdog to retry with the plain (non-quickstart)
+        // command after the bridge's own attempt goes unanswered - at that point there's no longer a
+        // race, since the bridge's attempt has already provably failed.
+        internal const string RegisterListenerWindow = "registerlistenerwindow";
 
         // asreport names (broadcast content forwarded via AudiosurfHandle.MessageResieved, already
         // stripped of the "asreport" prefix by AsBridgeProtocol - see HandleGameBroadcast).
