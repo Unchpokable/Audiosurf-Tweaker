@@ -9,11 +9,10 @@
         CanResize="False"
         ShowInTaskbar="False"
         WindowStartupLocation="Manual">
-    <Grid RowDefinitions="2*,Auto,2*">
-        <Border Grid.Row="0" Background="Black" Opacity="0.45"/>
+    <Grid>
+        <Border Background="Black" Opacity="0.45"/>
 
-        <Border Grid.Row="1"
-                Background="{DynamicResource SurfaceBrush}"
+        <Border Background="{DynamicResource SurfaceBrush}"
                 CornerRadius="10"
                 Padding="24"
                 MinWidth="300"
@@ -29,7 +28,5 @@
                 </StackPanel>
             </StackPanel>
         </Border>
-
-        <Border Grid.Row="2" Background="Black" Opacity="0.45"/>
     </Grid>
 </Window>

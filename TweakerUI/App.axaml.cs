@@ -2,6 +2,7 @@ using System;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using AudiosurfInterface;
 using AudiosurfInterface.Bridge;
 using TweakerCore.Engine;
@@ -40,6 +41,7 @@ namespace TweakerUI
                 // briefly sees the XAML-default Light variant flash before flipping to their saved choice.
                 var mainViewModel = new MainWindowViewModel();
                 AudiosurfHandle.Instance.Diagnostic += OnAudiosurfBridgeDiagnostic;
+                AudiosurfHandle.Instance.CommunicationFailed += OnAudiosurfCommunicationFailed;
                 ThemeService.Apply(SettingsProvider.IsDarkTheme);
 
                 desktop.MainWindow = new MainWindow
@@ -66,6 +68,15 @@ namespace TweakerUI
             _logger.Log($"AudiosurfBridge/{diagnostic.Context}", diagnostic.Exception != null
                 ? $"{diagnostic.Message}\n{diagnostic.Exception}"
                 : diagnostic.Message);
+        }
+
+        // AudiosurfHandle's registration watchdog gave up after quickstart/plain/bridge-restart all
+        // went unanswered by the game - already logged as an Error-level Diagnostic, this is just the
+        // user-facing half of the same event (see AudiosurfHandle.GiveUpRegistrationLocked).
+        private void OnAudiosurfCommunicationFailed(string message)
+        {
+            Dispatcher.UIThread.Post(() => ApplicationNotificationManager.Manager.ShowErrorWnd(
+                "Audiosurf connection broken", message));
         }
 
         // The logger itself couldn't write to disk (restricted MyDocuments path, log dir deleted while
