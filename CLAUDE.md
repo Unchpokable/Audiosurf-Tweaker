@@ -1,27 +1,167 @@
----
-description: Core coding standards for TweakerPlugin injectable DLL
-globs: TweakerPlugin/src/**
-alwaysApply: false
----
+# CLAUDE.md
 
-# TweakerPlugin — правила проекта
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Контекст
+## Что это
 
-Внедряемая **x86 DLL** для Audiosurf (32-bit процесс). Стек: **C++23**, Win32 API, **DirectX 9** (June 2010 SDK), **Microsoft Detours**, **Quest3D SDK**, **ImGui** (UI). Сборка: CMake + Ninja, MSVC, precompiled headers.
+Audiosurf Tweaker — сторонний инструмент для игры Audiosurf: смена текстурных скинов, кастомные
+цветовые пресеты, живые твики (invisible road, hidden song title, banking camera и т.п.) и
+встроенный плеер плейлистов. Управляет запущенной игрой снаружи через её debug-протокол
+(`WM_COPYDATA`), не встраиваясь в неё как библиотека.
 
-## Архитектура
+Живая архитектурная сводка и обоснование ключевых решений (зачем `asbridge` как отдельный процесс,
+зачем `LegacyDataConverter` заморожен на .NET Framework, и т.п.) — `Docs/Internal/overview.md`.
+План дальнейшей разработки (Фаза 6 — Quick Player QoL, Фаза 7 — внутриигровой оверлей) —
+`Docs/Internal/roadmap.md`. Протокол оверлея (`TW_OVL`, host ↔ asbridge ↔ TweakerPlugin) —
+`Docs/Internal/overlay-protocol.md`. Читай эти три файла для полного контекста прежде, чем начинать
+что-то нетривиальное в соответствующей области — этот CLAUDE.md даёт только ориентацию.
+
+## Устройство решения
+
+12 проектов в `Audiosurf SkinChanger.sln`, три платформенных слоя снизу вверх:
+
+- **`TweakerCore`** — модельный/файловый слой без UI-зависимостей: формат скинов (zip +
+  `manifest.json` + PNG), цветовые пресеты, `FolderChecker` (дрейф папки текстур), кэш превью.
+- **`AudiosurfInterface`** — управляемый клиент протокола игры: `GameProtocol`, `GameConfigState`
+  (LIFO-оверрайды `asconfig`), `GameReportListener`, `AudiosurfHandle` (публичный фасад с
+  событиями подключения) и `Bridge/` — тонкий pipe-клиент `asbridge.exe`.
+- **`QuickPlayerCore`** — модель плейлистов, каталог тэгов песен, драйвер воспроизведения.
+  Зависит от `TweakerCore` + `AudiosurfInterface`.
+- **`TweakerUI`** — единственный UI, AvaloniaUI + `CommunityToolkit.Mvvm`. MVVM: view models
+  наследуют `ViewModelBase : ObservableObject`, `ViewLocator` резолвит View по имени типа
+  (`FooViewModel` → `FooView`) через рефлексию — при добавлении новой пары ViewModel/View
+  достаточно совпадающих имён и неймспейсов, регистрировать их вручную нигде не нужно. Каждая
+  вкладка — своя пара `<Prefix>Styles.axaml` в `Themes/`; общее (акцентные/нейтральные цвета,
+  тёмная тема, шаблоны контролов) — в отдельных словарях, подключено через `DynamicResource`,
+  чтобы тема переключалась без перезапуска.
+- **`LegacyDataConverter`** — отдельный консольный `.exe`, намеренно застрявший на .NET
+  Framework 4.8.1 (единственное место, где ещё жив `BinaryFormatter`, удалённый из рантайма
+  начиная с .NET 9). Конвертирует старые `.tasp`/`.askin2`/`.pltc` в новые форматы; вызывается
+  основным приложением как внешний процесс.
+- **`ASBridge`** (`asbridge.exe`) — нативный C++23/CMake субпроцесс, единственный, кто трогает
+  Win32 (`WM_COPYDATA`, поиск окна игры). Держит именованный пайп с текстовым протоколом наружу.
+  Собирается CMake-хуком из pre-build шага `TweakerUI.csproj`, в `.sln` не участвует.
+- **`InjectHelper`** — обобщённый `CreateRemoteThread`-DLL-инжектор (x86 exe, для `TweakerPlugin`),
+  заморожен на `vcxproj`, собирается тем же pre-build-хуком.
+- **`TweakerPlugin`** — нативный x86 C++23/CMake DLL-плагин внутриигрового оверлея (см. отдельный
+  раздел ниже). Собирается аналогично `ASBridge`, но **best-effort**: неудачная сборка (нет
+  DirectX/Quest3D SDK, ImGui или Detours submodule) не ломает сборку остального решения.
+- **`Installer`** — COM-интероп для ярлыков, собирается только полным MSBuild (не `dotnet build`).
+- Тесты (NUnit): `TweakerCore.Tests`, `QuickPlayerCore.Tests`, `AudiosurfInterface.Tests`,
+  `TweakerScriptsInterpreter.Tests` (актуальность последнего под вопросом).
+- **`SkinChangerRestyle`** (старый WPF-фронтенд) и **`TweakerScriptsInterpreter`** — донор/референс,
+  держатся в `.sln` до ручной проверки паритета `TweakerUI` с реальной игрой, затем будут удалены.
+  Не развивать эти два проекта дальше, если явно не попросили.
+
+**Почему так** (детали и обоснование — `Docs/Internal/overview.md`): игра — внешний процесс, а не
+библиотека, поэтому весь Win32/`WM_COPYDATA` изолирован в `asbridge`, а не встроен P/Invoke-ом в
+Avalonia-приложение напрямую; `TweakerCore`/`AudiosurfInterface`/`QuickPlayerCore` не знают про UI
+(кидают простые C#-события, не Avalonia-объекты) — иначе граф зависимостей переворачивается.
+
+## Сборка
+
+Управляемая сторона — .NET 10 (`net10.0-windows` / `net10.0-windows10.0.19041.0` для `TweakerUI`,
+см. `Directory.Build.props`), `PlatformTarget=x64`, `Nullable=disable`, `ImplicitUsings=disable`
+проектной политикой (не включать точечно без причины). `LegacyDataConverter` — единственное
+исключение (net481).
 
 ```
-dllmain.cxx            — минимальный DllMain, инициализация в отдельном потоке
-src/plugin/          — lifecycle, глобальное состояние, Quest3D state
-src/framework/       — хуки (Detours, D3D9, Quest3D channel)
-src/ui/              — отрисовка UI (ImGui) через callback из D3D9 hook
+dotnet build "Audiosurf SkinChanger.sln"     # вся управляемая сторона
+dotnet build TweakerUI/TweakerUI.csproj      # только UI (+ триггерит нативные pre-build хуки ниже)
+dotnet run --project TweakerUI/TweakerUI.csproj
+```
+
+`LegacyDataConverter` — старый `vcxproj`-стиль csproj (net481), полноценно собирается только
+классическим MSBuild (`vswhere` → `MSBuild.exe`), не `dotnet` CLI — см. `Scripts/Deploy.ps1`.
+`Installer` тоже требует полного MSBuild.
+
+**Нативные pre-build хуки в `TweakerUI.csproj`** — при любой сборке `TweakerUI` (включая внутри
+`dotnet publish`) на Windows автоматически идёт `cmake --fresh -S/-B` + `cmake --build` для:
+- `ASBridge` — обязателен, падение ломает сборку.
+- `InjectHelper` — обязателен, собирается с явным `-A Win32` (нужен настоящий x86-бинарник —
+  инжектор работает только при совпадении битности с 32-бит `QuestViewer.exe`).
+- `TweakerPlugin` — best-effort, `-A Win32`; неудачный configure/build превращается в `<Warning>`,
+  не в ошибку сборки (см. комментарии в `TweakerUI.csproj` за деталями).
+
+Каждый хук использует свою собственную `build/msbuild` директорию — отдельно от Ninja-пресетов
+разработчика (`TweakerPlugin/build/x86-debug`, `x86-release`), чтобы не смешивать деревья сборки
+и не форсировать пересборку Detours/DirectX/Quest3D/ImGui на каждый `dotnet build`.
+
+## Тесты
+
+NUnit, на проект:
+
+```
+dotnet test TweakerCore.Tests/TweakerCore.Tests.csproj
+dotnet test QuickPlayerCore.Tests/QuickPlayerCore.Tests.csproj
+dotnet test AudiosurfInterface.Tests/AudiosurfInterface.Tests.csproj
+
+# один тест:
+dotnet test TweakerCore.Tests/TweakerCore.Tests.csproj --filter "FullyQualifiedName~ClassName.MethodName"
+```
+
+Всё, что требует реально запущенной игры (bridge-подключение, оверлей end-to-end) — юнит-тестами
+не покрывается и не может быть проверено в песочнице; это явно за пользователем (см.
+«Текущее состояние» в `overview.md`).
+
+## Деплой / дистрибуция
+
+`Scripts/Deploy.ps1` — release-бандл: self-contained single-file win-x64 `dotnet publish`
+`TweakerUI` + release-сборка `LegacyDataConverter` (IL-merged через `ILRepack.Lib.MSBuild.Task`) +
+`asbridge.exe`/`InjectHelper.exe`/(опционально) `TweakerPlugin.dll`, подобранные из-под
+`TweakerUI/bin` после pre-build хуков — всё в `/distr/TweakerUI/`.
+
+`Scripts/DeployDebug.ps1` — то же самое, но multi-file publish с PDB (managed и нативные
+SkiaSharp/HarfBuzzSharp), чтобы можно было приаттачиться дебаггером к `TweakerUI.exe`.
+`LegacyDataConverter` в обоих скриптах всегда собирается Release (коллизия сборок при Debug —
+см. комментарий в `DeployDebug.ps1`).
+
+Оба скрипта — PowerShell (`.ps1`); `.sh`-версии в `Scripts/` — заготовки, не поддерживаются активно.
+
+## Нативные компоненты
+
+Оба нативных субпроекта — C++23, CMake, `.hxx`/`.cxx` расширения, PCH, без exceptions в
+проектном коде (см. правила `TweakerPlugin` ниже — тот же дух применяется и к `ASBridge`, хоть
+явно и не задокументирован там отдельным файлом).
+
+- **`ASBridge`** (`ASBridge/src/`) — `pipes/` (именованный пайп к managed-стороне), `proto/`
+  (`message.hxx`/`.cxx` — текстовый протокол `CCOMMAND`/`SREPORT`, включая `OVERLAY_*`-расширение
+  для `TW_OVL`), `service/` (`service.cxx` — `process_wm_copydata`, форвардинг `asreport`/оверлея),
+  `system/`, `window/`. Использует vcpkg toolchain, если задан `VCPKG_ROOT`.
+- **`InjectHelper`** — один `main.cpp`, `CreateRemoteThread`-инжектор общего назначения
+  (`InjectHelper.exe <PID> <dllPath>`), не завязан на конкретную DLL-полезную нагрузку.
+
+### `TweakerPlugin` — внутриигровой оверлей
+
+Внедряемая **x86 DLL** для Audiosurf (32-bit процесс). Стек: **C++23**, Win32 API, **DirectX 9**
+(June 2010 SDK), **Microsoft Detours**, **Quest3D SDK**, **ImGui**. Сборка: CMake + Ninja, MSVC, PCH.
+
+```
+dllmain.cxx      — минимальный DllMain, инициализация в отдельном потоке
+src/framework/    — хуки (Detours, D3D9, dinput8, Quest3D channel), wndproc_hub (общая точка
+                    подписки на WndProc игры: IPC, D3D9 WM_ACTIVATEAPP, будущий ImGui-инпут)
+src/ipc/          — overlay_ipc: разбор/сборка L3-протокола TW_OVL (см. overlay-protocol.md)
+src/ui/           — overlay_state (кэш состояния, generation-counter, lock-free read по try_lock),
+                    pending_actions (optimistic UI + таймаут-подтверждение для reverse-sync),
+                    ui_main/theme/texture_cache, ui/plugins/, ui/widgets/ — сами ImGui-панели
+src/plugin/       — lifecycle, глобальное состояние, Quest3D state
+src/resource/     — .rc-based упаковка ассетов (шрифты/текстуры) прямо в DLL
+src/libtweeny, libstb, libuulog — vendored (Tween-анимации, stb_image, лог) — не трогать стиль
+```
+
+CMake-пресеты разработчика (`CMakePresets.json`, отдельно от MSBuild pre-build хука выше):
+
+```
+cmake --build --preset x86-debug     # Ninja, для clangd/compile_commands.json
+cmake --build --preset x86-release
+cmake --build --preset smoke         # smoke_test: визуальный Win32+OpenGL3 харнесс для ImGui UI
+                                      # (EXCLUDE_FROM_ALL, не входит в обычный build)
 ```
 
 - Корневой namespace: `tw::`, подпространства по слоям: `tw::plugin`, `tw::framework`, `tw::ui`.
-- Публичный API — в заголовках; детали реализации (хуки, оригиналы, file-local state) — в **anonymous namespace** в `.cxx`.
-- В `.cxx` anonymous namespace объявляется **вне** именованных, **над** ними, сразу после блока `#include`:
+- Публичный API — в заголовках; детали реализации (хуки, оригиналы, file-local state) — в
+  **anonymous namespace** в `.cxx`, объявленный **вне** именованных, **над** ними, сразу после
+  блока `#include`:
 
 ```cpp
 #include "pch.hxx"
@@ -39,26 +179,31 @@ namespace tw::framework
 } // namespace tw::framework
 ```
 
-- Не вкладывать anonymous namespace внутрь `tw::*`.
-- Закрывающие комментарии namespace: `} // namespace tw::framework::d3d9`.
+- Не вкладывать anonymous namespace внутрь `tw::*`. Закрывающие комментарии namespace:
+  `} // namespace tw::framework::d3d9`.
 - Глобальное состояние — только там, где необходимо; префикс `g_` (`g_engine`, `g_ui_draw`).
 - Vendored-код (`ImGui/`, `Detours/`, SDK) ТРОГАТЬ ЗАПРЕЩЕНО.
 
-## Performance (hot-path)
+#### Performance (hot-path)
 
-Hot-path: `EndScene`, `CallChannel`, любой код, вызываемый каждый кадр.
+Hot-path: `EndScene`, `CallChannel`, любой код, вызываемый каждый кадр (включая `overlay_state`
+чтение в `ui_main.cxx: draw_frame` — но **не** сам разбор `TW_OVL`-сообщений, он происходит
+синхронно на IPC-потоке и редко, см. `overlay-protocol.md`, «Многопоточность»).
 
 - **Performance > readability** на hot-path, но без бессмысленного говнокода.
 - Минимум аллокаций, виртуальных вызовов, логирования, блокировок.
 - Ранние `return`; проверки дешевле тяжёлой работы.
-- **Никаких exceptions, try/catch, RTTI** в hot-path.
-- Не вызывать в hot-path API, которые могут бросать исключения.
+- **Никаких exceptions, try/catch, RTTI** в hot-path. Не вызывать в hot-path API, которые могут
+  бросать исключения.
 - Инициализация, Detours-транзакции, bootstrap D3D9 — cold-path; там допустима более читаемая логика.
-- Для очевидных if\else путей допустимы аннотации компилятора [[likely]]\[[unlikely]], если явное указание возможности\невозможности пути может увеличить перф.
+- Для очевидных if/else путей допустимы `[[likely]]`/`[[unlikely]]`, если явное указание
+  возможности/невозможности пути может увеличить перф.
 
-## Именование (из `.clang-tidy`)
+#### Именование (из `.clang-tidy`)
 
-Источник правды — `readability-identifier-naming` в `.clang-tidy`. Всё проектное — **lower_case** (snake_case). Исключение — имена библиотечных/системных типов и функций (`IDirect3DDevice9`, `HRESULT`, `DetourAttach`).
+Источник правды — `readability-identifier-naming` в `.clang-tidy`. Всё проектное — **lower_case**
+(snake_case). Исключение — имена библиотечных/системных типов и функций (`IDirect3DDevice9`,
+`HRESULT`, `DetourAttach`).
 
 | Сущность (clang-tidy key) | Case | Prefix | Пример |
 |---------------------------|------|--------|--------|
@@ -81,20 +226,21 @@ Hot-path: `EndScene`, `CallChannel`, любой код, вызываемый к�
 | file-local / global state | `g_` + snake_case | `g_bound_device`, `g_ui_draw` |
 | hook / original | `hk_*` / `o_*` / `true_*` | `hk_end_scene`, `o_reset` |
 
-`.clang-format` naming не задаёт — только layout (см. «Форматирование»).
+`.clang-format` naming не задаёт — только layout. Расширения C++: **всегда** `.hxx` (заголовки) и
+`.cxx` (translation units). `.h`/`.cpp` не использовать.
 
-Расширения C++: **всегда** `.hxx` (заголовки) и `.cxx` (translation units). `.h`/`.cpp` не использовать.
+#### Precompiled headers
 
-## Precompiled headers
-
-- Используется PCH (`src/pch.hxx`). Нужен системный или библиотечный заголовок — **сначала смотри в `pch.hxx`**. Если его там нет — **добавь в `pch.hxx`**, не в `.cxx`/`.hxx`.
+- Используется PCH (`src/pch.hxx`). Нужен системный или библиотечный заголовок — **сначала смотри
+  в `pch.hxx`**. Если его там нет — **добавь в `pch.hxx`**, не в `.cxx`/`.hxx`.
 - В `.cxx`/проектных заголовках **не** писать `#include` системных/SDK/STL заголовков напрямую.
 - В `.cxx`: `#include "pch.hxx"` первым, затем свой заголовок, затем проектные.
-- **Не** forward-declare системные и библиотечные типы (`HMODULE`, `HWND`, `IDirect3DDevice9`) — они уже в PCH.
-- Forward-declare допустим только для **собственных** неполных типов в заголовках (`class EngineInterface;`).
+- **Не** forward-declare системные и библиотечные типы (`HMODULE`, `HWND`, `IDirect3DDevice9`) —
+  они уже в PCH. Forward-declare допустим только для **собственных** неполных типов в заголовках
+  (`class EngineInterface;`).
 - Quest3D SDK: порядок include в `pch.hxx` фиксирован; блок `// clang-format off/on` не трогать.
 
-## Порядок include
+#### Порядок include
 
 ```cpp
 #include "pch.hxx"
@@ -106,39 +252,34 @@ Hot-path: `EndScene`, `CallChannel`, любой код, вызываемый к�
 #include "ui/baz.hxx"
 ```
 
-Группы разделять **пустой строкой**. Внутри группы — сортировка clang-format (`SortIncludes: true`). Системные/библиотечные include — только через `pch.hxx` (см. выше).
+Группы разделять **пустой строкой**. Внутри группы — сортировка clang-format (`SortIncludes: true`).
+Системные/библиотечные include — только через `pch.hxx`.
 
-## Обработка ошибок
+#### Обработка ошибок
 
 Functional-style, **без exceptions** в проектном коде.
 
 - Предпочитать `std::expected<T, E>` или `bool` / enum error-code.
 - Win32/D3D: `SUCCEEDED`/`FAILED`, проверка `nullptr`, `NO_ERROR` для Detours.
 - При ошибке — откат состояния (см. `install_d3d9_hooks`: обнуление указателей при failed attach).
-- `try/catch` — **только** при обёртке внешних API, которые гарантированно бросают, и **только** вне hot-path.
+- `try/catch` — **только** при обёртке внешних API, которые гарантированно бросают, и **только**
+  вне hot-path.
 - `assert` — только для инвариантов в debug; не как механизм обработки ошибок в runtime.
 
-## Форматирование (из `.clang-format`)
+#### Форматирование (из `.clang-format`)
 
-Источник правды — корневой `.clang-format`. Писать код сразу в этом стиле; не полагаться на «поправлю потом».
+Источник правды — корневой `.clang-format` в `TweakerPlugin/`. Писать код сразу в этом стиле; не
+полагаться на «поправлю потом» (нет гарантированного format-on-save в момент генерации кода).
 
-### База
-
-- Язык: C++ (`Standard: c++20` для форматтера; проект собирается как C++23).
-- Отступ: **4 пробела**, табы запрещены (`UseTab: Never`).
-- Концы строк: **CRLF** (`LineEnding: CRLF`, `UseCRLF: true`).
-- Ширина строки: **140** символов (`ColumnLimit: 140`).
-- Максимум одна подряд пустая строка (`MaxEmptyLinesToKeep: 1`); пустых строк в начале блоков быть не должно.
-- Указатели/ссылки: `*` и `&` слева от имени (`PointerAlignment: Left`) → `int* p`, `const T& ref`. Квалификатор вокруг указателя — пробел **перед** ним (`SpaceAroundPointerQualifiers: Before`) → `const int* const`.
-
-### Скобки (`BreakBeforeBraces: Custom`)
-
-- **Функции и namespace** — открывающая `{` на **новой строке**; пустые тела тоже разбиваются (`SplitEmptyFunction/Record/Namespace: true`).
-- **class / struct / enum / union / if / for / while / switch** — `{` на **той же строке**.
-- `else` и `catch` — на новой строке перед собой (`BeforeElse` / `BeforeCatch: true`).
-- Тело лямбды — `{` на той же строке (`BeforeLambdaBody: false`).
-- Короткие блоки, if, циклы, лямбды, case-метки, функции — **не** сжимать в одну строку (`AllowShort*: Never` / `None` / `false`). Исключение: короткие enum можно в одну строку (`AllowShortEnumsOnASingleLine: true`).
-- **операторы if, for, while, etc.** ВСЕГДА оборачивают тело выражения в скобки. Операторы **case** внутри **switch** могут НЕ использовать скобки для однострочных выражений.
+- C++, `Standard: c++20` для форматтера (проект собирается как C++23). Отступ 4 пробела, табы
+  запрещены. CRLF. Ширина строки 140. Максимум одна подряд пустая строка.
+- Указатели/ссылки: `*`/`&` слева от имени (`int* p`, `const T& ref`); квалификатор — пробел
+  перед ним (`const int* const`).
+- **Функции и namespace** — `{` на новой строке (пустые тела тоже). **class/struct/enum/union/
+  if/for/while/switch** — `{` на той же строке. `else`/`catch` — на новой строке перед собой.
+  Тело лямбды — `{` на той же строке. Короткие блоки/if/циклы/лямбды/case/функции — **не**
+  сжимать в одну строку (кроме коротких enum). **if/for/while и т.п. всегда оборачивают тело в
+  скобки**; `case` внутри `switch` может без скобок для однострочных выражений.
 
 ```cpp
 void draw_frame(IDirect3DDevice9* device)
@@ -156,42 +297,17 @@ namespace tw::ui
 } // namespace tw::ui
 ```
 
-### Пробелы вокруг синтаксиса
-
-- **Нет пробела** перед `(` у `if`/`for`/`while`/`switch`/вызовов (`SpaceBeforeParens: Never`) → `if(x)`, `foo(a, b)`.
-- Нет пробелов внутри `()`, `[]`, `<>`, в условии (`SpacesInParentheses/SquareBrackets/Angles/ConditionalStatement: false`) → `if(a && b)`, `arr[i]`, `vector<int>`.
-- Нет пробела после C-cast и после `!` → `(int)x`, `!flag`.
-- Нет пробела после `template` → `template<typename T>`.
-- Есть пробел перед assignment (`=`, `+=`, …) и перед `:` у range-for → `for(auto& x : items)`.
-- Нет пробела перед `:` у `case` → `case 1:`.
-- Есть пробел перед `{` у braced-init (`SpaceBeforeCpp11BracedList: true`), но стиль списка — **не** «компактный Cpp11» (`Cpp11BracedListStyle: false`) → `params{ }`, элементы с пробелами как у классических списков.
-- Пробел перед `:` у наследования и ctor-initializer.
-
-### Переносы и упаковка аргументов
-
-- Аргументы и параметры **не** bin-pack'ать (`BinPackArguments/Parameters: false`): либо всё в одну строку (если влезает в 140), либо **каждый на своей**.
-- После открывающей `(` аргументы **не** выравнивать в столбец (`AlignAfterOpenBracket: DontAlign`) — обычный continuation indent 4.
-- Неassignment бинарные операторы — перенос **перед** оператором (`BreakBeforeBinaryOperators: NonAssignment`).
-- Тернарный оператор — перенос перед `?`/`:` (`BreakBeforeTernaryOperators: true`).
-- `template<...>` у деклараций — всегда с переносом после (`AlwaysBreakTemplateDeclarations: Yes`).
-- Concepts — break before (`BreakBeforeConceptDeclarations: true`).
-- Список наследования и ctor-initializer — `:` на предыдущей строке не оставлять: break **перед** `:` (`BreakInheritanceList` / `BreakConstructorInitializers: BeforeColon`).
-- Операнды выравнивать (`AlignOperands: Align`); последовательные присваивания/декларации/битфилды — **не** выравнивать; макросы — выравнивать (`AlignConsecutiveMacros: Consecutive`).
-- Escaped newlines в макросах — влево (`AlignEscapedNewlines: Left`).
-- Trailing comments выравнивать (`AlignTrailingComments`), в т.ч. через одну пустую строку.
-
-### Namespace, class, includes
-
-- Namespace **не** индентить содержимое (`NamespaceIndentation: None`); не схлопывать `a::b::c` в одну строку файла (`CompactNamespaces: false`).
-- Короткие namespace всё равно с newline после `{` (`ShortNamespaceLines: 0`).
-- Закрывающие комментарии namespace чинить автоматически (`FixNamespaceComments: true`) → `} // namespace tw::ui`.
-- Access modifiers (`public:` / …) с отступом −4 от членов (`AccessModifierOffset: -4`); пустая строка перед ними по логическим блокам (`EmptyLineBeforeAccessModifier: LogicalBlock`).
-- `case` и блоки case — с отступом (`IndentCaseLabels` / `IndentCaseBlocks: true`).
-- `#` директивы без доп. отступа (`IndentPPDirectives: None`).
-- `#include` и `using` — сортировать (`SortIncludes` / `SortUsingDeclarations: true`).
-- Комментарии можно переформатировать по ширине (`ReflowComments: true`).
-
-### Краткий чеклист «как выглядит локально»
+- Нет пробела перед `(` у `if`/`for`/`while`/`switch`/вызовов; нет пробелов внутри `()`/`[]`/`<>`;
+  нет пробела после C-cast и `!`; нет пробела после `template`. Есть пробел перед `=`/`+=`/... и
+  перед `:` у range-for и у наследования/ctor-initializer; нет пробела перед `:` у `case`. Пробел
+  перед `{` у braced-init, но список не «компактный Cpp11» (`params{ }`).
+- Аргументы/параметры **не** bin-pack'ать: либо всё в одну строку (если ≤140), либо каждый на
+  своей. После открывающей `(` — не выравнивать в столбец, обычный continuation indent 4.
+  Неassignment бинарные операторы и тернарник — перенос **перед** оператором/`?`/`:`. `template<...>`
+  у деклараций — всегда с переносом после. Список наследования/ctor-initializer — break перед `:`.
+- Namespace не индентит содержимое; `a::b::c` не схлопывать в одну строку. Закрывающие комментарии
+  namespace — автоматически (`} // namespace tw::ui`). Access modifiers — отступ −4 от членов.
+  `case`/блоки case — с отступом. `#`-директивы без доп. отступа. `#include`/`using` — сортировать.
 
 ```cpp
 template<typename TValue>
@@ -214,22 +330,25 @@ if(!ok || device == nullptr) {
 }
 ```
 
-Форматирование в IDE: clangd + `formatOnSave` (см. `.vscode/settings.json`).
-## Паттерны хуков
+Форматирование в IDE: clangd + `formatOnSave` (см. `TweakerPlugin/.vscode/settings.json`).
 
-- Оригиналы: `o_*` или `true_*`; хуки: `hk_*` / `*_hook`.
-- Типы оригиналов — `using ..._fn = ...` рядом с указателями.
-- Множественные Detours — через `tw::framework::detour::attach({...})`, не дублировать транзакционную логику.
+#### Паттерны хуков
+
+- Оригиналы: `o_*` или `true_*`; хуки: `hk_*` / `*_hook`. Типы оригиналов — `using ..._fn = ...`
+  рядом с указателями.
+- Множественные Detours — через `tw::framework::detour::attach({...})`, не дублировать
+  транзакционную логику.
 - D3D9 vtable resolve — cold-path bootstrap; не повторять в hot-path.
 - UI подключается callback'ом (`attach_ui_plugin`), не жёсткой зависимостью framework → ui.
 
-## CMake / сборка
+#### CMake / сборка
 
 - Только **x86** (32-bit). C++23, `/std:c++latest` на MSVC.
 - Новые `.cxx` — в `CMakeLists.txt` соответствующего подкаталога `src/`.
-- `target_include_directories(TweakerPlugin PRIVATE src)` — include-пути от `src/`: `"framework/foo.hxx"`, не относительные `../`.
+- `target_include_directories(TweakerPlugin PRIVATE src)` — include-пути от `src/`:
+  `"framework/foo.hxx"`, не относительные `../`.
 
-## Чего избегать
+#### Чего избегать
 
 - Exceptions, `throw`, тяжёлые `catch` в hot-path и в новом коде по умолчанию.
 - `#include` SDK/STL в заголовках проекта (кроме PCH).

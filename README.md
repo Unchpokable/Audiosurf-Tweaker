@@ -23,7 +23,7 @@
 
 
 ## Experimental Features*
-- Injectible DirectX in-game overlay that gives your acces to Skin Changer and Tweaker right in game without need to alt-tab to Tweaker
+- Injectible DirectX in-game overlay that gives your access to Skin Changer and Tweaker right in game without need to alt-tab to Tweaker. Opt-in via the "[Experimental] Enable in-game overlay" toggle in Settings.
 
 ==================
 - *Experimental features can cause some unexpected problems, expecially with fact that Audiosurf even without any third-party things have some technical problems. Im working on it

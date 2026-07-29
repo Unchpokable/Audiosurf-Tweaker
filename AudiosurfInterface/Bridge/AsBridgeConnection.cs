@@ -29,6 +29,7 @@ namespace AudiosurfInterface.Bridge
         public string ListenerWindowCaption { get; }
 
         private readonly string _pipeName;
+        private readonly bool _suppressAutoRegister;
         private readonly object _writeLock = new object();
 
         private Process _bridgeProcess;
@@ -37,9 +38,18 @@ namespace AudiosurfInterface.Bridge
         private CancellationTokenSource _lifetime;
         private bool _disposed;
 
-        public AsBridgeConnection(string listenerWindowCaption)
+        /// <param name="suppressAutoRegister">
+        /// Passes --no-quick-start to asbridge.exe: it still finds the game window and reports
+        /// WINDOW_FOUND as usual, but skips sending quickstartregisterwindow/registerlistenerwindow
+        /// itself on that transition. For a bridge instance the managed side is forcibly restarting
+        /// (AudiosurfHandle's registration watchdog, or a manual reset) - at that point Tweaker already
+        /// knows the previous instance's own attempt went unanswered and takes registration over
+        /// itself; a brand new connection with no history leaves this false.
+        /// </param>
+        public AsBridgeConnection(string listenerWindowCaption, bool suppressAutoRegister = false)
         {
             ListenerWindowCaption = listenerWindowCaption;
+            _suppressAutoRegister = suppressAutoRegister;
             _pipeName = $"asbridge-{Guid.NewGuid():N}";
         }
 
@@ -150,12 +160,18 @@ namespace AudiosurfInterface.Bridge
                 throw new FileNotFoundException("asbridge.exe not found next to the tweaker executable", bridgePath);
 
             var ownPid = Process.GetCurrentProcess().Id;
+            // Window title, full pipe path (asbridge passes it verbatim to CreateNamedPipeW), our PID
+            // for the bridge's orphan protection, and (only when this connection was constructed for
+            // a forced restart) the flag that skips the bridge's own automatic registration attempt -
+            // see the constructor and ASBridge/src/main.cxx's usage comment.
+            var arguments = $"{ListenerWindowCaption} \\\\.\\pipe\\{_pipeName} {ownPid}";
+            if (_suppressAutoRegister)
+                arguments += " --no-quick-start";
+
             _bridgeProcess = Process.Start(new ProcessStartInfo
             {
                 FileName = bridgePath,
-                // Window title, full pipe path (asbridge passes it verbatim to CreateNamedPipeW),
-                // and our PID for the bridge's orphan protection.
-                Arguments = $"{ListenerWindowCaption} \\\\.\\pipe\\{_pipeName} {ownPid}",
+                Arguments = arguments,
                 UseShellExecute = false,
                 CreateNoWindow = true
             });

@@ -44,6 +44,9 @@ DWORD audiosurf_pid = 0;
 bool audiosurf_last_known_valid = false;
 as::sys_string wnd_title_storage;
 
+// Set once at initialize() from the command line and never touched again - see service.hxx.
+bool suppress_auto_register = false;
+
 // Published snapshot of audiosurf_window's HWND for pipe_pump_thread to read without touching wnd_handle.
 std::atomic<HWND> cached_audiosurf_hwnd { nullptr };
 } // namespace
@@ -296,7 +299,7 @@ LRESULT process_wm_timer(HWND, WPARAM wparam, LPARAM)
                 : std::vector<std::string> { as::proto::rules::service_status_window_lost },
         });
 
-        if(currently_valid) {
+        if(currently_valid && !suppress_auto_register) {
             send_listener_registration(audiosurf_window.native(), audiosurf_pid);
         }
     }
@@ -457,9 +460,10 @@ void pipe_pump_loop(std::stop_token stop_token)
 
 namespace as::liveipc
 {
-void initialize(as::raw_sys_const_string wnd_title, as::raw_sys_const_string pipe_name)
+void initialize(as::raw_sys_const_string wnd_title, as::raw_sys_const_string pipe_name, bool should_suppress_auto_register)
 {
     wnd_title_storage = wnd_title;
+    suppress_auto_register = should_suppress_auto_register;
 
     as::wnd::initialize(wnd_title);
     as::wnd::set_handler_for(WM_COPYDATA, process_wm_copydata);

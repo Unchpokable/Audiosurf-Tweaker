@@ -47,10 +47,14 @@ std::jthread watch_parent_process(DWORD parent_pid)
 int wmain(int argc, wchar_t* argv[])
 {
     if(argc < 3) {
-        return 1; // usage: ASBridge.exe <window_title> <pipe_name> [parent_pid]
+        return 1; // usage: ASBridge.exe <window_title> <pipe_name> [parent_pid] [--no-quick-start]
     }
 
-    as::liveipc::initialize(argv[1], argv[2]);
+    // Set by the managed side when it is forcibly restarting an already-running bridge instance and
+    // taking listener registration over itself - see service.hxx's initialize().
+    const bool suppress_auto_register = argc >= 5 && ::_wcsicmp(argv[4], L"--no-quick-start") == 0;
+
+    as::liveipc::initialize(argv[1], argv[2], suppress_auto_register);
     as::wnd::set_handler_for(WM_CLOSE, process_wm_close);
 
     ::SetConsoleCtrlHandler(console_ctrl_handler, TRUE);

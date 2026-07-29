@@ -96,24 +96,24 @@ namespace AudiosurfInterface
         {
             lock (_lockObject)
             {
-                // A manual/full reinitialize is always a clean slate for the registration watchdog too -
-                // unlike the internal auto-restart in HandleRegistrationTimeout (WaitingFallback), which
-                // deliberately keeps _forceNormalRegistrationOnNextWindow/the WaitingAfterRestart timer
-                // alive across the swap by calling ReinitializeConnectionLocked directly instead of this.
                 CancelRegistrationWatchdogLocked();
                 _registrationStage = RegistrationStage.Idle;
-                _forceNormalRegistrationOnNextWindow = false;
                 _registrationGivenUp = false;
 
-                return ReinitializeConnectionLocked();
+                // A user-triggered reset is the same "Tweaker forcibly restarted an already-running
+                // bridge" situation as the watchdog's own WaitingFallback restart below - either way,
+                // from here on Tweaker owns registration itself rather than trusting a fresh bridge
+                // instance's quickstart-or-normal guess (see AsBridgeConnection's suppressAutoRegister).
+                return ReinitializeConnectionLocked(suppressAutoRegister: true);
             }
         }
 
-        // Swaps in a fresh AsBridgeConnection (new subprocess, new listener window caption). Does not
-        // touch registration-watchdog state - callers decide whether this is a full reset (public
-        // ReinitializeWndProcMessageService) or a mid-retry restart that must preserve it
-        // (HandleRegistrationTimeout's WaitingFallback case). Must be called with _lockObject held.
-        private bool ReinitializeConnectionLocked()
+        // Swaps in a fresh AsBridgeConnection (new subprocess, new listener window caption + pipe).
+        // suppressAutoRegister both is forwarded to asbridge.exe (--no-quick-start, see
+        // ASBridge/src/main.cxx) and sets _forceNormalRegistrationOnNextWindow so the managed side
+        // sends the plain registration itself on the next WINDOW_FOUND instead of waiting on a native
+        // attempt that will never come. Must be called with _lockObject held.
+        private bool ReinitializeConnectionLocked(bool suppressAutoRegister)
         {
             try
             {
@@ -126,7 +126,7 @@ namespace AudiosurfInterface
                 // or Start() throws, _connection must still be left pointing at a live object
                 // (the old one) rather than a disposed/half-wired one.
                 var caption = "AsMsgHandler_" + Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Substring(0, 5);
-                var next = new AsBridgeConnection(caption);
+                var next = new AsBridgeConnection(caption, suppressAutoRegister);
                 next.ReportReceived += OnReportReceived;
                 next.ConnectionLost += OnBridgeConnectionLost;
                 next.Diagnostic += OnConnectionDiagnostic;
@@ -139,6 +139,8 @@ namespace AudiosurfInterface
                 previous.ConnectionLost -= OnBridgeConnectionLost;
                 previous.Diagnostic -= OnConnectionDiagnostic;
                 previous.Dispose();
+
+                _forceNormalRegistrationOnNextWindow = suppressAutoRegister;
 
                 MessageServiceInitialized?.Invoke(this, EventArgs.Empty);
                 return true;
@@ -410,7 +412,10 @@ namespace AudiosurfInterface
 
                     case RegistrationStage.WaitingFallback:
                         Diagnostic?.Invoke(new AsBridgeDiagnostic(AsBridgeDiagnosticLevel.Warning, "Registration",
-                            "fallback registration unanswered, restarting asbridge.exe under a new listener window"));
+                            "fallback registration unanswered, restarting asbridge.exe under a new listener window with --no-quick-start"));
+                        // Set eagerly (ReinitializeConnectionLocked below sets it too, but only once the
+                        // async swap actually succeeds) so even a stray WINDOW_FOUND from the still-live
+                        // old connection in the meantime is treated as "Tweaker owns registration now".
                         _forceNormalRegistrationOnNextWindow = true;
                         // Safety net covering the whole restart: it also has to fire if the restart
                         // fails outright or the new bridge never finds the window at all, neither of
@@ -419,13 +424,14 @@ namespace AudiosurfInterface
                         // Disposing the old connection blocks on a subprocess kill + pipe pump join (up
                         // to ~2s) - run it off this callback so the watchdog timer isn't held. Goes
                         // through ReinitializeConnectionLocked (not the public
-                        // ReinitializeWndProcMessageService) so the _forceNormalRegistrationOnNextWindow
-                        // flag and the timer just started above survive the swap.
+                        // ReinitializeWndProcMessageService) so the timer just started above survives
+                        // the swap; suppressAutoRegister: true both skips the bridge's own automatic
+                        // attempt (--no-quick-start) and re-confirms the flag set above.
                         System.Threading.Tasks.Task.Run(() =>
                         {
                             lock (_lockObject)
                             {
-                                ReinitializeConnectionLocked();
+                                ReinitializeConnectionLocked(suppressAutoRegister: true);
                             }
                         });
                         break;
