@@ -42,6 +42,7 @@ namespace TweakerUI
                 var mainViewModel = new MainWindowViewModel();
                 AudiosurfHandle.Instance.Diagnostic += OnAudiosurfBridgeDiagnostic;
                 AudiosurfHandle.Instance.CommunicationFailed += OnAudiosurfCommunicationFailed;
+                AudiosurfHandle.Instance.ServiceSuspended += OnAudiosurfServiceSuspended;
                 ThemeService.Apply(SettingsProvider.IsDarkTheme);
 
                 desktop.MainWindow = new MainWindow
@@ -77,6 +78,16 @@ namespace TweakerUI
         {
             Dispatcher.UIThread.Post(() => ApplicationNotificationManager.Manager.ShowErrorWnd(
                 "Audiosurf connection broken", message));
+        }
+
+        // The interface stopped itself on purpose - currently only the overlay inject guard does this,
+        // on finding a stale plugin already sitting in the game process (see OverlayHelper). Raised
+        // from a background thread, hence the same Dispatcher.Post as above.
+        private void OnAudiosurfServiceSuspended(string reason)
+        {
+            _logger.Log("AudiosurfHandle", $"Service suspended: {reason}");
+            Dispatcher.UIThread.Post(() => ApplicationNotificationManager.Manager.ShowErrorWnd(
+                "Audiosurf service stopped", reason));
         }
 
         // The logger itself couldn't write to disk (restricted MyDocuments path, log dir deleted while

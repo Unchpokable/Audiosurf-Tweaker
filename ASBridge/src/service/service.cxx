@@ -11,6 +11,7 @@
 #include "window/wnd_handle.hxx"
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <mutex>
 #include <optional>
@@ -32,6 +33,13 @@ constexpr UINT k_liveness_timer_interval_ms = 30;
 
 constexpr std::size_t k_pipe_buffer_size = 4096;
 constexpr int k_pipe_poll_ms = 30;
+
+// Last-resort orphan protection, covering the cases the parent-process watcher in main.cxx cannot:
+// no parent pid on the command line at all (a bridge started by hand or by an older host build).
+// The managed side reconnects to the very same pipe name after a drop and retries every second
+// (AsBridgeConnection::RestartDelayMs), so a minute with nobody on the other end means nobody is
+// coming back.
+constexpr auto k_idle_exit_timeout = std::chrono::seconds(60);
 
 constexpr std::string_view k_tw_ovl_prefix = "TW_OVL ";
 } // namespace
@@ -409,11 +417,23 @@ void pipe_pump_loop(std::stop_token stop_token)
     // Accumulates across ERROR_MORE_DATA continuations - see the more_data branch below.
     std::vector<std::byte> message_accum;
 
+    auto last_client_seen = std::chrono::steady_clock::now();
+
     while(!stop_token.stop_requested()) {
         if(!pipe_channel->connected()) {
+            if(std::chrono::steady_clock::now() - last_client_seen > k_idle_exit_timeout) {
+                // Nobody has been on the pipe for a full minute - see k_idle_exit_timeout. WM_CLOSE
+                // rather than exiting the thread outright: teardown belongs to the window thread's
+                // shutdown path, which joins this one.
+                ::PostMessageW(as::wnd::get_window().native(), WM_CLOSE, 0, 0);
+                return;
+            }
+
             pipe_channel->accept(k_pipe_poll_ms);
             continue;
         }
+
+        last_client_seen = std::chrono::steady_clock::now();
 
         if(!pending_read) {
             pending_read = pipe_channel->read_to_overlapped(read_buffer);

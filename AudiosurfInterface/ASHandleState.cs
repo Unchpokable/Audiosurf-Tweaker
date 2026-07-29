@@ -15,11 +15,13 @@ namespace AudiosurfInterface
         private static string _asConnectedStatusColor = "#11ff00";
         private static string _asWaitForRegistratingColor = "#ffff00";
         private static string _asCommunicationBrokenColor = "#ff8800";
+        private static string _asSuspendedColor = "#888888";
 
         private static ASHandleState _connectedState;
         private static ASHandleState _authorizationAwaitingState;
         private static ASHandleState _notConnectedState;
         private static ASHandleState _communicationBrokenState;
+        private static ASHandleState _suspendedState;
 
         private ASHandleState(string message, string hexColor)
         {
@@ -69,6 +71,21 @@ namespace AudiosurfInterface
                 _communicationBrokenState = new ASHandleState(
                     "Audiosurf did not respond - restart the tweaker, the game, or your PC", _asCommunicationBrokenColor);
                 return _communicationBrokenState;
+            }
+        }
+
+        // Deliberately stopped, not failed: the interface has torn its own bridge down because
+        // something in the game process makes talking to it unsafe (a stale, unresponsive overlay
+        // plugin - see AudiosurfHandle.SuspendService). Unlike every other state, nothing recovers
+        // from this on its own; the user restarts the game and hits Reset.
+        public static ASHandleState Suspended
+        {
+            get
+            {
+                if (_suspendedState != null) return _suspendedState;
+                _suspendedState = new ASHandleState(
+                    "Service stopped - restart Audiosurf, then press Reset", _asSuspendedColor);
+                return _suspendedState;
             }
         }
     }

@@ -47,8 +47,21 @@ namespace AudiosurfInterface
         // a UI layer can surface it without knowing anything about the retry machinery.
         public event Action<string> CommunicationFailed;
 
+        // Fired when SuspendService tears the whole interface down on purpose. Carries the reason so a
+        // UI layer can tell the user what to do about it; separate from CommunicationFailed because
+        // that one is "we tried everything and the game stayed silent", while this one is "we stopped
+        // on purpose and are not going to retry".
+        public event Action<string> ServiceSuspended;
+
         public bool IsValid { get; private set; }
         public int GamePID { get; private set; }
+
+        /// <summary>
+        /// True between <see cref="SuspendService"/> and the next
+        /// <see cref="ReinitializeWndProcMessageService"/>. Nothing recovers this on its own - no
+        /// bridge process exists to notice a game restart.
+        /// </summary>
+        public bool IsSuspended { get; private set; }
 
         public string ListenerWindowCaption => _connection.ListenerWindowCaption;
 
@@ -100,12 +113,63 @@ namespace AudiosurfInterface
                 _registrationStage = RegistrationStage.Idle;
                 _registrationGivenUp = false;
 
-                // A user-triggered reset is the same "Tweaker forcibly restarted an already-running
-                // bridge" situation as the watchdog's own WaitingFallback restart below - either way,
-                // from here on Tweaker owns registration itself rather than trusting a fresh bridge
-                // instance's quickstart-or-normal guess (see AsBridgeConnection's suppressAutoRegister).
-                return ReinitializeConnectionLocked(suppressAutoRegister: true);
+                // Resetting out of a suspension is the one case where the fresh bridge deserves its
+                // own quickstart-or-normal guess: there is no unanswered attempt behind it (the whole
+                // connection was torn down), and the user has just restarted the game - which is
+                // precisely the situation quickstartregisterwindow exists for.
+                var wasSuspended = IsSuspended;
+                IsSuspended = false;
+
+                // Otherwise a user-triggered reset is the same "Tweaker forcibly restarted an
+                // already-running bridge" situation as the watchdog's own WaitingFallback restart below -
+                // either way, from here on Tweaker owns registration itself rather than trusting a fresh
+                // bridge instance's guess (see AsBridgeConnection's suppressAutoRegister).
+                return ReinitializeConnectionLocked(suppressAutoRegister: !wasSuspended);
             }
+        }
+
+        /// <summary>
+        /// Stops the whole interface: kills the bridge subprocess, drops queued commands and settles
+        /// into <see cref="ASHandleState.Suspended"/>, from which only an explicit
+        /// <see cref="ReinitializeWndProcMessageService"/> recovers. Meant for states the game process
+        /// itself is implicated in - currently a stale, unresponsive overlay plugin, where a plugin
+        /// rotten enough to stop answering says nothing good about the rest of that game process
+        /// either, so the honest move is to stop talking to it and have the user restart it.
+        /// Blocking: disposing the connection kills a subprocess and joins the pump thread (up to
+        /// ~2s), so call it off the UI thread.
+        /// </summary>
+        public void SuspendService(string reason)
+        {
+            lock (_lockObject)
+            {
+                if (IsSuspended)
+                    return;
+
+                IsSuspended = true;
+                CancelRegistrationWatchdogLocked();
+                _registrationStage = RegistrationStage.Idle;
+                _registrationGivenUp = false;
+                _forceNormalRegistrationOnNextWindow = false;
+
+                IsValid = false;
+                GamePID = 0;
+
+                // Anything queued targets a game session that is about to be restarted; flushing it
+                // later would replay stale state onto a fresh one.
+                _queuedCommands.Clear();
+                _queuedOverlayCommands.Clear();
+
+                _connection.ReportReceived -= OnReportReceived;
+                _connection.ConnectionLost -= OnBridgeConnectionLost;
+                _connection.Diagnostic -= OnConnectionDiagnostic;
+                _connection.Dispose();
+
+                _currentState = ASHandleState.Suspended;
+                StateChanged?.Invoke(this, EventArgs.Empty);
+            }
+
+            Diagnostic?.Invoke(new AsBridgeDiagnostic(AsBridgeDiagnosticLevel.Error, "SuspendService", reason));
+            ServiceSuspended?.Invoke(reason);
         }
 
         // Swaps in a fresh AsBridgeConnection (new subprocess, new listener window caption + pipe).
@@ -174,6 +238,12 @@ namespace AudiosurfInterface
         {
             lock (_lockObject)
             {
+                // Dropped, not queued: a suspension has no end date of its own, so a queue would just
+                // grow until the user resets - and by then it would be replaying commands aimed at the
+                // game session that caused the suspension in the first place.
+                if (IsSuspended)
+                    return;
+
                 if (_currentState != ASHandleState.Connected)
                 {
                     if (message == ReloadTexturesCommand) return; //No need to enqueue reloadtextures command
@@ -194,6 +264,9 @@ namespace AudiosurfInterface
         {
             lock (_lockObject)
             {
+                if (IsSuspended) // see Command() above
+                    return;
+
                 if (_currentState != ASHandleState.Connected)
                 {
                     _queuedOverlayCommands.Enqueue(overlay_payload);

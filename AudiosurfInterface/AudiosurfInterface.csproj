@@ -1,3 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <ItemGroup>
+    <!-- BridgeProcessGuard's process-selection logic is internal (it is not part of the surface the
+         UI consumes) but is the one piece of the multi-instance protection that can be unit tested
+         at all - everything around it needs real processes. -->
+    <InternalsVisibleTo Include="AudiosurfInterface.Tests" />
+  </ItemGroup>
+
 </Project>

@@ -33,6 +33,11 @@ std::jthread watch_parent_process(DWORD parent_pid)
 {
     HANDLE parent = ::OpenProcess(SYNCHRONIZE, FALSE, parent_pid);
     if(parent == nullptr) {
+        // Same-user, same-session SYNCHRONIZE access does not get refused - the realistic cause is
+        // that the parent is already gone, which makes this process an orphan the moment it started.
+        // Returning an idle watcher here used to leave exactly the strays this guard exists to
+        // prevent (the managed side now has to kill them on its next spawn); shut down instead.
+        ::PostMessageW(as::wnd::get_window().native(), WM_CLOSE, 0, 0);
         return {};
     }
 

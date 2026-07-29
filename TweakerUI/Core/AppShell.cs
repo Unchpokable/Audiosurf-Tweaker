@@ -10,6 +10,11 @@ namespace TweakerUI.Core
     // through every view model constructor.
     internal static class AppShell
     {
+        // Single source of truth for the main window's caption: MainWindow's constructor assigns it
+        // over whatever the XAML declared, and SingleInstanceGuard looks the running instance up by
+        // it. Two literals would silently drift apart and break the focus handover, not the build.
+        public const string MainWindowTitle = "Audiosurf Tweaker";
+
         public static Window MainWindow =>
             Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
                 ? desktop.MainWindow

@@ -153,11 +153,22 @@ namespace AudiosurfInterface.Bridge
             if (_bridgeProcess != null && !_bridgeProcess.HasExited)
                 return;
 
+            // Dropped from the owned set as soon as it is known dead: Windows recycles PIDs, and a
+            // stale entry would make the guard spare a genuinely foreign bridge that later reused it.
+            if (_bridgeProcess != null)
+                BridgeProcessGuard.ForgetOwned(_bridgeProcess.Id);
+
             _bridgeProcess?.Dispose();
 
             var bridgePath = GetBridgePath();
             if (!File.Exists(bridgePath))
                 throw new FileNotFoundException("asbridge.exe not found next to the tweaker executable", bridgePath);
+
+            // Spawn point is the only place this has to happen, and it covers every path that produces
+            // a bridge: first connection, the registration watchdog's forced restart, and the manual
+            // reset. Anything already running that this process did not spawn is a leftover nobody can
+            // ever talk to again (see BridgeProcessGuard).
+            BridgeProcessGuard.KillForeignBridges(d => Diagnostic?.Invoke(d));
 
             var ownPid = Process.GetCurrentProcess().Id;
             // Window title, full pipe path (asbridge passes it verbatim to CreateNamedPipeW), our PID
@@ -175,6 +186,9 @@ namespace AudiosurfInterface.Bridge
                 UseShellExecute = false,
                 CreateNoWindow = true
             });
+
+            if (_bridgeProcess != null)
+                BridgeProcessGuard.RegisterOwned(_bridgeProcess.Id);
         }
 
         private void ConnectPipe(CancellationToken token)
@@ -259,6 +273,9 @@ namespace AudiosurfInterface.Bridge
             {
                 // Already exited or inaccessible - nothing to clean up.
             }
+
+            if (_bridgeProcess != null)
+                BridgeProcessGuard.ForgetOwned(_bridgeProcess.Id);
 
             _bridgeProcess?.Dispose();
         }

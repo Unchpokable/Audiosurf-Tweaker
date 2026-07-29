@@ -25,7 +25,18 @@ namespace TweakerUI.Core
         private const string NotifyTweakPrefix = "NOTIFY_TWEAK ";
         private const string NotifySkinPrefix = "NOTIFY_SKIN ";
 
+        // Must match TweakerPlugin's claim_single_instance() (src/plugin/load.cxx) exactly, including
+        // the deliberate absence of any version or path component - the point is that a newer host can
+        // still recognise an older, possibly renamed plugin sitting in the game.
+        private const string OverlayInstanceMutexPrefix = @"Local\AudiosurfTweaker.Overlay.";
+
         private static readonly TimeSpan HandshakeTimeout = TimeSpan.FromSeconds(5);
+
+        // Shorter than the real handshake: this one runs against a process where nothing was detected,
+        // so the expected outcome is silence, and every millisecond of it delays a cold-start
+        // injection. Long enough to cover a WM_COPYDATA round trip through asbridge on a loaded machine.
+        private static readonly TimeSpan ProbeTimeout = TimeSpan.FromMilliseconds(1500);
+
         private static readonly Logger _logger = new Logger();
         private static readonly object _lock = new object();
 
@@ -129,22 +140,91 @@ namespace TweakerUI.Core
                 return;
             }
 
-            var alreadyLoaded = await Task.Run(() => IsPluginLoaded(pid, pluginPath));
-            if (!alreadyLoaded && !await RunInjectorAsync(injectorPath, pid, pluginPath))
+            // Inject guard (Docs/Internal/overlay-protocol.md, "Защита от повторного инжекта"). A
+            // second copy of the plugin in one process means a second set of Detours over EndScene/
+            // CallChannel - a crash, not a degraded overlay - so injection is the last resort, only
+            // reached once nothing answers and nothing is detectably loaded.
+            var presence = await Task.Run(() => DetectLoadedPlugin(pid, pluginPath));
+
+            if (presence.IsPresent)
+            {
+                // Adopt rather than inject. HANDSHAKE_BEGIN doubles as the adoption mechanism: it makes
+                // the plugin re-resolve the bridge window by caption, which re-points a plugin left
+                // over from a previous Tweaker session (or from a bridge we have since restarted) at
+                // our current asbridge instance.
+                if (await BeginHandshakeAsync(HandshakeTimeout))
+                    return;
+
+                await SuspendForStalePluginAsync(presence.Detail);
+                return;
+            }
+
+            // Detection can prove presence but never absence: a plugin built before the instance mutex
+            // existed and renamed on disk leaves nothing this side can see. One short probe against an
+            // otherwise-clean process is the difference between adopting such a plugin and stacking a
+            // second set of hooks on top of it.
+            if (await BeginHandshakeAsync(ProbeTimeout))
+            {
+                _logger.Log("OverlayHelper",
+                    "An undetected but responsive overlay plugin answered the probe - adopted it instead of injecting.");
+                return;
+            }
+
+            if (!await RunInjectorAsync(injectorPath, pid, pluginPath))
                 return;
 
-            await BeginHandshakeAsync();
+            await BeginHandshakeAsync(HandshakeTimeout);
         }
 
-        private static bool IsPluginLoaded(int pid, string pluginPath)
+        /// <summary>
+        /// Three independent presence signals, cheapest first. The instance mutex is the only
+        /// rename-proof one and is what a current plugin build always publishes; the two module checks
+        /// stay as the fallback for plugins built before it existed.
+        /// </summary>
+        private static PluginPresence DetectLoadedPlugin(int pid, string expectedPluginPath)
         {
+            if (IsOverlayInstanceMutexPresent(pid, out var mutexDetail))
+                return new PluginPresence(true, mutexDetail);
+
+            return DetectPluginModule(pid, expectedPluginPath);
+        }
+
+        private static bool IsOverlayInstanceMutexPresent(int pid, out string detail)
+        {
+            detail = null;
+
+            var handle = OpenMutex(SYNCHRONIZE, false, OverlayInstanceMutexPrefix + pid.ToString());
+            if (handle != IntPtr.Zero)
+            {
+                CloseHandle(handle);
+                detail = "its single-instance mutex is held in the game process";
+                return true;
+            }
+
+            // Distinguishing the two failures matters: "no such object" is a genuine absence, while
+            // "access denied" means the object exists and belongs to a context this process cannot
+            // touch. Treating the latter as absence would inject a second copy on top of a live one.
+            var error = Marshal.GetLastWin32Error();
+            if (error == ERROR_ACCESS_DENIED)
+            {
+                detail = "its single-instance mutex exists but is not accessible from this process";
+                return true;
+            }
+
+            return false;
+        }
+
+        private static PluginPresence DetectPluginModule(int pid, string expectedPluginPath)
+        {
+            var expectedFileName = Path.GetFileName(expectedPluginPath);
+
             try
             {
                 using var process = Process.GetProcessById(pid);
 
                 var modules = new IntPtr[1024];
                 if (!EnumProcessModules(process.Handle, modules, (uint)(modules.Length * IntPtr.Size), out var bytesNeeded))
-                    return false;
+                    return PluginPresence.None;
 
                 var moduleCount = (int)(bytesNeeded / IntPtr.Size);
                 var builder = new StringBuilder(1024);
@@ -152,11 +232,18 @@ namespace TweakerUI.Core
                 for (var i = 0; i < moduleCount; i++)
                 {
                     builder.Clear();
-                    if (GetModuleFileNameEx(process.Handle, modules[i], builder, (uint)builder.Capacity) > 0
-                        && string.Equals(builder.ToString(), pluginPath, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return true;
-                    }
+                    if (GetModuleFileNameEx(process.Handle, modules[i], builder, (uint)builder.Capacity) == 0)
+                        continue;
+
+                    var modulePath = builder.ToString();
+                    if (string.Equals(modulePath, expectedPluginPath, StringComparison.OrdinalIgnoreCase))
+                        return new PluginPresence(true, "it is loaded from this Tweaker's own folder");
+
+                    // A copy from another install (or an older Tweaker's Plugins folder) is still a
+                    // plugin holding the same hooks - the path differing does not make it safe to add
+                    // a second one.
+                    if (string.Equals(Path.GetFileName(modulePath), expectedFileName, StringComparison.OrdinalIgnoreCase))
+                        return new PluginPresence(true, $"a copy is loaded from '{modulePath}'");
                 }
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
@@ -164,7 +251,28 @@ namespace TweakerUI.Core
                 // Process already exited between GamePID being read and this check running.
             }
 
-            return false;
+            return PluginPresence.None;
+        }
+
+        /// <summary>
+        /// A plugin that is demonstrably loaded yet will not answer a handshake is a plugin whose hooks
+        /// are already live inside the game with no way to reach them. It is not just the overlay that
+        /// is suspect at that point - the plugin sits on the game's render loop, WndProc and input - so
+        /// the interface stops entirely rather than keep driving a process in that state.
+        /// </summary>
+        private static async Task SuspendForStalePluginAsync(string detail)
+        {
+            var reason =
+                $"A Tweaker overlay plugin is already loaded into Audiosurf ({detail}), but it does not respond. " +
+                "The Audiosurf service has been stopped, because a plugin in that state leaves the rest of the game " +
+                "process suspect too. Restart Audiosurf, then press Reset next to the connection status.";
+
+            _logger.Log("OverlayHelper", reason);
+
+            // SuspendService kills the bridge subprocess and joins its pump thread - up to ~2s of
+            // blocking, and this continuation runs on the UI thread (same reason MainWindowViewModel's
+            // ResetBridge command offloads its own call).
+            await Task.Run(() => AudiosurfHandle.Instance.SuspendService(reason));
         }
 
         private static async Task<bool> RunInjectorAsync(string injectorPath, int pid, string pluginPath)
@@ -202,7 +310,12 @@ namespace TweakerUI.Core
             }
         }
 
-        private static async Task BeginHandshakeAsync()
+        /// <summary>
+        /// Sends HANDSHAKE_BEGIN and waits for the ack. Doubles as the liveness probe of the whole
+        /// inject guard, hence the caller-supplied timeout: a probe against a process believed to be
+        /// clean should not cost the full handshake budget. Returns whether the channel came up.
+        /// </summary>
+        private static async Task<bool> BeginHandshakeAsync(TimeSpan timeout)
         {
             var tcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             lock (_lock)
@@ -210,19 +323,20 @@ namespace TweakerUI.Core
 
             AudiosurfHandle.Instance.OverlayCommand($"HANDSHAKE_BEGIN {AudiosurfHandle.Instance.ListenerWindowCaption}");
 
-            var completed = await Task.WhenAny(tcs.Task, Task.Delay(HandshakeTimeout));
+            var completed = await Task.WhenAny(tcs.Task, Task.Delay(timeout));
             if (completed != tcs.Task)
             {
-                _logger.Log("OverlayHelper", "Timed out waiting for HANDSHAKE_ACK from TweakerPlugin.");
+                _logger.Log("OverlayHelper", $"No HANDSHAKE_ACK from TweakerPlugin within {timeout.TotalMilliseconds:F0} ms.");
                 lock (_lock)
                     _handshakeAckTcs = null;
-                return;
+                return false;
             }
 
             lock (_lock)
                 _ready = true;
 
             OverlayReady?.Invoke(null, EventArgs.Empty);
+            return true;
         }
 
         private static void OnOverlayMessageReceived(object sender, string content)
@@ -263,12 +377,31 @@ namespace TweakerUI.Core
             }
         }
 
+        private const uint SYNCHRONIZE = 0x00100000;
+        private const int ERROR_ACCESS_DENIED = 5;
+
         [DllImport("psapi.dll")]
         private static extern bool EnumProcessModules(IntPtr hProcess, IntPtr[] lphModule, uint cb, out uint lpcbNeeded);
 
         [DllImport("psapi.dll", CharSet = CharSet.Unicode)]
         private static extern uint GetModuleFileNameEx(IntPtr hProcess, IntPtr hModule, StringBuilder lpBaseName, uint nSize);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, EntryPoint = "OpenMutexW", SetLastError = true)]
+        private static extern IntPtr OpenMutex(uint desiredAccess, bool inheritHandle, string name);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern bool CloseHandle(IntPtr handle);
     }
 
     internal readonly record struct TweakRequestedEventArgs(string WireName, bool Enabled);
+
+    /// <summary>
+    /// Outcome of the inject guard's detection pass. <see cref="Detail"/> is the human-readable half -
+    /// it ends up verbatim in the message the user sees when a stale plugin forces a suspension, so
+    /// they can tell "your own copy went stale" apart from "something else's copy is in there".
+    /// </summary>
+    internal readonly record struct PluginPresence(bool IsPresent, string Detail)
+    {
+        internal static PluginPresence None => new PluginPresence(false, null);
+    }
 }

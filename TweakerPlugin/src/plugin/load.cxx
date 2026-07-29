@@ -12,6 +12,42 @@
 
 #include "ui/ui_main.hxx"
 
+namespace
+{
+// Overlay single-instance guard, the in-process half of the host's inject guard (see
+// TweakerUI/Core/OverlayHelper.cs and Docs/Internal/overlay-protocol.md). The name is deliberately
+// free of any version or path component: a newer host must be able to detect an older plugin
+// sitting in the game, and the file may well have been renamed. Scoped by the host process id so
+// the answer is about *this* game process specifically.
+//
+// The handle is never released - it dies with the game process, which is exactly the lifetime being
+// guarded, and is the same self-cleaning property the host-side guards rely on.
+HANDLE g_instance_mutex = nullptr;
+
+bool claim_single_instance()
+{
+    std::wstring name = L"Local\\AudiosurfTweaker.Overlay.";
+    name += std::to_wstring(::GetCurrentProcessId());
+
+    g_instance_mutex = ::CreateMutexW(nullptr, FALSE, name.c_str());
+    if(g_instance_mutex == nullptr) {
+        // Cannot prove presence either way. Carrying on is the lesser evil: the host only ever
+        // reaches an injection after its own handshake probe went unanswered, so a live first copy
+        // would already have stopped it from getting here.
+        TW_LOG_WARNING("load: CreateMutexW failed ({}) - proceeding without the single-instance guard", ::GetLastError());
+        return true;
+    }
+
+    if(::GetLastError() == ERROR_ALREADY_EXISTS) {
+        ::CloseHandle(g_instance_mutex);
+        g_instance_mutex = nullptr;
+        return false;
+    }
+
+    return true;
+}
+} // namespace
+
 namespace tw::plugin
 {
 void load_thread(void* module_handle)
@@ -22,6 +58,16 @@ void load_thread(void* module_handle)
     // logged before the sinks exist.
     diagnostics::initialize();
     TW_LOG_INFO("load: bootstrap thread started, module={}", module_handle);
+
+    // Before anything at all is wired up: a second copy in the same process would install a second
+    // set of Detours over EndScene/CallChannel and a second WndProc subscription, which is a crash,
+    // not a degraded overlay. Bailing out here leaves this copy mapped but completely inert - no
+    // hooks, no threads, no state - rather than risking FreeLibraryAndExitThread from the very
+    // thread the injector is waiting on.
+    if(!claim_single_instance()) {
+        TW_LOG_WARNING("load: another TweakerPlugin instance is already live in this process - this copy stays inert");
+        return;
+    }
 
     if(!tw::resource::initialize(globals::module_handle)) {
         TW_LOG_ERROR("load: resource::initialize failed - fonts and icons will be missing");

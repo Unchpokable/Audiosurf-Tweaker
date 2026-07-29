@@ -10,6 +10,10 @@ namespace TweakerUI.Views
         public MainWindow()
         {
             InitializeComponent();
+            // Overrides the XAML-declared Title so the caption SingleInstanceGuard searches for can
+            // only ever come from one place (see AppShell.MainWindowTitle); the XAML keeps its own
+            // literal purely so the designer preview still shows a caption.
+            Title = AppShell.MainWindowTitle;
             Opened += OnOpened;
         }
 
