@@ -20,10 +20,17 @@ void subscribe(UINT msg, handler_fn handler) noexcept;
 // needs to see all input regardless of message type).
 void subscribe_all(handler_fn handler) noexcept;
 
-// Hooks `hwnd` via SetWindowLongPtrW(GWLP_WNDPROC). If a different window is already hooked, it is
-// restored first. No-op if `hwnd` is already the currently hooked window.
+// Hooks `hwnd` via SetWindowLongPtr(GWLP_WNDPROC), using the A or W variant matching the window's
+// own encoding. If a different window is already hooked, it is uninstalled first. No-op for a null
+// `hwnd`, or when `hwnd` is already the hooked window - including when something has since
+// subclassed on top of us, where re-hooking would build a WndProc cycle (see install()).
 void install(HWND hwnd) noexcept;
 
-// Restores the original WndProc on the currently hooked window, if any.
+// Takes the hook back out of the currently hooked window, if any.
+//
+// Best-effort by design: if someone subclassed on top of us after install(), the hook cannot be
+// removed without cutting them out of the chain, so it is deliberately left in place and this
+// module keeps considering that window hooked - a subsequent install() on it stays a no-op. Callers
+// therefore cannot assume uninstall() detaches anything, only that the state stays consistent.
 void uninstall() noexcept;
 } // namespace tw::framework::wndproc

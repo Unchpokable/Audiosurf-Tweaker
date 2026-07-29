@@ -267,6 +267,8 @@ bool handle_copydata(HWND /*hwnd*/, UINT /*msg*/, WPARAM /*wparam*/, LPARAM lpar
         data.pop_back();
     }
 
+    TW_LOG_DEBUG("Received WM_COPYDATA: {}", data);
+
     const bool is_tw_ovl =
         data.size() >= k_tw_ovl_prefix.size() && std::equal(k_tw_ovl_prefix.begin(), k_tw_ovl_prefix.end(), data.begin());
 

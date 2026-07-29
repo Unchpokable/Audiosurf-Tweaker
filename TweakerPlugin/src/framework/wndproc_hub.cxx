@@ -69,12 +69,33 @@ void subscribe_all(handler_fn handler) noexcept
 
 void install(HWND hwnd) noexcept
 {
+    if(hwnd == nullptr) {
+        return;
+    }
+
+    // hub_wndproc is already somewhere in this window's proc chain - not necessarily as its topmost
+    // proc, see uninstall(). Re-running SetWindowLongPtr here would capture whoever subclassed
+    // *above* us as our new "original" and start calling into them, while they still hold
+    // hub_wndproc as *their* original: a closed WndProc cycle that stack-overflows on the very next
+    // message. That is not a corner case - going exclusive-fullscreen makes d3d9.dll subclass the
+    // focus window, and the d3d9 device swap that follows drives unbind_device -> bind_device, i.e.
+    // uninstall() then install() on the exact same HWND.
     if(hwnd == g_hooked_hwnd) {
         return;
     }
 
     if(g_hooked_hwnd != nullptr) {
         uninstall();
+
+        // uninstall() leaves g_hooked_hwnd set when it could not take us back out of the chain.
+        // We are about to repoint our single g_original_wndproc at the new window, so messages
+        // still reaching us through the old window's chain will be forwarded to the wrong proc.
+        // Nothing sane can be done about it from a single-window hub; record it and move on.
+        if(g_hooked_hwnd != nullptr) {
+            TW_LOG_WARNING("wndproc: moving hook {} -> {} while still stuck in the old window's chain; its forwarding is now wrong",
+                static_cast<const void*>(g_hooked_hwnd),
+                static_cast<const void*>(hwnd));
+        }
     }
 
     // Match the window's native ANSI/Unicode-ness. Installing a Unicode proc (SetWindowLongPtrW)
@@ -87,7 +108,19 @@ void install(HWND hwnd) noexcept
     const LONG_PTR previous = g_hooked_unicode ? ::SetWindowLongPtrW(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&hub_wndproc))
                                                : ::SetWindowLongPtrA(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&hub_wndproc));
 
-    g_original_wndproc = reinterpret_cast<wndproc_fn>(previous);
+    // Last line of defence against forwarding to ourselves: the guard above only covers loops we
+    // can see in our own bookkeeping, this one catches a stale hub_wndproc left on the window by
+    // bookkeeping that already went wrong. Keeping it as the proc is harmless - we are it - but
+    // storing it as the original would recurse, so chain to DefWindowProc instead.
+    if(previous == reinterpret_cast<LONG_PTR>(&hub_wndproc)) {
+        TW_LOG_WARNING("wndproc: hwnd={} already had hub_wndproc installed, forwarding to DefWindowProc to avoid a proc cycle",
+            static_cast<const void*>(hwnd));
+        g_original_wndproc = nullptr;
+    }
+    else {
+        g_original_wndproc = reinterpret_cast<wndproc_fn>(previous);
+    }
+
     g_hooked_hwnd = hwnd;
 
     TW_LOG_INFO("wndproc: hooked hwnd={} (unicode={}, previous proc={}, {} msg subs, {} catch-all subs)",
@@ -104,32 +137,47 @@ void uninstall() noexcept
         return;
     }
 
-    if(g_original_wndproc != nullptr) {
-        // Only unhook if we are still the window's current proc. Anyone who subclassed after us
-        // (Steam overlay, RivaTuner, another injected tool) chained to hub_wndproc and holds it as
-        // *their* "original" - blindly writing our saved pointer back would erase them from the
-        // chain and leave them calling into a proc nobody points at anymore. Leaving hub_wndproc
-        // installed is the safe direction: it keeps forwarding, and the plugin has no unload path
-        // that would turn it into a dangling address (see CLAUDE.md).
-        const LONG_PTR current = g_hooked_unicode ? ::GetWindowLongPtrW(g_hooked_hwnd, GWLP_WNDPROC)
-                                                  : ::GetWindowLongPtrA(g_hooked_hwnd, GWLP_WNDPROC);
+    // Only unhook if we are still the window's current proc. Anyone who subclassed after us (Steam
+    // overlay, RivaTuner, d3d9.dll on an exclusive-fullscreen device) chained to hub_wndproc and
+    // holds it as *their* "original" - blindly writing our saved pointer back would erase them from
+    // the chain and leave them calling into a proc nobody points at anymore. Leaving hub_wndproc
+    // installed is the safe direction: it keeps forwarding, and the plugin has no unload path that
+    // would turn it into a dangling address (see CLAUDE.md).
+    //
+    // Note this is read through the same A/W family we installed with, so it round-trips as the raw
+    // function address rather than an opaque thunk handle - the comparison below is meaningful.
+    const LONG_PTR current = g_hooked_unicode ? ::GetWindowLongPtrW(g_hooked_hwnd, GWLP_WNDPROC)
+                                              : ::GetWindowLongPtrA(g_hooked_hwnd, GWLP_WNDPROC);
 
-        if(current != reinterpret_cast<LONG_PTR>(&hub_wndproc)) {
-            TW_LOG_WARNING("wndproc: hwnd={} was subclassed by someone else after us (current proc={}), leaving our hook in place",
-                static_cast<const void*>(g_hooked_hwnd),
-                reinterpret_cast<const void*>(current));
-        }
-        else if(g_hooked_unicode) {
-            // Restore through the same A/W family used to install, so the window's proc-encoding
-            // flag ends up exactly as it started.
-            ::SetWindowLongPtrW(g_hooked_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(g_original_wndproc));
-            TW_LOG_INFO("wndproc: restored original proc on hwnd={}", static_cast<const void*>(g_hooked_hwnd));
-        }
-        else {
-            ::SetWindowLongPtrA(g_hooked_hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(g_original_wndproc));
-            TW_LOG_INFO("wndproc: restored original proc on hwnd={}", static_cast<const void*>(g_hooked_hwnd));
-        }
+    if(current != reinterpret_cast<LONG_PTR>(&hub_wndproc)) {
+        // Bail out *without* clearing the bookkeeping. hub_wndproc is still live in this window's
+        // chain and is still being called, so it must keep forwarding to g_original_wndproc, and
+        // install() must keep treating this HWND as already hooked. Clearing here was what turned
+        // the next install() on the same window into a hub_wndproc -> subclasser -> hub_wndproc
+        // cycle (unbounded recursion, stack overflow on the first message after going fullscreen),
+        // and, on its own, silently rerouted every message to DefWindowProc.
+        TW_LOG_WARNING("wndproc: hwnd={} was subclassed by someone else after us (current proc={}), leaving our hook in place",
+            static_cast<const void*>(g_hooked_hwnd),
+            reinterpret_cast<const void*>(current));
+        return;
     }
+
+    // We are the topmost proc, so we can safely drop out. Restore through the same A/W family used
+    // to install, so the window's proc-encoding flag ends up exactly as it started. A null original
+    // means install() never captured one; hand the window back to DefWindowProc rather than leaving
+    // hub_wndproc behind as an untracked proc that the next install() would have to untangle.
+    const LONG_PTR restore = g_original_wndproc != nullptr
+        ? reinterpret_cast<LONG_PTR>(g_original_wndproc)
+        : reinterpret_cast<LONG_PTR>(g_hooked_unicode ? &::DefWindowProcW : &::DefWindowProcA);
+
+    if(g_hooked_unicode) {
+        ::SetWindowLongPtrW(g_hooked_hwnd, GWLP_WNDPROC, restore);
+    }
+    else {
+        ::SetWindowLongPtrA(g_hooked_hwnd, GWLP_WNDPROC, restore);
+    }
+
+    TW_LOG_INFO("wndproc: restored proc {} on hwnd={}", reinterpret_cast<const void*>(restore), static_cast<const void*>(g_hooked_hwnd));
 
     g_hooked_hwnd = nullptr;
     g_original_wndproc = nullptr;
