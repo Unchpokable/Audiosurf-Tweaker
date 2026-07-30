@@ -24,6 +24,7 @@ std::mutex g_state_mutex;
 std::uint32_t g_generation = 0;
 
 std::array<std::uint8_t, tw::ui::overlay_state::k_tweak_count> g_tweak_enabled {};
+std::array<std::uint8_t, tw::ui::overlay_state::k_tweak_count> g_tweak_quick_player {};
 std::vector<std::string> g_skin_names;
 std::string g_current_skin_name;
 
@@ -143,14 +144,16 @@ const std::array<tweak_id, k_tweak_count>& all_tweak_ids() noexcept
     return k_ids;
 }
 
-void set_tweak(tweak_id id, bool enabled)
+void set_tweak(tweak_id id, bool enabled, bool quick_player)
 {
     if(id == tweak_id::unknown) {
         return;
     }
 
     std::lock_guard lock(g_state_mutex);
-    g_tweak_enabled[tweak_index(id)] = enabled ? 1U : 0U;
+    const std::size_t index = tweak_index(id);
+    g_tweak_enabled[index] = enabled ? 1U : 0U;
+    g_tweak_quick_player[index] = quick_player ? 1U : 0U;
     ++g_generation;
 }
 
@@ -172,6 +175,7 @@ void reset()
 {
     std::lock_guard lock(g_state_mutex);
     g_tweak_enabled = {};
+    g_tweak_quick_player = {};
     g_skin_names.clear();
     g_current_skin_name.clear();
     ++g_generation;
@@ -187,6 +191,7 @@ bool refresh(cache& out)
     const bool changed = g_generation != out.seen_generation;
     if(changed) {
         out.tweak_enabled = g_tweak_enabled;
+        out.tweak_quick_player = g_tweak_quick_player;
         out.skin_names = g_skin_names;
         out.current_skin_name = g_current_skin_name;
         out.seen_generation = g_generation;
@@ -202,5 +207,14 @@ bool is_tweak_enabled(const cache& snapshot, tweak_id id) noexcept
     }
 
     return snapshot.tweak_enabled[tweak_index(id)] != 0U;
+}
+
+bool is_tweak_quick_player(const cache& snapshot, tweak_id id) noexcept
+{
+    if(id == tweak_id::unknown) {
+        return false;
+    }
+
+    return snapshot.tweak_quick_player[tweak_index(id)] != 0U;
 }
 } // namespace tw::ui::overlay_state

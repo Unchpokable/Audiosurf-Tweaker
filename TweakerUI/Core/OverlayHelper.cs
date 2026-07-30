@@ -45,18 +45,17 @@ namespace TweakerUI.Core
         private static TaskCompletionSource<bool> _handshakeAckTcs;
 
         /// <summary>
-        /// Fired once the L3 handshake is acked and the channel is ready for live pushes -
-        /// SkinChangerViewModel/TweakerViewModel subscribe to push their current state as the
-        /// initial snapshot, the same methods they call afterwards on every live change.
+        /// Fired once the L3 handshake is acked and the channel is ready for live pushes.
+        /// OverlayHelper pushes the GameConfigState tweak snapshot itself; other domains such as
+        /// SkinChangerViewModel subscribe to push their own initial state.
         /// </summary>
         internal static event EventHandler OverlayReady;
 
         /// <summary>
         /// Reverse-sync (Docs/Internal/overlay-protocol.md, "Reverse-sync: NOTIFY_TWEAK/NOTIFY_SKIN"):
         /// the user clicked a tweak/skin directly in the in-game overlay. TweakerViewModel/
-        /// SkinChangerViewModel subscribe and apply the request through the exact same setters/methods
-        /// the desktop UI itself uses - that's what makes those setters' existing SetTweak/
-        /// PushCurrentSkin re-push act as the plugin's confirmation, with no separate ACK op needed.
+        /// SkinChangerViewModel subscribe and apply the request through their normal state paths;
+        /// GameConfigState.StateChanged and PushCurrentSkin provide the confirming echo.
         /// OverlayHelper deliberately doesn't call into the ViewModels itself (would invert the
         /// dependency direction every other OverlayHelper touchpoint uses - see OverlayReady above).
         /// </summary>
@@ -71,14 +70,28 @@ namespace TweakerUI.Core
 
             AudiosurfHandle.Instance.Registered += OnRegistered;
             AudiosurfHandle.Instance.OverlayMessageReceived += OnOverlayMessageReceived;
+            GameConfigState.Manager.StateChanged += OnGameConfigStateChanged;
         }
 
-        internal static void SetTweak(string wireName, bool enabled)
+        private static void PushTweak(GameConfigSnapshot snapshot)
         {
             if (!IsReady)
                 return;
 
-            AudiosurfHandle.Instance.OverlayCommand($"TWEAK_SET {wireName} {(enabled ? "true" : "false")}");
+            var definition = GameTweakCatalog.FindByConfigKey(snapshot.Key);
+            if (definition == null)
+                return;
+
+            var enabled = definition.ToEnabledValue(snapshot.EffectiveValue);
+            var source = snapshot.OverrideSource == GameConfigOverrideSource.QuickPlayer ? "quick_player" : "global";
+            AudiosurfHandle.Instance.OverlayCommand(
+                $"TWEAK_SET {definition.WireName} {(enabled ? "true" : "false")} {source}");
+        }
+
+        private static void PushTweakSnapshot()
+        {
+            foreach (var snapshot in GameConfigState.Manager.GetKnownTweakSnapshots())
+                PushTweak(snapshot);
         }
 
         internal static void PushCurrentSkin(string name)
@@ -335,8 +348,14 @@ namespace TweakerUI.Core
             lock (_lock)
                 _ready = true;
 
+            PushTweakSnapshot();
             OverlayReady?.Invoke(null, EventArgs.Empty);
             return true;
+        }
+
+        private static void OnGameConfigStateChanged(object sender, GameConfigStateChangedEventArgs e)
+        {
+            PushTweak(e.Snapshot);
         }
 
         private static void OnOverlayMessageReceived(object sender, string content)

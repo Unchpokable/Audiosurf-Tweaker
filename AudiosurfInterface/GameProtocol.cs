@@ -51,8 +51,10 @@ namespace AudiosurfInterface
         // race, since the bridge's attempt has already provably failed.
         internal const string RegisterListenerWindow = "registerlistenerwindow";
 
-        // asreport names (broadcast content forwarded via AudiosurfHandle.MessageResieved, already
-        // stripped of the "asreport" prefix by AsBridgeProtocol - see HandleGameBroadcast).
+        // asreport names, as they appear after the "asreport " prefix. Broadcasts reach the managed
+        // side through AudiosurfHandle.MessageResieved with that prefix still on them - asbridge
+        // forwards the game's WM_COPYDATA payload verbatim - and GameReportListener is the one place
+        // that strips it (see the comment there).
         public const string ReportSongComplete = "songcomplete";
         public const string ReportOnCharacterScreen = "oncharacterscreen";
         public const string ReportNowPlayingArtist = "nowplayingartistname";

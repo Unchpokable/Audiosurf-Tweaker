@@ -16,46 +16,75 @@
                     <TextBlock Text="Tweaks" Classes="TWCardTitle" Margin="0,0,0,10"/>
                     <Grid ColumnDefinitions="*,16,*">
                         <StackPanel Grid.Column="0" Spacing="2">
+                            <!-- Column 2 is the "QP" badge: Quick Player can hold a temporary override
+                            on top of the global value these switches show, so without it the tab would
+                            silently disagree with the game (and with the in-game overlay, which marks
+                            the same state its own way). Collapsed unless an override is actually live. -->
                             <Border Classes="TWToggleRow" Classes.On="{Binding SidewinderCameraTweakActive}">
-                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                                     <Path Grid.Column="0" Classes="TWToggleIcon" Data="{StaticResource IconCamera}" Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"/>
                                     <TextBlock Grid.Column="1" Text="Sidewinder camera" Classes="TWToggleLabel" Margin="10,0" VerticalAlignment="Center"/>
-                                    <ToggleButton Grid.Column="2" Classes="TWSwitch" IsChecked="{Binding SidewinderCameraTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                    <Border Grid.Column="2" Classes="TWQuickPlayerBadge" Margin="0,0,8,0"
+                                            IsVisible="{Binding SidewinderCameraOverriddenByQuickPlayer}"
+                                            ToolTip.Tip="{Binding QuickPlayerOverrideHint}">
+                                        <TextBlock/>
+                                    </Border>
+                                    <ToggleButton Grid.Column="3" Classes="TWSwitch" IsChecked="{Binding SidewinderCameraTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
                             <Border Classes="TWToggleRow" Classes.On="{Binding BankingCameraTweakActive}">
-                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                                     <Path Grid.Column="0" Classes="TWToggleIcon" Data="{StaticResource IconBank}" Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"/>
                                     <TextBlock Grid.Column="1" Text="Banking camera" Classes="TWToggleLabel" Margin="10,0" VerticalAlignment="Center"/>
-                                    <ToggleButton Grid.Column="2" Classes="TWSwitch" IsChecked="{Binding BankingCameraTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                    <Border Grid.Column="2" Classes="TWQuickPlayerBadge" Margin="0,0,8,0"
+                                            IsVisible="{Binding BankingCameraOverriddenByQuickPlayer}"
+                                            ToolTip.Tip="{Binding QuickPlayerOverrideHint}">
+                                        <TextBlock/>
+                                    </Border>
+                                    <ToggleButton Grid.Column="3" Classes="TWSwitch" IsChecked="{Binding BankingCameraTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
                             <Border Classes="TWToggleRow" Classes.On="{Binding InvisibleRoadTweakActive}">
-                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                                     <Path Grid.Column="0" Classes="TWToggleIcon" Data="{StaticResource IconEyeOff}" Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"/>
                                     <TextBlock Grid.Column="1" Text="Invisible road" Classes="TWToggleLabel" Margin="10,0" VerticalAlignment="Center"/>
-                                    <ToggleButton Grid.Column="2" Classes="TWSwitch" IsChecked="{Binding InvisibleRoadTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                    <Border Grid.Column="2" Classes="TWQuickPlayerBadge" Margin="0,0,8,0"
+                                            IsVisible="{Binding InvisibleRoadOverriddenByQuickPlayer}"
+                                            ToolTip.Tip="{Binding QuickPlayerOverrideHint}">
+                                        <TextBlock/>
+                                    </Border>
+                                    <ToggleButton Grid.Column="3" Classes="TWSwitch" IsChecked="{Binding InvisibleRoadTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
                             <Border Classes="TWToggleRow" Classes.On="{Binding HiddenSongTweakActive}">
-                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                                     <Path Grid.Column="0" Classes="TWToggleIcon" Data="{StaticResource IconMusicOff}" Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"/>
                                     <TextBlock Grid.Column="1" Text="Hidden song title" Classes="TWToggleLabel" Margin="10,0" VerticalAlignment="Center"/>
-                                    <ToggleButton Grid.Column="2" Classes="TWSwitch" IsChecked="{Binding HiddenSongTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                    <Border Grid.Column="2" Classes="TWQuickPlayerBadge" Margin="0,0,8,0"
+                                            IsVisible="{Binding HiddenSongOverriddenByQuickPlayer}"
+                                            ToolTip.Tip="{Binding QuickPlayerOverrideHint}">
+                                        <TextBlock/>
+                                    </Border>
+                                    <ToggleButton Grid.Column="3" Classes="TWSwitch" IsChecked="{Binding HiddenSongTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
                         </StackPanel>
 
                         <StackPanel Grid.Column="2" Spacing="2">
                             <Border Classes="TWToggleRow" Classes.On="{Binding FreerideNoBlocksTweakActive}">
-                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                                     <Path Grid.Column="0" Classes="TWToggleIcon" Data="{StaticResource IconGridOff}" Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"/>
                                     <TextBlock Grid.Column="1" Text="Disable freeride blocks" Classes="TWToggleLabel" Margin="10,0" VerticalAlignment="Center"/>
-                                    <ToggleButton Grid.Column="2" Classes="TWSwitch" IsChecked="{Binding FreerideNoBlocksTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                    <Border Grid.Column="2" Classes="TWQuickPlayerBadge" Margin="0,0,8,0"
+                                            IsVisible="{Binding FreerideNoBlocksOverriddenByQuickPlayer}"
+                                            ToolTip.Tip="{Binding QuickPlayerOverrideHint}">
+                                        <TextBlock/>
+                                    </Border>
+                                    <ToggleButton Grid.Column="3" Classes="TWSwitch" IsChecked="{Binding FreerideNoBlocksTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
                             <Border Classes="TWToggleRow" Classes.On="{Binding FreerideBlocksCaterpillarsTweakActive}">
-                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                                     <!-- Height=5 (not 18 like the other icons) matches this shape's own bounding box aspect -
                                     the 18x18 box the others use has almost no vertical content (0.947x scale, width-limited),
                                     and whatever wasn't scaled away sat as slack the shape renderer anchored to the top
@@ -64,14 +93,24 @@
                                     VerticalAlignment="Center" instead of depending on that anchor behavior. -->
                                     <Path Grid.Column="0" Classes="TWToggleIcon" Data="{StaticResource IconCaterpillar}" Width="18" Height="5" Stretch="Uniform" VerticalAlignment="Center"/>
                                     <TextBlock Grid.Column="1" Text="Freeride block caterpillars" Classes="TWToggleLabel" Margin="10,0" VerticalAlignment="Center"/>
-                                    <ToggleButton Grid.Column="2" Classes="TWSwitch" IsChecked="{Binding FreerideBlocksCaterpillarsTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                    <Border Grid.Column="2" Classes="TWQuickPlayerBadge" Margin="0,0,8,0"
+                                            IsVisible="{Binding FreerideBlocksCaterpillarsOverriddenByQuickPlayer}"
+                                            ToolTip.Tip="{Binding QuickPlayerOverrideHint}">
+                                        <TextBlock/>
+                                    </Border>
+                                    <ToggleButton Grid.Column="3" Classes="TWSwitch" IsChecked="{Binding FreerideBlocksCaterpillarsTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
                             <Border Classes="TWToggleRow" Classes.On="{Binding FreerideAutoAdvanceDisableTweakActive}">
-                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                                     <Path Grid.Column="0" Classes="TWToggleIcon" Data="{StaticResource IconSkipOff}" Width="18" Height="18" Stretch="Uniform" VerticalAlignment="Center"/>
                                     <TextBlock Grid.Column="1" Text="Disable freeride auto advance" Classes="TWToggleLabel" Margin="10,0" VerticalAlignment="Center"/>
-                                    <ToggleButton Grid.Column="2" Classes="TWSwitch" IsChecked="{Binding FreerideAutoAdvanceDisableTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                    <Border Grid.Column="2" Classes="TWQuickPlayerBadge" Margin="0,0,8,0"
+                                            IsVisible="{Binding FreerideAutoAdvanceDisableOverriddenByQuickPlayer}"
+                                            ToolTip.Tip="{Binding QuickPlayerOverrideHint}">
+                                        <TextBlock/>
+                                    </Border>
+                                    <ToggleButton Grid.Column="3" Classes="TWSwitch" IsChecked="{Binding FreerideAutoAdvanceDisableTweakActive, Mode=TwoWay}" VerticalAlignment="Center"/>
                                 </Grid>
                             </Border>
                         </StackPanel>

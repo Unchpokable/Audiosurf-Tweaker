@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using AudiosurfInterface;
 using CommunityToolkit.Mvvm.ComponentModel;
 
@@ -46,16 +47,12 @@ namespace TweakerUI.Models
 
         partial void OnIsEnabledChanged(bool value) => _onChanged?.Invoke();
 
-        private static readonly ModOptionDefinition[] _catalog =
-        {
-            new(GameProtocol.Sidewinder, "Sidewinder camera", valueWhenEnabled: true),
-            new(GameProtocol.UseBankingCamera, "Banking camera", valueWhenEnabled: true),
-            new(GameProtocol.RoadVisible, "Invisible Road", valueWhenEnabled: false),
-            new(GameProtocol.ShowSongName, "Hidden Song Title", valueWhenEnabled: false),
-            new(GameProtocol.FreerideBlocks, "Freeride: No Blocks", valueWhenEnabled: false),
-            new(GameProtocol.FreerideCaterpillars, "Freeride: Blocks Caterpillars", valueWhenEnabled: true),
-            new(GameProtocol.FreerideAutoAdvance, "Freeride: Disable Auto Advance", valueWhenEnabled: false),
-        };
+        private static readonly ModOptionDefinition[] _catalog = GameTweakCatalog.All
+            .Select(definition => new ModOptionDefinition(
+                definition.ConfigKey,
+                definition.DisplayName,
+                definition.ConfigValueWhenEnabled))
+            .ToArray();
 
         public static ObservableCollection<ModOptionViewModel> BuildCatalog(Action onChanged)
         {

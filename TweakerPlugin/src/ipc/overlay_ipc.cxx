@@ -13,7 +13,7 @@ namespace
 {
 constexpr std::string_view k_tw_ovl_prefix = "TW_OVL ";
 
-// Sized for the largest *fixed-arity* op - TWEAK_SET <name> <bool> (3 tokens). SKIN_LIST is
+// Sized for the largest *fixed-arity* argument list - TWEAK_SET <name> <bool> <source>. SKIN_LIST is
 // variable-arity (one token per catalog entry) and is parsed separately via for_each_token(),
 // never through this fixed-size splitter, so it isn't bounded by this constant.
 constexpr std::size_t k_max_fixed_op_tokens = 3;
@@ -83,7 +83,7 @@ std::pair<std::string_view, std::string_view> split_first_token(std::string_view
     return { s.substr(0, space), s.substr(space + 1) };
 }
 
-// Bounded splitter for small, fixed-arity ops (HANDSHAKE_BEGIN, TWEAK_SET, CURRENT_SKIN). Never
+// Bounded splitter for small, fixed-arity op arguments (HANDSHAKE_BEGIN, TWEAK_SET, CURRENT_SKIN). Never
 // used for SKIN_LIST - see for_each_token() below.
 std::array<std::string_view, k_max_fixed_op_tokens> split_fixed_tokens(std::string_view s, std::size_t& out_count) noexcept
 {
@@ -233,7 +233,8 @@ void handle_tw_ovl_op(std::string_view payload)
         }
 
         const bool enabled = tokens[1] == "true" || tokens[1] == "1";
-        tw::ui::overlay_state::set_tweak(id, enabled);
+        const bool quick_player = token_count >= 3 && tokens[2] == "quick_player";
+        tw::ui::overlay_state::set_tweak(id, enabled, quick_player);
         return;
     }
 

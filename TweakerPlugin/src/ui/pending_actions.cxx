@@ -134,7 +134,8 @@ void update(const overlay_state::cache& snapshot)
         }
 
         const auto id = overlay_state::all_tweak_ids()[i];
-        if(overlay_state::is_tweak_enabled(snapshot, id) == slot.desired_enabled) {
+        if(overlay_state::is_tweak_enabled(snapshot, id) == slot.desired_enabled
+            && !overlay_state::is_tweak_quick_player(snapshot, id)) {
             slot.active = false;
             continue;
         }

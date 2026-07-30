@@ -1,4 +1,5 @@
 using System;
+using Avalonia.Threading;
 using AudiosurfInterface;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -19,53 +20,123 @@ namespace TweakerUI.ViewModels
             _console = new TweakerConsole();
             _console.ContentUpdated += (_, _) => OnPropertyChanged(nameof(ConsoleContent));
 
-            OverlayHelper.OverlayReady += (_, _) => PushOverlaySnapshot();
             OverlayHelper.TweakRequested += OnOverlayTweakRequested;
+
+            // The switches below show the *global* value; a Quick Player entry can be sitting on top of
+            // one for the duration of a track (GameConfigState's override stack), in which case the
+            // game is not currently doing what this tab displays. Rather than moving the switches under
+            // Quick Player's feet, each row grows a "QP" badge - the in-game overlay marks the same
+            // state the same way (Docs/Internal/overlay-protocol.md, "Временные твики Quick Player").
+            foreach (var snapshot in GameConfigState.Manager.GetKnownTweakSnapshots())
+                ApplyOverrideBadge(snapshot);
+            GameConfigState.Manager.StateChanged += OnGameConfigStateChanged;
         }
 
-        // Reverse-sync (Docs/Internal/overlay-protocol.md, NOTIFY_TWEAK): the user flipped a tweak
-        // directly in the in-game overlay. Routed through the exact same property setters the
-        // desktop toggles use (On*TweakActiveChanged below), so it applies to the game AND re-pushes
-        // TWEAK_SET the same way a desktop click would - that re-push is what the plugin reads back
-        // as confirmation, no separate ACK needed. An unrecognized wire name is silently ignored,
-        // same convention as an unknown TWEAK_SET name on the plugin side.
-        private void OnOverlayTweakRequested(object sender, TweakRequestedEventArgs e)
+        private void OnGameConfigStateChanged(object sender, GameConfigStateChangedEventArgs e)
         {
-            switch (e.WireName)
+            // Raised from whichever thread changed the config - the report dispatch thread for a Quick
+            // Player track boundary, a thread-pool thread for its start. These are bound properties.
+            Dispatcher.UIThread.Post(() => ApplyOverrideBadge(e.Snapshot));
+        }
+
+        private void ApplyOverrideBadge(GameConfigSnapshot snapshot)
+        {
+            var definition = GameTweakCatalog.FindByConfigKey(snapshot.Key);
+            if (definition == null)
+                return;
+
+            var overridden = snapshot.OverrideSource == GameConfigOverrideSource.QuickPlayer;
+            switch (definition.WireName)
             {
-                case "InvisibleRoad": InvisibleRoadTweakActive = e.Enabled; break;
-                case "HiddenSongTitle": HiddenSongTweakActive = e.Enabled; break;
-                case "SidewinderCamera": SidewinderCameraTweakActive = e.Enabled; break;
-                case "BankingCamera": BankingCameraTweakActive = e.Enabled; break;
-                case "FreerideNoBlocks": FreerideNoBlocksTweakActive = e.Enabled; break;
-                case "FreerideBlocksCaterpillars": FreerideBlocksCaterpillarsTweakActive = e.Enabled; break;
-                case "FreerideAutoAdvanceDisable": FreerideAutoAdvanceDisableTweakActive = e.Enabled; break;
+                case "InvisibleRoad": InvisibleRoadOverriddenByQuickPlayer = overridden; break;
+                case "HiddenSongTitle": HiddenSongOverriddenByQuickPlayer = overridden; break;
+                case "SidewinderCamera": SidewinderCameraOverriddenByQuickPlayer = overridden; break;
+                case "BankingCamera": BankingCameraOverriddenByQuickPlayer = overridden; break;
+                case "FreerideNoBlocks": FreerideNoBlocksOverriddenByQuickPlayer = overridden; break;
+                case "FreerideBlocksCaterpillars": FreerideBlocksCaterpillarsOverriddenByQuickPlayer = overridden; break;
+                case "FreerideAutoAdvanceDisable": FreerideAutoAdvanceDisableOverriddenByQuickPlayer = overridden; break;
             }
         }
 
-        // Wire-name -> current value, one shot on OverlayHelper.OverlayReady (see PushOverlaySnapshot).
-        // Same seven tweaks/names as Docs/Internal/overlay-protocol.md's wire-name table.
-        private void PushOverlaySnapshot()
+        // Reverse-sync (Docs/Internal/overlay-protocol.md, NOTIFY_TWEAK): the user flipped a tweak
+        // directly in the in-game overlay. The property is updated without its normal global write,
+        // then SetAndClearOverrides commits the requested effective value and removes any QP source.
+        // OverlayHelper observes that GameConfigState transition and sends the confirming TWEAK_SET.
+        // An unrecognized wire name is silently ignored, like an unknown TWEAK_SET in the plugin.
+        private void OnOverlayTweakRequested(object sender, TweakRequestedEventArgs e)
         {
-            OverlayHelper.SetTweak("InvisibleRoad", InvisibleRoadTweakActive);
-            OverlayHelper.SetTweak("HiddenSongTitle", HiddenSongTweakActive);
-            OverlayHelper.SetTweak("SidewinderCamera", SidewinderCameraTweakActive);
-            OverlayHelper.SetTweak("BankingCamera", BankingCameraTweakActive);
-            OverlayHelper.SetTweak("FreerideNoBlocks", FreerideNoBlocksTweakActive);
-            OverlayHelper.SetTweak("FreerideBlocksCaterpillars", FreerideBlocksCaterpillarsTweakActive);
-            OverlayHelper.SetTweak("FreerideAutoAdvanceDisable", FreerideAutoAdvanceDisableTweakActive);
+            var definition = GameTweakCatalog.FindByWireName(e.WireName);
+            if (definition == null)
+                return;
+
+            // The overlay toggle displays the effective value. Its click therefore commits that
+            // newly displayed value immediately and cancels a Quick Player override rather than
+            // editing a hidden global baseline underneath it.
+            _suppressGlobalApply = true;
+            try
+            {
+                switch (e.WireName)
+                {
+                    case "InvisibleRoad": InvisibleRoadTweakActive = e.Enabled; break;
+                    case "HiddenSongTitle": HiddenSongTweakActive = e.Enabled; break;
+                    case "SidewinderCamera": SidewinderCameraTweakActive = e.Enabled; break;
+                    case "BankingCamera": BankingCameraTweakActive = e.Enabled; break;
+                    case "FreerideNoBlocks": FreerideNoBlocksTweakActive = e.Enabled; break;
+                    case "FreerideBlocksCaterpillars": FreerideBlocksCaterpillarsTweakActive = e.Enabled; break;
+                    case "FreerideAutoAdvanceDisable": FreerideAutoAdvanceDisableTweakActive = e.Enabled; break;
+                }
+            }
+            finally
+            {
+                _suppressGlobalApply = false;
+            }
+
+            GameConfigState.Manager.SetAndClearOverrides(
+                definition.ConfigKey,
+                definition.ToConfigValue(e.Enabled));
         }
 
         [ObservableProperty]
         private bool isAudiosurfConnected;
+
+        /// <summary>
+        /// Tooltip shared by every "QP" badge - one string rather than seven copies in the axaml, and
+        /// it has to spell out both halves of GameConfigState.UpdateGlobal's rule, because "what
+        /// happens when I click this" genuinely differs depending on which way the switch is going.
+        /// </summary>
+        public string QuickPlayerOverrideHint =>
+            "Quick Player is overriding this tweak for the current track, so the game may not match "
+            + "the switch right now. The switch sets your global value: set it to what Quick Player is "
+            + "already forcing and that becomes permanent immediately, set it the other way and it "
+            + "takes effect when the track ends.";
+
+        [ObservableProperty]
+        private bool invisibleRoadOverriddenByQuickPlayer;
+
+        [ObservableProperty]
+        private bool hiddenSongOverriddenByQuickPlayer;
+
+        [ObservableProperty]
+        private bool sidewinderCameraOverriddenByQuickPlayer;
+
+        [ObservableProperty]
+        private bool bankingCameraOverriddenByQuickPlayer;
+
+        [ObservableProperty]
+        private bool freerideNoBlocksOverriddenByQuickPlayer;
+
+        [ObservableProperty]
+        private bool freerideBlocksCaterpillarsOverriddenByQuickPlayer;
+
+        [ObservableProperty]
+        private bool freerideAutoAdvanceDisableOverriddenByQuickPlayer;
 
         [ObservableProperty]
         private bool invisibleRoadTweakActive;
 
         partial void OnInvisibleRoadTweakActiveChanged(bool value)
         {
-            GameConfigState.Manager.Set(GameProtocol.RoadVisible, !value);
-            OverlayHelper.SetTweak("InvisibleRoad", value);
+            ApplyGlobalTweak("InvisibleRoad", value);
         }
 
         [ObservableProperty]
@@ -73,8 +144,7 @@ namespace TweakerUI.ViewModels
 
         partial void OnHiddenSongTweakActiveChanged(bool value)
         {
-            GameConfigState.Manager.Set(GameProtocol.ShowSongName, !value);
-            OverlayHelper.SetTweak("HiddenSongTitle", value);
+            ApplyGlobalTweak("HiddenSongTitle", value);
         }
 
         [ObservableProperty]
@@ -82,8 +152,7 @@ namespace TweakerUI.ViewModels
 
         partial void OnSidewinderCameraTweakActiveChanged(bool value)
         {
-            GameConfigState.Manager.Set(GameProtocol.Sidewinder, value);
-            OverlayHelper.SetTweak("SidewinderCamera", value);
+            ApplyGlobalTweak("SidewinderCamera", value);
         }
 
         [ObservableProperty]
@@ -91,8 +160,7 @@ namespace TweakerUI.ViewModels
 
         partial void OnBankingCameraTweakActiveChanged(bool value)
         {
-            GameConfigState.Manager.Set(GameProtocol.UseBankingCamera, value);
-            OverlayHelper.SetTweak("BankingCamera", value);
+            ApplyGlobalTweak("BankingCamera", value);
         }
 
         [ObservableProperty]
@@ -100,8 +168,7 @@ namespace TweakerUI.ViewModels
 
         partial void OnFreerideNoBlocksTweakActiveChanged(bool value)
         {
-            GameConfigState.Manager.Set(GameProtocol.FreerideBlocks, !value);
-            OverlayHelper.SetTweak("FreerideNoBlocks", value);
+            ApplyGlobalTweak("FreerideNoBlocks", value);
         }
 
         [ObservableProperty]
@@ -109,8 +176,7 @@ namespace TweakerUI.ViewModels
 
         partial void OnFreerideBlocksCaterpillarsTweakActiveChanged(bool value)
         {
-            GameConfigState.Manager.Set(GameProtocol.FreerideCaterpillars, value);
-            OverlayHelper.SetTweak("FreerideBlocksCaterpillars", value);
+            ApplyGlobalTweak("FreerideBlocksCaterpillars", value);
         }
 
         [ObservableProperty]
@@ -118,8 +184,7 @@ namespace TweakerUI.ViewModels
 
         partial void OnFreerideAutoAdvanceDisableTweakActiveChanged(bool value)
         {
-            GameConfigState.Manager.Set(GameProtocol.FreerideAutoAdvance, !value);
-            OverlayHelper.SetTweak("FreerideAutoAdvanceDisable", value);
+            ApplyGlobalTweak("FreerideAutoAdvanceDisable", value);
         }
 
         public string ConsoleContent => _console.ToString();
@@ -144,6 +209,17 @@ namespace TweakerUI.ViewModels
 
         private readonly AudiosurfHandle _audiosurfHandle;
         private readonly TweakerConsole _console;
+        private bool _suppressGlobalApply;
+
+        private void ApplyGlobalTweak(string wireName, bool enabled)
+        {
+            if (_suppressGlobalApply)
+                return;
+
+            var definition = GameTweakCatalog.FindByWireName(wireName);
+            if (definition != null)
+                GameConfigState.Manager.Set(definition.ConfigKey, definition.ToConfigValue(enabled));
+        }
 
         private void KillAudiosurf() => Utils.Cmd($"taskkill /f /pid {_audiosurfHandle.GamePID}");
     }

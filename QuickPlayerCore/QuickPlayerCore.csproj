@@ -9,4 +9,8 @@
     <ProjectReference Include="..\TweakerCore\TweakerCore.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="QuickPlayerCore.Tests" />
+  </ItemGroup>
+
 </Project>

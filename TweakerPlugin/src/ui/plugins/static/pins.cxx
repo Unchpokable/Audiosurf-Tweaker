@@ -8,6 +8,7 @@
 #include <imgui.h>
 
 #include <string>
+#include <utility>
 #include <vector>
 
 // Renderer-agnostic (no D3D9/GL, no TweakerPlugin PCH) - shared with smoke_test, same convention
@@ -19,6 +20,11 @@ constexpr float k_row_gap = 10.f;
 constexpr float k_margin = 16.f;
 constexpr float k_pad_x = 10.f;
 constexpr float k_rounding = 6.f;
+
+struct pin_label {
+    std::string text;
+    bool quick_player = false;
+};
 } // namespace
 
 namespace tw::ui::plugins::statics::pins
@@ -38,15 +44,18 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
     // Reads through pending_actions rather than the raw snapshot, so a click in the menu shows up
     // here too while its NOTIFY_TWEAK/NOTIFY_SKIN confirmation is still in flight (see
     // ui/pending_actions.hxx).
-    std::vector<std::string> labels;
+    std::vector<pin_label> labels;
     for(const auto id : tw::ui::overlay_state::all_tweak_ids()) {
         if(tw::ui::pending_actions::tweak_display_enabled(snapshot, id)) {
-            labels.emplace_back(tw::ui::overlay_state::tweak_display_name(id));
+            const bool quick_player = tw::ui::overlay_state::is_tweak_quick_player(snapshot, id);
+            std::string label = quick_player ? "QP: " : "";
+            label += tw::ui::overlay_state::tweak_display_name(id);
+            labels.push_back({ std::move(label), quick_player });
         }
     }
     const std::string_view skin_name = tw::ui::pending_actions::skin_display_name(snapshot);
     if(!skin_name.empty()) {
-        labels.push_back("Skin: " + std::string(skin_name));
+        labels.push_back({ "Skin: " + std::string(skin_name), false });
     }
 
     if(labels.empty()) {
@@ -63,7 +72,7 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
     float y = viewport.y * 0.5f - total_h * 0.5f;
 
     for(const auto& label : labels) {
-        const ImVec2 text_size = ImGui::CalcTextSize(label.c_str());
+        const ImVec2 text_size = ImGui::CalcTextSize(label.text.c_str());
         const float box_w = text_size.x + k_pad_x * 2.f;
         const float x = right ? viewport.x - k_margin - box_w : k_margin;
 
@@ -74,7 +83,9 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
         draw->AddRectFilled(p_min, p_max, detail::to_u32(bg), k_rounding);
 
         const ImVec2 text_pos { p_min.x + k_pad_x, p_min.y + (k_row_h - text_size.y) * 0.5f };
-        detail::add_text_glow(draw, text_pos, label.c_str(), IM_COL32_WHITE, theme::accent_primary, 1.f);
+        const ImVec4 accent = label.quick_player ? theme::accent_secondary : theme::accent_primary;
+        const ImU32 text_color = label.quick_player ? detail::to_u32(theme::accent_secondary) : IM_COL32_WHITE;
+        detail::add_text_glow(draw, text_pos, label.text.c_str(), text_color, accent, 1.f);
 
         y += k_row_h + k_row_gap;
     }

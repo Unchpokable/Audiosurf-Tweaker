@@ -250,6 +250,10 @@ void draw_tweaks_tab(const tw::ui::overlay_state::cache& snapshot)
 
         ImGui::AlignTextToFramePadding();
         ImGui::TextUnformatted(tw::ui::overlay_state::tweak_display_name(ids[i]).data());
+        if(tw::ui::overlay_state::is_tweak_quick_player(snapshot, ids[i])) {
+            ImGui::SameLine();
+            ImGui::TextColored(theme::accent_secondary, "QP");
+        }
         ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetCursorPosX() - 44.f);
         g_tweak_toggles[i].update();
         if(g_tweak_toggles[i].changed()) {

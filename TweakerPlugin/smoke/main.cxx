@@ -176,7 +176,7 @@ void seed_fake_overlay_state()
     tw::ui::overlay_state::set_skin_list(std::move(skins));
     tw::ui::overlay_state::set_current_skin("Neon Pulse");
     tw::ui::overlay_state::set_tweak(tweak_id::invisible_road, true);
-    tw::ui::overlay_state::set_tweak(tweak_id::sidewinder_camera, true);
+    tw::ui::overlay_state::set_tweak(tweak_id::sidewinder_camera, true, true);
 }
 
 void draw_smoke_controls()
@@ -185,6 +185,7 @@ void draw_smoke_controls()
 
     static button push_toast_btn { "smoke_push_toast", { 200.f, 32.f } };
     static button toggle_skin_btn { "smoke_toggle_skin", { 200.f, 32.f } };
+    static button toggle_qp_btn { "smoke_toggle_qp", { 200.f, 32.f } };
     static button open_popup_btn { "smoke_open_popup", { 200.f, 32.f } };
     static item_group actions { "smoke_actions", "Actions" };
     static item_group color_group { "smoke_color", "Color" };
@@ -195,6 +196,7 @@ void draw_smoke_controls()
     static list_item ctx_paste { "smoke_ctx_paste", { 160.f, 28.f } };
     static int toast_count = 0;
     static bool alt_skin = false;
+    static bool qp_override = true;
     static int ctx_action = 0;
 
     ImGui::SetNextWindowSize(ImVec2 { 360.f, 520.f }, ImGuiCond_FirstUseEver);
@@ -224,6 +226,12 @@ void draw_smoke_controls()
     if(toggle_skin_btn.clicked()) {
         alt_skin = !alt_skin;
         tw::ui::overlay_state::set_current_skin(alt_skin ? "Void Runner" : "Neon Pulse");
+    }
+
+    toggle_qp_btn.update(qp_override ? "Clear QP marker" : "Set QP marker");
+    if(toggle_qp_btn.clicked()) {
+        qp_override = !qp_override;
+        tw::ui::overlay_state::set_tweak(tw::ui::overlay_state::tweak_id::sidewinder_camera, true, qp_override);
     }
 
     open_popup_btn.update("Open popup (LMB)");

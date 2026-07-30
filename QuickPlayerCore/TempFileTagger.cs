@@ -14,9 +14,19 @@ namespace QuickPlayerCore
     ///
     /// UI-agnostic like the rest of QuickPlayerCore/TweakerCore - TaggingStarted/OperationFailed are
     /// plain events, not a StatusService call (StatusService lives in TweakerUI, which QuickPlayerCore
-    /// must not depend on). The future QuickPlayer ViewModel wires TaggingStarted into
-    /// StatusService.Manager.Begin(StatusToken.DiskProcess, ...), the same way SkinChangerViewModel
-    /// already wires LegacyConverter.ConversionStarted.
+    /// must not depend on). The QuickPlayer status chip is driven from PlaybackController's
+    /// EntryPreparing/EntryPrepared pair rather than from TaggingStarted: this class has no "finished"
+    /// counterpart to close the chip with, and the controller's pair brackets the whole preparation
+    /// (including the fast no-tags path) for a manual play and an auto-advance alike.
+    ///
+    /// KNOWN GAP - tags the user wrote into the source file by hand. SongTitle is a snapshot taken by
+    /// PlaylistEntry.FromFile at import time, and the suffix below is appended to it unconditionally:
+    /// nothing here parses the existing title looking for bracket tags. So a file whose own title
+    /// already reads "Song [as-4lane]" gets "Song [as-4lane] [as-4lane]" once the same tag is enabled
+    /// in Quick Player, and a title edited after import stays at its stale imported value in the copy
+    /// (the mtime in BuildSignature does invalidate the cached copy, it just gets rebuilt from the same
+    /// stale SongTitle). What the game does with a duplicated tag is untested - see the open question
+    /// in Docs/Internal/roadmap.md.
     /// </summary>
     public static class TempFileTagger
     {

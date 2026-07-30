@@ -30,8 +30,13 @@ namespace TweakerUI.ViewModels
             CharacterOptionViewModel.SelectOnly(DefaultCharacterOptions, DefaultCharacter);
 
             _playback = new PlaybackController { DefaultCharacter = DefaultCharacter };
+            _playback.EntryPreparing += OnEntryPreparing;
+            _playback.EntryPrepared += OnEntryPrepared;
             _playback.EntryStarted += OnEntryStarted;
             _playback.EntryEnded += OnEntryEnded;
+            // Auto-advance starts the next track off the report thread, so a failure there has no
+            // caller to surface it - without this it would just stop playing with no explanation.
+            _playback.OperationFailed += OnPlaybackFailed;
 
             foreach (var playlist in Playlist.LoadAll())
                 Playlists.Add(new PlaylistRowViewModel(playlist));
@@ -57,6 +62,13 @@ namespace TweakerUI.ViewModels
 
         private readonly PlaybackController _playback;
         private StatusHandle _nowPlayingStatus;
+
+        // Preparing a track runs on a background thread in both directions (Task.Run for a manual play,
+        // PlaybackController's own dispatch for auto-advance), so the chip is guarded by a lock -
+        // StatusService itself already marshals the collection edit to the UI thread.
+        private readonly object _preparingGate = new();
+        private StatusHandle _preparingStatus;
+        private int _preparingCount;
 
         // Raw Playlist for internal use - Playlists/SelectedPlaylistRow are the UI-facing wrappers
         // (rename state etc.), everything below just needs the underlying persisted model.
@@ -144,6 +156,10 @@ namespace TweakerUI.ViewModels
         // fallback computed an already-invalid prevIndex), so unlike Next it never even reached the
         // connection check, which read as "Prev is just broken" rather than "not connected".
         // Checking connection unconditionally up front makes every transport button behave the same.
+        //
+        // PlaybackController.CurrentEntry is the queue *position*, not "what is audibly playing" - it
+        // deliberately outlives the track, so Next/Prev keep their place after a song ends or the
+        // player bails out to the character screen instead of jumping back to the top of the playlist.
         [RelayCommand]
         private Task PlaySelected()
         {
@@ -207,14 +223,16 @@ namespace TweakerUI.ViewModels
             _playback.Stop();
         }
 
+        // The "Preparing..." chip is raised by PlaybackController (EntryPreparing/EntryPrepared), not
+        // here: auto-advance never goes through this method, and it is the path where the user has no
+        // other sign the module is doing anything at all.
         private async Task PlayIndexAsync(int index)
         {
             if (!EnsureConnected())
                 return;
 
-            var entry = SelectedPlaylist.Entries[index];
-            using (StatusService.Manager.Begin(StatusToken.DiskProcess, "Quick Player", $"Preparing {entry.SongTitle}..."))
-                await Task.Run(() => _playback.Play(SelectedPlaylist, index));
+            var playlist = SelectedPlaylist;
+            await Task.Run(() => _playback.Play(playlist, index));
         }
 
         // Command()/GameConfigState.Set() queue silently and flush whenever the game does connect -
@@ -246,6 +264,45 @@ namespace TweakerUI.ViewModels
                 if (CurrentTrackCard != null)
                     CurrentTrackCard.IsPlaying = true;
             });
+        }
+
+        // Counted rather than one-handle-per-event: a manual play can start while an auto-advance is
+        // still preparing, and with a single slot the first Prepared to arrive would close the chip out
+        // from under the preparation still running. One chip lives for as long as anything is preparing,
+        // showing whatever started most recently.
+        private void OnEntryPreparing(PlaylistEntry entry)
+        {
+            var message = $"Preparing {entry.SongTitle}...";
+            lock (_preparingGate)
+            {
+                _preparingCount++;
+                if (_preparingStatus == null)
+                    _preparingStatus = StatusService.Manager.Begin(StatusToken.DiskProcess, "Quick Player", message);
+                else
+                    _preparingStatus.Update(message);
+            }
+        }
+
+        private void OnEntryPrepared(PlaylistEntry entry)
+        {
+            StatusHandle finished = null;
+            lock (_preparingGate)
+            {
+                if (--_preparingCount <= 0)
+                {
+                    _preparingCount = 0;
+                    finished = _preparingStatus;
+                    _preparingStatus = null;
+                }
+            }
+
+            finished?.Dispose();
+        }
+
+        private void OnPlaybackFailed(string context, Exception exception)
+        {
+            Dispatcher.UIThread.Post(() =>
+                ApplicationNotificationManager.Manager.ShowError("Quick Player", $"{context}: {exception.Message}"));
         }
 
         private void OnEntryEnded(PlaylistEntry entry)

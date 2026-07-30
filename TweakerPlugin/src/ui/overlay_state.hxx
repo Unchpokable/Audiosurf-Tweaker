@@ -49,7 +49,7 @@ tweak_id resolve_tweak_id(std::string_view wire_name) noexcept;
 // per parsed op. Takes a short blocking lock; the only contention is against refresh()'s
 // try_lock() below, which never holds it longer than a few field copies, so any wait here is
 // negligible.
-void set_tweak(tweak_id id, bool enabled);
+void set_tweak(tweak_id id, bool enabled, bool quick_player = false);
 void set_skin_list(std::vector<std::string> names);
 void set_current_skin(std::string name);
 void reset();
@@ -59,6 +59,7 @@ void reset();
 // leaves the previous frame's snapshot untouched and returns false.
 struct cache {
     std::array<std::uint8_t, k_tweak_count> tweak_enabled {};
+    std::array<std::uint8_t, k_tweak_count> tweak_quick_player {};
     std::vector<std::string> skin_names;
     std::string current_skin_name;
     std::uint32_t seen_generation = 0;
@@ -72,4 +73,5 @@ struct cache {
 bool refresh(cache& out);
 
 bool is_tweak_enabled(const cache& snapshot, tweak_id id) noexcept;
+bool is_tweak_quick_player(const cache& snapshot, tweak_id id) noexcept;
 } // namespace tw::ui::overlay_state

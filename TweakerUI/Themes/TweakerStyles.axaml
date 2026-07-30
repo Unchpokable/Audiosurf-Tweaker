@@ -83,6 +83,24 @@
         <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
     </Style>
 
+    <!-- "QP" marker on a tweak row that Quick Player is temporarily overriding. Deliberately the same
+    accent the in-game overlay uses for its own QP pins/menu markers (theme::accent_secondary in
+    TweakerPlugin/src/ui/theme.cxx), so the two surfaces read as one convention rather than two. -->
+    <Style Selector="Border.TWQuickPlayerBadge">
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="5,1"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentSecondaryBrush}"/>
+    </Style>
+    <Style Selector="Border.TWQuickPlayerBadge > TextBlock">
+        <Setter Property="Text" Value="QP"/>
+        <Setter Property="FontSize" Value="10"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentSecondaryBrush}"/>
+    </Style>
+
     <Style Selector="ToggleButton.TWSwitch">
         <Setter Property="Template" Value="{StaticResource AccentSwitchTemplate}"/>
         <Setter Property="Background" Value="Transparent"/>

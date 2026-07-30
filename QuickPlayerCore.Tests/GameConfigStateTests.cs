@@ -96,6 +96,126 @@ namespace QuickPlayerCore.Tests
             Assert.AreEqual(2, _sentCommands.Count); // override + one restore, not two restores
         }
 
+        [Test]
+        public void SetDuringOverride_DifferentValue_RestoresLatestGlobalValue()
+        {
+            var key = UniqueKey();
+            GameConfigState.Manager.Set(key, false);
+            _sentCommands.Clear();
+
+            var handle = GameConfigState.Manager.PushOverride(
+                key,
+                true,
+                GameConfigOverrideSource.QuickPlayer);
+            GameConfigState.Manager.Set(key, false);
+            handle.Dispose();
+
+            Assert.AreEqual(new[]
+            {
+                $"asconfig {key} true",
+                $"asconfig {key} false"
+            }, _sentCommands);
+            Assert.IsFalse(GameConfigState.Manager.GetSnapshot(key).HasOverride);
+        }
+
+        [Test]
+        public void SetDuringOverride_MatchingEffectiveValue_PromotesAndCancelsOverride()
+        {
+            var key = UniqueKey();
+            GameConfigState.Manager.Set(key, false);
+            _sentCommands.Clear();
+
+            var handle = GameConfigState.Manager.PushOverride(
+                key,
+                true,
+                GameConfigOverrideSource.QuickPlayer);
+            GameConfigState.Manager.Set(key, true);
+            handle.Dispose();
+
+            Assert.AreEqual(new[] { $"asconfig {key} true" }, _sentCommands);
+            var snapshot = GameConfigState.Manager.GetSnapshot(key);
+            Assert.IsFalse(snapshot.HasOverride);
+            Assert.IsTrue(snapshot.GlobalValue);
+            Assert.IsTrue(snapshot.EffectiveValue);
+        }
+
+        [Test]
+        public void SetAndClearOverrides_CommitsOverlayValueImmediately()
+        {
+            var key = UniqueKey();
+            GameConfigState.Manager.Set(key, false);
+            _sentCommands.Clear();
+
+            var handle = GameConfigState.Manager.PushOverride(
+                key,
+                true,
+                GameConfigOverrideSource.QuickPlayer);
+            GameConfigState.Manager.SetAndClearOverrides(key, false);
+            handle.Dispose();
+
+            Assert.AreEqual(new[]
+            {
+                $"asconfig {key} true",
+                $"asconfig {key} false"
+            }, _sentCommands);
+            Assert.IsFalse(GameConfigState.Manager.GetSnapshot(key).HasOverride);
+        }
+
+        [Test]
+        public void QuickPlayerOverride_RaisesSourceChangesEvenWhenEffectiveValueMatchesGlobal()
+        {
+            var key = UniqueKey();
+            GameConfigState.Manager.Set(key, true);
+            var snapshots = new List<GameConfigSnapshot>();
+            EventHandler<GameConfigStateChangedEventArgs> handler = (_, args) =>
+            {
+                if (args.Snapshot.Key == key)
+                    snapshots.Add(args.Snapshot);
+            };
+            GameConfigState.Manager.StateChanged += handler;
+
+            try
+            {
+                using (GameConfigState.Manager.PushOverride(
+                    key,
+                    true,
+                    GameConfigOverrideSource.QuickPlayer))
+                {
+                    Assert.AreEqual(GameConfigOverrideSource.QuickPlayer, snapshots.Last().OverrideSource);
+                }
+
+                Assert.AreEqual(GameConfigOverrideSource.None, snapshots.Last().OverrideSource);
+            }
+            finally
+            {
+                GameConfigState.Manager.StateChanged -= handler;
+            }
+        }
+
+        [Test]
+        public void KnownTweakDefaults_MatchDisabledHumanState()
+        {
+            foreach (var definition in GameTweakCatalog.All)
+            {
+                Assert.AreEqual(
+                    definition.ToConfigValue(false),
+                    definition.DefaultConfigValue,
+                    definition.ConfigKey);
+            }
+        }
+
+        [Test]
+        public void GameTweakCatalog_RoundTripsConfigAndWireMappings()
+        {
+            foreach (var definition in GameTweakCatalog.All)
+            {
+                Assert.AreSame(definition, GameTweakCatalog.FindByConfigKey(definition.ConfigKey));
+                Assert.AreSame(definition, GameTweakCatalog.FindByWireName(definition.WireName));
+                Assert.IsTrue(definition.ToEnabledValue(definition.ToConfigValue(true)), definition.ConfigKey);
+                Assert.IsFalse(definition.ToEnabledValue(definition.ToConfigValue(false)), definition.ConfigKey);
+            }
+        }
+
         private static string UniqueKey() => "unittest-" + Guid.NewGuid().ToString("N");
     }
 }
