@@ -9,7 +9,6 @@
 /Skins/
 /Storage/
 /TweakerUI/Skins/
-/Docs/Internal/
 
 # Deploy bundle output (Scripts/Deploy.ps1) - built, not source
 /distr/
