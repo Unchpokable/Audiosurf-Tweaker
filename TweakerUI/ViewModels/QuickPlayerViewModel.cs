@@ -77,11 +77,33 @@ namespace TweakerUI.ViewModels
         partial void OnSelectedPlaylistRowChanged(PlaylistRowViewModel value)
         {
             Queue.Clear();
+            OnPropertyChanged(nameof(WaitForLeaderboards));
+            OnPropertyChanged(nameof(WaitForLeaderboardsHint));
             if (value == null)
                 return;
 
             foreach (var entry in value.Playlist.Entries)
                 Queue.Add(new TrackCardViewModel(entry, this));
+        }
+
+        // Stored on the playlist rather than as an app-wide preference, next to AutoAdvance - a mix
+        // playlist and a "sit and grind one chart" playlist genuinely want different answers.
+        public bool WaitForLeaderboards => SelectedPlaylist?.AdvanceOn == AdvanceTrigger.CharacterScreen;
+
+        public string WaitForLeaderboardsHint => WaitForLeaderboards
+            ? "Waiting on the score screen: the next track starts after you leave it. Click to start the next track as soon as the current one ends."
+            : "Next track starts the moment the current one ends, skipping past the score screen. Click to wait until you leave the score screen instead.";
+
+        [RelayCommand]
+        private void ToggleWaitForLeaderboards()
+        {
+            if (SelectedPlaylist == null)
+                return;
+
+            SelectedPlaylist.AdvanceOn = WaitForLeaderboards ? AdvanceTrigger.SongComplete : AdvanceTrigger.CharacterScreen;
+            OnPropertyChanged(nameof(WaitForLeaderboards));
+            OnPropertyChanged(nameof(WaitForLeaderboardsHint));
+            SaveCurrentPlaylist();
         }
 
         partial void OnDefaultCharacterChanged(GameCharacter value)

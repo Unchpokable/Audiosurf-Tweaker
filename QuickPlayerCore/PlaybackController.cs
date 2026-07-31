@@ -70,14 +70,17 @@ namespace QuickPlayerCore
     ///
     /// What the reports mean, as verified against the running game:
     /// - songcomplete - the track finished and the player is on the leaderboard screen. The game
-    ///   accepts playsong from there (and mid-song), so auto-advance fires straight away rather than
-    ///   waiting for the player to click through.
+    ///   accepts playsong from there (and mid-song), so nothing forces a wait before the next track.
     /// - nowplaying* - the game really did start the song we asked for. This is the only confirmation
     ///   there is, so a songcomplete only counts once the start it belongs to has been confirmed;
     ///   otherwise a repeated report could advance the queue twice for one track.
     /// - oncharacterscreen - literally just "the player navigated to the character screen", nothing
-    ///   more. While Quick Player is driving anything, that means the player took over by hand, and
-    ///   playback stops.
+    ///   more. It carries no meaning on its own; what it means depends on what came before it.
+    ///
+    /// Which is what the two AdvanceTrigger modes are built out of. songcomplete then
+    /// oncharacterscreen is "the track ended and the player finished reading their score"; an
+    /// oncharacterscreen with no songcomplete in front of it is "the player walked out mid-song" and
+    /// ends the run in either mode. SongComplete mode simply doesn't wait for the second half.
     /// </summary>
     public sealed class PlaybackController : IDisposable
     {
@@ -89,7 +92,14 @@ namespace QuickPlayerCore
             Starting,
 
             /// <summary>The game reported nowplaying* for the track this controller started.</summary>
-            Playing
+            Playing,
+
+            /// <summary>
+            /// songcomplete arrived and the playlist wants the player to see their score first
+            /// (AdvanceTrigger.CharacterScreen) - the track is over, the next one waits for the
+            /// oncharacterscreen that says the player is done looking.
+            /// </summary>
+            Completed
         }
 
         public PlaybackController()
@@ -183,6 +193,11 @@ namespace QuickPlayerCore
         private int _currentIndex = -1;
         private PlaybackPhase _phase = PlaybackPhase.Idle;
 
+        // Only used while Completed: where to go once the player closes the score screen. Cleared by
+        // anything that takes over the queue (an explicit Play, a Stop) so a deferred advance can never
+        // fire on top of a decision the user made after it was queued.
+        private int? _pendingAdvanceIndex;
+
         // Bumped by every Play/Stop. A start that was superseded while it was preparing its file
         // (TempFileTagger can copy and retag, which takes real time) sees a stale token and backs out
         // instead of sending a playsong for a track the user has already moved on from.
@@ -206,7 +221,10 @@ namespace QuickPlayerCore
         public void Stop()
         {
             lock (_gate)
+            {
                 _startToken++;
+                _pendingAdvanceIndex = null;
+            }
 
             EndCurrent();
         }
@@ -221,6 +239,7 @@ namespace QuickPlayerCore
             lock (_gate)
             {
                 token = ++_startToken;
+                _pendingAdvanceIndex = null;
                 _playlist = playlist;
                 _currentIndex = index;
                 entry = CurrentEntryLocked();
@@ -303,6 +322,7 @@ namespace QuickPlayerCore
         {
             Playlist playlist;
             int? next;
+            bool deferred;
 
             lock (_gate)
             {
@@ -315,21 +335,54 @@ namespace QuickPlayerCore
                 next = playlist.AutoAdvance && _currentIndex + 1 < playlist.Entries.Count
                     ? _currentIndex + 1
                     : null;
+
+                deferred = playlist.AdvanceOn == AdvanceTrigger.CharacterScreen && next.HasValue;
+                _pendingAdvanceIndex = deferred ? next : null;
             }
 
-            EndCurrent();
+            // The phase moves straight from Playing to Completed under the same call that ends the
+            // track - going through Idle first would leave a window where the oncharacterscreen we are
+            // waiting for arrives, sees an idle controller and is discarded as "nothing to do".
+            EndCurrent(deferred ? PlaybackPhase.Completed : PlaybackPhase.Idle);
 
-            if (next.HasValue)
+            if (!deferred && next.HasValue)
                 StartInBackground(playlist, next.Value);
         }
 
         private void OnCharacterScreenReached()
         {
-            // The report says nothing except that the player is on the character screen. If Quick
-            // Player is driving anything at that moment - preparing, or playing - the player got there
-            // by hand, which is the signal to stop.
-            if (IsActive)
-                Stop();
+            Playlist playlist = null;
+            int? next = null;
+
+            lock (_gate)
+            {
+                switch (_phase)
+                {
+                    // Nothing of ours is running - the game emits this on its way to the character
+                    // screen at startup too.
+                    case PlaybackPhase.Idle:
+                        return;
+
+                    // The track finished and the player has now closed their score: the awaited half of
+                    // songcomplete + oncharacterscreen.
+                    case PlaybackPhase.Completed:
+                        playlist = _playlist;
+                        next = _pendingAdvanceIndex;
+                        _pendingAdvanceIndex = null;
+                        _phase = PlaybackPhase.Idle;
+                        break;
+                }
+            }
+
+            if (next.HasValue && playlist != null)
+            {
+                StartInBackground(playlist, next.Value);
+                return;
+            }
+
+            // Starting or Playing: no songcomplete came first, so the player walked out of the song by
+            // hand. That, and reaching Completed with nothing left to advance to, both end the run.
+            Stop();
         }
 
         private void OnGameStateChanged(object sender, EventArgs e)
@@ -356,7 +409,7 @@ namespace QuickPlayerCore
             });
         }
 
-        private void EndCurrent()
+        private void EndCurrent(PlaybackPhase into = PlaybackPhase.Idle)
         {
             List<IDisposable> overrides;
 
@@ -365,7 +418,7 @@ namespace QuickPlayerCore
                 if (_phase == PlaybackPhase.Idle)
                     return;
 
-                _phase = PlaybackPhase.Idle;
+                _phase = into;
                 overrides = new List<IDisposable>(_activeOverrides);
                 _activeOverrides.Clear();
             }

@@ -200,7 +200,7 @@
                     Path at its natural geometry size and scales+centers THAT to fit, which is a
                     layout-level guarantee independent of whatever the geometry's own coordinates are -
                     doesn't depend on fixing every path's authoring. -->
-                    <Grid Grid.Column="0" ColumnDefinitions="Auto,8,Auto,8,Auto,8,Auto" Height="46" VerticalAlignment="Center">
+                    <Grid Grid.Column="0" ColumnDefinitions="Auto,8,Auto,8,Auto,8,Auto,16,Auto" Height="46" VerticalAlignment="Center">
                         <Button Grid.Column="0" Classes="QPTransportButton" Command="{Binding PrevCommand}" ToolTip.Tip="Previous track">
                             <Viewbox Width="16" Height="16">
                                 <Path Data="{StaticResource IconQPPrev}" Fill="{DynamicResource AccentPrimaryBrush}"/>
@@ -220,6 +220,18 @@
                         <Button Grid.Column="6" Classes="QPTransportButton" Command="{Binding NextCommand}" ToolTip.Tip="Next track">
                             <Viewbox Width="16" Height="16">
                                 <Path Data="{StaticResource IconQPNext}" Fill="{DynamicResource AccentPrimaryBrush}"/>
+                            </Viewbox>
+                        </Button>
+                        <!-- Separated from the four transport buttons by a wider gap: it doesn't act on
+                        playback right now, it changes what the next track waits for. Disabled with no
+                        playlist selected, since the setting is stored on the playlist. -->
+                        <Button Grid.Column="8" Classes="QPTransportButton"
+                                Classes.On="{Binding WaitForLeaderboards}"
+                                Command="{Binding ToggleWaitForLeaderboardsCommand}"
+                                IsEnabled="{Binding SelectedPlaylistRow, Converter={StaticResource IsNotNullConverter}}"
+                                ToolTip.Tip="{Binding WaitForLeaderboardsHint}">
+                            <Viewbox Width="16" Height="16">
+                                <Path Data="{StaticResource IconQPLeaderboard}" Fill="{DynamicResource AccentPrimaryBrush}"/>
                             </Viewbox>
                         </Button>
                     </Grid>

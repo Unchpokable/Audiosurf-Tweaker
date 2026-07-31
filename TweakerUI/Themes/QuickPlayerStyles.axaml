@@ -23,6 +23,8 @@
         <StreamGeometry x:Key="IconQPNext">M9 0L18 7L9 14Z M0 0L9 7L0 14Z</StreamGeometry>
         <StreamGeometry x:Key="IconQPPlay">M0 0L0 14L11 7Z</StreamGeometry>
         <StreamGeometry x:Key="IconQPStop">M0 0h12v12H0z</StreamGeometry>
+        <!-- Podium/score bars - the "wait on the leaderboard screen before the next track" toggle. -->
+        <StreamGeometry x:Key="IconQPLeaderboard">M0 6h4v8H0z M5 0h4v14H5z M10 9h4v5h-4z</StreamGeometry>
         <StreamGeometry x:Key="IconQPAdd">M12 5v14 M5 12h14</StreamGeometry>
         <StreamGeometry x:Key="IconQPRemove">M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13</StreamGeometry>
         <StreamGeometry x:Key="IconQPCoverPlaceholder">M9 18V6l11-2v12 M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M17 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6z</StreamGeometry>
@@ -374,6 +376,15 @@
         <Setter Property="Width" Value="46"/>
         <Setter Property="Height" Value="46"/>
         <Setter Property="Background" Value="{DynamicResource AccentButtonGradientBrush}"/>
+    </Style>
+    <!-- "On" state for the transport's toggle-style buttons. A filled accent background rather than
+    the ghost one is the same on/off vocabulary Border.TWToggleRow.On uses on the Tweaker tab; the
+    icon inside switches to the on-accent brush through the matching selector below. -->
+    <Style Selector="Button.QPTransportButton.On">
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
+    </Style>
+    <Style Selector="Button.QPTransportButton.On Path">
+        <Setter Property="Fill" Value="{DynamicResource TextOnAccentBrush}"/>
     </Style>
 
     <!-- Character grid - RadioButton restyled as a rectangular chip, same "restyle a semantically

@@ -19,18 +19,16 @@ namespace QuickPlayerCore
     /// counterpart to close the chip with, and the controller's pair brackets the whole preparation
     /// (including the fast no-tags path) for a manual play and an auto-advance alike.
     ///
-    /// KNOWN GAP - tags the user wrote into the source file by hand. SongTitle is a snapshot taken by
-    /// PlaylistEntry.FromFile at import time, and the suffix below is appended to it unconditionally:
-    /// nothing here parses the existing title looking for bracket tags. So a file whose own title
-    /// already reads "Song [as-4lane]" gets "Song [as-4lane] [as-4lane]" once the same tag is enabled
-    /// in Quick Player, and a title edited after import stays at its stale imported value in the copy
-    /// (the mtime in BuildSignature does invalidate the cached copy, it just gets rebuilt from the same
-    /// stale SongTitle).
+    /// The suffix is appended to SongTitle unconditionally, which is safe because SongTitle is
+    /// guaranteed to be plain text: PlaylistEntry.AdoptTagsFromTitle lifts any tag the user wrote into
+    /// the file themselves out of the title and into the entry's own tag/override state, at import and
+    /// again on every playlist load. That guarantee matters - a title carrying the same tag twice does
+    /// not get ignored by the game, it breaks it in arbitrary ways (verified on a real run).
     ///
-    /// A duplicated tag was tested against the running game and breaks it in arbitrary ways - it is not
-    /// ignored and not applied twice. Closing this means re-reading the title from the file here and
-    /// merging the tags already in it with Quick Player's set, not just deduplicating the suffix; see
-    /// Docs/Internal/roadmap.md.
+    /// REMAINING GAP - SongTitle is still a snapshot taken at import. A title the user edits in the
+    /// file afterwards is not picked up: the mtime in BuildSignature invalidates the cached copy, but
+    /// the copy is then rebuilt from the same stale SongTitle. Tags added to the file that way are
+    /// invisible to Quick Player until the track is re-added. See Docs/Internal/roadmap.md.
     /// </summary>
     public static class TempFileTagger
     {

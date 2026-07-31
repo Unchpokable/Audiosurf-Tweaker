@@ -7,6 +7,24 @@ using System.Text.Json;
 
 namespace QuickPlayerCore
 {
+    /// <summary>What has to happen before Quick Player starts the next entry.</summary>
+    public enum AdvanceTrigger
+    {
+        /// <summary>
+        /// The moment the game reports songcomplete. The next song starts while the player is still on
+        /// the leaderboard screen - the game accepts playsong from there, so the score is skipped past.
+        /// </summary>
+        SongComplete,
+
+        /// <summary>
+        /// songcomplete, and then the player leaving the score screen themselves (oncharacterscreen).
+        /// Lets the player actually read their score, at the cost of one click per track. An
+        /// oncharacterscreen that arrives without a preceding songcomplete still means "the player
+        /// walked out mid-song" and stops playback, exactly as in SongComplete mode.
+        /// </summary>
+        CharacterScreen
+    }
+
     /// <summary>
     /// One playlist - a name, its entries, and playback order settings. Persisted as one JSON file
     /// per playlist under QuickPlayer/Playlists/&lt;Id&gt;.json (same System.Text.Json pattern as
@@ -26,6 +44,14 @@ namespace QuickPlayerCore
 
         /// <summary>Advance to the next entry by index on songcomplete. Simple linear order for now - the natural extension point for shuffle/repeat later.</summary>
         public bool AutoAdvance { get; set; } = true;
+
+        /// <summary>
+        /// When the next entry starts. Orthogonal to AutoAdvance (whether to advance at all) and to the
+        /// playback order - it only decides which report pulls the trigger. Default is SongComplete
+        /// because it is what the field's absence deserializes to, i.e. existing playlists keep
+        /// behaving as they did.
+        /// </summary>
+        public AdvanceTrigger AdvanceOn { get; set; } = AdvanceTrigger.SongComplete;
 
         public static event Action<string, Exception> OperationFailed;
 
@@ -86,7 +112,21 @@ namespace QuickPlayerCore
             try
             {
                 var json = File.ReadAllText(path, Encoding.UTF8);
-                return JsonSerializer.Deserialize<Playlist>(json);
+                var playlist = JsonSerializer.Deserialize<Playlist>(json);
+
+                // Entries imported before titles were parsed still carry the user's own bracket tags
+                // inside SongTitle, which is exactly the state that makes TempFileTagger append a
+                // duplicate on playback. Migrating on load rather than only on import means an existing
+                // playlist is fixed too; AdoptTagsFromTitle is idempotent, so entries that were already
+                // clean are untouched and nothing is rewritten on disk until the playlist is saved for
+                // some other reason.
+                if (playlist?.Entries != null)
+                {
+                    foreach (var entry in playlist.Entries)
+                        entry?.AdoptTagsFromTitle();
+                }
+
+                return playlist;
             }
             catch (Exception ex)
             {

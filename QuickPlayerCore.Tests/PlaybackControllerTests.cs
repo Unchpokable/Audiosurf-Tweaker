@@ -219,6 +219,107 @@ namespace QuickPlayerCore.Tests
             Assert.AreEqual(0, depth, "a started entry was never reported as ended");
         }
 
+        // AdvanceTrigger.CharacterScreen - the player wants to read their score before the next track.
+        [Test]
+        public void WaitingForTheScoreScreen_AdvancesOnlyAfterTheCharacterScreen()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game);
+            var playlist = BuildPlaylist(2);
+            playlist.AdvanceOn = AdvanceTrigger.CharacterScreen;
+
+            controller.Play(playlist, 0);
+            reports.RaiseNowPlaying();
+            reports.RaiseSongCompleted();
+
+            Assert.IsFalse(game.WaitForCommandCount(2, 200), "the next track jumped the score screen");
+            Assert.IsFalse(controller.IsPlaying);
+            Assert.IsTrue(controller.IsActive, "the run is still going, it is just waiting");
+
+            reports.RaiseCharacterScreen();
+
+            Assert.IsTrue(game.WaitForCommandCount(2), "the next entry was never started");
+            Assert.AreSame(playlist.Entries[1], controller.CurrentEntry);
+        }
+
+        // Same mode, but the player walked out mid-song instead of finishing it: no songcomplete came
+        // first, so the very same report means "stop" rather than "go on".
+        [Test]
+        public void WaitingForTheScoreScreen_StillStopsOnABailOut()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game);
+            var playlist = BuildPlaylist(2);
+            playlist.AdvanceOn = AdvanceTrigger.CharacterScreen;
+
+            controller.Play(playlist, 0);
+            reports.RaiseNowPlaying();
+            reports.RaiseCharacterScreen();
+
+            Assert.IsFalse(controller.IsActive);
+            Assert.IsFalse(game.WaitForCommandCount(2, 200), "a bail-out advanced the playlist");
+        }
+
+        [Test]
+        public void WaitingForTheScoreScreen_OnTheLastEntry_GoesIdle()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game);
+            var playlist = BuildPlaylist(1);
+            playlist.AdvanceOn = AdvanceTrigger.CharacterScreen;
+
+            controller.Play(playlist, 0);
+            reports.RaiseNowPlaying();
+            reports.RaiseSongCompleted();
+            reports.RaiseCharacterScreen();
+
+            Assert.IsFalse(controller.IsActive);
+            Assert.IsFalse(game.WaitForCommandCount(2, 200));
+        }
+
+        // Playing something by hand off the score screen has to cancel the queued advance, or the
+        // player's own choice would be overwritten the moment they reach the character screen.
+        [Test]
+        public void WaitingForTheScoreScreen_ManualPlayCancelsTheQueuedAdvance()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game);
+            var playlist = BuildPlaylist(4);
+            playlist.AdvanceOn = AdvanceTrigger.CharacterScreen;
+
+            controller.Play(playlist, 0);
+            reports.RaiseNowPlaying();
+            reports.RaiseSongCompleted();
+            controller.Play(playlist, 3);
+
+            Assert.AreEqual(2, game.CommandCount);
+            Assert.AreSame(playlist.Entries[3], controller.CurrentEntry);
+        }
+
+        [Test]
+        public void WaitingForTheScoreScreen_EndsTheTrackAtSongCompleteNotAtTheCharacterScreen()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game);
+            var playlist = BuildPlaylist(2);
+            playlist.AdvanceOn = AdvanceTrigger.CharacterScreen;
+            PlaylistEntry ended = null;
+            controller.EntryEnded += entry => ended = entry;
+
+            controller.Play(playlist, 0);
+            reports.RaiseNowPlaying();
+            reports.RaiseSongCompleted();
+
+            // The track really is over at songcomplete - its Quick Player overrides have to come back
+            // off then, not linger while the player reads the leaderboard.
+            Assert.AreSame(playlist.Entries[0], ended);
+        }
+
         // Reproduces the window that stranded the "Now playing" chip: the report lands after the phase
         // was claimed but before the start is announced. Driving it from the fake's Command callback
         // hits that exact ordering deterministically instead of racing two real threads for it.

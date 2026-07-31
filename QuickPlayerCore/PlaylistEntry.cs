@@ -43,19 +43,65 @@ namespace QuickPlayerCore
         public static PlaylistEntry FromFile(string filePath)
         {
             var entry = new PlaylistEntry { FilePath = filePath };
+            string rawTitle;
 
             try
             {
                 var tags = MetadataReader.ReadData(filePath);
                 entry.ArtistName = tags.ArtistName;
-                entry.SongTitle = string.IsNullOrEmpty(tags.SongName) ? Path.GetFileNameWithoutExtension(filePath) : tags.SongName;
+                rawTitle = string.IsNullOrEmpty(tags.SongName) ? Path.GetFileNameWithoutExtension(filePath) : tags.SongName;
             }
             catch
             {
-                entry.SongTitle = Path.GetFileNameWithoutExtension(filePath);
+                rawTitle = Path.GetFileNameWithoutExtension(filePath);
             }
 
+            entry.SongTitle = rawTitle;
+            entry.AdoptTagsFromTitle();
+
+            if (string.IsNullOrWhiteSpace(entry.SongTitle))
+                entry.SongTitle = SongTitleTagParser.Parse(Path.GetFileNameWithoutExtension(filePath)).Title;
+
             return entry;
+        }
+
+        /// <summary>
+        /// Moves any Audiosurf tag the user had written into the title themselves out of SongTitle and
+        /// into this entry's own tag/override state, so the title Quick Player stores is plain text.
+        /// TempFileTagger composes title + tags on playback, so leaving them in would append a second
+        /// copy of a tag that is already there - and a duplicated tag breaks the game outright.
+        ///
+        /// Tags that map to a live asconfig value (Sidewinder/BankingCamera) go to ConfigOverrides
+        /// rather than Tags: those two are shown as "Mods" in the UI and TagOptionViewModel hides them
+        /// from the Tags list, so an entry carrying one in Tags would have it silently dropped the
+        /// first time the user edited anything on that track (TrackCardViewModel rebuilds Tags from the
+        /// visible options).
+        ///
+        /// Idempotent - a title with nothing recognisable in it is left exactly as it was, so running
+        /// this over already-imported entries cannot damage them.
+        /// </summary>
+        internal void AdoptTagsFromTitle()
+        {
+            var parsed = SongTitleTagParser.Parse(SongTitle);
+            if (parsed.Tags.Count == 0)
+                return;
+
+            SongTitle = parsed.Title;
+            Tags ??= new List<PlaylistTag>();
+            ConfigOverrides ??= new Dictionary<string, bool>();
+
+            foreach (var tag in parsed.Tags)
+            {
+                var definition = SongTagCatalog.Get(tag.Token);
+                if (definition.AsConfigBinding is { } binding)
+                {
+                    ConfigOverrides[binding.ConfigKey] = binding.Value;
+                    continue;
+                }
+
+                if (!Tags.Exists(existing => existing.Token == tag.Token))
+                    Tags.Add(tag);
+            }
         }
     }
 }
