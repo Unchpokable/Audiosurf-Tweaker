@@ -37,6 +37,8 @@ namespace TweakerUI.ViewModels
             // Auto-advance starts the next track off the report thread, so a failure there has no
             // caller to surface it - without this it would just stop playing with no explanation.
             _playback.OperationFailed += OnPlaybackFailed;
+            _playback.EntryUnavailable += OnEntryUnavailable;
+            _playback.PrewarmProgressed += OnPrewarmProgressed;
 
             foreach (var playlist in Playlist.LoadAll())
                 Playlists.Add(new PlaylistRowViewModel(playlist));
@@ -69,6 +71,11 @@ namespace TweakerUI.ViewModels
         private readonly object _preparingGate = new();
         private StatusHandle _preparingStatus;
         private int _preparingCount;
+
+        // Separate chip from the per-track one above: the background pass runs alongside playback, so
+        // both can legitimately be up at once.
+        private readonly object _prewarmGate = new();
+        private StatusHandle _prewarmStatus;
 
         // Raw Playlist for internal use - Playlists/SelectedPlaylistRow are the UI-facing wrappers
         // (rename state etc.), everything below just needs the underlying persisted model.
@@ -346,6 +353,39 @@ namespace TweakerUI.ViewModels
                     _preparingCount = 0;
                     finished = _preparingStatus;
                     _preparingStatus = null;
+                }
+            }
+
+            finished?.Dispose();
+        }
+
+        private void OnEntryUnavailable(PlaylistEntry entry)
+        {
+            Dispatcher.UIThread.Post(() => ApplicationNotificationManager.Manager.ShowError(
+                "Track unavailable",
+                $"\"{entry.SongTitle}\" is no longer at {entry.FilePath} - it was moved, renamed or deleted."));
+        }
+
+        // One chip for the whole background pass, updated in place, closed when it settles - the
+        // per-entry reports are far too frequent to open a status entry each.
+        private void OnPrewarmProgressed(PrewarmProgress progress)
+        {
+            StatusHandle finished = null;
+
+            lock (_prewarmGate)
+            {
+                if (progress.IsComplete)
+                {
+                    finished = _prewarmStatus;
+                    _prewarmStatus = null;
+                }
+                else
+                {
+                    var message = $"Preparing playlist: {progress.Settled}/{progress.Total}";
+                    if (_prewarmStatus == null)
+                        _prewarmStatus = StatusService.Manager.Begin(StatusToken.DiskProcess, "Quick Player", message);
+                    else
+                        _prewarmStatus.Update(message);
                 }
             }
 

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using AudiosurfInterface;
 using QuickPlayerCore.Audiosurf;
@@ -103,14 +104,22 @@ namespace QuickPlayerCore
         }
 
         public PlaybackController()
-            : this(new PlaybackReportSource(), new PlaybackGameSession())
+            : this(new PlaybackReportSource(), new PlaybackGameSession(), null)
         {
         }
 
-        internal PlaybackController(IPlaybackReportSource reportSource, IPlaybackGameSession gameSession)
+        internal PlaybackController(
+            IPlaybackReportSource reportSource,
+            IPlaybackGameSession gameSession,
+            IPlaylistPrewarmer prewarmer)
         {
             _reportSource = reportSource;
             _gameSession = gameSession;
+            // IProgress rather than another event on the prewarmer: this class only forwards the
+            // reports on as PrewarmProgressed, keeping its own surface events-only like the rest of
+            // QuickPlayerCore, and a test can hand in a prewarmer that reports nothing.
+            _prewarmer = prewarmer ?? new PlaylistPrewarmer(new Progress<PrewarmProgress>(OnPrewarmProgress));
+
             _reportSource.SongCompleted += OnSongCompleted;
             _reportSource.OnCharacterScreen += OnCharacterScreenReached;
             _reportSource.NowPlaying += OnNowPlaying;
@@ -143,6 +152,15 @@ namespace QuickPlayerCore
         /// an event rather than through a Logger dependency, same convention as TempFileTagger/Playlist.
         /// </summary>
         public event Action<string, Exception> OperationFailed;
+
+        /// <summary>The entry's source file is gone. Auto-advance skips past it; a manual play stops on it.</summary>
+        public event Action<PlaylistEntry> EntryUnavailable;
+
+        /// <summary>
+        /// How far the background preparation of the playing playlist has got. Raised on the prewarmer's
+        /// own worker thread - marshal it before touching UI state.
+        /// </summary>
+        public event Action<PrewarmProgress> PrewarmProgressed;
 
         /// <summary>
         /// Where the module currently is in the queue - NOT "what is audibly playing" (see IsPlaying).
@@ -180,8 +198,15 @@ namespace QuickPlayerCore
         /// <summary>Character to launch with when the entry itself has no override (bound to the transport bar's character grid).</summary>
         public GameCharacter DefaultCharacter { get; set; } = GameCharacter.Mono;
 
+        /// <summary>
+        /// How ready the background worker believes an entry is. Advisory - the authoritative check
+        /// happens at start time; this is for the UI to grey out what it already knows is broken.
+        /// </summary>
+        public EntryReadiness GetReadiness(PlaylistEntry entry) => _prewarmer.GetReadiness(entry);
+
         private readonly IPlaybackReportSource _reportSource;
         private readonly IPlaybackGameSession _gameSession;
+        private readonly IPlaylistPrewarmer _prewarmer;
         private readonly List<IDisposable> _activeOverrides = new();
 
         // Guards every field below. Never held across a call into GameConfigState/IPlaybackGameSession:
@@ -226,10 +251,14 @@ namespace QuickPlayerCore
                 _pendingAdvanceIndex = null;
             }
 
+            // Nothing is going to be played from this playlist for now, so stop spending disk on
+            // preparing the rest of it.
+            _prewarmer.Stop();
             EndCurrent();
         }
 
-        private void StartEntry(Playlist playlist, int index)
+        /// <summary>Returns whether the entry actually started; false means it was unplayable or there was nothing there.</summary>
+        private bool StartEntry(Playlist playlist, int index)
         {
             EndCurrent();
 
@@ -250,7 +279,26 @@ namespace QuickPlayerCore
             }
 
             if (entry == null)
-                return;
+                return false;
+
+            // Gets the rest of the queue ready while this one plays, so the next start is a cache hit
+            // instead of a multi-megabyte copy the game is waiting on.
+            _prewarmer.Start(playlist, index);
+
+            // Checked live rather than trusting the prewarmer's snapshot: it may not have reached this
+            // entry yet, and handing the game a path that no longer exists is worth one stat call to
+            // avoid. Deleting or moving a file that is sitting in a playlist is not an exotic case.
+            if (string.IsNullOrEmpty(entry.FilePath) || !File.Exists(entry.FilePath))
+            {
+                lock (_gate)
+                {
+                    if (_startToken == token)
+                        _phase = PlaybackPhase.Idle;
+                }
+
+                EntryUnavailable?.Invoke(entry);
+                return false;
+            }
 
             // Cold path, deliberately outside the lock: ResolvePlaybackPath can copy the file and
             // rewrite its tags.
@@ -283,11 +331,15 @@ namespace QuickPlayerCore
             {
                 for (var i = handles.Count - 1; i >= 0; i--)
                     handles[i].Dispose();
-                return;
+
+                // Something newer owns the queue now; reporting this as "didn't start" would make an
+                // auto-advance chain skip ahead on top of whatever superseded it.
+                return true;
             }
 
             _gameSession.Command(GameProtocol.PlaySong(entry.Character ?? DefaultCharacter, resolvedPath));
             NotifyStarted(entry, token);
+            return true;
         }
 
         // Both sources here are the same mechanism - a temporary asconfig value layered over the user's
@@ -308,6 +360,8 @@ namespace QuickPlayerCore
 
             return overrides;
         }
+
+        private void OnPrewarmProgress(PrewarmProgress progress) => PrewarmProgressed?.Invoke(progress);
 
         private void OnNowPlaying()
         {
@@ -400,13 +454,35 @@ namespace QuickPlayerCore
             {
                 try
                 {
-                    StartEntry(playlist, index);
+                    AdvanceFrom(playlist, index);
                 }
                 catch (Exception ex)
                 {
                     OperationFailed?.Invoke("Failed to start the next track in the playlist", ex);
                 }
             });
+        }
+
+        // An entry whose file has gone missing must not end the run - the player deleted one song, not
+        // the playlist. Walks forward until something starts, bounded by the queue length so a playlist
+        // where every file is gone stops instead of looping. Only auto-advance skips: a manual Play on
+        // a missing track reports EntryUnavailable and stops there, because silently playing a
+        // different song than the one that was clicked is worse than doing nothing.
+        private void AdvanceFrom(Playlist playlist, int index)
+        {
+            var remaining = playlist.Entries.Count;
+
+            while (remaining-- > 0)
+            {
+                if (StartEntry(playlist, index))
+                    return;
+
+                index++;
+                if (index >= playlist.Entries.Count)
+                    break;
+            }
+
+            Stop();
         }
 
         private void EndCurrent(PlaybackPhase into = PlaybackPhase.Idle)
@@ -476,6 +552,7 @@ namespace QuickPlayerCore
             _reportSource.NowPlaying -= OnNowPlaying;
             _reportSource.Dispose();
             _gameSession.StateChanged -= OnGameStateChanged;
+            _prewarmer.Dispose();
         }
     }
 }

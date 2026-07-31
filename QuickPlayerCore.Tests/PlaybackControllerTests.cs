@@ -2,6 +2,7 @@ namespace QuickPlayerCore.Tests
 {
     using System;
     using System.Collections.Generic;
+    using System.IO;
     using System.Threading;
     using NUnit.Framework;
 
@@ -22,7 +23,7 @@ namespace QuickPlayerCore.Tests
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
-            using var controller = new PlaybackController(reports, game);
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(2);
 
             controller.Play(playlist, 0);
@@ -39,7 +40,7 @@ namespace QuickPlayerCore.Tests
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
-            using var controller = new PlaybackController(reports, game);
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(2);
 
             controller.Play(playlist, 0);
@@ -56,7 +57,7 @@ namespace QuickPlayerCore.Tests
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
-            using var controller = new PlaybackController(reports, game);
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(3);
 
             controller.Play(playlist, 0);
@@ -75,7 +76,7 @@ namespace QuickPlayerCore.Tests
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
-            using var controller = new PlaybackController(reports, game);
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(3);
 
             controller.Play(playlist, 1);
@@ -94,7 +95,7 @@ namespace QuickPlayerCore.Tests
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
-            using var controller = new PlaybackController(reports, game);
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(2);
 
             controller.Play(playlist, 0);
@@ -108,7 +109,7 @@ namespace QuickPlayerCore.Tests
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
-            using var controller = new PlaybackController(reports, game);
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(2);
 
             controller.Play(playlist, 0);
@@ -129,7 +130,7 @@ namespace QuickPlayerCore.Tests
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
-            using var controller = new PlaybackController(reports, game);
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(1);
 
             controller.Play(playlist, 0);
@@ -146,7 +147,7 @@ namespace QuickPlayerCore.Tests
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
-            using var controller = new PlaybackController(reports, game);
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(2);
 
             controller.Play(playlist, 0);
@@ -163,7 +164,7 @@ namespace QuickPlayerCore.Tests
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
-            using var controller = new PlaybackController(reports, game);
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(3);
             PlaylistEntry ended = null;
             controller.EntryEnded += entry => ended = entry;
@@ -181,7 +182,7 @@ namespace QuickPlayerCore.Tests
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
-            using var controller = new PlaybackController(reports, game);
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(2);
             playlist.AutoAdvance = false;
 
@@ -201,7 +202,7 @@ namespace QuickPlayerCore.Tests
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
-            using var controller = new PlaybackController(reports, game);
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(3);
             var depth = 0;
             var maxDepth = 0;
@@ -225,7 +226,7 @@ namespace QuickPlayerCore.Tests
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
-            using var controller = new PlaybackController(reports, game);
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(2);
             playlist.AdvanceOn = AdvanceTrigger.CharacterScreen;
 
@@ -250,7 +251,7 @@ namespace QuickPlayerCore.Tests
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
-            using var controller = new PlaybackController(reports, game);
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(2);
             playlist.AdvanceOn = AdvanceTrigger.CharacterScreen;
 
@@ -267,7 +268,7 @@ namespace QuickPlayerCore.Tests
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
-            using var controller = new PlaybackController(reports, game);
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(1);
             playlist.AdvanceOn = AdvanceTrigger.CharacterScreen;
 
@@ -287,7 +288,7 @@ namespace QuickPlayerCore.Tests
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
-            using var controller = new PlaybackController(reports, game);
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(4);
             playlist.AdvanceOn = AdvanceTrigger.CharacterScreen;
 
@@ -305,7 +306,7 @@ namespace QuickPlayerCore.Tests
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
-            using var controller = new PlaybackController(reports, game);
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(2);
             playlist.AdvanceOn = AdvanceTrigger.CharacterScreen;
             PlaylistEntry ended = null;
@@ -320,6 +321,85 @@ namespace QuickPlayerCore.Tests
             Assert.AreSame(playlist.Entries[0], ended);
         }
 
+        // A deleted or moved source file must cost one entry, not the whole run.
+        [Test]
+        public void AutoAdvance_SkipsPastAnEntryWhoseFileIsGone()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
+            var playlist = BuildPlaylist(3);
+            PlaylistEntry unavailable = null;
+            controller.EntryUnavailable += entry => unavailable = entry;
+            File.Delete(playlist.Entries[1].FilePath);
+
+            controller.Play(playlist, 0);
+            reports.RaiseNowPlaying();
+            reports.RaiseSongCompleted();
+
+            Assert.IsTrue(game.WaitForCommandCount(2), "the playlist stopped at the missing entry");
+            Assert.AreSame(playlist.Entries[1], unavailable);
+            Assert.AreSame(playlist.Entries[2], controller.CurrentEntry);
+        }
+
+        [Test]
+        public void AutoAdvance_StopsWhenEverythingLeftIsGone()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
+            var playlist = BuildPlaylist(3);
+            File.Delete(playlist.Entries[1].FilePath);
+            File.Delete(playlist.Entries[2].FilePath);
+
+            controller.Play(playlist, 0);
+            reports.RaiseNowPlaying();
+            reports.RaiseSongCompleted();
+
+            Assert.IsFalse(game.WaitForCommandCount(2, 500), "a missing entry was handed to the game anyway");
+            Assert.IsFalse(controller.IsActive);
+        }
+
+        // Manual play is a specific choice, so a missing file reports and stops there - quietly playing
+        // some other track instead would be worse than doing nothing.
+        [Test]
+        public void ManualPlay_OnAMissingFile_ReportsAndDoesNotSkip()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
+            var playlist = BuildPlaylist(3);
+            PlaylistEntry unavailable = null;
+            controller.EntryUnavailable += entry => unavailable = entry;
+            File.Delete(playlist.Entries[1].FilePath);
+
+            controller.Play(playlist, 1);
+
+            Assert.AreSame(playlist.Entries[1], unavailable);
+            Assert.AreEqual(0, game.CommandCount);
+            Assert.IsFalse(controller.IsActive);
+        }
+
+        [Test]
+        public void Playing_PrewarmsTheRestOfThePlaylistAndStopsWithIt()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            var prewarmer = new FakePrewarmer();
+            using var controller = new PlaybackController(reports, game, prewarmer);
+            var playlist = BuildPlaylist(3);
+
+            controller.Play(playlist, 1);
+
+            Assert.AreEqual(1, prewarmer.StartCount);
+            Assert.AreSame(playlist, prewarmer.LastPlaylist);
+            Assert.AreEqual(1, prewarmer.LastFromIndex, "prewarming has to start from what is playing");
+
+            controller.Stop();
+
+            Assert.AreEqual(1, prewarmer.StopCount);
+        }
+
         // Reproduces the window that stranded the "Now playing" chip: the report lands after the phase
         // was claimed but before the start is announced. Driving it from the fake's Command callback
         // hits that exact ordering deterministically instead of racing two real threads for it.
@@ -328,7 +408,7 @@ namespace QuickPlayerCore.Tests
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
-            using var controller = new PlaybackController(reports, game);
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(2);
             var started = 0;
             var ended = 0;
@@ -349,7 +429,7 @@ namespace QuickPlayerCore.Tests
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
-            using var controller = new PlaybackController(reports, game);
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(2);
             var sequence = new List<string>();
             controller.EntryPreparing += _ => sequence.Add("preparing");
@@ -372,7 +452,7 @@ namespace QuickPlayerCore.Tests
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
-            using var controller = new PlaybackController(reports, game);
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(1);
             var preparing = 0;
             var prepared = 0;
@@ -386,20 +466,72 @@ namespace QuickPlayerCore.Tests
             Assert.AreEqual(preparing, prepared);
         }
 
-        private static Playlist BuildPlaylist(int count)
+        // Real files on disk: PlaybackController checks the source still exists before starting an
+        // entry, so placeholder paths would make every one of these tests report "track unavailable".
+        // Untagged, so TempFileTagger hands the original path straight back and never copies anything.
+        private string _tracksDirectory;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _tracksDirectory = Path.Combine(Path.GetTempPath(), "qp-tests-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(_tracksDirectory);
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            try
+            {
+                if (Directory.Exists(_tracksDirectory))
+                    Directory.Delete(_tracksDirectory, recursive: true);
+            }
+            catch
+            {
+                // A leftover temp folder fails nothing.
+            }
+        }
+
+        private Playlist BuildPlaylist(int count)
         {
             var playlist = new Playlist { Name = "Test" };
             for (var i = 0; i < count; i++)
             {
+                var path = Path.Combine(_tracksDirectory, $"track-{i}.mp3");
+                File.WriteAllBytes(path, Array.Empty<byte>());
+
                 playlist.Entries.Add(new PlaylistEntry
                 {
-                    FilePath = $"track-{i}.mp3",
+                    FilePath = path,
                     ArtistName = "Artist",
                     SongTitle = $"Track {i}"
                 });
             }
 
             return playlist;
+        }
+
+        private sealed class FakePrewarmer : IPlaylistPrewarmer
+        {
+            public int StartCount { get; private set; }
+            public int StopCount { get; private set; }
+            public Playlist LastPlaylist { get; private set; }
+            public int LastFromIndex { get; private set; } = -1;
+
+            public void Start(Playlist playlist, int fromIndex)
+            {
+                StartCount++;
+                LastPlaylist = playlist;
+                LastFromIndex = fromIndex;
+            }
+
+            public void Stop() => StopCount++;
+
+            public EntryReadiness GetReadiness(PlaylistEntry entry) => EntryReadiness.Unknown;
+
+            public void Dispose()
+            {
+            }
         }
 
         private sealed class FakeReportSource : IPlaybackReportSource

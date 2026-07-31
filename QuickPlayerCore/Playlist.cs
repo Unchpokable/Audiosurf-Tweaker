@@ -95,6 +95,10 @@ namespace QuickPlayerCore
                 var path = PathFor(Id);
                 if (File.Exists(path))
                     File.Delete(path);
+
+                // The tagged copies were only ever for this playlist - nothing else can reach them
+                // once it is gone, and nothing else ever cleaned them up.
+                TempFileTagger.DropTempDirectory(Id);
                 return true;
             }
             catch (Exception ex)
