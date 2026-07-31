@@ -186,6 +186,8 @@ namespace TweakerUI.Core
             if (!await RunInjectorAsync(injectorPath, pid, pluginPath))
                 return;
 
+            await Task.Delay(1500); // Give internal plugin some time to initialize
+
             await BeginHandshakeAsync(HandshakeTimeout);
         }
 
