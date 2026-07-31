@@ -77,8 +77,7 @@ namespace TweakerUI.ViewModels
         partial void OnSelectedPlaylistRowChanged(PlaylistRowViewModel value)
         {
             Queue.Clear();
-            OnPropertyChanged(nameof(WaitForLeaderboards));
-            OnPropertyChanged(nameof(WaitForLeaderboardsHint));
+            NotifyAdvanceModeChanged();
             if (value == null)
                 return;
 
@@ -86,24 +85,56 @@ namespace TweakerUI.ViewModels
                 Queue.Add(new TrackCardViewModel(entry, this));
         }
 
-        // Stored on the playlist rather than as an app-wide preference, next to AutoAdvance - a mix
-        // playlist and a "sit and grind one chart" playlist genuinely want different answers.
-        public bool WaitForLeaderboards => SelectedPlaylist?.AdvanceOn == AdvanceTrigger.CharacterScreen;
-
-        public string WaitForLeaderboardsHint => WaitForLeaderboards
-            ? "Waiting on the score screen: the next track starts after you leave it. Click to start the next track as soon as the current one ends."
-            : "Next track starts the moment the current one ends, skipping past the score screen. Click to wait until you leave the score screen instead.";
-
-        [RelayCommand]
-        private void ToggleWaitForLeaderboards()
+        // Advance mode. Stored on the playlist rather than as an app-wide preference, next to
+        // AutoAdvance - a mix playlist and a "sit and grind one chart" playlist genuinely want
+        // different answers.
+        //
+        // Two properties instead of one bool with an inverting converter, because the view binds a
+        // RadioButton pair: the group unchecks the other member by writing false into it, and a shared
+        // bool would flip the very setting that click was choosing. Each setter therefore acts only on
+        // being checked and ignores the unchecking write.
+        public bool IsAdvanceAuto
         {
-            if (SelectedPlaylist == null)
+            get => SelectedPlaylist != null && SelectedPlaylist.AdvanceOn == AdvanceTrigger.SongComplete;
+            set
+            {
+                if (value)
+                    SetAdvanceTrigger(AdvanceTrigger.SongComplete);
+            }
+        }
+
+        public bool IsAdvanceManual
+        {
+            get => SelectedPlaylist != null && SelectedPlaylist.AdvanceOn == AdvanceTrigger.CharacterScreen;
+            set
+            {
+                if (value)
+                    SetAdvanceTrigger(AdvanceTrigger.CharacterScreen);
+            }
+        }
+
+        public string AdvanceAutoHint =>
+            "The next track starts the moment the current one ends - the score screen goes by without a stop.";
+
+        public string AdvanceManualHint =>
+            "The next track waits until you leave the score screen, so you can read your result first. "
+            + "Quitting a song early still stops playback either way.";
+
+        private void SetAdvanceTrigger(AdvanceTrigger trigger)
+        {
+            var playlist = SelectedPlaylist;
+            if (playlist == null || playlist.AdvanceOn == trigger)
                 return;
 
-            SelectedPlaylist.AdvanceOn = WaitForLeaderboards ? AdvanceTrigger.SongComplete : AdvanceTrigger.CharacterScreen;
-            OnPropertyChanged(nameof(WaitForLeaderboards));
-            OnPropertyChanged(nameof(WaitForLeaderboardsHint));
+            playlist.AdvanceOn = trigger;
+            NotifyAdvanceModeChanged();
             SaveCurrentPlaylist();
+        }
+
+        private void NotifyAdvanceModeChanged()
+        {
+            OnPropertyChanged(nameof(IsAdvanceAuto));
+            OnPropertyChanged(nameof(IsAdvanceManual));
         }
 
         partial void OnDefaultCharacterChanged(GameCharacter value)

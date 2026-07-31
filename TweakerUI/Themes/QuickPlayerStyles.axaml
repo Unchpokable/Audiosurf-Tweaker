@@ -23,8 +23,6 @@
         <StreamGeometry x:Key="IconQPNext">M9 0L18 7L9 14Z M0 0L9 7L0 14Z</StreamGeometry>
         <StreamGeometry x:Key="IconQPPlay">M0 0L0 14L11 7Z</StreamGeometry>
         <StreamGeometry x:Key="IconQPStop">M0 0h12v12H0z</StreamGeometry>
-        <!-- Podium/score bars - the "wait on the leaderboard screen before the next track" toggle. -->
-        <StreamGeometry x:Key="IconQPLeaderboard">M0 6h4v8H0z M5 0h4v14H5z M10 9h4v5h-4z</StreamGeometry>
         <StreamGeometry x:Key="IconQPAdd">M12 5v14 M5 12h14</StreamGeometry>
         <StreamGeometry x:Key="IconQPRemove">M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13</StreamGeometry>
         <StreamGeometry x:Key="IconQPCoverPlaceholder">M9 18V6l11-2v12 M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M17 19a3 3 0 1 0 0-6 3 3 0 0 0 0 6z</StreamGeometry>
@@ -377,15 +375,6 @@
         <Setter Property="Height" Value="46"/>
         <Setter Property="Background" Value="{DynamicResource AccentButtonGradientBrush}"/>
     </Style>
-    <!-- "On" state for the transport's toggle-style buttons. A filled accent background rather than
-    the ghost one is the same on/off vocabulary Border.TWToggleRow.On uses on the Tweaker tab; the
-    icon inside switches to the on-accent brush through the matching selector below. -->
-    <Style Selector="Button.QPTransportButton.On">
-        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
-    </Style>
-    <Style Selector="Button.QPTransportButton.On Path">
-        <Setter Property="Fill" Value="{DynamicResource TextOnAccentBrush}"/>
-    </Style>
 
     <!-- Character grid - RadioButton restyled as a rectangular chip, same "restyle a semantically
     exclusive control rather than hand-roll exclusivity" approach as RadioButton.NavItem. Sits inside
@@ -448,6 +437,60 @@
     </Style>
     <Style Selector="RadioButton.QPCharacterButton:checked /template/ Border#Root">
         <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
+    </Style>
+
+    <!-- Text-only segmented chip - a labelled pair of mutually exclusive choices (Advance mode's
+    Auto/Manual). Same "restyle a semantically exclusive control rather than hand-roll exclusivity"
+    approach as QPCharacterButton above, minus its icon: with only two options and no glyph that reads
+    unambiguously, the words are the control. This replaced a single icon toggle whose "on" state
+    filled the button with the accent colour and swallowed the icon into a solid square. -->
+    <Style Selector="TextBlock.QPSegmentLabel">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+
+    <Style Selector="RadioButton.QPSegmentButton">
+        <Setter Property="Background" Value="{DynamicResource SurfaceSoftBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="Padding" Value="14,6"/>
+        <Setter Property="MinWidth" Value="66"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Root"
+                        Background="{TemplateBinding Background}"
+                        BorderBrush="{DynamicResource BorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="7"
+                        Padding="{TemplateBinding Padding}">
+                    <Border.Transitions>
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                            <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
+                        </Transitions>
+                    </Border.Transitions>
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      Foreground="{TemplateBinding Foreground}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="RadioButton.QPSegmentButton:pointerover /template/ Border#Root">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/>
+    </Style>
+    <Style Selector="RadioButton.QPSegmentButton:checked">
+        <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}"/>
+    </Style>
+    <Style Selector="RadioButton.QPSegmentButton:checked /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
+    </Style>
+    <!-- Same convention as QPTransportButton:disabled - a disabled pair that looked identical to an
+    enabled one read as broken rather than "nothing to configure without a playlist". -->
+    <Style Selector="RadioButton.QPSegmentButton:disabled">
+        <Setter Property="Opacity" Value="0.4"/>
     </Style>
 
     <!-- Shared toggle switch, same shape as TWSwitch/STSwitch under this module's own prefix. -->

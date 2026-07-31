@@ -191,50 +191,60 @@
             progress bar (the game's protocol has no scrub/seek/progress reporting to drive one). -->
             <Border Grid.Row="2" Classes="QPTransportBar">
                 <Grid ColumnDefinitions="Auto,20,*">
-                    <!-- Fixed-height Grid keeps the four buttons' own bounds aligned with each other
-                    (see the row-alignment fix). Icons are wrapped in Viewbox rather than sized via
-                    Path.Width/Height+Stretch - user-confirmed by experiment that neither Stretch alone
-                    nor layout alignment alone centers these specific icons correctly, meaning the raw
-                    path geometries themselves have inconsistent bounding boxes/offsets
-                    (Fuckups/buttons_alignment_wrong.png, most visible on Play). Viewbox measures the
-                    Path at its natural geometry size and scales+centers THAT to fit, which is a
-                    layout-level guarantee independent of whatever the geometry's own coordinates are -
-                    doesn't depend on fixing every path's authoring. -->
-                    <Grid Grid.Column="0" ColumnDefinitions="Auto,8,Auto,8,Auto,8,Auto,16,Auto" Height="46" VerticalAlignment="Center">
-                        <Button Grid.Column="0" Classes="QPTransportButton" Command="{Binding PrevCommand}" ToolTip.Tip="Previous track">
-                            <Viewbox Width="16" Height="16">
-                                <Path Data="{StaticResource IconQPPrev}" Fill="{DynamicResource AccentPrimaryBrush}"/>
-                            </Viewbox>
-                        </Button>
-                        <Button Grid.Column="2" Classes="QPTransportButton Primary" Command="{Binding PlaySelectedCommand}" ToolTip.Tip="Play selected track">
-                            <Viewbox Width="18" Height="18">
-                                <Path Data="{StaticResource IconQPPlay}" Fill="{DynamicResource TextOnAccentBrush}"/>
-                            </Viewbox>
-                        </Button>
-                        <Button Grid.Column="4" Classes="QPTransportButton" Command="{Binding StopCommand}"
-                                IsEnabled="{Binding CurrentTrackCard, Converter={StaticResource IsNotNullConverter}}" ToolTip.Tip="Stop">
-                            <Viewbox Width="14" Height="14">
-                                <Path Data="{StaticResource IconQPStop}" Fill="{DynamicResource AccentPrimaryBrush}"/>
-                            </Viewbox>
-                        </Button>
-                        <Button Grid.Column="6" Classes="QPTransportButton" Command="{Binding NextCommand}" ToolTip.Tip="Next track">
-                            <Viewbox Width="16" Height="16">
-                                <Path Data="{StaticResource IconQPNext}" Fill="{DynamicResource AccentPrimaryBrush}"/>
-                            </Viewbox>
-                        </Button>
-                        <!-- Separated from the four transport buttons by a wider gap: it doesn't act on
-                        playback right now, it changes what the next track waits for. Disabled with no
-                        playlist selected, since the setting is stored on the playlist. -->
-                        <Button Grid.Column="8" Classes="QPTransportButton"
-                                Classes.On="{Binding WaitForLeaderboards}"
-                                Command="{Binding ToggleWaitForLeaderboardsCommand}"
-                                IsEnabled="{Binding SelectedPlaylistRow, Converter={StaticResource IsNotNullConverter}}"
-                                ToolTip.Tip="{Binding WaitForLeaderboardsHint}">
-                            <Viewbox Width="16" Height="16">
-                                <Path Data="{StaticResource IconQPLeaderboard}" Fill="{DynamicResource AccentPrimaryBrush}"/>
-                            </Viewbox>
-                        </Button>
-                    </Grid>
+                    <StackPanel Grid.Column="0" Spacing="10" VerticalAlignment="Center">
+                        <!-- Fixed-height Grid keeps the four buttons' own bounds aligned with each
+                        other (see the row-alignment fix). Icons are wrapped in Viewbox rather than
+                        sized via Path.Width/Height+Stretch - user-confirmed by experiment that neither
+                        Stretch alone nor layout alignment alone centers these specific icons
+                        correctly, meaning the raw path geometries themselves have inconsistent
+                        bounding boxes/offsets (Fuckups/buttons_alignment_wrong.png, most visible on
+                        Play). Viewbox measures the Path at its natural geometry size and
+                        scales+centers THAT to fit, which is a layout-level guarantee independent of
+                        whatever the geometry's own coordinates are - doesn't depend on fixing every
+                        path's authoring. -->
+                        <Grid ColumnDefinitions="Auto,8,Auto,8,Auto,8,Auto" Height="46">
+                            <Button Grid.Column="0" Classes="QPTransportButton" Command="{Binding PrevCommand}" ToolTip.Tip="Previous track">
+                                <Viewbox Width="16" Height="16">
+                                    <Path Data="{StaticResource IconQPPrev}" Fill="{DynamicResource AccentPrimaryBrush}"/>
+                                </Viewbox>
+                            </Button>
+                            <Button Grid.Column="2" Classes="QPTransportButton Primary" Command="{Binding PlaySelectedCommand}" ToolTip.Tip="Play selected track">
+                                <Viewbox Width="18" Height="18">
+                                    <Path Data="{StaticResource IconQPPlay}" Fill="{DynamicResource TextOnAccentBrush}"/>
+                                </Viewbox>
+                            </Button>
+                            <Button Grid.Column="4" Classes="QPTransportButton" Command="{Binding StopCommand}"
+                                    IsEnabled="{Binding CurrentTrackCard, Converter={StaticResource IsNotNullConverter}}" ToolTip.Tip="Stop">
+                                <Viewbox Width="14" Height="14">
+                                    <Path Data="{StaticResource IconQPStop}" Fill="{DynamicResource AccentPrimaryBrush}"/>
+                                </Viewbox>
+                            </Button>
+                            <Button Grid.Column="6" Classes="QPTransportButton" Command="{Binding NextCommand}" ToolTip.Tip="Next track">
+                                <Viewbox Width="16" Height="16">
+                                    <Path Data="{StaticResource IconQPNext}" Fill="{DynamicResource AccentPrimaryBrush}"/>
+                                </Viewbox>
+                            </Button>
+                        </Grid>
+
+                        <!-- Its own row rather than a fifth transport button: this doesn't act on
+                        playback now, it decides what the *next* track waits for. The transport
+                        buttons only used about half the bar's height anyway - the 2-row character
+                        grid opposite is what sets it. Named in words instead of an icon toggle: with
+                        two states and no glyph that reads unambiguously, "Auto"/"Manual" says it and
+                        an accent-filled icon button just read as a solid coloured square. Disabled
+                        with no playlist selected - the setting is stored per playlist. -->
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <TextBlock Classes="QPSegmentLabel" Text="Advance mode"/>
+                            <RadioButton Classes="QPSegmentButton" GroupName="QPAdvanceMode" Content="Auto"
+                                         IsChecked="{Binding IsAdvanceAuto, Mode=TwoWay}"
+                                         IsEnabled="{Binding SelectedPlaylistRow, Converter={StaticResource IsNotNullConverter}}"
+                                         ToolTip.Tip="{Binding AdvanceAutoHint}"/>
+                            <RadioButton Classes="QPSegmentButton" GroupName="QPAdvanceMode" Content="Manual"
+                                         IsChecked="{Binding IsAdvanceManual, Mode=TwoWay}"
+                                         IsEnabled="{Binding SelectedPlaylistRow, Converter={StaticResource IsNotNullConverter}}"
+                                         ToolTip.Tip="{Binding AdvanceManualHint}"/>
+                        </StackPanel>
+                    </StackPanel>
 
                     <ItemsControl Grid.Column="2" ItemsSource="{Binding DefaultCharacterOptions}" HorizontalAlignment="Right">
                         <ItemsControl.ItemsPanel>
