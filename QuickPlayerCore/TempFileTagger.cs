@@ -25,8 +25,12 @@ namespace QuickPlayerCore
     /// already reads "Song [as-4lane]" gets "Song [as-4lane] [as-4lane]" once the same tag is enabled
     /// in Quick Player, and a title edited after import stays at its stale imported value in the copy
     /// (the mtime in BuildSignature does invalidate the cached copy, it just gets rebuilt from the same
-    /// stale SongTitle). What the game does with a duplicated tag is untested - see the open question
-    /// in Docs/Internal/roadmap.md.
+    /// stale SongTitle).
+    ///
+    /// A duplicated tag was tested against the running game and breaks it in arbitrary ways - it is not
+    /// ignored and not applied twice. Closing this means re-reading the title from the file here and
+    /// merging the tags already in it with Quick Player's set, not just deduplicating the suffix; see
+    /// Docs/Internal/roadmap.md.
     /// </summary>
     public static class TempFileTagger
     {

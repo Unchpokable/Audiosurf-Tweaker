@@ -10,6 +10,7 @@ namespace QuickPlayerCore
     {
         event Action<int> SongCompleted;
         event Action OnCharacterScreen;
+        event Action NowPlaying;
     }
 
     internal interface IPlaybackGameSession
@@ -26,10 +27,12 @@ namespace QuickPlayerCore
             _listener = new GameReportListener();
             _listener.SongCompleted += score => SongCompleted?.Invoke(score);
             _listener.OnCharacterScreen += () => OnCharacterScreen?.Invoke();
+            _listener.NowPlaying += (_, _, _) => NowPlaying?.Invoke();
         }
 
         public event Action<int> SongCompleted;
         public event Action OnCharacterScreen;
+        public event Action NowPlaying;
 
         private readonly GameReportListener _listener;
 
@@ -63,15 +66,32 @@ namespace QuickPlayerCore
     /// Two pieces of state that used to be one, and must not be conflated again: the *position*
     /// (Playlist + index, i.e. "where the module is in the queue") survives a track ending, so Next
     /// after a manual bail-out continues from where the user was instead of restarting the playlist;
-    /// IsPlaying ("a playsong was sent and the track hasn't ended yet") is what actually goes false.
+    /// the phase below is what actually goes idle.
     ///
-    /// End of a track is reported by the game as songcomplete, followed - once the score screen is
-    /// dismissed - by oncharacterscreen. Auto-advance waits for that second report because the game
-    /// only reliably accepts a playsong from the character screen. An oncharacterscreen the module was
-    /// *not* already expecting means the player bailed out of the song themselves, and stops playback.
+    /// What the reports mean, as verified against the running game:
+    /// - songcomplete - the track finished and the player is on the leaderboard screen. The game
+    ///   accepts playsong from there (and mid-song), so auto-advance fires straight away rather than
+    ///   waiting for the player to click through.
+    /// - nowplaying* - the game really did start the song we asked for. This is the only confirmation
+    ///   there is, so a songcomplete only counts once the start it belongs to has been confirmed;
+    ///   otherwise a repeated report could advance the queue twice for one track.
+    /// - oncharacterscreen - literally just "the player navigated to the character screen", nothing
+    ///   more. While Quick Player is driving anything, that means the player took over by hand, and
+    ///   playback stops.
     /// </summary>
     public sealed class PlaybackController : IDisposable
     {
+        private enum PlaybackPhase
+        {
+            Idle,
+
+            /// <summary>playsong is being prepared or has been sent; the game hasn't confirmed it yet.</summary>
+            Starting,
+
+            /// <summary>The game reported nowplaying* for the track this controller started.</summary>
+            Playing
+        }
+
         public PlaybackController()
             : this(new PlaybackReportSource(), new PlaybackGameSession())
         {
@@ -83,6 +103,7 @@ namespace QuickPlayerCore
             _gameSession = gameSession;
             _reportSource.SongCompleted += OnSongCompleted;
             _reportSource.OnCharacterScreen += OnCharacterScreenReached;
+            _reportSource.NowPlaying += OnNowPlaying;
             _gameSession.StateChanged += OnGameStateChanged;
         }
 
@@ -96,6 +117,13 @@ namespace QuickPlayerCore
         public event Action<PlaylistEntry> EntryPreparing;
         public event Action<PlaylistEntry> EntryPrepared;
 
+        /// <summary>
+        /// Strictly alternating: an EntryStarted is always followed by exactly one EntryEnded before
+        /// the next EntryStarted, and a start that loses its race against an end is never announced at
+        /// all (see NotifyStarted). A UI status opened on Started and closed on Ended therefore cannot
+        /// be orphaned - which it was, when bailing out to the character screen at the exact moment a
+        /// track began left "Now playing" pinned in the status bar forever.
+        /// </summary>
         public event Action<PlaylistEntry> EntryStarted;
         public event Action<PlaylistEntry> EntryEnded;
 
@@ -119,13 +147,23 @@ namespace QuickPlayerCore
             }
         }
 
-        /// <summary>A playsong has been sent for CurrentEntry and the game hasn't reported it over yet.</summary>
+        /// <summary>Quick Player is driving a track - either starting one or playing one.</summary>
+        public bool IsActive
+        {
+            get
+            {
+                lock (_gate)
+                    return _phase != PlaybackPhase.Idle;
+            }
+        }
+
+        /// <summary>The game confirmed (via nowplaying*) that it started the track this controller sent.</summary>
         public bool IsPlaying
         {
             get
             {
                 lock (_gate)
-                    return _trackInFlight;
+                    return _phase == PlaybackPhase.Playing;
             }
         }
 
@@ -143,19 +181,18 @@ namespace QuickPlayerCore
 
         private Playlist _playlist;
         private int _currentIndex = -1;
-        private bool _trackInFlight;
-
-        // A songcomplete was seen and its trailing oncharacterscreen hasn't arrived yet. Survives an
-        // explicit Play() on purpose: hitting Next while the score screen is still up used to clear
-        // this, so the score screen's own oncharacterscreen was then misread as "the player bailed out"
-        // and killed the freshly started track.
-        private bool _expectCharacterScreen;
-        private int? _pendingAdvanceIndex;
+        private PlaybackPhase _phase = PlaybackPhase.Idle;
 
         // Bumped by every Play/Stop. A start that was superseded while it was preparing its file
         // (TempFileTagger can copy and retag, which takes real time) sees a stale token and backs out
         // instead of sending a playsong for a track the user has already moved on from.
         private long _startToken;
+
+        // Serializes the EntryStarted/EntryEnded pair against each other only - deliberately separate
+        // from _gate, which cannot be held across an event invocation. Taken before _gate on the one
+        // path that needs both (NotifyStarted); nothing takes them in the other order.
+        private readonly object _notifyGate = new();
+        private PlaylistEntry _notifiedEntry;
 
         public void Play(Playlist playlist, int index)
         {
@@ -163,17 +200,13 @@ namespace QuickPlayerCore
         }
 
         /// <summary>
-        /// Ends the current track and cancels any queued auto-advance. Keeps the queue position - the
-        /// module goes idle, it doesn't forget where it was.
+        /// Ends the current track and cancels any start still being prepared. Keeps the queue position -
+        /// the module goes idle, it doesn't forget where it was.
         /// </summary>
         public void Stop()
         {
             lock (_gate)
-            {
                 _startToken++;
-                _pendingAdvanceIndex = null;
-                _expectCharacterScreen = false;
-            }
 
             EndCurrent();
         }
@@ -188,10 +221,13 @@ namespace QuickPlayerCore
             lock (_gate)
             {
                 token = ++_startToken;
-                _pendingAdvanceIndex = null;
                 _playlist = playlist;
                 _currentIndex = index;
                 entry = CurrentEntryLocked();
+
+                // Claimed before the slow preparation below, so an oncharacterscreen arriving while the
+                // file is still being copied is recognised as the player taking over and cancels it.
+                _phase = entry != null ? PlaybackPhase.Starting : PlaybackPhase.Idle;
             }
 
             if (entry == null)
@@ -221,10 +257,7 @@ namespace QuickPlayerCore
             {
                 superseded = _startToken != token;
                 if (!superseded)
-                {
                     _activeOverrides.AddRange(handles);
-                    _trackInFlight = true;
-                }
             }
 
             if (superseded)
@@ -235,7 +268,7 @@ namespace QuickPlayerCore
             }
 
             _gameSession.Command(GameProtocol.PlaySong(entry.Character ?? DefaultCharacter, resolvedPath));
-            EntryStarted?.Invoke(entry);
+            NotifyStarted(entry, token);
         }
 
         // Both sources here are the same mechanism - a temporary asconfig value layered over the user's
@@ -257,69 +290,46 @@ namespace QuickPlayerCore
             return overrides;
         }
 
-        private void OnSongCompleted(int score)
+        private void OnNowPlaying()
         {
             lock (_gate)
             {
-                if (!_trackInFlight || _playlist == null)
+                if (_phase == PlaybackPhase.Starting)
+                    _phase = PlaybackPhase.Playing;
+            }
+        }
+
+        private void OnSongCompleted(int score)
+        {
+            Playlist playlist;
+            int? next;
+
+            lock (_gate)
+            {
+                // Only a confirmed start can complete. Without this a second songcomplete for the same
+                // track would advance the queue again and silently skip an entry.
+                if (_phase != PlaybackPhase.Playing || _playlist == null)
                     return;
 
-                // The game follows this with oncharacterscreen once the score screen is dismissed; that
-                // report is the expected tail of this completion, not the player walking out.
-                _expectCharacterScreen = true;
-                _pendingAdvanceIndex = _playlist.AutoAdvance && _currentIndex + 1 < _playlist.Entries.Count
+                playlist = _playlist;
+                next = playlist.AutoAdvance && _currentIndex + 1 < playlist.Entries.Count
                     ? _currentIndex + 1
                     : null;
             }
 
             EndCurrent();
+
+            if (next.HasValue)
+                StartInBackground(playlist, next.Value);
         }
 
         private void OnCharacterScreenReached()
         {
-            Playlist playlist;
-            int? next;
-            bool expected;
-            bool inFlight;
-
-            lock (_gate)
-            {
-                expected = _expectCharacterScreen;
-                _expectCharacterScreen = false;
-                next = _pendingAdvanceIndex;
-                _pendingAdvanceIndex = null;
-                playlist = _playlist;
-                inFlight = _trackInFlight;
-            }
-
-            if (next.HasValue && playlist != null)
-            {
-                // Off the report thread: reports are dispatched onto whatever SynchronizationContext
-                // AudiosurfHandle captured (in the app, the UI thread), and StartEntry's file copy/retag
-                // would block it - the manual path goes through Task.Run in the ViewModel for the very
-                // same reason.
-                var target = next.Value;
-                _ = Task.Run(() =>
-                {
-                    try
-                    {
-                        StartEntry(playlist, target);
-                    }
-                    catch (Exception ex)
-                    {
-                        OperationFailed?.Invoke("Failed to start the next track in the playlist", ex);
-                    }
-                });
-                return;
-            }
-
-            // Already accounted for by a songcomplete. Nothing left to advance to (end of playlist), or
-            // an explicit Play() has since taken over - either way this is not a bail-out.
-            if (expected)
-                return;
-
-            if (inFlight)
-                EndCurrent();
+            // The report says nothing except that the player is on the character screen. If Quick
+            // Player is driving anything at that moment - preparing, or playing - the player got there
+            // by hand, which is the signal to stop.
+            if (IsActive)
+                Stop();
         }
 
         private void OnGameStateChanged(object sender, EventArgs e)
@@ -328,18 +338,34 @@ namespace QuickPlayerCore
                 Stop();
         }
 
+        // Reports are dispatched onto whatever SynchronizationContext AudiosurfHandle captured (in the
+        // app, the UI thread), and StartEntry's file copy/retag would block it - the manual path goes
+        // through Task.Run in the ViewModel for the very same reason.
+        private void StartInBackground(Playlist playlist, int index)
+        {
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    StartEntry(playlist, index);
+                }
+                catch (Exception ex)
+                {
+                    OperationFailed?.Invoke("Failed to start the next track in the playlist", ex);
+                }
+            });
+        }
+
         private void EndCurrent()
         {
-            PlaylistEntry entry;
             List<IDisposable> overrides;
 
             lock (_gate)
             {
-                if (!_trackInFlight)
+                if (_phase == PlaybackPhase.Idle)
                     return;
 
-                _trackInFlight = false;
-                entry = CurrentEntryLocked();
+                _phase = PlaybackPhase.Idle;
                 overrides = new List<IDisposable>(_activeOverrides);
                 _activeOverrides.Clear();
             }
@@ -347,8 +373,41 @@ namespace QuickPlayerCore
             for (var i = overrides.Count - 1; i >= 0; i--)
                 overrides[i].Dispose();
 
-            if (entry != null)
-                EntryEnded?.Invoke(entry);
+            NotifyEnded();
+        }
+
+        // The start is announced only if it is still the current one and hasn't already been ended -
+        // both checked while holding _notifyGate, so an EndCurrent racing this either sees the entry
+        // announced (and ends it) or wins and makes this a no-op. Announcing unconditionally is what
+        // used to strand the "Now playing" status.
+        private void NotifyStarted(PlaylistEntry entry, long token)
+        {
+            lock (_notifyGate)
+            {
+                lock (_gate)
+                {
+                    if (_startToken != token || _phase == PlaybackPhase.Idle)
+                        return;
+                }
+
+                _notifiedEntry = entry;
+                EntryStarted?.Invoke(entry);
+            }
+        }
+
+        // Ends the entry that was actually announced, not whatever the queue position points at now -
+        // a Play() that supersedes a track moves the position before the old track's end is reported.
+        private void NotifyEnded()
+        {
+            lock (_notifyGate)
+            {
+                var announced = _notifiedEntry;
+                if (announced == null)
+                    return;
+
+                _notifiedEntry = null;
+                EntryEnded?.Invoke(announced);
+            }
         }
 
         private PlaylistEntry CurrentEntryLocked() =>
@@ -361,6 +420,7 @@ namespace QuickPlayerCore
             Stop();
             _reportSource.SongCompleted -= OnSongCompleted;
             _reportSource.OnCharacterScreen -= OnCharacterScreenReached;
+            _reportSource.NowPlaying -= OnNowPlaying;
             _reportSource.Dispose();
             _gameSession.StateChanged -= OnGameStateChanged;
         }
