@@ -1,0 +1,132 @@
+name: Bug report
+description: Something in Audiosurf Tweaker is broken or behaves unexpectedly
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug.
+
+        Please fill in every required field — a report without a Tweaker version, a game
+        version and a clear "expected vs actual" is usually impossible to act on.
+
+  - type: input
+    id: summary
+    attributes:
+      label: What exactly is broken?
+      description: One or two sentences. Keep the details for the sections below.
+      placeholder: Installing a skin does nothing while the game is running.
+    validations:
+      required: true
+
+  - type: input
+    id: tweaker-version
+    attributes:
+      label: Audiosurf Tweaker version
+      description: >-
+        The release you downloaded from the releases page. If you built it yourself,
+        write the commit hash instead.
+      placeholder: v2.1.0
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Which part of the app is affected?
+      description: Pick the closest one. If you are not sure, choose "Other / not sure".
+      options:
+        - Skin Changer
+        - Color Configurator
+        - Tweaker (live tweaks)
+        - Quick Player
+        - In-game overlay (experimental)
+        - Settings
+        - Application startup / crash on launch
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: game-build
+    attributes:
+      label: Which build of Audiosurf do you play?
+      description: >-
+        Tweaker talks to the game through its debug protocol, and that protocol differs
+        between builds. Anything other than the default Steam branch changes what we can
+        expect from your report.
+      options:
+        - Steam, stable (default) branch
+        - Steam, non-default / beta branch
+        - Non-Steam version (retail disc, standalone, other distribution)
+        - I don't know
+    validations:
+      required: true
+
+  - type: input
+    id: game-version
+    attributes:
+      label: Game version / branch
+      description: >-
+        If you picked "Steam, stable (default) branch" above, just write `Steam stable`.
+        Otherwise write the exact branch name or build/version of your game — without it
+        the report cannot be reproduced.
+      placeholder: Steam stable
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: What were you trying to do?
+      description: The goal, not the clicks. What did you want to end up with?
+      placeholder: I wanted to switch to my own texture skin without restarting the game.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: What did you do to achieve it?
+      description: >-
+        The exact steps, in order, starting from launching Tweaker. Include whether the
+        game was already running, which files you picked, which buttons you pressed.
+      placeholder: |
+        1. Launched Audiosurf, got to the main menu.
+        2. Launched Audiosurf Tweaker.
+        3. Opened the Skin Changer tab and selected "MySkin.askin2".
+        4. Pressed "Install".
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect to see?
+      placeholder: The game's textures change to the ones from the skin.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+      description: >-
+        Include the exact error text if there was one. Screenshots and short videos are
+        welcome — drag and drop them right into this field.
+      placeholder: Nothing happened, the game kept the default textures and no error was shown.
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log file
+      description: >-
+        Paste the contents of `Documents\Audiosurf Tweaker Logs\log.txt` (or at least the
+        part written around the time the bug happened). This is optional, but it usually
+        turns a guess into a fix. No need for backticks — this block is already formatted.
+      render: text
+    validations:
+      required: false

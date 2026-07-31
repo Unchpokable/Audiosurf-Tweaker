@@ -1,0 +1,40 @@
+name: Feature request
+description: Suggest a new feature or an improvement for Audiosurf Tweaker
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Three fields, all required — the last one matters the most:
+        it is what decides whether the feature gets built.
+
+  - type: input
+    id: summary
+    attributes:
+      label: The idea in one line
+      description: Short enough to work as the issue title.
+      placeholder: Let Quick Player shuffle a playlist.
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Describe the idea in detail
+      description: >-
+        What should it do, where in the app should it live, how would you use it?
+        Mockups and screenshots are welcome — drag and drop them into this field.
+    validations:
+      required: true
+
+  - type: textarea
+    id: rationale
+    attributes:
+      label: Why should this be part of the base app?
+      description: >-
+        Who does it help, and with what? What do people do today instead, and why is that
+        not good enough? Make the case for why the developer should spend time on this
+        rather than on something else.
+    validations:
+      required: true
