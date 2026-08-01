@@ -17,6 +17,9 @@ using my_clock_t = std::chrono::steady_clock;
 // give up" window for a round trip that's otherwise just a few WM_COPYDATA hops.
 constexpr auto k_confirm_timeout = std::chrono::milliseconds { 5000 };
 
+// Bigger than tweak confirm timeout because it takes a some time to install skin
+constexpr auto k_skin_confirm_timeout = std::chrono::milliseconds { 10000 };
+
 struct pending_tweak {
     bool desired_enabled = false;
     my_clock_t::time_point deadline {};
@@ -113,7 +116,7 @@ void request_tweak(overlay_state::tweak_id id, bool desired_enabled)
 void request_skin(std::string_view desired_name)
 {
     g_pending_skin.desired_name = desired_name;
-    g_pending_skin.deadline = my_clock_t::now() + k_confirm_timeout;
+    g_pending_skin.deadline = my_clock_t::now() + k_skin_confirm_timeout;
     g_pending_skin.active = true;
 
     if(g_send != nullptr) {
@@ -134,8 +137,7 @@ void update(const overlay_state::cache& snapshot)
         }
 
         const auto id = overlay_state::all_tweak_ids()[i];
-        if(overlay_state::is_tweak_enabled(snapshot, id) == slot.desired_enabled
-            && !overlay_state::is_tweak_quick_player(snapshot, id)) {
+        if(overlay_state::is_tweak_enabled(snapshot, id) == slot.desired_enabled && !overlay_state::is_tweak_quick_player(snapshot, id)) {
             slot.active = false;
             continue;
         }
