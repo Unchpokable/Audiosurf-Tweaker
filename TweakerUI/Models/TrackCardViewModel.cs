@@ -206,13 +206,36 @@ namespace TweakerUI.Models
 
             try
             {
-                var bitmap = await Task.Run(() => new Bitmap(path));
-                Dispatcher.UIThread.Post(() => CoverBitmap = bitmap);
+                var bitmap = await Task.Run(() => DecodeCover(path));
+                if (bitmap != null)
+                    Dispatcher.UIThread.Post(() => CoverBitmap = bitmap);
             }
             catch
             {
                 // No usable cover file - the view falls back to its placeholder icon.
             }
+        }
+
+        /// <summary>The queue's cover thumbnail is 52 logical pixels square (Border.QPTrackCover).</summary>
+        private const int CoverDisplaySize = 52;
+
+        /// <summary>
+        /// Decoded straight to thumbnail size rather than loaded whole and left for the Image to shrink.
+        /// Embedded album art is routinely 1000px or larger, and squeezing that into 52px at draw time
+        /// samples a handful of source pixels per drawn pixel - which is why the covers came out
+        /// speckled and falling apart rather than merely small. Scaling during the decode resamples
+        /// properly, and as a side effect a hundred-track playlist stops holding a hundred full-size
+        /// bitmaps in memory.
+        ///
+        /// Three times the display size, not exactly it, so the thumbnails stay sharp on a 150%/200%
+        /// display and if the tile is ever made bigger. Scaled by width: cover art that is not square is
+        /// rare enough that biasing towards the common case costs nothing, and Stretch=UniformToFill
+        /// crops the odd one out anyway.
+        /// </summary>
+        private static Bitmap DecodeCover(string path)
+        {
+            using var stream = File.OpenRead(path);
+            return Bitmap.DecodeToWidth(stream, CoverDisplaySize * 3, BitmapInterpolationMode.HighQuality);
         }
     }
 }

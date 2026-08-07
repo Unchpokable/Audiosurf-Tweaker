@@ -42,6 +42,22 @@ constexpr int k_pipe_poll_ms = 30;
 constexpr auto k_idle_exit_timeout = std::chrono::seconds(60);
 
 constexpr std::string_view k_tw_ovl_prefix = "TW_OVL ";
+
+// Registration acks the game broadcasts back to the listener window ("asreport successfully...").
+// Neither string is a substring of the other, so both are matched explicitly.
+constexpr std::string_view k_registered_ack = "successfullyregistered";
+constexpr std::string_view k_quickstart_registered_ack = "successfullyquickstartregistered";
+
+// A game window can exist, be visible and pump messages a good while before the game is able to act
+// on "ascommand ..." at all - a registration sent in that window is swallowed with no failure of any
+// kind, just silence. Each attempt gets this long to produce an ack before the next one goes out.
+constexpr auto k_registration_ack_timeout = std::chrono::milliseconds(1000);
+
+// Attempts spent on one game window before the bridge stops retrying on its own and just waits.
+// Recovery past that point belongs to the managed watchdog (AudiosurfInterface/AudiosurfHandle.cs,
+// RegistrationAckTimeoutMs), which sends its own plain registration and ultimately restarts this
+// process with --no-quick-start.
+constexpr int k_registration_max_attempts = 3;
 } // namespace
 
 namespace
@@ -54,6 +70,14 @@ as::sys_string wnd_title_storage;
 
 // Set once at initialize() from the command line and never touched again - see service.hxx.
 bool suppress_auto_register = false;
+
+// Automatic-registration retry state. Window/timer thread only, and deliberately non-atomic: the
+// game's ack arrives as WM_COPYDATA, which is dispatched on this same thread - both when it comes in
+// asynchronously through the message loop and when it comes back re-entrantly inside our own
+// SendMessage (see begin_registration_attempt).
+int registration_attempts = 0;
+bool registration_ack_pending = false;
+std::chrono::steady_clock::time_point registration_retry_deadline;
 
 // Published snapshot of audiosurf_window's HWND for pipe_pump_thread to read without touching wnd_handle.
 std::atomic<HWND> cached_audiosurf_hwnd { nullptr };
@@ -104,9 +128,8 @@ bool send_ansi_copydata(HWND target, const std::string& text)
     cds.cbData = static_cast<DWORD>(text.size() + 1);
     cds.lpData = const_cast<char*>(text.c_str()); // NOLINT COPYDATASTRUCT::lpData is not const in the Win32 API
 
-    return ::SendMessageW(
-               target, WM_COPYDATA, reinterpret_cast<WPARAM>(as::wnd::get_window().native()), reinterpret_cast<LPARAM>(&cds))
-        != 0;
+    return ::SendMessageW(target, WM_COPYDATA, reinterpret_cast<WPARAM>(as::wnd::get_window().native()), reinterpret_cast<LPARAM>(&cds))
+           != 0;
 }
 
 // Age of a process in seconds, or a huge value when it cannot be determined - mirroring the legacy
@@ -155,9 +178,30 @@ void send_listener_registration(HWND target, DWORD pid)
     const bool quickstart = process_age_seconds(pid) < k_quickstart_process_age_seconds;
 
     std::string command = std::string("ascommand ") + (quickstart ? "quickstartregisterwindow " : "registerlistenerwindow ")
-        + to_narrow(wnd_title_storage.data(), static_cast<int>(wnd_title_storage.size()));
+                          + to_narrow(wnd_title_storage.data(), static_cast<int>(wnd_title_storage.size()));
 
     send_ansi_copydata(target, command);
+}
+
+// Sends one registration attempt and arms the wait for its ack.
+//
+// The pending flag is raised *before* the send on purpose: the game answers registration
+// synchronously, so its ack re-enters process_wm_copydata before send_listener_registration returns.
+// Arming afterwards would let that ack find the flag still down, clear nothing, and leave this
+// function re-arming a wait that has already been satisfied - i.e. a guaranteed spurious retry.
+void begin_registration_attempt(HWND target, DWORD pid)
+{
+    ++registration_attempts;
+    registration_ack_pending = true;
+    registration_retry_deadline = std::chrono::steady_clock::now() + k_registration_ack_timeout;
+
+    send_listener_registration(target, pid);
+}
+
+void reset_registration_state()
+{
+    registration_attempts = 0;
+    registration_ack_pending = false;
 }
 
 void push_report(const as::proto::asbridge_msg& msg)
@@ -189,8 +233,15 @@ LRESULT process_wm_copydata(HWND, WPARAM, LPARAM lparam)
             data.pop_back();
         }
 
-        const bool is_tw_ovl = data.size() >= k_tw_ovl_prefix.size()
-            && std::equal(k_tw_ovl_prefix.begin(), k_tw_ovl_prefix.end(), data.begin());
+        // The ack is only inspected, never consumed: the managed side latches "connected" off this
+        // very broadcast (AudiosurfHandle.HandleGameBroadcast), so it still has to be forwarded below.
+        if(registration_ack_pending
+            && (data.find(k_registered_ack) != std::string::npos || data.find(k_quickstart_registered_ack) != std::string::npos)) {
+            registration_ack_pending = false;
+        }
+
+        const bool is_tw_ovl =
+            data.size() >= k_tw_ovl_prefix.size() && std::equal(k_tw_ovl_prefix.begin(), k_tw_ovl_prefix.end(), data.begin());
 
         if(is_tw_ovl) {
             const auto inner = data.substr(k_tw_ovl_prefix.size());
@@ -199,7 +250,8 @@ LRESULT process_wm_copydata(HWND, WPARAM, LPARAM lparam)
                 .msg = as::proto::asbridge_msg_type::overlay_forward,
                 .details = { std::string(inner) },
             });
-        } else {
+        }
+        else {
             push_report({
                 .header = as::proto::asbridge_msg_header::server_report,
                 .msg = as::proto::asbridge_msg_type::broadcast_forward,
@@ -249,6 +301,8 @@ BOOL CALLBACK enum_windows_proc(HWND hwnd, LPARAM lparam)
 
     // Emulates .NET's Process.MainWindowHandle pick, which is what the legacy tweaker relied on:
     // a visible, unowned top-level window belonging to the target process.
+    // Think about - this working great, but original game developer Dylan Fitterer' examples uses FindWindowA(nullptr, "Audiosurf")
+    // Should investigate whos more clown here
     if(::IsWindowVisible(hwnd) == FALSE || ::GetWindow(hwnd, GW_OWNER) != nullptr) {
         return TRUE;
     }
@@ -294,6 +348,7 @@ LRESULT process_wm_timer(HWND, WPARAM wparam, LPARAM)
 
     if(currently_valid != audiosurf_last_known_valid) {
         audiosurf_last_known_valid = currently_valid;
+        reset_registration_state();
 
         // WINDOW_FOUND must be queued before the registration goes out: the game replies to the
         // registration synchronously (SendMessage re-enters process_wm_copydata before
@@ -303,13 +358,28 @@ LRESULT process_wm_timer(HWND, WPARAM wparam, LPARAM)
             .header = as::proto::asbridge_msg_header::server_report,
             .msg = as::proto::asbridge_msg_type::service,
             .details = currently_valid
-                ? std::vector<std::string> { as::proto::rules::service_status_window_found, std::to_string(audiosurf_pid) }
-                : std::vector<std::string> { as::proto::rules::service_status_window_lost },
+                           ? std::vector<std::string> { as::proto::rules::service_status_window_found, std::to_string(audiosurf_pid) }
+                           : std::vector<std::string> { as::proto::rules::service_status_window_lost },
         });
 
+        // The Audiosurf process is regularly found BEFORE it can accept any command (typically when
+        // the game is started after the Tweaker), which is what the retry below exists for.
         if(currently_valid && !suppress_auto_register) {
-            send_listener_registration(audiosurf_window.native(), audiosurf_pid);
+            begin_registration_attempt(audiosurf_window.native(), audiosurf_pid);
         }
+
+        return 0;
+    }
+
+    // Retry an unanswered registration. A swallowed one fails silently - SendMessage still returns
+    // success, because the game's window procedure did receive the WM_COPYDATA, it just wasn't wired
+    // up to act on it yet - so the ack is the only signal there is. The final attempt is left waiting
+    // indefinitely by design: past that point the managed watchdog owns recovery (it sends its own
+    // plain registration, then restarts this process with --no-quick-start), and a bridge still
+    // firing registrations of its own underneath it would only race that.
+    if(currently_valid && registration_ack_pending && registration_attempts < k_registration_max_attempts
+        && std::chrono::steady_clock::now() >= registration_retry_deadline) {
+        begin_registration_attempt(audiosurf_window.native(), audiosurf_pid);
     }
 
     return 0;
@@ -349,7 +419,8 @@ void handle_client_command(const as::proto::asbridge_msg& msg)
                 .msg = as::proto::asbridge_msg_type::failed,
                 .details = { "audiosurf window unavailable or SendMessage failed" },
             });
-        } else if(msg.msg == as::proto::asbridge_msg_type::overlay_send) {
+        }
+        else if(msg.msg == as::proto::asbridge_msg_type::overlay_send) {
             push_report({
                 .header = as::proto::asbridge_msg_header::server_report,
                 .msg = as::proto::asbridge_msg_type::overlay_failed,
@@ -364,8 +435,8 @@ void handle_client_command(const as::proto::asbridge_msg& msg)
         push_report({
             .header = as::proto::asbridge_msg_header::server_report,
             .msg = delivered ? as::proto::asbridge_msg_type::ok : as::proto::asbridge_msg_type::failed,
-            .details = delivered ? std::vector<std::string> {}
-                                  : std::vector<std::string> { "audiosurf window unavailable or SendMessage failed" },
+            .details =
+                delivered ? std::vector<std::string> {} : std::vector<std::string> { "audiosurf window unavailable or SendMessage failed" },
         });
         return;
     }
@@ -381,8 +452,8 @@ void handle_client_command(const as::proto::asbridge_msg& msg)
         push_report({
             .header = as::proto::asbridge_msg_header::server_report,
             .msg = delivered ? as::proto::asbridge_msg_type::overlay_ok : as::proto::asbridge_msg_type::overlay_failed,
-            .details = delivered ? std::vector<std::string> {}
-                                  : std::vector<std::string> { "audiosurf window unavailable or SendMessage failed" },
+            .details =
+                delivered ? std::vector<std::string> {} : std::vector<std::string> { "audiosurf window unavailable or SendMessage failed" },
         });
     }
 }
@@ -446,14 +517,16 @@ void pipe_pump_loop(std::stop_token stop_token)
             pending_read.reset();
             message_accum.clear();
             reset_pipe();
-        } else if(result == as::duplex_pipe::io_result::more_data) {
+        }
+        else if(result == as::duplex_pipe::io_result::more_data) {
             // Message-mode ERROR_MORE_DATA: read_buffer was smaller than the message. The *next*
             // ReadFile on this handle continues this SAME message, not a new one - accumulate and
             // keep reading until it completes, rather than handing this fragment to parse_message
             // on its own (which fails to parse and silently desyncs framing for every message after it).
             message_accum.insert(message_accum.end(), read_buffer.begin(), read_buffer.begin() + transferred);
             pending_read = pipe_channel->read_to_overlapped(read_buffer);
-        } else if(result == as::duplex_pipe::io_result::ok) {
+        }
+        else if(result == as::duplex_pipe::io_result::ok) {
             message_accum.insert(message_accum.end(), read_buffer.begin(), read_buffer.begin() + transferred);
 
             std::string raw(reinterpret_cast<const char*>(message_accum.data()), message_accum.size());

@@ -42,7 +42,7 @@ namespace QuickPlayerCore.Tests
             var recorder = new ProgressRecorder();
             using var prewarmer = new PlaylistPrewarmer(recorder);
 
-            prewarmer.Start(playlist, 0);
+            prewarmer.Start(playlist, PlanFrom(playlist, 0));
 
             Assert.IsTrue(recorder.WaitForCompletion(), "the pass never finished");
             foreach (var entry in playlist.Entries)
@@ -58,7 +58,7 @@ namespace QuickPlayerCore.Tests
             var recorder = new ProgressRecorder();
             using var prewarmer = new PlaylistPrewarmer(recorder);
 
-            prewarmer.Start(playlist, 2);
+            prewarmer.Start(playlist, PlanFrom(playlist, 2));
 
             Assert.IsTrue(recorder.WaitForCompletion(), "the pass never finished");
             Assert.AreEqual(
@@ -80,7 +80,7 @@ namespace QuickPlayerCore.Tests
             var recorder = new ProgressRecorder();
             using var prewarmer = new PlaylistPrewarmer(recorder);
 
-            prewarmer.Start(playlist, 0);
+            prewarmer.Start(playlist, PlanFrom(playlist, 0));
 
             Assert.IsTrue(recorder.WaitForCompletion(), "the pass never finished");
             Assert.AreEqual(EntryReadiness.Missing, prewarmer.GetReadiness(playlist.Entries[1]));
@@ -95,7 +95,7 @@ namespace QuickPlayerCore.Tests
             var recorder = new ProgressRecorder();
             using var prewarmer = new PlaylistPrewarmer(recorder);
 
-            prewarmer.Start(playlist, 0);
+            prewarmer.Start(playlist, PlanFrom(playlist, 0));
 
             Assert.IsTrue(recorder.WaitForCompletion(), "the pass never finished");
             var last = recorder.Last();
@@ -111,7 +111,7 @@ namespace QuickPlayerCore.Tests
             var recorder = new ProgressRecorder();
             using var prewarmer = new PlaylistPrewarmer(recorder);
 
-            prewarmer.Start(playlist, 0);
+            prewarmer.Start(playlist, PlanFrom(playlist, 0));
             Assert.IsTrue(recorder.WaitForCompletion(), "the pass never finished");
 
             prewarmer.Stop();
@@ -128,11 +128,11 @@ namespace QuickPlayerCore.Tests
             var recorder = new ProgressRecorder();
             using var prewarmer = new PlaylistPrewarmer(recorder);
 
-            prewarmer.Start(playlist, 0);
+            prewarmer.Start(playlist, PlanFrom(playlist, 0));
             Assert.IsTrue(recorder.WaitForCompletion(), "the pass never finished");
             var reportsAfterFirstPass = recorder.Count;
 
-            prewarmer.Start(playlist, 1);
+            prewarmer.Start(playlist, PlanFrom(playlist, 1));
             Thread.Sleep(100);
 
             // The first pass has finished, so this one is allowed to run - what must not happen is the
@@ -149,8 +149,14 @@ namespace QuickPlayerCore.Tests
             var recorder = new ProgressRecorder();
             using var prewarmer = new PlaylistPrewarmer(recorder);
 
-            Assert.DoesNotThrow(() => prewarmer.Start(playlist, 0));
+            Assert.DoesNotThrow(() => prewarmer.Start(playlist, PlanFrom(playlist, 0)));
         }
+
+        // The prewarmer no longer derives its own order - PlaybackOrder does, because under a shuffled
+        // mode the next track is not the next index. Sequential produces exactly what this class used to
+        // build for itself, so the expectations above are unchanged, and the two now stay in step.
+        private static IReadOnlyList<PlaylistEntry> PlanFrom(Playlist playlist, int fromIndex) =>
+            new PlaybackOrder().PlanPrewarm(playlist, fromIndex);
 
         private Playlist BuildPlaylist(int count)
         {

@@ -177,21 +177,157 @@ namespace QuickPlayerCore.Tests
             Assert.AreSame(playlist.Entries[1], controller.CurrentEntry);
         }
 
+        // PlaybackMode.Single is the old AutoAdvance = false, which never had a UI to reach it.
         [Test]
-        public void AutoAdvanceDisabled_StopsAfterTheCompletedEntry()
+        public void Single_StopsAfterTheCompletedEntry()
         {
             var reports = new FakeReportSource();
             var game = new FakeGameSession();
             using var controller = new PlaybackController(reports, game, new FakePrewarmer());
             var playlist = BuildPlaylist(2);
-            playlist.AutoAdvance = false;
+            playlist.Mode = PlaybackMode.Single;
 
             controller.Play(playlist, 0);
             reports.RaiseNowPlaying();
             reports.RaiseSongCompleted();
 
             Assert.IsFalse(controller.IsActive);
-            Assert.IsFalse(game.WaitForCommandCount(2, 200), "auto-advance ran with AutoAdvance off");
+            Assert.IsFalse(game.WaitForCommandCount(2, 200), "auto-advance ran in Single");
+        }
+
+        // Stopping on its own must not disable the transport - Single is "play this one", not "lock the
+        // player onto it".
+        [Test]
+        public void Single_StillAdvancesOnAnExplicitNext()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
+            var playlist = BuildPlaylist(2);
+            playlist.Mode = PlaybackMode.Single;
+
+            controller.Play(playlist, 0);
+            reports.RaiseNowPlaying();
+            reports.RaiseSongCompleted();
+            controller.PlayNext(playlist);
+
+            Assert.AreSame(playlist.Entries[1], controller.CurrentEntry);
+        }
+
+        [Test]
+        public void RepeatOne_StartsTheSameEntryAgain()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
+            var playlist = BuildPlaylist(3);
+            playlist.Mode = PlaybackMode.RepeatOne;
+
+            controller.Play(playlist, 1);
+            reports.RaiseNowPlaying();
+            reports.RaiseSongCompleted();
+
+            Assert.IsTrue(game.WaitForCommandCount(2), "the track was never restarted");
+            Assert.AreSame(playlist.Entries[1], controller.CurrentEntry);
+        }
+
+        [Test]
+        public void RepeatAll_WrapsPastTheLastEntry()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
+            var playlist = BuildPlaylist(2);
+            playlist.Mode = PlaybackMode.RepeatAll;
+
+            controller.Play(playlist, 1);
+            reports.RaiseNowPlaying();
+            reports.RaiseSongCompleted();
+
+            Assert.IsTrue(game.WaitForCommandCount(2), "the playlist did not wrap around");
+            Assert.AreSame(playlist.Entries[0], controller.CurrentEntry);
+        }
+
+        // The bug this catches, found on the real game and reproduced here: Shuffle would play two tracks
+        // out of eight and stop. The order was built when the mode was picked - nothing playing, nothing
+        // to anchor to - and the pass was then left opening wherever the started track had landed in the
+        // permutation, running only the tail after it. Driven through the controller rather than through
+        // PlaybackOrder directly, because the order of calls is exactly what was wrong.
+        [Test]
+        public void Shuffle_PlaysEveryEntryOnceOverAWholePass()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer(), new Random(9));
+            var playlist = BuildPlaylist(6);
+            playlist.Mode = PlaybackMode.Shuffle;
+
+            var started = new List<PlaylistEntry>();
+            controller.EntryStarted += entry =>
+            {
+                lock (started)
+                    started.Add(entry);
+            };
+
+            // The mode is picked before anything plays, which is when the app rebuilds the order.
+            controller.RebuildOrder(playlist);
+            controller.Play(playlist, 0);
+
+            for (var i = 0; i < playlist.Entries.Count; i++)
+            {
+                reports.RaiseNowPlaying();
+                reports.RaiseSongCompleted();
+                if (!game.WaitForCommandCount(i + 2, 500))
+                    break;
+            }
+
+            Assert.IsTrue(WaitForCount(started, playlist.Entries.Count), "the shuffled pass stopped early");
+            Assert.That(started, Is.Unique);
+            Assert.That(started, Is.EquivalentTo(playlist.Entries));
+        }
+
+        // EntryStarted is raised just after the playsong goes out, so a test that synchronised on the
+        // command can be a hair ahead of the last one.
+        private static bool WaitForCount(List<PlaylistEntry> started, int expected, int timeoutMs = 2000)
+        {
+            var deadline = Environment.TickCount64 + timeoutMs;
+            while (Environment.TickCount64 < deadline)
+            {
+                lock (started)
+                {
+                    if (started.Count >= expected)
+                        return true;
+                }
+
+                Thread.Sleep(10);
+            }
+
+            lock (started)
+                return started.Count >= expected;
+        }
+
+        // The deferred advance of AdvanceTrigger.CharacterScreen is resolved at songcomplete but started
+        // later, so a shuffled order has to survive the gap between the two.
+        [Test]
+        public void ShuffleLoop_AdvancesThroughTheScoreScreenWait()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer(), new Random(7));
+            var playlist = BuildPlaylist(4);
+            playlist.Mode = PlaybackMode.ShuffleLoop;
+            playlist.AdvanceOn = AdvanceTrigger.CharacterScreen;
+
+            controller.Play(playlist, 0);
+            reports.RaiseNowPlaying();
+            reports.RaiseSongCompleted();
+
+            Assert.IsFalse(game.WaitForCommandCount(2, 200), "the next track did not wait for the score screen");
+
+            reports.RaiseCharacterScreen();
+
+            Assert.IsTrue(game.WaitForCommandCount(2), "the deferred advance never ran");
+            Assert.AreNotSame(playlist.Entries[0], controller.CurrentEntry);
         }
 
         // The status bar opens "Now playing" on EntryStarted and closes it on EntryEnded, so an
@@ -393,11 +529,48 @@ namespace QuickPlayerCore.Tests
 
             Assert.AreEqual(1, prewarmer.StartCount);
             Assert.AreSame(playlist, prewarmer.LastPlaylist);
-            Assert.AreEqual(1, prewarmer.LastFromIndex, "prewarming has to start from what is playing");
+            Assert.AreSame(playlist.Entries[2], prewarmer.LastOrder[0], "prewarming has to lead with what plays next");
+            Assert.AreEqual(3, prewarmer.LastOrder.Count, "every entry has to be covered, or pruning deletes live copies");
 
             controller.Stop();
 
             Assert.AreEqual(1, prewarmer.StopCount);
+        }
+
+        // The whole point of handing the prewarmer an order instead of an index: under a shuffled mode
+        // the track that plays next is not the next one in the list, and preparing the wrong file first
+        // is the multi-megabyte copy the game ends up waiting on.
+        [Test]
+        public void Prewarming_FollowsTheShuffledOrderRatherThanThePlaylist()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            var prewarmer = new FakePrewarmer();
+            using var controller = new PlaybackController(reports, game, prewarmer, new Random(3));
+            var playlist = BuildPlaylist(6);
+            playlist.Mode = PlaybackMode.Shuffle;
+
+            controller.Play(playlist, 0);
+            var expected = controller.GetUpcoming(1);
+
+            Assert.AreEqual(1, expected.Count);
+            Assert.AreSame(expected[0], prewarmer.LastOrder[0]);
+            Assert.AreEqual(6, prewarmer.LastOrder.Count);
+        }
+
+        [Test]
+        public void UpcomingAndRecent_TrackWhatActuallyPlayed()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
+            var playlist = BuildPlaylist(4);
+
+            controller.Play(playlist, 1);
+
+            Assert.That(controller.GetUpcoming(), Is.EqualTo(new[] { playlist.Entries[2], playlist.Entries[3] }));
+            Assert.That(controller.GetRecent(), Is.EqualTo(new[] { playlist.Entries[0] }));
+            Assert.AreEqual(PlaybackMode.Sequential, controller.CurrentMode);
         }
 
         // Reproduces the window that stranded the "Now playing" chip: the report lands after the phase
@@ -516,13 +689,13 @@ namespace QuickPlayerCore.Tests
             public int StartCount { get; private set; }
             public int StopCount { get; private set; }
             public Playlist LastPlaylist { get; private set; }
-            public int LastFromIndex { get; private set; } = -1;
+            public IReadOnlyList<PlaylistEntry> LastOrder { get; private set; } = Array.Empty<PlaylistEntry>();
 
-            public void Start(Playlist playlist, int fromIndex)
+            public void Start(Playlist playlist, IReadOnlyList<PlaylistEntry> order)
             {
                 StartCount++;
                 LastPlaylist = playlist;
-                LastFromIndex = fromIndex;
+                LastOrder = order;
             }
 
             public void Stop() => StopCount++;

@@ -28,6 +28,7 @@ namespace TweakerUI.ViewModels
         {
             DefaultCharacterOptions = CharacterOptionViewModel.BuildRoster(character => DefaultCharacter = character);
             CharacterOptionViewModel.SelectOnly(DefaultCharacterOptions, DefaultCharacter);
+            PlaybackModeOptions = PlaybackModeOptionViewModel.BuildRoster(SetPlaybackMode);
 
             _playback = new PlaybackController { DefaultCharacter = DefaultCharacter };
             _playback.EntryPreparing += OnEntryPreparing;
@@ -49,6 +50,7 @@ namespace TweakerUI.ViewModels
         public ObservableCollection<PlaylistRowViewModel> Playlists { get; } = new();
         public ObservableCollection<TrackCardViewModel> Queue { get; } = new();
         public ObservableCollection<CharacterOptionViewModel> DefaultCharacterOptions { get; }
+        public ObservableCollection<PlaybackModeOptionViewModel> PlaybackModeOptions { get; }
 
         [ObservableProperty]
         private PlaylistRowViewModel selectedPlaylistRow;
@@ -85,12 +87,34 @@ namespace TweakerUI.ViewModels
         {
             Queue.Clear();
             NotifyAdvanceModeChanged();
+            NotifyPlaybackModeChanged();
             if (value == null)
                 return;
 
             foreach (var entry in value.Playlist.Entries)
                 Queue.Add(new TrackCardViewModel(entry, this));
         }
+
+        // Playback mode. Per playlist for the same reason as the advance trigger below, and pushed into
+        // PlaybackController rather than only saved: it owns the play order, and a mode change has to
+        // rebuild it around wherever the module currently is instead of waiting for the next start.
+        private void SetPlaybackMode(PlaybackMode mode)
+        {
+            var playlist = SelectedPlaylist;
+            if (playlist == null || playlist.Mode == mode)
+            {
+                NotifyPlaybackModeChanged();
+                return;
+            }
+
+            playlist.Mode = mode;
+            NotifyPlaybackModeChanged();
+            _playback.RebuildOrder(playlist);
+            SaveCurrentPlaylist();
+        }
+
+        private void NotifyPlaybackModeChanged() =>
+            PlaybackModeOptionViewModel.SelectOnly(PlaybackModeOptions, SelectedPlaylist?.Mode ?? PlaybackMode.Sequential);
 
         // Advance mode. Stored on the playlist rather than as an app-wide preference, next to
         // AutoAdvance - a mix playlist and a "sit and grind one chart" playlist genuinely want
@@ -208,18 +232,22 @@ namespace TweakerUI.ViewModels
                 Queue.Add(new TrackCardViewModel(entry, this));
             }
 
+            // The play order is built from the entries, so it has to hear about this - a track added
+            // mid-playback should be able to come up in the pass that is running.
+            _playback.RebuildOrder(SelectedPlaylist);
             SaveCurrentPlaylist();
         }
 
-        // EnsureConnected is checked first in every one of these, before any index math - Prev used
-        // to fall through to a silent no-op when nothing was playing (its "no current track" index
-        // fallback computed an already-invalid prevIndex), so unlike Next it never even reached the
-        // connection check, which read as "Prev is just broken" rather than "not connected".
-        // Checking connection unconditionally up front makes every transport button behave the same.
+        // EnsureConnected is checked first in every one of these - Prev used to fall through to a silent
+        // no-op when nothing was playing (its "no current track" index fallback computed an
+        // already-invalid prevIndex), so unlike Next it never even reached the connection check, which
+        // read as "Prev is just broken" rather than "not connected". Checking connection unconditionally
+        // up front makes every transport button behave the same.
         //
-        // PlaybackController.CurrentEntry is the queue *position*, not "what is audibly playing" - it
-        // deliberately outlives the track, so Next/Prev keep their place after a song ends or the
-        // player bails out to the character screen instead of jumping back to the top of the playlist.
+        // Which entry Next/Prev land on is PlaybackController's answer, not this class's: the same
+        // question is asked by auto-advance and by the skip past a missing file, and three copies of the
+        // arithmetic is how they drifted apart. It also cannot be done here at all any more - the order
+        // depends on the playlist's mode, and under a shuffled one it is not index +- 1.
         [RelayCommand]
         private Task PlaySelected()
         {
@@ -236,9 +264,8 @@ namespace TweakerUI.ViewModels
             if (!EnsureConnected() || SelectedPlaylist == null)
                 return Task.CompletedTask;
 
-            var index = _playback.CurrentEntry != null ? SelectedPlaylist.Entries.IndexOf(_playback.CurrentEntry) : -1;
-            var nextIndex = index + 1;
-            return nextIndex < SelectedPlaylist.Entries.Count ? PlayIndexAsync(nextIndex) : Task.CompletedTask;
+            var playlist = SelectedPlaylist;
+            return Task.Run(() => _playback.PlayNext(playlist));
         }
 
         [RelayCommand]
@@ -247,9 +274,8 @@ namespace TweakerUI.ViewModels
             if (!EnsureConnected() || SelectedPlaylist == null)
                 return Task.CompletedTask;
 
-            var index = _playback.CurrentEntry != null ? SelectedPlaylist.Entries.IndexOf(_playback.CurrentEntry) : 0;
-            var prevIndex = index - 1;
-            return prevIndex >= 0 ? PlayIndexAsync(prevIndex) : Task.CompletedTask;
+            var playlist = SelectedPlaylist;
+            return Task.Run(() => _playback.PlayPrevious(playlist));
         }
 
         public Task PlayCard(TrackCardViewModel card)
@@ -268,6 +294,7 @@ namespace TweakerUI.ViewModels
 
             SelectedPlaylist.Entries.Remove(card.Entry);
             Queue.Remove(card);
+            _playback.RebuildOrder(SelectedPlaylist);
             SaveCurrentPlaylist();
         }
 

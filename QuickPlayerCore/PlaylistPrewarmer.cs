@@ -48,10 +48,10 @@ namespace QuickPlayerCore
     internal interface IPlaylistPrewarmer : IDisposable
     {
         /// <summary>
-        /// (Re)starts prewarming <paramref name="playlist"/>, working outwards from
-        /// <paramref name="fromIndex"/> so whatever plays next is prepared first.
+        /// (Re)starts prewarming <paramref name="playlist"/> in the given order, which must cover every
+        /// entry exactly once (see Run's pruning) and lead with whatever plays next.
         /// </summary>
-        void Start(Playlist playlist, int fromIndex);
+        void Start(Playlist playlist, IReadOnlyList<PlaylistEntry> order);
 
         void Stop();
 
@@ -62,8 +62,12 @@ namespace QuickPlayerCore
     /// Walks a playing playlist in the background and gets every entry ready before the player
     /// actually needs it: checks the source file still exists, and materialises the tagged temp copy
     /// TempFileTagger would otherwise build at the last moment, right when the game is waiting for a
-    /// playsong. Work starts at the entry after the one playing and wraps around, so the next track is
-    /// always the first thing prepared.
+    /// playsong.
+    ///
+    /// The order comes from the caller (PlaybackOrder.PlanPrewarm) rather than being derived from an
+    /// index here. Deciding it locally only works while "next" means "next index" - under a shuffled
+    /// mode it would prepare the entry's neighbour in the list while a completely different track is
+    /// the one about to play, which is exactly the wait this class exists to remove.
     ///
     /// Sequential on one background task on purpose. The goal is "the next track is ready in time",
     /// not "the whole playlist is ready as fast as possible" - copying several multi-megabyte files at
@@ -91,9 +95,9 @@ namespace QuickPlayerCore
         private Task _worker;
         private Guid _playlistId;
 
-        public void Start(Playlist playlist, int fromIndex)
+        public void Start(Playlist playlist, IReadOnlyList<PlaylistEntry> order)
         {
-            if (playlist == null)
+            if (playlist == null || order == null)
                 return;
 
             CancellationTokenSource cancellation;
@@ -101,7 +105,9 @@ namespace QuickPlayerCore
             lock (_gate)
             {
                 // A pass already covering this playlist keeps going - restarting on every track change
-                // would throw away everything it has prepared and begin again from the new index.
+                // would throw away everything it has prepared and begin again from the new position.
+                // A mode change reorders what is still to come but not what is already on disk: the temp
+                // copies are content-addressed, so anything prepared stays a cache hit regardless.
                 if (_playlistId == playlist.Id && _worker != null && !_worker.IsCompleted)
                     return;
 
@@ -111,12 +117,12 @@ namespace QuickPlayerCore
                 _cancellation = cancellation = new CancellationTokenSource();
             }
 
-            // Snapshot the order now: Entries is an ObservableCollection the UI mutates, and walking it
-            // directly from a background thread would break the moment a track is added or removed.
-            var order = BuildOrder(playlist, fromIndex);
+            // Copied because the caller's list may be a live view, and this one is walked from a
+            // background thread for as long as the pass runs.
+            var plan = new List<PlaylistEntry>(order);
             var token = cancellation.Token;
 
-            var worker = Task.Run(() => Run(playlist.Id, order, token), token);
+            var worker = Task.Run(() => Run(playlist.Id, plan, token), token);
 
             lock (_gate)
             {
@@ -156,23 +162,6 @@ namespace QuickPlayerCore
             _cancellation?.Dispose();
             _cancellation = null;
             _worker = null;
-        }
-
-        // Next track first, then the rest of the queue, then back round to the start. Prev is served by
-        // the wrap-around rather than by a separate backwards pass.
-        private static List<PlaylistEntry> BuildOrder(Playlist playlist, int fromIndex)
-        {
-            var entries = new List<PlaylistEntry>(playlist.Entries);
-            if (entries.Count == 0)
-                return entries;
-
-            var start = fromIndex < 0 || fromIndex >= entries.Count ? 0 : fromIndex;
-            var order = new List<PlaylistEntry>(entries.Count);
-
-            for (var offset = 1; offset <= entries.Count; offset++)
-                order.Add(entries[(start + offset) % entries.Count]);
-
-            return order;
         }
 
         private void Run(Guid playlistId, List<PlaylistEntry> order, CancellationToken token)

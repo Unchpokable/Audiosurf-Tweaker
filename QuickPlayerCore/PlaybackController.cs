@@ -111,10 +111,13 @@ namespace QuickPlayerCore
         internal PlaybackController(
             IPlaybackReportSource reportSource,
             IPlaybackGameSession gameSession,
-            IPlaylistPrewarmer prewarmer)
+            IPlaylistPrewarmer prewarmer,
+            Random random = null)
         {
             _reportSource = reportSource;
             _gameSession = gameSession;
+            // Seeded from a test to make shuffled orders reproducible; Random.Shared otherwise.
+            _order = new PlaybackOrder(random);
             // IProgress rather than another event on the prewarmer: this class only forwards the
             // reports on as PrewarmProgressed, keeping its own surface events-only like the rest of
             // QuickPlayerCore, and a test can hand in a prewarmer that reports nothing.
@@ -163,6 +166,13 @@ namespace QuickPlayerCore
         public event Action<PrewarmProgress> PrewarmProgressed;
 
         /// <summary>
+        /// The queue moved: a different entry is current, or the order itself was rebuilt (mode change,
+        /// tracks added or removed). Exists so a display of the upcoming queue can be pushed rather than
+        /// polled - the in-game overlay renders from EndScene and cannot ask per frame.
+        /// </summary>
+        public event Action PlaybackOrderChanged;
+
+        /// <summary>
         /// Where the module currently is in the queue - NOT "what is audibly playing" (see IsPlaying).
         /// Deliberately survives a track ending so the transport's Next/Prev keep their place.
         /// </summary>
@@ -198,6 +208,34 @@ namespace QuickPlayerCore
         /// <summary>Character to launch with when the entry itself has no override (bound to the transport bar's character grid).</summary>
         public GameCharacter DefaultCharacter { get; set; } = GameCharacter.Mono;
 
+        /// <summary>The mode of the playlist the module is positioned in.</summary>
+        public PlaybackMode CurrentMode
+        {
+            get
+            {
+                lock (_gate)
+                    return _playlist?.Mode ?? PlaybackMode.Sequential;
+            }
+        }
+
+        /// <summary>
+        /// What is queued up after the current entry, nearest first; 0 means the rest of the pass. Empty
+        /// in Single (nothing follows on its own) and just the current entry in RepeatOne - it answers
+        /// what will actually play, not what sits further down the list.
+        /// </summary>
+        public IReadOnlyList<PlaylistEntry> GetUpcoming(int count = 0)
+        {
+            lock (_gate)
+                return _order.Upcoming(_playlist, _currentIndex, count);
+        }
+
+        /// <summary>What has already played in this pass, most recent first; 0 means all of it.</summary>
+        public IReadOnlyList<PlaylistEntry> GetRecent(int count = 0)
+        {
+            lock (_gate)
+                return _order.Recent(_playlist, _currentIndex, count);
+        }
+
         /// <summary>
         /// How ready the background worker believes an entry is. Advisory - the authoritative check
         /// happens at start time; this is for the UI to grey out what it already knows is broken.
@@ -208,6 +246,11 @@ namespace QuickPlayerCore
         private readonly IPlaybackGameSession _gameSession;
         private readonly IPlaylistPrewarmer _prewarmer;
         private readonly List<IDisposable> _activeOverrides = new();
+
+        // Everything about "what plays next" lives here, for the auto-advance and the transport buttons
+        // alike. Guarded by _gate like the rest of the state below; it is pure computation and never
+        // calls back out, so holding the lock across it cannot invert any lock order.
+        private readonly PlaybackOrder _order;
 
         // Guards every field below. Never held across a call into GameConfigState/IPlaybackGameSession:
         // AudiosurfHandle.HandleReport holds its own lock while invoking the report handlers that call
@@ -234,9 +277,74 @@ namespace QuickPlayerCore
         private readonly object _notifyGate = new();
         private PlaylistEntry _notifiedEntry;
 
+        /// <summary>
+        /// Plays the entry the caller picked, and treats it as the start of a new pass - in a shuffled
+        /// mode the order is rebuilt around it. "Play this one now" has to mean the pass opens here;
+        /// leaving it wherever it happened to fall in an existing permutation is what made Shuffle play
+        /// a couple of tracks and stop.
+        /// </summary>
         public void Play(Playlist playlist, int index)
         {
-            StartEntry(playlist, index);
+            StartEntry(playlist, index, beginsNewPass: true);
+        }
+
+        /// <summary>
+        /// Which entry follows the current one, or null to stop. <paramref name="isAutoAdvance"/>
+        /// separates "the track finished by itself" from a pressed Next: only the former honours
+        /// RepeatOne and Single. Resolved against this controller's queue position, so a playlist other
+        /// than the one being driven is answered from its own start.
+        /// </summary>
+        public int? ResolveNextIndex(Playlist playlist, bool isAutoAdvance)
+        {
+            lock (_gate)
+                return _order.Next(playlist, CurrentIndexIn(playlist), isAutoAdvance);
+        }
+
+        public int? ResolvePreviousIndex(Playlist playlist)
+        {
+            lock (_gate)
+                return _order.Previous(playlist, CurrentIndexIn(playlist));
+        }
+
+        /// <summary>
+        /// Resolve and start in one call. Not two steps for the caller to do itself: the transport
+        /// starts tracks off the UI thread, and a resolve that has to survive until a separate Play
+        /// lands lets two quick clicks both resolve against the same stale position. Continues the
+        /// current pass rather than starting a new one - a skip is not a new choice of where to be.
+        /// </summary>
+        public bool PlayNext(Playlist playlist)
+        {
+            var index = ResolveNextIndex(playlist, isAutoAdvance: false);
+            return index.HasValue && StartEntry(playlist, index.Value, beginsNewPass: false);
+        }
+
+        public bool PlayPrevious(Playlist playlist)
+        {
+            var index = ResolvePreviousIndex(playlist);
+            return index.HasValue && StartEntry(playlist, index.Value, beginsNewPass: false);
+        }
+
+        /// <summary>
+        /// The playlist's entries or mode changed - start a fresh pass around the current position. The
+        /// owner of the playlist says when this happens rather than this class watching for it: entries
+        /// only ever change because the UI changed them, and a caller that knows is cheaper and clearer
+        /// than reconciling against the collection on every query. Also the hook a future "reorder the
+        /// queue by hand" would use.
+        ///
+        /// Ignored for a playlist other than the one being driven: that one's order is built when it
+        /// starts playing, and rebuilding it here would throw away the running one's pass.
+        /// </summary>
+        public void RebuildOrder(Playlist playlist)
+        {
+            lock (_gate)
+            {
+                if (playlist == null || _playlist != null && _playlist.Id != playlist.Id)
+                    return;
+
+                _order.Rebuild(playlist, CurrentIndexIn(playlist));
+            }
+
+            PlaybackOrderChanged?.Invoke();
         }
 
         /// <summary>
@@ -258,12 +366,13 @@ namespace QuickPlayerCore
         }
 
         /// <summary>Returns whether the entry actually started; false means it was unplayable or there was nothing there.</summary>
-        private bool StartEntry(Playlist playlist, int index)
+        private bool StartEntry(Playlist playlist, int index, bool beginsNewPass)
         {
             EndCurrent();
 
             long token;
             PlaylistEntry entry;
+            IReadOnlyList<PlaylistEntry> prewarmOrder;
 
             lock (_gate)
             {
@@ -276,14 +385,21 @@ namespace QuickPlayerCore
                 // Claimed before the slow preparation below, so an oncharacterscreen arriving while the
                 // file is still being copied is recognised as the player taking over and cancels it.
                 _phase = entry != null ? PlaybackPhase.Starting : PlaybackPhase.Idle;
+
+                if (beginsNewPass)
+                    _order.Rebuild(playlist, index);
+
+                prewarmOrder = entry != null ? _order.PlanPrewarm(playlist, index) : null;
             }
 
             if (entry == null)
                 return false;
 
             // Gets the rest of the queue ready while this one plays, so the next start is a cache hit
-            // instead of a multi-megabyte copy the game is waiting on.
-            _prewarmer.Start(playlist, index);
+            // instead of a multi-megabyte copy the game is waiting on. The order comes from the planner
+            // rather than from the playlist: in a shuffled mode the next track is not the next index,
+            // and preparing that one first is the entire point.
+            _prewarmer.Start(playlist, prewarmOrder);
 
             // Checked live rather than trusting the prewarmer's snapshot: it may not have reached this
             // entry yet, and handing the game a path that no longer exists is worth one stat call to
@@ -386,9 +502,7 @@ namespace QuickPlayerCore
                     return;
 
                 playlist = _playlist;
-                next = playlist.AutoAdvance && _currentIndex + 1 < playlist.Entries.Count
-                    ? _currentIndex + 1
-                    : null;
+                next = _order.Next(playlist, _currentIndex, isAutoAdvance: true);
 
                 deferred = playlist.AdvanceOn == AdvanceTrigger.CharacterScreen && next.HasValue;
                 _pendingAdvanceIndex = deferred ? next : null;
@@ -464,22 +578,27 @@ namespace QuickPlayerCore
         }
 
         // An entry whose file has gone missing must not end the run - the player deleted one song, not
-        // the playlist. Walks forward until something starts, bounded by the queue length so a playlist
-        // where every file is gone stops instead of looping. Only auto-advance skips: a manual Play on
-        // a missing track reports EntryUnavailable and stops there, because silently playing a
-        // different song than the one that was clicked is worse than doing nothing.
+        // the playlist. Each skip asks the planner again instead of stepping to index + 1: in a shuffled
+        // mode that would walk the playlist in flat order, and in RepeatAll it would fall off the end
+        // rather than wrap. Bounded by the set of indices already tried, which is also what stops
+        // RepeatOne from retrying the same missing file until a counter runs out.
+        // Only auto-advance skips: a manual Play on a missing track reports EntryUnavailable and stops
+        // there, because silently playing a different song than the one that was clicked is worse than
+        // doing nothing.
         private void AdvanceFrom(Playlist playlist, int index)
         {
-            var remaining = playlist.Entries.Count;
+            var tried = new HashSet<int>();
 
-            while (remaining-- > 0)
+            while (tried.Add(index))
             {
-                if (StartEntry(playlist, index))
+                if (StartEntry(playlist, index, beginsNewPass: false))
                     return;
 
-                index++;
-                if (index >= playlist.Entries.Count)
+                var next = ResolveNextIndex(playlist, isAutoAdvance: true);
+                if (!next.HasValue)
                     break;
+
+                index = next.Value;
             }
 
             Stop();
@@ -522,6 +641,10 @@ namespace QuickPlayerCore
                 _notifiedEntry = entry;
                 EntryStarted?.Invoke(entry);
             }
+
+            // The cursor moved, so what is upcoming did too. Raised outside _notifyGate for the same
+            // reason the pair above is: a subscriber is free to call back in and read the queue.
+            PlaybackOrderChanged?.Invoke();
         }
 
         // Ends the entry that was actually announced, not whatever the queue position points at now -
@@ -537,6 +660,17 @@ namespace QuickPlayerCore
                 _notifiedEntry = null;
                 EntryEnded?.Invoke(announced);
             }
+        }
+
+        // The queue position only means anything for the playlist it belongs to. Asked about a
+        // different one - the transport acts on whichever playlist the sidebar has selected, which need
+        // not be the one playing - there is no position, and the order answers from its start.
+        private int CurrentIndexIn(Playlist playlist)
+        {
+            if (playlist == null || _playlist == null || _playlist.Id != playlist.Id)
+                return -1;
+
+            return _currentIndex;
         }
 
         private PlaylistEntry CurrentEntryLocked() =>

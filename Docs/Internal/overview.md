@@ -99,7 +99,7 @@ Tweaker состоит из трёх долгоживущих процессов
 
 Исключение — внутриигровой оверлей (`TweakerPlugin` + `OverlayHelper`, бывшая Фаза 7, см. `Docs/Internal/roadmap.md`/`overlay-protocol.md`): он реализован и **проверен вручную на реальной запущенной игре**, включая инжект, handshake, двусторонний sync твиков/скинов и ImGui-панели. Поскольку эта проверка идёт через те же сеттеры/методы, что использует десктопный UI (`TweakerViewModel`/`SkinChangerViewModel`), заодно на живой игре опосредованно прогонялась и часть логики Tweaker/Skin Changer — но это не то же самое, что отдельно объявленная проверка паритета всего `TweakerUI` (см. «Открытые вопросы» ниже).
 
-Не реализовано (сознательно вне объёма): shuffle/repeat в Quick Player, `MusicBrainzCoverArtProvider` (есть только интерфейс-заготовка `ICoverArtProvider`), автообновление приложения (референс-код есть в теге `archive/beta-alt-design-updater`, но на WPF — портировать as-is не имеет смысла).
+Не реализовано (сознательно вне объёма): `MusicBrainzCoverArtProvider` (есть только интерфейс-заготовка `ICoverArtProvider`), автообновление приложения (референс-код есть в теге `archive/beta-alt-design-updater`, но на WPF — портировать as-is не имеет смысла), транспорт Quick Player во внутриигровом оверлее (очередь для него уже доступна — `PlaybackController.GetUpcoming`/`GetRecent`/`PlaybackOrderChanged`, см. Фазу 6 в `roadmap.md`).
 
 Server Swapper и Discord Rich Presence отменены и удалены — первый не даёт ничего сверх официального установщика единственного альтернативного сервера, второй был нефункциональной заготовкой.
 

@@ -17,7 +17,7 @@
 // as overlay_state.cxx/texture_cache.cxx (see src/ui/CMakeLists.txt).
 namespace
 {
-constexpr float k_lifetime_ms = 10000.f;
+constexpr float k_lifetime_ms = 3000.f;
 constexpr float k_fade_in_ms = 200.f;
 constexpr float k_fade_out_ms = 400.f;
 constexpr float k_reflow_ms = 220.f;

@@ -1,4 +1,13 @@
 {
     "dotnet.preferCSharpExtension": true,
     "editor.formatOnSave": true,
+    "editor.semanticTokenColorCustomizations": {
+        "rules": {
+            "enumMember": "#b8d7a3",
+            "macro": "#bd63c5",
+            "property": "#d296d6",
+            "concept": "#6aaaff",
+            "variable": "#b9d9ec"
+        }
+    },
 }

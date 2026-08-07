@@ -4,10 +4,44 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace QuickPlayerCore
 {
+    /// <summary>
+    /// In what order, and how many times, Quick Player walks a playlist. Mutually exclusive by design -
+    /// a flat list of what the user actually wants rather than orthogonal "shuffle" and "repeat" flags
+    /// they would have to combine in their head. Serialized by name (see the converter) so inserting a
+    /// mode later cannot silently rename everyone's saved setting.
+    ///
+    /// Manual Next/Prev behaves the same in every mode - the cursor moves one step, wrapping only where
+    /// the mode loops. Repeating and stopping apply to a track *finishing on its own*: RepeatOne does
+    /// not trap the user on one song and Single does not disable the transport.
+    /// </summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public enum PlaybackMode
+    {
+        /// <summary>Playlist order, stop after the last entry. The default, and what AutoAdvance = true used to do.</summary>
+        Sequential,
+
+        /// <summary>Play the started track and stop. The old AutoAdvance = false, which never had a UI.</summary>
+        Single,
+
+        /// <summary>Shuffled order, one pass over the playlist, then stop.</summary>
+        Shuffle,
+
+        /// <summary>Restart the same track every time it finishes.</summary>
+        RepeatOne,
+
+        /// <summary>Playlist order, wrapping around the ends forever.</summary>
+        RepeatAll,
+
+        /// <summary>Shuffled order, reshuffled into a fresh pass every time one runs out.</summary>
+        ShuffleLoop
+    }
+
     /// <summary>What has to happen before Quick Player starts the next entry.</summary>
+    [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum AdvanceTrigger
     {
         /// <summary>
@@ -42,14 +76,19 @@ namespace QuickPlayerCore
         // sidebar track counts) and mutates this directly from AddTracks/RemoveCard.
         public ObservableCollection<PlaylistEntry> Entries { get; set; } = new();
 
-        /// <summary>Advance to the next entry by index on songcomplete. Simple linear order for now - the natural extension point for shuffle/repeat later.</summary>
-        public bool AutoAdvance { get; set; } = true;
+        /// <summary>
+        /// Which entry plays next, and whether there is a next one at all. Stored per playlist rather
+        /// than app-wide, same reasoning as AdvanceOn below: a mixtape and a "grind one chart" playlist
+        /// want different answers. Absent from older saved files, where the initializer keeps the
+        /// behaviour those playlists already had.
+        /// </summary>
+        public PlaybackMode Mode { get; set; } = PlaybackMode.Sequential;
 
         /// <summary>
-        /// When the next entry starts. Orthogonal to AutoAdvance (whether to advance at all) and to the
-        /// playback order - it only decides which report pulls the trigger. Default is SongComplete
-        /// because it is what the field's absence deserializes to, i.e. existing playlists keep
-        /// behaving as they did.
+        /// When the next entry starts. Orthogonal to Mode (which entry is next, and whether to advance
+        /// at all) - this only decides which report pulls the trigger. Default is SongComplete because
+        /// it is what the field's absence deserializes to, i.e. existing playlists keep behaving as
+        /// they did.
         /// </summary>
         public AdvanceTrigger AdvanceOn { get; set; } = AdvanceTrigger.SongComplete;
 

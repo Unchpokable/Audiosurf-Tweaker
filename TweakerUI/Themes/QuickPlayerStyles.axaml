@@ -110,6 +110,28 @@
         <Setter Property="CornerRadius" Value="12"/>
         <Setter Property="Padding" Value="16,12"/>
     </Style>
+    <!-- Tinted band, same tokens as Skin Changer's Custom Installation panel (SCGamePanelCard) under
+    this module's own prefix. Deliberately not the neutral QPCard/QPTransportBar surface: with three
+    stacked bands on the page, one of them being accent-tinted is what keeps the page from reading as a
+    single flat slab, and it marks the character picker as a setting rather than as content. -->
+    <Style Selector="Border.QPCharacterPanel">
+        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <!-- Tighter vertically than the Skin Changer panel it borrows its colours from: three stacked
+        bands now share the page height with the queue, which is the part that has to stay usable. -->
+        <Setter Property="Padding" Value="16,12"/>
+    </Style>
+    <!-- Caption over a centred row of chips. Above rather than beside them: inline, the caption is part
+    of the row's width, and two rows of different widths sharing a label column line up on their left
+    edges and read as left-aligned however the container is placed. Smaller than the controls it names so
+    the row itself stays the thing the eye lands on. -->
+    <Style Selector="TextBlock.QPRowCaption">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+    </Style>
     <Style Selector="TextBlock.QPCardTitle">
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
@@ -444,12 +466,6 @@
     approach as QPCharacterButton above, minus its icon: with only two options and no glyph that reads
     unambiguously, the words are the control. This replaced a single icon toggle whose "on" state
     filled the button with the accent colour and swallowed the icon into a solid square. -->
-    <Style Selector="TextBlock.QPSegmentLabel">
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
-        <Setter Property="VerticalAlignment" Value="Center"/>
-    </Style>
-
     <Style Selector="RadioButton.QPSegmentButton">
         <Setter Property="Background" Value="{DynamicResource SurfaceSoftBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
@@ -477,6 +493,13 @@
                 </Border>
             </ControlTemplate>
         </Setter>
+    </Style>
+    <!-- Six-across variant (playback mode). The two-chip Advance mode row can afford 66px minimums and
+    14px of side padding; a six-chip row in the same width cannot. Spacing is the panel's job here (see
+    QuickPlayerView.axaml), so no margin of its own. -->
+    <Style Selector="RadioButton.QPSegmentButton.Compact">
+        <Setter Property="Padding" Value="10,6"/>
+        <Setter Property="MinWidth" Value="58"/>
     </Style>
     <Style Selector="RadioButton.QPSegmentButton:pointerover /template/ Border#Root">
         <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/>
