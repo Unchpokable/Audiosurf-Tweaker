@@ -1,7 +1,7 @@
 #include "ui/plugins/static/notefeed.hxx"
 
+#include "ui/image/svg.hxx"
 #include "ui/overlay_config.hxx"
-#include "ui/texture_cache.hxx"
 #include "ui/theme.hxx"
 #include "ui/widgets/detail/draw.hxx"
 
@@ -29,7 +29,10 @@ constexpr float k_rounding = 8.f;
 
 struct entry {
     std::string text;
-    ImTextureID icon = ImTextureID_Invalid;
+    // The resource key, not a resolved ImTextureID: a toast can easily outlive a device change, and
+    // the texture handle would be dangling by then (see ui/image/svg.hxx). Resolved per frame in
+    // update() instead - a hash lookup.
+    std::string icon_key;
     double spawn_time_ms = 0.0;
     float y_current = 0.f; // source of truth, written by y_tween.step() - see button.cxx convention
     tweeny::tween<float> y_tween;
@@ -67,7 +70,7 @@ void push(std::string_view text, std::string_view icon_resource_key)
 {
     entry e;
     e.text.assign(text);
-    e.icon = icon_resource_key.empty() ? ImTextureID_Invalid : texture_cache::get_or_load(icon_resource_key);
+    e.icon_key.assign(icon_resource_key);
     e.spawn_time_ms = g_clock_ms;
     e.y_current = static_cast<float>(g_entries.size()) * (k_row_h + k_row_gap);
     g_entries.push_back(std::move(e));
@@ -129,12 +132,16 @@ void update() noexcept
         draw->AddRectFilled(p_min, p_max, detail::to_u32(bg), k_rounding);
         draw->AddRect(p_min, p_max, detail::to_u32(border), k_rounding);
 
+        // The icon slot is 32px (k_row_h - 12), which is exactly the largest baked SVG size.
+        const ImTextureID icon = e.icon_key.empty() ? ImTextureID_Invalid : image::svg::get_resource(e.icon_key).sz32;
+
         float text_x = p_min.x + 12.f;
-        if(e.icon != ImTextureID_Invalid) {
+        if(icon != ImTextureID_Invalid) {
             const ImVec2 icon_min { p_min.x + 8.f, p_min.y + 6.f };
             const ImVec2 icon_max { icon_min.x + (k_row_h - 12.f), p_max.y - 6.f };
+            // Assets are monochrome white - the tint is what carries the fade here.
             const ImU32 icon_col = IM_COL32(255, 255, 255, static_cast<int>(alpha * 255.f + 0.5f));
-            detail::add_image_keep_aspect(draw, e.icon, ImVec2 { 0.f, 0.f }, icon_min, icon_max, icon_col);
+            detail::add_image_keep_aspect(draw, icon, ImVec2 { 0.f, 0.f }, icon_min, icon_max, icon_col);
             text_x = icon_max.x + 8.f;
         }
 

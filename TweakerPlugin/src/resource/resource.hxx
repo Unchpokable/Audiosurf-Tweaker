@@ -26,4 +26,9 @@ void shutdown() noexcept;
 
 [[nodiscard]] std::expected<view, error> get_resource(std::string_view key) noexcept;
 [[nodiscard]] std::expected<view, error> get_resource(type kind, std::string_view key) noexcept;
+
+// Every indexed key of `kind`, in unspecified order. For consumers that bake a whole asset class up
+// front instead of looking assets up by name (ui/image/svg). The views point at the index's own key
+// storage - valid until the next initialize()/shutdown(). Cold path: this allocates.
+[[nodiscard]] std::vector<std::string_view> list_keys(type kind);
 } // namespace tw::resource

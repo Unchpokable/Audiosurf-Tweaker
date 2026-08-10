@@ -7,6 +7,8 @@
 
 #include "resource/resource.hxx"
 
+#include "ui/gpu_texture.hxx"
+#include "ui/image/svg.hxx"
 #include "ui/overlay_config.hxx"
 #include "ui/texture_cache.hxx"
 #include "ui/theme.hxx"
@@ -124,9 +126,9 @@ std::string compute_config_path()
     return path;
 }
 
-// texture_cache's pluggable upload backend (see ui/texture_cache.hxx) - D3DPOOL_MANAGED survives
-// Reset() on its own (the D3D9 runtime re-uploads from its system-memory copy), so unlike the
-// main ImGui font atlas these small UI icon textures need no InvalidateDeviceObjects handling.
+// gpu_texture's pluggable backend (see ui/gpu_texture.hxx) - D3DPOOL_MANAGED survives Reset() on
+// its own (the D3D9 runtime re-uploads from its system-memory copy), so unlike the main ImGui font
+// atlas these small UI icon textures need no InvalidateDeviceObjects handling.
 ImTextureID d3d9_upload_texture(const unsigned char* rgba, int width, int height)
 {
     if(g_device == nullptr || rgba == nullptr || width <= 0 || height <= 0) {
@@ -161,6 +163,17 @@ ImTextureID d3d9_upload_texture(const unsigned char* rgba, int width, int height
     texture->UnlockRect(0);
 
     return static_cast<ImTextureID>(reinterpret_cast<std::uintptr_t>(texture));
+}
+
+// The other half of the pair. Only ever reached while the device that created `tex` is still
+// alive - once a device has been replaced its textures are gone with it, and the handles are
+// dropped without a Release() (see the texture_cache::clear() call in initialize() below).
+void d3d9_release_texture(ImTextureID tex)
+{
+    auto* texture = reinterpret_cast<IDirect3DTexture9*>(static_cast<std::uintptr_t>(tex));
+    if(texture != nullptr) {
+        texture->Release();
+    }
 }
 
 bool load_font()
@@ -199,11 +212,13 @@ bool initialize(IDirect3DDevice9* device, HWND hwnd)
     }
 
     g_device = device;
-    tw::ui::texture_cache::set_backend(&d3d9_upload_texture);
+    tw::ui::gpu_texture::set_backend(&d3d9_upload_texture, &d3d9_release_texture);
     // Icons already uploaded belong to whatever device we were bound to before (or none) - those
-    // IDirect3DTexture9 pointers are dangling now, not just stale. Drop them so the next
-    // get_or_load() re-decodes and re-uploads through the new device.
+    // IDirect3DTexture9 pointers are dangling now, not just stale. Drop them (without releasing:
+    // the old device already took its own textures down) so the raster cache re-decodes on the next
+    // get_or_load(), and so the SVG repository re-bakes on the next frame.
     tw::ui::texture_cache::clear();
+    tw::ui::image::svg::invalidate();
 
     if(!g_context_created) {
         g_config_path = compute_config_path();

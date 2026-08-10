@@ -18,6 +18,8 @@
 | `TweakerPlugin/src/ui/widgets/*.hxx\|.cxx` | Виджеты |
 | `TweakerPlugin/src/ui/widgets/detail/draw.hxx` | Общие хелперы отрисовки / lerp / alpha |
 | `TweakerPlugin/src/ui/theme.hxx\|.cxx` | Палитра |
+| `TweakerPlugin/src/ui/image/svg.hxx\|.cxx` | SVG-иконки (LunaSVG), см. раздел ниже |
+| `TweakerPlugin/src/ui/gpu_texture.hxx\|.cxx` | Единственная точка подключения рендер-бэкенда для текстур |
 | `TweakerPlugin/src/ui/CMakeLists.txt` | Статическая библиотека `tweaker_ui` |
 | `TweakerPlugin/smoke/main.cxx` | Визуальный smoke-harness |
 
@@ -507,6 +509,78 @@ if (tabs.selection_changed()) { /* ... */ }
 6. **Родительское окно и «лишний» scroll.** Если снаружи после блока, который съел весь `GetContentRegionAvail()`, ещё рисуется футер — зарезервируйте под него высоту заранее (см. nested-секцию в `smoke/main.cxx`).
 
 7. **Stock ImGui vs custom.** Оба должны уважать `StyleVar_Alpha`. Кастомные виджеты делают это через `detail::to_u32`. Сырой `AddText` без alpha-множителя во время fade будет «мигать».
+
+---
+
+## Иконки: `tw::ui::image::svg`
+
+SVG-иконки лежат в `TweakerPlugin/assets/icons/*.svg`, пакуются в PE как ресурсы типа `TW_SVG`
+(`resource::type::vector`, см. `src/resource/CMakeLists.txt`) и растеризуются **LunaSVG** —
+подтягивается CMake-ом через `FetchContent` (тег `v3.5.0`, см. `cmake/LunaSVG.cmake`; клоны лежат в
+`TweakerPlugin/.deps/<генератор>/`, общие для всех build-деревьев на одном генераторе).
+
+В отличие от `ui/texture_cache` (растр, ленивая загрузка, одна текстура на ассет), этот модуль
+**запекает всё сразу**: на первом кадре после привязки устройства каждый упакованный SVG
+растеризуется в набор фиксированных размеров, так что вызов на отрисовке — hash-lookup, а не
+растеризация.
+
+```cpp
+#include "ui/image/svg.hxx"
+
+const auto icon = tw::ui::image::svg::get_resource("icons/skin.svg");
+detail::add_image_keep_aspect(draw, icon.sz16, {0.f, 0.f}, icon_min, icon_max, text_color);
+
+// Размер вне k_baked_sizes - растеризуется при первом запросе и дальше живёт в кэше:
+const ImTextureID big = icon.at(64);
+```
+
+### Правила
+
+1. **Ключ — полный resource-путь**: `"icons/skin.svg"`, как у `tw::resource`. Промах даёт пустой
+   `image` со всеми полями `ImTextureID_Invalid` — `add_image_keep_aspect` на таком просто ничего не
+   рисует, отдельная проверка не нужна.
+2. **Не кэшировать `image` между кадрами.** Поля `sz16/sz24/sz32` — снимок: при смене D3D9-устройства
+   все `ImTextureID` протухают, репозиторий перезапекается. Зовите `get_resource()` там, где рисуете
+   (это heterogeneous hash-lookup без аллокаций). Та же дисциплина, что с цветами `theme::`.
+3. **Запечённые размеры** — `k_baked_sizes` = `{16, 24, 32}`. Единственный источник правды; поля
+   `sz16/sz24/sz32` привязаны к нему `static_assert`-ом.
+4. **Ассеты монохромные**: белая заливка/обводка + альфа, `viewBox="0 0 24 24"`, только пути, без
+   текста, фильтров и внешних ссылок. Цвет даёт `ImU32 col` на отрисовке (ImGui домножает), поэтому
+   иконка сама следует теме и fade'у — ровно так это делают `pins` (цвет подписи) и `notefeed`
+   (альфа тоста).
+5. **Слоты подбирать под запечённые размеры.** `pins` — строка 28px, слот 16px; `notefeed` — строка
+   44px, слот 32px. Попадание в запечённый размер означает, что ImGui не пересэмплирует текстуру.
+
+### Lifecycle
+
+| Вызов | Где | Что делает |
+|-------|-----|------------|
+| `initialize()` | `tw::ui::initialize()` (load-тред) | Индексирует ключи. GPU не нужен. |
+| `update()` | первым делом в `ui_main::draw_frame()` | Запекает всё, если есть bound-рендерер и стоит dirty. Иначе — одна проверка `bool`. |
+| `invalidate()` | `imgui_backend::initialize()`, рядом с `texture_cache::clear()` | Устройство сменилось: сбрасывает handles (без `release` — старое устройство уже унесло свои текстуры) и ставит dirty. |
+| `shutdown()` | `tw::ui::shutdown()`, **до** `imgui_backend::shutdown()` | `release()` всех текстур, пока устройство ещё живо. |
+
+`smoke_test` проходит ровно ту же последовательность на OpenGL — рендер-специфична только пара
+функций в `ui/gpu_texture`.
+
+### Качество на мелких размерах
+
+`k_supersample_factor` в `src/ui/image/svg.cxx` (по умолчанию `1`) переключает «рендерить сразу в
+целевой размер» и «рендерить в N раз крупнее + `stbir_resize_uint8_srgb`». Растеризатор LunaSVG
+делает аналитический AA, поэтому для простых путевых иконок прямой рендер не хуже, а чаще чётче:
+сравнение 16px direct vs 4x-supersample на текущем наборе даёт визуально идентичный результат.
+Ветка оставлена включаемой константой на случай более детальной графики.
+
+Стенд для сравнения — группа **`Icons`** в [`smoke/main.cxx`](../../TweakerPlugin/smoke/main.cxx):
+все упакованные иконки в 16/24/32 (запечённые) и 48 (через `at()`), с тинтом `theme::text_primary`.
+
+### Добавить иконку
+
+1. Положить `.svg` в `assets/icons/` (монохром, см. правило 4).
+2. Пересобрать — `.rc`-генератор подхватит файл через `CONFIGURE_DEPENDS`, ключ = путь относительно
+   `assets/`.
+3. Если это иконка твика — прописать её в `overlay_state::tweak_icon_key()`, единственном месте, где
+   живёт маппинг `tweak_id` → иконка.
 
 ---
 

@@ -9,6 +9,7 @@ file(MAKE_DIRECTORY "${TWEAKER_GENERATED_DIR}")
 
 file(GLOB_RECURSE TWEAKER_ASSET_FILES CONFIGURE_DEPENDS
     "${TWEAKER_ASSETS_DIR}/*.png"
+    "${TWEAKER_ASSETS_DIR}/*.svg"
     "${TWEAKER_ASSETS_DIR}/*.ttf"
     "${TWEAKER_ASSETS_DIR}/*.txt"
 )
@@ -28,6 +29,8 @@ foreach(ABS_PATH IN LISTS TWEAKER_ASSET_FILES)
     # Use TW_* type names — bare FONT/TEXT collide with RC language keywords.
     if(EXT_LOWER STREQUAL ".png")
         set(RC_TYPE "TW_TEXTURE")
+    elseif(EXT_LOWER STREQUAL ".svg")
+        set(RC_TYPE "TW_SVG")
     elseif(EXT_LOWER STREQUAL ".ttf")
         set(RC_TYPE "TW_FONT")
     elseif(EXT_LOWER STREQUAL ".txt")

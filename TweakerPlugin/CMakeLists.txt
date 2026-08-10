@@ -34,6 +34,7 @@ include(cmake/Detours.cmake)
 include(cmake/DirectXSDK.cmake)
 include(cmake/Quest3DSDK.cmake)
 include(cmake/ImGui.cmake)
+include(cmake/LunaSVG.cmake)
 
 add_library(TweakerPlugin SHARED)
 add_subdirectory(src)

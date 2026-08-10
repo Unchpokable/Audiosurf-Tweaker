@@ -1,6 +1,9 @@
 # CMake / build
 /build/
 /out/
+# FetchContent clones (LunaSVG + its plutovg submodule), see cmake/LunaSVG.cmake - deliberately
+# outside /build/ so every build tree shares one clone.
+/.deps/
 CMakeUserPresets.json
 compile_commands.json
 

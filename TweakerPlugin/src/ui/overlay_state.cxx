@@ -108,6 +108,33 @@ std::string_view tweak_display_name(tweak_id id) noexcept
     }
 }
 
+std::string_view tweak_icon_key(tweak_id id) noexcept
+{
+    switch(id) {
+        case tweak_id::invisible_road:
+            return "icons/tweak_invisible_road.svg";
+        case tweak_id::hidden_song_title:
+            return "icons/tweak_hidden_song_title.svg";
+        case tweak_id::sidewinder_camera:
+            return "icons/tweak_sidewinder_camera.svg";
+        case tweak_id::banking_camera:
+            return "icons/tweak_banking_camera.svg";
+        case tweak_id::freeride_no_blocks:
+            return "icons/tweak_freeride_no_blocks.svg";
+        case tweak_id::freeride_blocks_caterpillars:
+            return "icons/tweak_freeride_blocks_caterpillars.svg";
+        case tweak_id::freeride_auto_advance_disable:
+            return "icons/tweak_freeride_auto_advance_disable.svg";
+        default:
+            return {};
+    }
+}
+
+std::string_view skin_icon_key() noexcept
+{
+    return "icons/skin.svg";
+}
+
 std::string_view tweak_wire_name(tweak_id id) noexcept
 {
     switch(id) {

@@ -7,7 +7,9 @@ add_library(tweaker_ui STATIC
     overlay_state.cxx
     overlay_config.cxx
     pending_actions.cxx
+    gpu_texture.cxx
     texture_cache.cxx
+    image/svg.cxx
     widgets/button.cxx
     widgets/toggle.cxx
     widgets/list_item.cxx
@@ -28,9 +30,10 @@ target_include_directories(tweaker_ui PUBLIC
 
 target_link_libraries(tweaker_ui PUBLIC imgui)
 
-# texture_cache.cxx decodes via stb_image and reads packed assets via tw::resource - both PRIVATE,
-# tweaker_ui's own public headers never expose either.
-target_link_libraries(tweaker_ui PRIVATE libstb tweaker_resource)
+# texture_cache.cxx decodes via stb_image, image/svg.cxx rasterizes via lunasvg and downsamples via
+# stb_image_resize2, and both read packed assets via tw::resource. All PRIVATE - tweaker_ui's own
+# public headers expose nothing but ImTextureID.
+target_link_libraries(tweaker_ui PRIVATE libstb lunasvg tweaker_resource)
 
 # Remaining overlay/plugin sources stay on the DLL target.
 target_sources(TweakerPlugin PRIVATE

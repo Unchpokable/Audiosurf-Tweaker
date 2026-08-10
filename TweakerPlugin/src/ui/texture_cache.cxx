@@ -21,6 +21,8 @@
 
 #include "resource/resource.hxx"
 
+#include "ui/gpu_texture.hxx"
+
 #include "libstb/stb_image.h"
 
 namespace
@@ -39,17 +41,11 @@ struct transparent_string_hash {
     }
 };
 
-tw::ui::texture_cache::upload_fn g_upload = nullptr;
 std::unordered_map<std::string, ImTextureID, transparent_string_hash, std::equal_to<>> g_cache;
 } // namespace
 
 namespace tw::ui::texture_cache
 {
-void set_backend(upload_fn fn) noexcept
-{
-    g_upload = fn;
-}
-
 ImTextureID get_or_load(std::string_view resource_key)
 {
     // Heterogeneous lookup: no std::string is constructed unless this is a genuine miss and we are
@@ -60,7 +56,7 @@ ImTextureID get_or_load(std::string_view resource_key)
 
     // Not cached as a failure: no upload backend yet just means the D3D9/GL device hasn't bound,
     // which the very next frame may fix. Caching Invalid here would make the icon never appear.
-    if(g_upload == nullptr) {
+    if(!gpu_texture::has_backend()) {
         return ImTextureID_Invalid;
     }
 
@@ -88,7 +84,7 @@ ImTextureID get_or_load(std::string_view resource_key)
         return ImTextureID_Invalid;
     }
 
-    const ImTextureID tex = g_upload(pixels, width, height);
+    const ImTextureID tex = gpu_texture::upload(pixels, width, height);
     stbi_image_free(pixels);
 
     g_cache.emplace(resource_key, tex);

@@ -31,6 +31,8 @@
 // TweakerPlugin PCH in DLL consumers) - explicit here, same convention as ui/texture_cache.cxx.
 #include "resource/resource.hxx"
 
+#include "ui/gpu_texture.hxx"
+#include "ui/image/svg.hxx"
 #include "ui/overlay_config.hxx"
 #include "ui/overlay_state.hxx"
 #include "ui/pending_actions.hxx"
@@ -62,8 +64,8 @@ bool create_device_wgl(HWND hwnd, wgl_window_data* data);
 void cleanup_device_wgl(HWND hwnd, wgl_window_data* data);
 LRESULT WINAPI wnd_proc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
 
-// texture_cache's pluggable upload backend (see ui/texture_cache.hxx) - the DLL registers a D3D9
-// uploader (framework/imgui_backend.cxx), this registers the GL equivalent so the exact same
+// gpu_texture's pluggable backend (see ui/gpu_texture.hxx) - the DLL registers the D3D9 pair
+// (framework/imgui_backend.cxx), this registers the GL equivalent so the exact same
 // notefeed/pins/watermark/menu code can load real packed icons here too.
 ImTextureID gl_upload_texture(const unsigned char* rgba, int width, int height)
 {
@@ -84,6 +86,14 @@ ImTextureID gl_upload_texture(const unsigned char* rgba, int width, int height)
     glBindTexture(GL_TEXTURE_2D, 0);
 
     return tex != 0 ? static_cast<ImTextureID>(tex) : ImTextureID_Invalid;
+}
+
+void gl_release_texture(ImTextureID tex)
+{
+    const auto name = static_cast<GLuint>(tex);
+    if(name != 0) {
+        glDeleteTextures(1, &name);
+    }
 }
 
 // Toggled from the smoke controls window - see draw_smoke_controls(). Lets both pending_actions
@@ -188,6 +198,7 @@ void draw_smoke_controls()
     static button toggle_qp_btn { "smoke_toggle_qp", { 200.f, 32.f } };
     static button open_popup_btn { "smoke_open_popup", { 200.f, 32.f } };
     static item_group actions { "smoke_actions", "Actions" };
+    static item_group icons_group { "smoke_icons", "Icons" };
     static item_group color_group { "smoke_color", "Color" };
     static color_picker accent_picker { "smoke_accent", { 280.f, 0.f } };
     static ImVec4 bound_color { 0.2f, 0.83f, 0.75f, 1.f };
@@ -215,11 +226,7 @@ void draw_smoke_controls()
         ++toast_count;
         char buf[64];
         std::snprintf(buf, sizeof(buf), "Test notification #%d", toast_count);
-        // A pre-baked, power-of-two 32px variant - notefeed's icon slot is 32px, and the
-        // non-power-of-two 48px variant (TweakerIcon-4.png) rendered corrupted/cropped under
-        // smoke's legacy-compatibility GL context (no such restriction on the DLL's D3D9 path,
-        // but staying POT here avoids the divergence). See assets/textures/ for the full size set.
-        tw::ui::plugins::statics::notefeed::push(buf, "textures/TweakerIcon-5.png");
+        tw::ui::plugins::statics::notefeed::push(buf, tw::ui::overlay_state::skin_icon_key());
     }
 
     toggle_skin_btn.update("Toggle current skin");
@@ -241,6 +248,38 @@ void draw_smoke_controls()
     ImGui::Checkbox("Auto-confirm NOTIFY_TWEAK/NOTIFY_SKIN (simulate host online)", &g_smoke_auto_confirm);
     ImGui::TextUnformatted("Off = requests time out after ~5s and show a notefeed failure toast.");
     actions.end();
+
+    // The bench for ui/image/svg: every packed icon, at each baked size plus one that has to be
+    // rasterized on demand through image::at(). This is where the k_supersample_factor question is
+    // settled - flip it in src/ui/image/svg.cxx, rebuild, and compare the 16px column.
+    icons_group.set_inner_padding({ 10.f, 8.f });
+    icons_group.begin();
+    const auto icon_keys = tw::resource::list_keys(tw::resource::type::vector);
+    if(icon_keys.empty()) {
+        ImGui::TextUnformatted("No TW_SVG resources packed (see assets/icons/).");
+    }
+    for(const std::string_view key : icon_keys) {
+        const auto icon = tw::ui::image::svg::get_resource(key);
+        // Tinted with the theme's text colour, the way the real modules do it - these assets carry
+        // shape in the alpha channel only.
+        const ImVec4 tint = tw::ui::theme::text_primary;
+        for(const int px : { 16, 24, 32, 48 }) {
+            const ImVec2 size { static_cast<float>(px), static_cast<float>(px) };
+            const ImTextureID tex = icon.at(px);
+            if(tex == ImTextureID_Invalid) {
+                // Never draw a null texture: with no texture bound, the backend fills the quad with
+                // the flat tint colour, which reads as a solid block rather than "nothing here".
+                ImGui::Dummy(size);
+            }
+            else {
+                ImGui::ImageWithBg(tex, size, ImVec2 { 0.f, 0.f }, ImVec2 { 1.f, 1.f }, ImVec4 { 0.f, 0.f, 0.f, 0.f }, tint);
+            }
+            ImGui::SameLine();
+        }
+        // Trailing SameLine above would otherwise glue the label of the next row onto this one.
+        ImGui::TextUnformatted(key.data(), key.data() + key.size());
+    }
+    icons_group.end();
 
     color_group.set_inner_padding({ 10.f, 8.f });
     color_group.begin();
@@ -364,7 +403,10 @@ int main(int, char**)
         return 1;
     }
 
-    tw::ui::texture_cache::set_backend(&gl_upload_texture);
+    tw::ui::gpu_texture::set_backend(&gl_upload_texture, &gl_release_texture);
+    // Indexes the packed SVGs. The bake itself needs a GL context, so it waits for svg::update() in
+    // the frame loop below - same two-step the DLL goes through.
+    tw::ui::image::svg::initialize();
     tw::ui::pending_actions::set_send_backend(&smoke_send_overlay_command);
     tw::ui::overlay_config::load("smoke_overlay.cfg");
     seed_fake_overlay_state();
@@ -475,6 +517,9 @@ int main(int, char**)
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
+
+        // Bakes every packed SVG on the first frame, exactly as ui_main::draw_frame does.
+        tw::ui::image::svg::update();
 
         static tw::ui::overlay_state::cache cache;
         tw::ui::overlay_state::refresh(cache);

@@ -11,6 +11,7 @@
 
 #include "plugin/diagnostics.hxx"
 
+#include "ui/image/svg.hxx"
 #include "ui/overlay_state.hxx"
 #include "ui/pending_actions.hxx"
 #include "ui/plugins/interactive/menu.hxx"
@@ -87,6 +88,10 @@ void initialize() noexcept
     tw::framework::imgui_backend::attach_input_gate(&tw::ui::plugins::interactive::menu::is_visible);
     tw::framework::dinput::attach_input_gate(&tw::ui::plugins::interactive::menu::is_visible);
 
+    // Indexes the packed SVGs only - the actual rasterizing/uploading waits for a bound renderer and
+    // happens in draw_frame() below.
+    tw::ui::image::svg::initialize();
+
     tw::ui::plugins::statics::watermark::initialize();
     tw::ui::plugins::statics::pins::initialize();
     tw::ui::plugins::statics::notefeed::initialize();
@@ -109,6 +114,10 @@ void shutdown() noexcept
     tw::ui::plugins::statics::notefeed::shutdown();
     tw::ui::plugins::statics::pins::shutdown();
     tw::ui::plugins::statics::watermark::shutdown();
+
+    // Before imgui_backend::shutdown(): the icon textures can only be released while the device
+    // that created them is still bound.
+    tw::ui::image::svg::shutdown();
 
     tw::framework::imgui_backend::shutdown();
     tw::ipc::shutdown();
@@ -141,7 +150,8 @@ void notify_overlay_state_changes()
     }
 
     if(g_overlay_cache.current_skin_name != g_notified_skin && !g_overlay_cache.current_skin_name.empty()) {
-        tw::ui::plugins::statics::notefeed::push("Skin applied: " + g_overlay_cache.current_skin_name);
+        tw::ui::plugins::statics::notefeed::push(
+            "Skin applied: " + g_overlay_cache.current_skin_name, tw::ui::overlay_state::skin_icon_key());
     }
     g_notified_skin = g_overlay_cache.current_skin_name;
 
@@ -151,7 +161,7 @@ void notify_overlay_state_changes()
             const bool now = g_overlay_cache.tweak_enabled[i] != 0;
             std::string text(tw::ui::overlay_state::tweak_display_name(id));
             text += now ? " enabled" : " disabled";
-            tw::ui::plugins::statics::notefeed::push(text);
+            tw::ui::plugins::statics::notefeed::push(text, tw::ui::overlay_state::tweak_icon_key(id));
         }
     }
     g_notified_tweaks = g_overlay_cache.tweak_enabled;
@@ -170,6 +180,10 @@ void draw_frame(IDirect3DDevice9* device)
     if(!tw::framework::imgui_backend::is_initialized()) {
         return;
     }
+
+    // Bakes every packed SVG into textures the first frame after a device binds, and again after
+    // each rebind invalidated them. One bool test on every other frame.
+    tw::ui::image::svg::update();
 
     // Non-blocking: on contention (the IPC thread is mid-write) this just keeps last frame's
     // snapshot.

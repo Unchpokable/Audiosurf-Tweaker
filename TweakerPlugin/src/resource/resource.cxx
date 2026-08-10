@@ -123,6 +123,21 @@ std::expected<view, error> get_resource(std::string_view key) noexcept
     return it->second;
 }
 
+std::vector<std::string_view> list_keys(type kind)
+{
+    std::vector<std::string_view> keys;
+    if(!g_initialized) {
+        return keys;
+    }
+
+    for(const auto& [key, value] : g_index) {
+        if(value.kind == kind) {
+            keys.push_back(key);
+        }
+    }
+    return keys;
+}
+
 std::expected<view, error> get_resource(type kind, std::string_view key) noexcept
 {
     auto result = get_resource(key);

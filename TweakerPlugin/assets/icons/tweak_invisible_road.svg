@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <g fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Road edges drawn as dashes rather than solid lines: "the road is not there". A slash on top
+         of a perspective road turned into three competing diagonals at 16px. -->
+    <path d="M9.5 3.5 3.5 20.5" stroke-dasharray="3 3.2" />
+    <path d="M14.5 3.5 20.5 20.5" stroke-dasharray="3 3.2" />
+    <path d="M12 7v2.5M12 12.5V15M12 18v2.5" />
+  </g>
+</svg>

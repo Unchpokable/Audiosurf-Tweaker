@@ -134,6 +134,10 @@ bool run(HMODULE module, std::vector<entry>& out) noexcept
         clear(out);
         return false;
     }
+    if(!enumerate_type(module, type::vector, L"TW_SVG", out)) {
+        clear(out);
+        return false;
+    }
     if(!enumerate_type(module, type::font, L"TW_FONT", out)) {
         clear(out);
         return false;

@@ -134,7 +134,8 @@ SkiaSharp/HarfBuzzSharp), чтобы можно было приаттачить�
 ### `TweakerPlugin` — внутриигровой оверлей
 
 Внедряемая **x86 DLL** для Audiosurf (32-bit процесс). Стек: **C++23**, Win32 API, **DirectX 9**
-(June 2010 SDK), **Microsoft Detours**, **Quest3D SDK**, **ImGui**. Сборка: CMake + Ninja, MSVC, PCH.
+(June 2010 SDK), **Microsoft Detours**, **Quest3D SDK**, **ImGui**, **LunaSVG** (+ её сабмодуль
+plutovg). Сборка: CMake + Ninja, MSVC, PCH.
 
 ```
 dllmain.cxx      — минимальный DllMain, инициализация в отдельном потоке
@@ -143,11 +144,21 @@ src/framework/    — хуки (Detours, D3D9, dinput8, Quest3D channel), wndpro
 src/ipc/          — overlay_ipc: разбор/сборка L3-протокола TW_OVL (см. overlay-protocol.md)
 src/ui/           — overlay_state (кэш состояния, generation-counter, lock-free read по try_lock),
                     pending_actions (optimistic UI + таймаут-подтверждение для reverse-sync),
-                    ui_main/theme/texture_cache, ui/plugins/, ui/widgets/ — сами ImGui-панели
+                    ui_main/theme, gpu_texture (единственная точка подключения рендер-бэкенда для
+                    текстур), texture_cache (растр, лениво), ui/image/ (SVG-иконки через LunaSVG,
+                    запекаются заранее — см. tweaker-plugin-widgets.md), ui/plugins/, ui/widgets/
 src/plugin/       — lifecycle, глобальное состояние, Quest3D state
-src/resource/     — .rc-based упаковка ассетов (шрифты/текстуры) прямо в DLL
-src/libtweeny, libstb, libuulog — vendored (Tween-анимации, stb_image, лог) — не трогать стиль
+src/resource/     — .rc-based упаковка ассетов (шрифты/текстуры/SVG) прямо в DLL
+src/libtweeny, libstb, libuulog — vendored (Tween-анимации, stb_image + stb_image_resize2, лог) —
+                    не трогать стиль
 ```
+
+**Зависимости**: DirectX SDK / Quest3D SDK / ImGui / Detours ожидаются на диске (см. `cmake/*.cmake`).
+LunaSVG — единственная, которая тянется сама: `FetchContent`, тег `v3.5.0`, клоны в
+`TweakerPlugin/.deps/<генератор>/` (вне `build/`, чтобы `cmake --fresh` из pre-build хука не
+переклонировал их на каждый `dotnet build`; разбивка по генератору обязательна — подкаталог
+`-subbuild` у FetchContent привязан к генератору, и общий на Ninja и VS каталог ломает второй
+configure). Значит, первый configure под каждый генератор требует сети.
 
 CMake-пресеты разработчика (`CMakePresets.json`, отдельно от MSBuild pre-build хука выше):
 

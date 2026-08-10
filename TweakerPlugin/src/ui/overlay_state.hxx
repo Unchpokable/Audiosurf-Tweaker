@@ -36,6 +36,14 @@ tweak_id resolve_tweak_id(std::string_view wire_name) noexcept;
 // protocol. Empty for tweak_id::unknown.
 [[nodiscard]] std::string_view tweak_display_name(tweak_id id) noexcept;
 
+// Display-only, like tweak_display_name(): the ui/image/svg resource key of the icon that stands
+// for this tweak in pins and notefeed toasts. Empty for tweak_id::unknown. The single place the
+// tweak -> icon mapping lives.
+[[nodiscard]] std::string_view tweak_icon_key(tweak_id id) noexcept;
+
+// Companion to the above for the rows that describe the current skin rather than a tweak.
+[[nodiscard]] std::string_view skin_icon_key() noexcept;
+
 // Inverse of resolve_tweak_id() - the TW_OVL wire token for a known tweak_id (e.g.
 // "InvisibleRoad"). Used by pending_actions to build outbound NOTIFY_TWEAK ops. Empty for
 // tweak_id::unknown.

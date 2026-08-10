@@ -1,5 +1,6 @@
 #include "ui/plugins/static/pins.hxx"
 
+#include "ui/image/svg.hxx"
 #include "ui/overlay_config.hxx"
 #include "ui/pending_actions.hxx"
 #include "ui/theme.hxx"
@@ -8,6 +9,7 @@
 #include <imgui.h>
 
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -21,8 +23,14 @@ constexpr float k_margin = 16.f;
 constexpr float k_pad_x = 10.f;
 constexpr float k_rounding = 6.f;
 
+// 28px row minus 6px of breathing room top and bottom - which is exactly the smallest baked SVG
+// size, so the icon lands on the pixel grid instead of being resampled by ImGui.
+constexpr float k_icon_size = 16.f;
+constexpr float k_icon_gap = 7.f;
+
 struct pin_label {
     std::string text;
+    std::string_view icon_key;
     bool quick_player = false;
 };
 } // namespace
@@ -50,12 +58,12 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
             const bool quick_player = tw::ui::overlay_state::is_tweak_quick_player(snapshot, id);
             std::string label = quick_player ? "QP: " : "";
             label += tw::ui::overlay_state::tweak_display_name(id);
-            labels.push_back({ std::move(label), quick_player });
+            labels.push_back({ std::move(label), tw::ui::overlay_state::tweak_icon_key(id), quick_player });
         }
     }
     const std::string_view skin_name = tw::ui::pending_actions::skin_display_name(snapshot);
     if(!skin_name.empty()) {
-        labels.push_back({ "Skin: " + std::string(skin_name), false });
+        labels.push_back({ "Skin: " + std::string(skin_name), tw::ui::overlay_state::skin_icon_key(), false });
     }
 
     if(labels.empty()) {
@@ -72,8 +80,14 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
     float y = viewport.y * 0.5f - total_h * 0.5f;
 
     for(const auto& label : labels) {
+        // Resolved per frame rather than cached with the label: an ImTextureID only survives until
+        // the render device is replaced (see ui/image/svg.hxx). Missing icons resolve to
+        // ImTextureID_Invalid, and the row simply falls back to the text-only layout.
+        const ImTextureID icon = label.icon_key.empty() ? ImTextureID_Invalid : image::svg::get_resource(label.icon_key).sz16;
+        const float icon_advance = icon != ImTextureID_Invalid ? k_icon_size + k_icon_gap : 0.f;
+
         const ImVec2 text_size = ImGui::CalcTextSize(label.text.c_str());
-        const float box_w = text_size.x + k_pad_x * 2.f;
+        const float box_w = text_size.x + icon_advance + k_pad_x * 2.f;
         const float x = right ? viewport.x - k_margin - box_w : k_margin;
 
         const ImVec2 p_min { x, y };
@@ -82,9 +96,18 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
         const ImVec4 bg { theme::surface.x, theme::surface.y, theme::surface.z, theme::surface.w * 0.55f };
         draw->AddRectFilled(p_min, p_max, detail::to_u32(bg), k_rounding);
 
-        const ImVec2 text_pos { p_min.x + k_pad_x, p_min.y + (k_row_h - text_size.y) * 0.5f };
         const ImVec4 accent = label.quick_player ? theme::accent_secondary : theme::accent_primary;
         const ImU32 text_color = label.quick_player ? detail::to_u32(theme::accent_secondary) : IM_COL32_WHITE;
+
+        if(icon != ImTextureID_Invalid) {
+            // Assets are monochrome white, so tinting with the label's own colour is what keeps the
+            // icon on-theme (see ui/image/svg.hxx).
+            const ImVec2 icon_min { p_min.x + k_pad_x, p_min.y + (k_row_h - k_icon_size) * 0.5f };
+            const ImVec2 icon_max { icon_min.x + k_icon_size, icon_min.y + k_icon_size };
+            detail::add_image_keep_aspect(draw, icon, ImVec2 { 0.f, 0.f }, icon_min, icon_max, text_color);
+        }
+
+        const ImVec2 text_pos { p_min.x + k_pad_x + icon_advance, p_min.y + (k_row_h - text_size.y) * 0.5f };
         detail::add_text_glow(draw, text_pos, label.text.c_str(), text_color, accent, 1.f);
 
         y += k_row_h + k_row_gap;
