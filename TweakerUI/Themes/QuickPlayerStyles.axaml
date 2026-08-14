@@ -31,6 +31,39 @@
         module's own prefix per the established per-file icon scoping, not shared directly. -->
         <StreamGeometry x:Key="IconQPRename">M11 4h-6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6 M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z</StreamGeometry>
 
+        <!-- Disclosure chevron for the collapsed default-character row. -->
+        <StreamGeometry x:Key="IconQPChevronDown">M1 1L6 6L11 1</StreamGeometry>
+
+        <!-- Playback modes, one glyph each (the transport bar has no room for six text chips - see
+        Border.QPTransportBar's comment). Unlike the four transport glyphs above these are stroke
+        outlines on the same 24-unit box as IconQPRemove/IconQPCoverPlaceholder, and they are drawn
+        with Stretch="Uniform", so the bounding-box-origin problem those four had does not apply -
+        Uniform normalizes the geometry's own bounds before rendering.
+
+        Deliberately a family with shared modifiers rather than six unrelated pictures, because the
+        six modes are not six unrelated things: the closed loop means "comes back round" (RepeatAll),
+        and what sits in the middle of it says what comes back - nothing, a "1" (RepeatOne), or the
+        shuffle cross (ShuffleLoop). The two non-looping modes are the ones with no loop drawn at all:
+        a play arrow against a stop bar (Single) and a queue with an arrow down it (Sequential). So
+        Shuffle vs ShuffleLoop and RepeatAll vs RepeatOne differ by exactly the mark that names the
+        difference, instead of by two glyphs the user has to have learned separately.
+
+        Every one of these is drawn TALLER THAN WIDE, and that is load-bearing, not taste. Stretch
+        "Uniform" scales a geometry to fit and then aligns it TOP-left in the leftover space - it does
+        not centre it. So in the 16x16 box these render into, a geometry that is taller than wide is
+        limited by height, fills the box vertically, and has no slack for the top-alignment to show up
+        in; a wider-than-tall one is limited by width and floats high by half the leftover. Sequential
+        was originally 18x15 and was the only one of the six that did this - it measured 14px tall
+        against 18px for the other five, centred 2px above them
+        (Fuckups/playback_control_tight.png). Its lines are shorter and its arrow taller now so it comes
+        out 17x18 like the rest. Check this ratio when editing any of them. -->
+        <StreamGeometry x:Key="IconQPModeSingle">M4 4L15 12L4 20Z M19 4v16</StreamGeometry>
+        <StreamGeometry x:Key="IconQPModeSequential">M4 5h9 M4 12h9 M4 19h6 M18 3v18 M15 18l3 3 3-3</StreamGeometry>
+        <StreamGeometry x:Key="IconQPModeRepeatAll">M17 2L21 6L17 10 M3 11v-1a4 4 0 0 1 4-4h14 M7 22L3 18L7 14 M21 13v1a4 4 0 0 1-4 4H3</StreamGeometry>
+        <StreamGeometry x:Key="IconQPModeRepeatOne">M17 2L21 6L17 10 M3 11v-1a4 4 0 0 1 4-4h14 M7 22L3 18L7 14 M21 13v1a4 4 0 0 1-4 4H3 M10.5 10.5L12 9.5v5</StreamGeometry>
+        <StreamGeometry x:Key="IconQPModeShuffle">M16 3h5v5 M4 20L21 3 M21 16v5h-5 M15 15l6 6 M4 4l5 5</StreamGeometry>
+        <StreamGeometry x:Key="IconQPModeShuffleLoop">M17 2L21 6L17 10 M3 11v-1a4 4 0 0 1 4-4h14 M7 22L3 18L7 14 M21 13v1a4 4 0 0 1-4 4H3 M9.5 9.5L14.5 14.5 M14.5 9.5L9.5 14.5</StreamGeometry>
+
         <!-- Own template - see file header note. Used for both the playlist sidebar and the queue. -->
         <ControlTemplate x:Key="QPListItemTemplate" TargetType="ListBoxItem">
             <Border Name="PART_Border"
@@ -119,18 +152,106 @@
         <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="12"/>
-        <!-- Tighter vertically than the Skin Changer panel it borrows its colours from: three stacked
-        bands now share the page height with the queue, which is the part that has to stay usable. -->
-        <Setter Property="Padding" Value="16,12"/>
+        <!-- No padding of its own any more: the panel is a header row plus a collapsible body now, and
+        the header has to be clickable edge to edge (a padded panel would leave a dead 16px frame the
+        pointer falls into), so the inset moves onto Button.QPCharacterHeader and
+        Border.QPCharacterReveal instead. -->
+        <Setter Property="Padding" Value="0"/>
     </Style>
-    <!-- Caption over a centred row of chips. Above rather than beside them: inline, the caption is part
-    of the row's width, and two rows of different widths sharing a label column line up on their left
-    edges and read as left-aligned however the container is placed. Smaller than the controls it names so
-    the row itself stays the thing the eye lands on. -->
-    <Style Selector="TextBlock.QPRowCaption">
-        <Setter Property="FontSize" Value="11"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
-        <Setter Property="HorizontalAlignment" Value="Center"/>
+
+    <!-- Collapsed default-character row (2026-08-13 mockup pass, "Audio Player Mockup"). The 14-chip
+    7x2 grid used to be open permanently, which spent ~90px of page height on a setting that gets
+    touched about once a session while the queue - the only part of this page that actually scrolls -
+    went short. It is now behind this row, which states the current pick so nothing is hidden by
+    collapsing it.
+    The whole row is one Button rather than a chevron-sized hit target: a summary row that reads as
+    "current value + Change" is expected to respond anywhere along it. -->
+    <Style Selector="Button.QPCharacterHeader">
+        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="16,10"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
+    </Style>
+    <Style Selector="Button.QPCharacterHeader:pointerover">
+        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
+    </Style>
+    <!-- While the body is open the header's bottom corners have to be square, or its hover tint draws
+    rounded corners across the middle of the panel, over the separator rule. -->
+    <Style Selector="Button.QPCharacterHeader.Expanded">
+        <Setter Property="CornerRadius" Value="12,12,0,0"/>
+    </Style>
+    <Style Selector="TextBlock.QPCharacterSummary">
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <!-- FontSize and FontWeight MUST match TextBlock.QPCharacterSummary above, and that is the whole
+    reason they are stated here rather than left at the mockup's 13px/Regular. These two sit in
+    different cells of the header's Grid, and Avalonia has no cross-cell baseline alignment:
+    VerticalAlignment="Center" centres each TextBlock's own LINE BOX, so two runs whose line boxes
+    differ in height end up with their baselines at different heights and the shorter one rides high.
+    Font size is only half of it - SemiBold is a separate font file from Regular with its own
+    ascent/descent, so even at an equal size the two would not have landed on the same baseline.
+    Identical metrics is the only construction here that guarantees alignment without a hand-tuned
+    nudge; the label stays distinct through colour instead. -->
+    <Style Selector="TextBlock.QPCharacterAction">
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Path.QPCharacterGlyph">
+        <Setter Property="Width" Value="16"/>
+        <Setter Property="Height" Value="16"/>
+        <Setter Property="Stretch" Value="Uniform"/>
+        <Setter Property="Stroke" Value="{DynamicResource AccentTextBrush}"/>
+        <Setter Property="StrokeThickness" Value="1.7"/>
+        <Setter Property="StrokeLineCap" Value="Round"/>
+        <Setter Property="StrokeJoin" Value="Round"/>
+        <Setter Property="Fill" Value="Transparent"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <!-- Chevron flips instead of swapping to a second "up" geometry - one glyph, and the rotation is
+    what makes the connection between the row and the panel it opened legible.
+    11x6, NOT a 10x10 square: Stretch="Uniform" scales the geometry to fit and then aligns it TOP-left
+    in whatever space is left over - it does not centre it. IconQPChevronDown's geometry is 10x5, so in
+    a 10x10 box it filled the width, left 5px unused at the bottom, and rendered 3px above the box's
+    centre - measured against the "Change" label it sits beside (Fuckups/expanding_missalignment.png:
+    chevron ink centred on y=28.0, the text on y=31.0). Matching the box to the geometry's own 2:1
+    aspect leaves no slack for the top-alignment to show up in, which is the general rule for every
+    Path in this file (see the IconQPMode* block for the same fix applied to the playback glyphs). -->
+    <Style Selector="Path.QPCharacterChevron">
+        <Setter Property="Width" Value="11"/>
+        <Setter Property="Height" Value="6"/>
+        <Setter Property="Stretch" Value="Uniform"/>
+        <Setter Property="Stroke" Value="{DynamicResource AccentTextBrush}"/>
+        <Setter Property="StrokeThickness" Value="2"/>
+        <Setter Property="StrokeLineCap" Value="Round"/>
+        <Setter Property="StrokeJoin" Value="Round"/>
+        <Setter Property="Fill" Value="Transparent"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="RenderTransform" Value="rotate(0deg)"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Path.QPCharacterChevron.Expanded">
+        <Setter Property="RenderTransform" Value="rotate(180deg)"/>
+    </Style>
+    <!-- Body of the disclosure. Separated from the header by a rule rather than by a gap so the two
+    still read as one panel while it is open. -->
+    <Style Selector="Border.QPCharacterReveal">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/>
+        <Setter Property="BorderThickness" Value="0,1,0,0"/>
+        <Setter Property="Padding" Value="16,12"/>
     </Style>
     <Style Selector="TextBlock.QPCardTitle">
         <Setter Property="FontSize" Value="14"/>
@@ -273,6 +394,22 @@
         <Setter Property="BorderThickness" Value="1.5"/>
     </Style>
 
+    <!-- Drag to reorder. The card being dragged fades rather than disappearing: it is still where it
+    was until the drop lands, and hiding it would make the list look like it had already moved. -->
+    <Style Selector="Border.QPTrackCard.Dragged">
+        <Setter Property="Opacity" Value="0.45"/>
+    </Style>
+
+    <!-- Insertion line, drawn over the card the pointer is on (QuickPlayerView's item template). Sits
+    in the 8px gap between rows, so it reads as "between these two" rather than as part of a card. -->
+    <Style Selector="Border.QPDropLine">
+        <Setter Property="Height" Value="2"/>
+        <Setter Property="Margin" Value="6,0"/>
+        <Setter Property="CornerRadius" Value="1"/>
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
+        <Setter Property="IsHitTestVisible" Value="False"/>
+    </Style>
+
     <Style Selector="Border.QPTrackCover">
         <Setter Property="Width" Value="52"/>
         <Setter Property="Height" Value="52"/>
@@ -351,19 +488,41 @@
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
     </Style>
+    <!-- Opaque danger tier rather than the translucent #1FDC3C3C this faded to before: the resting
+    fill above is opaque and has to stay that way (see its comment), and an opaque -> translucent
+    transition moves hue and alpha together, which flashes. See SurfaceHoverGhostBrush in
+    NeutralColors.axaml. -->
     <Style Selector="Button.QPTrackRemoveButton:pointerover">
-        <Setter Property="Background" Value="#1FDC3C3C"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceDangerHoverBrush}"/>
     </Style>
 
-    <!-- Transport bar -->
+    <!-- Transport bar. One left-aligned row per the 2026-08-13 mockup ("Audio Player Mockup"):
+    buttons | rule | MODE [Auto|Manual] | rule | PLAYBACK [six segments]. It used to be three
+    centred rows stacked vertically, each with its caption above it; the captions are inline
+    micro-caps beside their group now, which is what freed the two rows of height.
+    Width is the constraint that shapes everything here. The module gets 738px at the window's own
+    MinWidth of 1000 (the nav sidebar is a fixed 260), i.e. ~664px inside this bar, and the mockup is
+    drawn against 1035px of page. Six *text* chips for playback plus two captions plus the buttons come
+    to ~950px and cannot be squeezed into that at any sane padding - which is why the playback modes are
+    glyphs (see the IconQPMode* family). With glyphs the row measures 647px, so it fits at the narrowest
+    window with ~17px to spare, and QuickPlayerView.axaml spends everything past that on star gaps
+    between the groups rather than letting it pool at the right-hand end (it did, ~345px of it -
+    Fuckups/playback_control_tight.png).
+    Horizontal padding is 16 rather than the mockup's 20 to buy part of that 17px of headroom back;
+    the trims that bought the rest are the divider margins and the glyph pills' padding. If anything in
+    here grows, re-measure before assuming it still fits. -->
     <Style Selector="Border.QPTransportBar">
         <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="CornerRadius" Value="12"/>
-        <Setter Property="Padding" Value="16,10"/>
+        <Setter Property="Padding" Value="16"/>
     </Style>
-    <!-- VerticalAlignment matters here specifically: these sit in a horizontal StackPanel next to
+    <!-- Sizes/radii/fill are the mockup's (36 and 44, 7 and 8, an opaque soft-grey resting fill
+    rather than the transparent AccentGhost these had before). The glyphs are muted, not accent,
+    unlike every other icon button in the app: on this bar the accent is what marks Play, and three
+    accent-stroked arrows beside it flatten that out.
+    VerticalAlignment matters here specifically: these sit in a horizontal StackPanel next to
     the taller .Primary (Play) button, and Button's default VerticalAlignment is Stretch - a fixed
     Height under Stretch alignment anchors to the TOP of its row slot instead of centering, which is
     exactly why Prev/Stop/Next sat visibly higher than Play (Fuckups/buttons_alignment_wrong.png).
@@ -371,11 +530,17 @@
     Paths themselves (QuickPlayerView.axaml) additionally guard the icon's own centering within its
     button regardless of ContentPresenter behavior. -->
     <Style Selector="Button.QPTransportButton">
-        <Setter Property="Width" Value="38"/>
-        <Setter Property="Height" Value="38"/>
-        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
+        <Setter Property="Width" Value="36"/>
+        <Setter Property="Height" Value="36"/>
+        <!-- SurfaceBadgeBrush, not the SurfaceSoftBrush the mockup's #2a3234 would suggest by name:
+        the mockup's fill sits one step LIGHTER than its card, and in Dark SurfaceSoft (#1E2024) is
+        darker than SurfaceColor (#24262B) - it would recess the buttons instead of raising them.
+        SurfaceBadge is the token that is a step away from the card in the right direction in both
+        themes (Dark #2F3238 over #24262B, Light #F1F2F5 over white), which is the whole "chip sitting
+        on a card" role. -->
+        <Setter Property="Background" Value="{DynamicResource SurfaceBadgeBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="CornerRadius" Value="7"/>
         <Setter Property="Padding" Value="0"/>
         <Setter Property="HorizontalAlignment" Value="Center"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
@@ -384,18 +549,60 @@
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
     </Style>
+    <!-- Opaque, and that is the constraint, not the colour choice: the resting fill is opaque
+    (SurfaceBadge, above) and BrushTransition interpolates R/G/B/A independently, so fading to a
+    translucent accent tint would move hue AND alpha at once and flash a stronger, more saturated
+    accent partway through than the one it lands on - see SurfaceHoverGhostBrush in
+    NeutralColors.axaml for the full rule. That rules out AccentHoverBrush here, unlike
+    QPIconButton/QPRowIconButton which rest on AccentGhostBrush and so only move alpha.
+    SurfaceRowHover is the neutral tier that separates from SurfaceBadge in both themes - darker in
+    Light (#E2E2E2 under #F1F2F5), lighter in Dark (#32353B over #2F3238) - i.e. further from the
+    card either way. -->
     <Style Selector="Button.QPTransportButton:pointerover">
-        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceRowHoverBrush}"/>
     </Style>
     <!-- Was missing entirely - a disabled Stop button (nothing playing yet) looked completely
     identical to an enabled one, just inert, which read as broken rather than "correctly disabled". -->
     <Style Selector="Button.QPTransportButton:disabled">
         <Setter Property="Opacity" Value="0.4"/>
     </Style>
+    <!-- The mockup fills Play with a flat bright accent and a near-black glyph. Kept on the app's own
+    AccentButtonGradientBrush + TextOnAccentBrush pair instead, which is the same role with tokens that
+    survive both themes: in Dark, TextOnAccentColor is a near-white (#F2FDFB) chosen specifically
+    against this darker gradient (see AccentColors.axaml - "the CTA button needs a richer/darker pair
+    so its solid fill doesn't glow against the dark page"). Flat #2DD4BF under a near-white glyph is
+    the contrast failure that comment exists to prevent. -->
     <Style Selector="Button.QPTransportButton.Primary">
-        <Setter Property="Width" Value="46"/>
-        <Setter Property="Height" Value="46"/>
+        <Setter Property="Width" Value="44"/>
+        <Setter Property="Height" Value="44"/>
+        <Setter Property="CornerRadius" Value="8"/>
         <Setter Property="Background" Value="{DynamicResource AccentButtonGradientBrush}"/>
+    </Style>
+
+    <!-- Inline caption naming the segmented group to its right. Uppercase micro-caps with tracking,
+    small enough that the group stays what the eye lands on - the same job the old centred
+    QPRowCaption above each row did, minus the row of height it cost. -->
+    <Style Selector="TextBlock.QPBarCaption">
+        <Setter Property="FontSize" Value="11"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSubtleBrush}"/>
+        <Setter Property="LetterSpacing" Value="0.5"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Border.QPBarDivider">
+        <Setter Property="Width" Value="1"/>
+        <Setter Property="Height" Value="32"/>
+        <Setter Property="Background" Value="{DynamicResource BorderDividerBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <!-- The recessed well a segmented control's pills sit in. SurfaceMutedBrush rather than
+    AppBackgroundBrush (which is what the mockup's literal #14181a is): Muted is the "one step darker
+    than the page" tier, so it reads as inset against this card's SurfaceBrush in Dark AND in Light,
+    where AppBackground (#F2F2F4 on white) barely registers. -->
+    <Style Selector="Border.QPSegmentTrack">
+        <Setter Property="Background" Value="{DynamicResource SurfaceMutedBrush}"/>
+        <Setter Property="CornerRadius" Value="7"/>
+        <Setter Property="Padding" Value="3"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
     </Style>
 
     <!-- Character grid - RadioButton restyled as a rectangular chip, same "restyle a semantically
@@ -461,29 +668,39 @@
         <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
     </Style>
 
-    <!-- Text-only segmented chip - a labelled pair of mutually exclusive choices (Advance mode's
-    Auto/Manual). Same "restyle a semantically exclusive control rather than hand-roll exclusivity"
-    approach as QPCharacterButton above, minus its icon: with only two options and no glyph that reads
-    unambiguously, the words are the control. This replaced a single icon toggle whose "on" state
-    filled the button with the accent colour and swallowed the icon into a solid square. -->
+    <!-- Text pill inside a QPSegmentTrack - a labelled pair of mutually exclusive choices (Advance
+    mode's Auto/Manual). Same "restyle a semantically exclusive control rather than hand-roll
+    exclusivity" approach as QPCharacterButton above, minus its icon: with only two options and no
+    glyph that reads unambiguously, the words are the control. (This replaced a single icon toggle
+    whose "on" state filled the button with the accent colour and swallowed the icon into a solid
+    square - so the glyph brush follows Foreground here and in QPSegmentIconButton below, which is
+    what stops that from recurring.)
+    Borderless and 5px-radius now rather than a bordered 7px chip on its own fill: the enclosing track
+    is what groups the pair, and a border inside a border reads as two nested controls.
+    Resting Background is the TRACK's own colour rather than any kind of transparent. The pill is a
+    direct child of Border.QPSegmentTrack, so painting it SurfaceMuted is pixel-identical to being
+    see-through - but it makes every transition out of the resting state (to SurfaceElevated on hover,
+    to AccentPrimary on check) opaque-to-opaque, so only hue moves. Resting on AccentGhostBrush, which
+    is what this did first, starts the interpolation on the ACCENT hue at zero alpha: fading from that
+    to a neutral grey ramps alpha up while the hue is still teal, and the pill visibly flashes accent
+    before settling grey (user-reported 2026-08-13). See SurfaceHoverGhostBrush in NeutralColors.axaml
+    for the general rule. -->
     <Style Selector="RadioButton.QPSegmentButton">
-        <Setter Property="Background" Value="{DynamicResource SurfaceSoftBrush}"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
-        <Setter Property="Padding" Value="14,6"/>
-        <Setter Property="MinWidth" Value="66"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceMutedBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSubtleBrush}"/>
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Padding" Value="14,5"/>
+        <Setter Property="MinWidth" Value="64"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">
             <ControlTemplate>
                 <Border Name="Root"
                         Background="{TemplateBinding Background}"
-                        BorderBrush="{DynamicResource BorderBrush}"
-                        BorderThickness="1"
-                        CornerRadius="7"
+                        CornerRadius="5"
                         Padding="{TemplateBinding Padding}">
                     <Border.Transitions>
                         <Transitions>
                             <BrushTransition Property="Background" Duration="0:0:0.15"/>
-                            <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
                         </Transitions>
                     </Border.Transitions>
                     <ContentPresenter Content="{TemplateBinding Content}"
@@ -494,26 +711,108 @@
             </ControlTemplate>
         </Setter>
     </Style>
-    <!-- Six-across variant (playback mode). The two-chip Advance mode row can afford 66px minimums and
-    14px of side padding; a six-chip row in the same width cannot. Spacing is the panel's job here (see
-    QuickPlayerView.axaml), so no margin of its own. -->
-    <Style Selector="RadioButton.QPSegmentButton.Compact">
-        <Setter Property="Padding" Value="10,6"/>
-        <Setter Property="MinWidth" Value="58"/>
-    </Style>
+    <!-- Neutral hover, deliberately NOT the accent tint the transport buttons above use: the *checked*
+    pill is accent-filled, so an accent tint under the pointer would read as a half-selected state.
+    SurfaceElevatedBrush is the tier that lands lighter than QPSegmentTrack's SurfaceMuted in both
+    themes (Light white over #EDEDED, Dark #33363C over #17181B). -->
     <Style Selector="RadioButton.QPSegmentButton:pointerover /template/ Border#Root">
-        <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
     </Style>
     <Style Selector="RadioButton.QPSegmentButton:checked">
         <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
     </Style>
     <Style Selector="RadioButton.QPSegmentButton:checked /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
+    </Style>
+    <!-- Hover must not undo the checked fill - without this the accent-filled pill greys out the
+    moment the pointer lands on it, same ordering requirement as the queue's
+    ListBoxItem:selected:pointerover. -->
+    <Style Selector="RadioButton.QPSegmentButton:checked:pointerover /template/ Border#Root">
         <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
     </Style>
     <!-- Same convention as QPTransportButton:disabled - a disabled pair that looked identical to an
     enabled one read as broken rather than "nothing to configure without a playlist". -->
     <Style Selector="RadioButton.QPSegmentButton:disabled">
         <Setter Property="Opacity" Value="0.4"/>
+    </Style>
+
+    <!-- Glyph pill - the six playback modes. Same well/pill/accent language as QPSegmentButton, but
+    the label is a glyph, because six words do not fit on this bar at the window's minimum width (see
+    Border.QPTransportBar). The mode's NAME therefore lives in the tooltip
+    (PlaybackModeOptionViewModel.Tooltip), which is why that property exists at all.
+    Which glyph comes from the mode itself via a class, the same token -> class -> Data route the
+    status bar uses (MainWindow.axaml's Border.SBChip + StatusBarStyles.axaml's icon selectors) -
+    it keeps every geometry in this file where the rest of the module's icons live, instead of pushing
+    Avalonia Geometry objects or resource-key lookups into the view model. -->
+    <Style Selector="RadioButton.QPSegmentIconButton">
+        <!-- The track's own colour, not a transparent - see QPSegmentButton above for why. -->
+        <Setter Property="Background" Value="{DynamicResource SurfaceMutedBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSubtleBrush}"/>
+        <!-- 6, not 7: six pills means every horizontal pixel here costs six, and the row has to clear
+        the narrowest window (see Border.QPTransportBar). 16px of glyph still leaves 6 a side. -->
+        <Setter Property="Padding" Value="6,5"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="Root"
+                        Background="{TemplateBinding Background}"
+                        CornerRadius="5"
+                        Padding="{TemplateBinding Padding}">
+                    <Border.Transitions>
+                        <Transitions>
+                            <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                        </Transitions>
+                    </Border.Transitions>
+                    <Path Name="Glyph" Width="16" Height="16" Stretch="Uniform"
+                          Stroke="{TemplateBinding Foreground}" StrokeThickness="1.7"
+                          StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent"
+                          HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Path.Transitions>
+                            <Transitions>
+                                <BrushTransition Property="Stroke" Duration="0:0:0.15"/>
+                            </Transitions>
+                        </Path.Transitions>
+                    </Path>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="RadioButton.QPSegmentIconButton:pointerover /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
+    </Style>
+    <Style Selector="RadioButton.QPSegmentIconButton:checked">
+        <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}"/>
+    </Style>
+    <Style Selector="RadioButton.QPSegmentIconButton:checked /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
+    </Style>
+    <Style Selector="RadioButton.QPSegmentIconButton:checked:pointerover /template/ Border#Root">
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
+    </Style>
+    <Style Selector="RadioButton.QPSegmentIconButton:disabled">
+        <Setter Property="Opacity" Value="0.4"/>
+    </Style>
+
+    <!-- PlaybackMode -> glyph. Class names are the enum member names verbatim (see
+    QuickPlayerView.axaml's Classes.* bindings through StringEqualsConverter). -->
+    <Style Selector="RadioButton.QPSegmentIconButton.Single /template/ Path#Glyph">
+        <Setter Property="Data" Value="{StaticResource IconQPModeSingle}"/>
+    </Style>
+    <Style Selector="RadioButton.QPSegmentIconButton.Sequential /template/ Path#Glyph">
+        <Setter Property="Data" Value="{StaticResource IconQPModeSequential}"/>
+    </Style>
+    <Style Selector="RadioButton.QPSegmentIconButton.RepeatOne /template/ Path#Glyph">
+        <Setter Property="Data" Value="{StaticResource IconQPModeRepeatOne}"/>
+    </Style>
+    <Style Selector="RadioButton.QPSegmentIconButton.RepeatAll /template/ Path#Glyph">
+        <Setter Property="Data" Value="{StaticResource IconQPModeRepeatAll}"/>
+    </Style>
+    <Style Selector="RadioButton.QPSegmentIconButton.Shuffle /template/ Path#Glyph">
+        <Setter Property="Data" Value="{StaticResource IconQPModeShuffle}"/>
+    </Style>
+    <Style Selector="RadioButton.QPSegmentIconButton.ShuffleLoop /template/ Path#Glyph">
+        <Setter Property="Data" Value="{StaticResource IconQPModeShuffleLoop}"/>
     </Style>
 
     <!-- Shared toggle switch, same shape as TWSwitch/STSwitch under this module's own prefix. -->

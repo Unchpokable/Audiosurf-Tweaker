@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ui/overlay_state.hxx"
+#include "ui/qp/qp_state.hxx"
 
 // Toggleable (Insert key) custom-chrome menu window - Skins/Tweaks/Settings tabs. Fully
 // self-drawn (own background/title bar/drag-move/drag-resize), no stock ImGui window chrome.
@@ -9,7 +10,11 @@ namespace tw::ui::plugins::interactive::menu
 {
 void initialize() noexcept;
 void shutdown() noexcept;
-void update(const tw::ui::overlay_state::cache& snapshot) noexcept;
+
+// Two snapshots because they are two independent models refreshed independently once per frame
+// (see ui_main.cxx): the tweak/skin state and Quick Player's. Merging them into one cache would put
+// a thousand playlist entries behind the same generation counter as a tweak toggle.
+void update(const tw::ui::overlay_state::cache& snapshot, const tw::ui::qp::state::cache& qp_snapshot) noexcept;
 
 // Used by ui_main.cxx to gate BOTH input paths (see framework/dinput8_hooks.hxx and
 // framework/imgui_backend.hxx): while the menu is open, the game's raw device reads come back
@@ -28,4 +33,9 @@ bool is_visible() noexcept;
 // received, and is at the mercy of whatever low-level input hooks DirectInput has installed.
 void toggle_visible() noexcept;
 void set_visible(bool visible) noexcept;
+
+// Opens the menu on a specific tab. Only the smoke harness uses this today, to land straight on the
+// tab being worked on instead of making every run start with two clicks; the plugin itself has no
+// reason to steer the user's tab choice.
+void show_tab(int index) noexcept;
 } // namespace tw::ui::plugins::interactive::menu

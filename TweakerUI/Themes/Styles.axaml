@@ -53,7 +53,10 @@
     <Style Selector="Button.TitleBarButton">
         <Setter Property="Width" Value="44"/>
         <Setter Property="Height" Value="35"/>
-        <Setter Property="Background" Value="Transparent"/>
+        <!-- Zero-alpha SurfaceHover, not Transparent - Transparent's RGB is black, and BrushTransition
+        would ramp that up alongside alpha and darken the button before it lightens. See
+        SurfaceHoverGhostBrush in NeutralColors.axaml. -->
+        <Setter Property="Background" Value="{DynamicResource SurfaceHoverGhostBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="0"/>
         <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
@@ -64,6 +67,12 @@
     </Style>
     <Style Selector="Button.TitleBarButton:pointerover">
         <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
+    </Style>
+    <!-- Close fades to red, not to the neutral hover, so it needs its own zero-alpha resting value in
+    that hue - otherwise it inherits TitleBarButton's grey ghost above and the transition moves hue and
+    alpha at once. -->
+    <Style Selector="Button.TitleBarButtonClose">
+        <Setter Property="Background" Value="#00E81123"/>
     </Style>
     <Style Selector="Button.TitleBarButtonClose:pointerover">
         <Setter Property="Background" Value="#FFE81123"/>
@@ -129,7 +138,9 @@
     <!-- Bridge connection controls: the real Audiosurf Tweaker palette is white-and-purple, not gray -
     this matches the old UnderscoredButton style almost exactly. -->
     <Style Selector="Button.UnderscoredButton">
-        <Setter Property="Background" Value="Transparent"/>
+        <!-- Zero-alpha version of the hover fill below - see SurfaceHoverGhostBrush in
+        NeutralColors.axaml for why this is not Transparent. -->
+        <Setter Property="Background" Value="#00D1F7FF"/>
         <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Height" Value="36"/>
@@ -178,7 +189,9 @@
     <Style Selector="Button.IconResetButton">
         <Setter Property="Width" Value="26"/>
         <Setter Property="Height" Value="26"/>
-        <Setter Property="Background" Value="Transparent"/>
+        <!-- AccentGhost, not Transparent: it fades in to AccentHoverBrush, so it has to rest on the
+        same hue at zero alpha or the transition moves hue and alpha together. -->
+        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="7"/>
@@ -453,7 +466,8 @@
         <Setter Property="Padding" Value="3"/>
     </Style>
     <Style Selector="Button.CCTab">
-        <Setter Property="Background" Value="Transparent"/>
+        <!-- Zero-alpha SurfaceHover - see SurfaceHoverGhostBrush in NeutralColors.axaml. -->
+        <Setter Property="Background" Value="{DynamicResource SurfaceHoverGhostBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
@@ -556,7 +570,8 @@
     </Style>
 
     <Style Selector="Button.CCDiscard">
-        <Setter Property="Background" Value="Transparent"/>
+        <!-- Zero-alpha SurfaceHover - see SurfaceHoverGhostBrush in NeutralColors.axaml. -->
+        <Setter Property="Background" Value="{DynamicResource SurfaceHoverGhostBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="7"/>

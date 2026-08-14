@@ -10,6 +10,11 @@ namespace tw::ui::widgets
 {
 struct list_item_content {
     std::string text;
+
+    // Optional second line, drawn under `text` in a smaller, muted type - a playlist's track count
+    // under its name. Empty means a single-line row, which is what every existing caller gets.
+    std::string subtext;
+
     ImTextureID icon = ImTextureID_Invalid;
     ImVec2 icon_size = { 0.f, 0.f }; // source px; 0 = fit slot as square
 };

@@ -4,13 +4,39 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <string>
 
 namespace tw::ui::widgets::detail
 {
+// Frame delta in whole milliseconds, which is the unit tweeny steps in.
+//
+// The fractional part is carried into the next frame rather than rounded away, and this matters a
+// lot more than it looks: the previous version clamped to a minimum of 1 ms, so above ~1000 FPS
+// every frame claimed a full millisecond had passed when a fraction of one had. Every tween then
+// ran at (real FPS / 1000)x speed - at the several thousand FPS an uncapped window reaches, a
+// 150 ms hover finishes in tens of milliseconds and a 90 ms press is simply not visible. It reads
+// exactly like the animations were removed. Carrying the remainder makes the total elapsed time
+// exact at any frame rate, and returning 0 on a sub-millisecond frame is correct - the tween just
+// does not advance that frame.
+//
+// Computed once per frame and cached: this is called by every animated widget, and a shared carry
+// consumed per call would hand the first caller the whole remainder and the rest nothing.
 inline std::int32_t dt_ms() noexcept
 {
-    const float ms = ImGui::GetIO().DeltaTime * 1000.f;
-    return std::max(std::int32_t { 1 }, static_cast<std::int32_t>(ms + 0.5f));
+    static int last_frame = -1;
+    static std::int32_t frame_dt = 0;
+    static float carry = 0.f;
+
+    const int frame = ImGui::GetFrameCount();
+    if(frame != last_frame) {
+        last_frame = frame;
+
+        const float ms = ImGui::GetIO().DeltaTime * 1000.f + carry;
+        frame_dt = static_cast<std::int32_t>(ms);
+        carry = ms - static_cast<float>(frame_dt);
+    }
+
+    return frame_dt;
 }
 
 inline ImVec4 lerp(const ImVec4& a, const ImVec4& b, float t) noexcept
@@ -87,6 +113,72 @@ inline void add_image_keep_aspect(
     };
     const ImVec2 p_max { p_min.x + fitted.x, p_min.y + fitted.y };
     draw->AddImage(ImTextureRef { tex }, p_min, p_max, ImVec2 { 0.f, 0.f }, ImVec2 { 1.f, 1.f }, apply_style_alpha(col));
+}
+
+// Text at an explicit pixel size, independent of the window's font size - for the secondary lines
+// that want to be visibly smaller (a playlist's track count under its name). One font is baked, so
+// this scales it rather than switching face.
+inline void add_text_scaled(ImDrawList* draw, float font_size, const ImVec2& pos, ImU32 col, const char* text) noexcept
+{
+    if(draw == nullptr || text == nullptr || text[0] == '\0') {
+        return;
+    }
+
+    draw->AddText(ImGui::GetFont(), font_size, pos, col, text);
+}
+
+// Draws `text` clipped to end at `max_x`, ending in an ellipsis when it does not fit. ImGui's own
+// RenderTextEllipsis is internal and takes its colour from the style stack rather than an argument,
+// which does not fit how everything else here is drawn.
+//
+// The cut point is found by binary search over byte offsets and then backed up to a UTF-8 character
+// boundary - a handful of CalcTextSize calls per truncated string, and only for rows actually on
+// screen. Walking one character at a time would be quadratic on long names.
+inline void add_text_ellipsis(ImDrawList* draw, const ImVec2& pos, float max_x, ImU32 col, const char* text) noexcept
+{
+    if(draw == nullptr || text == nullptr || text[0] == '\0') {
+        return;
+    }
+
+    const float avail = max_x - pos.x;
+    if(avail <= 0.f) {
+        return;
+    }
+
+    if(ImGui::CalcTextSize(text).x <= avail) {
+        draw->AddText(pos, col, text);
+        return;
+    }
+
+    static constexpr const char* k_ellipsis = "...";
+    const float budget = avail - ImGui::CalcTextSize(k_ellipsis).x;
+    if(budget <= 0.f) {
+        return;
+    }
+
+    const auto length = static_cast<int>(std::char_traits<char>::length(text));
+    int low = 0;
+    int high = length;
+    while(low < high) {
+        int mid = (low + high + 1) / 2;
+        // Never split a multi-byte character: continuation bytes are 10xxxxxx.
+        while(mid > 0 && (static_cast<unsigned char>(text[mid]) & 0xC0) == 0x80) {
+            --mid;
+        }
+        if(mid <= low) {
+            break;
+        }
+
+        if(ImGui::CalcTextSize(text, text + mid).x <= budget) {
+            low = mid;
+        }
+        else {
+            high = mid - 1;
+        }
+    }
+
+    draw->AddText(pos, col, text, text + low);
+    draw->AddText(ImVec2 { pos.x + ImGui::CalcTextSize(text, text + low).x, pos.y }, col, k_ellipsis);
 }
 
 inline ImVec2 resolve_size(ImVec2 size, float default_w, float default_h) noexcept

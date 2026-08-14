@@ -140,7 +140,10 @@
     <Style Selector="Button.TWIconButton">
         <Setter Property="Width" Value="28"/>
         <Setter Property="Height" Value="28"/>
-        <Setter Property="Background" Value="Transparent"/>
+        <!-- Zero-alpha version of the danger hover below, not Transparent: BrushTransition moves R/G/B
+        and A independently, so fading from black-at-zero-alpha to a red tint smudges through grey on
+        the way. See SurfaceHoverGhostBrush in NeutralColors.axaml. -->
+        <Setter Property="Background" Value="#00D03C3C"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="6"/>
         <Setter Property="Padding" Value="0"/>

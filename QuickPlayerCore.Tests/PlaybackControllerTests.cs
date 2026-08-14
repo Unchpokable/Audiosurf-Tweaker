@@ -573,6 +573,172 @@ namespace QuickPlayerCore.Tests
             Assert.AreEqual(PlaybackMode.Sequential, controller.CurrentMode);
         }
 
+        // Editing the playlist while it plays - the queue position is an index, and every one of these
+        // moves the entries out from under it. RebuildOrder re-derives the position from the entry it
+        // was on; without that the index silently comes to name a different track.
+        [Test]
+        public void ReorderingThePlayingEntry_KeepsThePositionOnIt()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
+            var playlist = BuildPlaylist(5);
+
+            controller.Play(playlist, 1);
+            var playing = playlist.Entries[1];
+            var expectedNext = playlist.Entries[4];
+
+            // Dragged down the list: [0,2,3,1,4], so what follows it is no longer what followed it.
+            playlist.Entries.Move(1, 3);
+            controller.RebuildOrder(playlist);
+
+            Assert.AreSame(playing, controller.CurrentEntry);
+
+            reports.RaiseNowPlaying();
+            reports.RaiseSongCompleted();
+
+            Assert.IsTrue(game.WaitForCommandCount(2), "the next entry was never started");
+            Assert.AreSame(expectedNext, controller.CurrentEntry);
+        }
+
+        [Test]
+        public void ReorderingAnEntryAboveTheCurrentOne_DoesNotSkipATrack()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
+            var playlist = BuildPlaylist(5);
+
+            controller.Play(playlist, 3);
+            var playing = playlist.Entries[3];
+            var expectedNext = playlist.Entries[4];
+
+            // Everything above the playing entry shifts up one: [1,2,3,4,0].
+            playlist.Entries.Move(0, 4);
+            controller.RebuildOrder(playlist);
+
+            Assert.AreSame(playing, controller.CurrentEntry);
+
+            reports.RaiseNowPlaying();
+            reports.RaiseSongCompleted();
+
+            Assert.IsTrue(game.WaitForCommandCount(2), "the next entry was never started");
+            Assert.AreSame(expectedNext, controller.CurrentEntry);
+        }
+
+        // Predates the drag-to-reorder work: removing an entry above the playing one left the index one
+        // track too far down, and the next advance skipped a song.
+        [Test]
+        public void RemovingAnEntryAboveTheCurrentOne_DoesNotSkipATrack()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
+            var playlist = BuildPlaylist(4);
+
+            controller.Play(playlist, 2);
+            var playing = playlist.Entries[2];
+            var expectedNext = playlist.Entries[3];
+
+            playlist.Entries.RemoveAt(0);
+            controller.RebuildOrder(playlist);
+
+            Assert.AreSame(playing, controller.CurrentEntry);
+
+            reports.RaiseNowPlaying();
+            reports.RaiseSongCompleted();
+
+            Assert.IsTrue(game.WaitForCommandCount(2), "the next entry was never started");
+            Assert.AreSame(expectedNext, controller.CurrentEntry);
+        }
+
+        [Test]
+        public void RemovingTheCurrentEntry_LeavesNoPositionInThePlaylist()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
+            var playlist = BuildPlaylist(3);
+
+            controller.Play(playlist, 1);
+            playlist.Entries.RemoveAt(1);
+            controller.RebuildOrder(playlist);
+
+            Assert.IsNull(controller.CurrentEntry, "the entry the module was on is not in the playlist any more");
+
+            // No position means the order answers from its own start, exactly as it does for a playlist
+            // that has never been played.
+            Assert.IsTrue(controller.PlayNext(playlist));
+            Assert.AreSame(playlist.Entries[0], controller.CurrentEntry);
+        }
+
+        // AdvanceTrigger.CharacterScreen decides the next entry at songcomplete and starts it later, and
+        // the score screen is exactly where a player has time to reorder the queue. That decision was an
+        // index into the order that no longer exists.
+        [Test]
+        public void ReorderingWhileWaitingForTheScoreScreen_AdvancesToTheNewNeighbour()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
+            var playlist = BuildPlaylist(4);
+            playlist.AdvanceOn = AdvanceTrigger.CharacterScreen;
+
+            controller.Play(playlist, 0);
+            reports.RaiseNowPlaying();
+            reports.RaiseSongCompleted();
+
+            var expectedNext = playlist.Entries[3];
+
+            // The entry that just finished is dragged down the list: [1,2,0,3].
+            playlist.Entries.Move(0, 2);
+            controller.RebuildOrder(playlist);
+
+            reports.RaiseCharacterScreen();
+
+            Assert.IsTrue(game.WaitForCommandCount(2), "the deferred advance never ran");
+            Assert.AreSame(expectedNext, controller.CurrentEntry);
+        }
+
+        // The order holds playlist indices, so a reorder invalidates it outright - the same index names a
+        // different entry afterwards. Rebuilding restarts the pass around the playing track, which is the
+        // accepted trade: what matters is that the pass is still a whole pass.
+        [Test]
+        public void Shuffle_SurvivesAReorderMidPass()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer(), new Random(11));
+            var playlist = BuildPlaylist(6);
+            playlist.Mode = PlaybackMode.Shuffle;
+
+            var started = new List<PlaylistEntry>();
+            controller.EntryStarted += entry =>
+            {
+                lock (started)
+                    started.Add(entry);
+            };
+
+            controller.Play(playlist, 0);
+            reports.RaiseNowPlaying();
+
+            playlist.Entries.Move(5, 0);
+            controller.RebuildOrder(playlist);
+
+            for (var i = 0; i < playlist.Entries.Count; i++)
+            {
+                reports.RaiseSongCompleted();
+                if (!game.WaitForCommandCount(i + 2, 500))
+                    break;
+
+                reports.RaiseNowPlaying();
+            }
+
+            Assert.IsTrue(WaitForCount(started, playlist.Entries.Count), "the shuffled pass stopped early");
+            Assert.That(started, Is.Unique);
+            Assert.That(started, Is.EquivalentTo(playlist.Entries));
+        }
+
         // Reproduces the window that stranded the "Now playing" chip: the report lands after the phase
         // was claimed but before the start is announced. Driving it from the fake's Command callback
         // hits that exact ordering deterministically instead of racing two real threads for it.

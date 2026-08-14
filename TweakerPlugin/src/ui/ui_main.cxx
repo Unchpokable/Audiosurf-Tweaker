@@ -18,6 +18,9 @@
 #include "ui/plugins/static/notefeed.hxx"
 #include "ui/plugins/static/pins.hxx"
 #include "ui/plugins/static/watermark.hxx"
+#include "ui/qp/qp_pending.hxx"
+#include "ui/qp/qp_state.hxx"
+#include "ui/qp/qp_wire.hxx"
 
 namespace
 {
@@ -98,6 +101,7 @@ void initialize() noexcept
     tw::ui::plugins::interactive::menu::initialize();
 
     tw::ui::pending_actions::set_send_backend(&tw::ipc::send_overlay_command);
+    tw::ui::qp::set_send_backend(&tw::ipc::send_overlay_command);
 
     tw::ipc::initialize();
 }
@@ -129,6 +133,11 @@ namespace
 // Owned by the render thread only. Updated opportunistically once per frame - see
 // tw::ui::overlay_state::refresh() for why this never blocks even under contention.
 tw::ui::overlay_state::cache g_overlay_cache;
+
+// Quick Player's own snapshot, kept separate rather than merged into the one above: a playlist of a
+// thousand entries and a tweak toggle have nothing to do with each other, and sharing a generation
+// counter would make every tweak flip re-copy the track list.
+tw::ui::qp::state::cache g_qp_cache;
 
 // Last values notefeed was already told about - separate from g_overlay_cache so the diff below
 // only touches these (a handful of bytes + a short string) on the rare frames where refresh()
@@ -191,17 +200,22 @@ void draw_frame(IDirect3DDevice9* device)
         notify_overlay_state_changes();
     }
 
+    // Same non-blocking contract, its own generation counter: a Quick Player push and a tweak push
+    // are independent, and neither should make the other re-copy its state.
+    (void)tw::ui::qp::state::refresh(g_qp_cache);
+
     tw::framework::imgui_backend::new_frame();
 
     // Ticks pending NOTIFY_TWEAK/NOTIFY_SKIN confirmations/timeouts every frame, independent of
     // menu visibility - a request must keep waiting even if the user closes the menu right after
     // clicking (see ui/pending_actions.hxx).
     tw::ui::pending_actions::update(g_overlay_cache);
+    tw::ui::qp::pending::update(g_qp_cache);
 
     tw::ui::plugins::statics::watermark::update();
     tw::ui::plugins::statics::pins::update(g_overlay_cache);
     tw::ui::plugins::statics::notefeed::update();
-    tw::ui::plugins::interactive::menu::update(g_overlay_cache);
+    tw::ui::plugins::interactive::menu::update(g_overlay_cache, g_qp_cache);
 
     tw::framework::imgui_backend::render();
 }

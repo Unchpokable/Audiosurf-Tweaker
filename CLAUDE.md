@@ -13,7 +13,8 @@ Audiosurf Tweaker — сторонний инструмент для игры Au
 зачем `LegacyDataConverter` заморожен на .NET Framework, и т.п.) — `Docs/Internal/overview.md`.
 План дальнейшей разработки (Фаза 6 — Quick Player QoL, Фаза 7 — внутриигровой оверлей) —
 `Docs/Internal/roadmap.md`. Протокол оверлея (`TW_OVL`, host ↔ asbridge ↔ TweakerPlugin) —
-`Docs/Internal/overlay-protocol.md`. Читай эти три файла для полного контекста прежде, чем начинать
+`Docs/Internal/overlay-protocol.md`; его Quick Player-половина (операции `QP_*`, вкладка Player) —
+`Docs/Internal/overlay-quickplayer.md`. Читай эти файлы для полного контекста прежде, чем начинать
 что-то нетривиальное в соответствующей области — этот CLAUDE.md даёт только ориентацию.
 
 ## Устройство решения
@@ -141,12 +142,17 @@ plutovg). Сборка: CMake + Ninja, MSVC, PCH.
 dllmain.cxx      — минимальный DllMain, инициализация в отдельном потоке
 src/framework/    — хуки (Detours, D3D9, dinput8, Quest3D channel), wndproc_hub (общая точка
                     подписки на WndProc игры: IPC, D3D9 WM_ACTIVATEAPP, будущий ImGui-инпут)
-src/ipc/          — overlay_ipc: разбор/сборка L3-протокола TW_OVL (см. overlay-protocol.md)
+src/ipc/          — overlay_ipc: разбор/сборка L3-протокола TW_OVL (см. overlay-protocol.md);
+                    операции с префиксом QP_ он не разбирает, а форвардит в src/ui/qp/
 src/ui/           — overlay_state (кэш состояния, generation-counter, lock-free read по try_lock),
                     pending_actions (optimistic UI + таймаут-подтверждение для reverse-sync),
-                    ui_main/theme, gpu_texture (единственная точка подключения рендер-бэкенда для
-                    текстур), texture_cache (растр, лениво), ui/image/ (SVG-иконки через LunaSVG,
-                    запекаются заранее — см. tweaker-plugin-widgets.md), ui/plugins/, ui/widgets/
+                    wire_text (общий percent-кодек L3), ui_main/theme, gpu_texture (единственная
+                    точка подключения рендер-бэкенда для текстур), texture_cache (растр, лениво),
+                    ui/image/ (SVG-иконки через LunaSVG, запекаются заранее — см.
+                    tweaker-plugin-widgets.md), ui/plugins/, ui/widgets/
+src/ui/qp/        — Quick Player: qp_catalog (зеркала теги/персонажи/режимы), qp_state (модель +
+                    generation-кэш, как overlay_state), qp_wire (грамматика QP_* в обе стороны),
+                    qp_pending (optimistic reverse-sync). См. overlay-quickplayer.md
 src/plugin/       — lifecycle, глобальное состояние, Quest3D state
 src/resource/     — .rc-based упаковка ассетов (шрифты/текстуры/SVG) прямо в DLL
 src/libtweeny, libstb, libuulog — vendored (Tween-анимации, stb_image + stb_image_resize2, лог) —

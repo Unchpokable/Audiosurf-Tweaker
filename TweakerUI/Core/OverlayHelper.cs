@@ -25,6 +25,11 @@ namespace TweakerUI.Core
         private const string NotifyTweakPrefix = "NOTIFY_TWEAK ";
         private const string NotifySkinPrefix = "NOTIFY_SKIN ";
 
+        // Quick Player owns a whole family of ops (Docs/Internal/overlay-quickplayer.md). Only the
+        // prefix is known here - the grammar itself lives in QuickPlayerOverlayBridge, the same way
+        // the plugin hands QP_* straight to its own module instead of parsing it in ipc/overlay_ipc.
+        private const string QuickPlayerNotifyPrefix = "QP_NOTIFY_";
+
         // Must match TweakerPlugin's claim_single_instance() (src/plugin/load.cxx) exactly, including
         // the deliberate absence of any version or path component - the point is that a newer host can
         // still recognise an older, possibly renamed plugin sitting in the game.
@@ -61,6 +66,14 @@ namespace TweakerUI.Core
         /// </summary>
         internal static event EventHandler<TweakRequestedEventArgs> TweakRequested;
         internal static event EventHandler<string> SkinRequested;
+
+        /// <summary>
+        /// A QP_NOTIFY_* op arrived from the overlay's Quick Player tab, forwarded verbatim (op line
+        /// included). Unlike the two above this one is not pre-parsed: Quick Player has a dozen ops
+        /// with varying arity, and splitting their grammar across this class and its consumer is how
+        /// the two halves would drift apart.
+        /// </summary>
+        internal static event EventHandler<string> QuickPlayerRequested;
 
         internal static void Initialize()
         {
@@ -110,6 +123,19 @@ namespace TweakerUI.Core
             var payload = string.Join(" ", names.Select(Uri.EscapeDataString));
             AudiosurfHandle.Instance.OverlayCommand(
                 string.IsNullOrEmpty(payload) ? "SKIN_LIST" : $"SKIN_LIST {payload}");
+        }
+
+        /// <summary>
+        /// Sends one already-formatted Quick Player op line (e.g. "QP_STOPPED"). Deliberately a single
+        /// passthrough rather than a typed method per op: this class is the transport half of TW_OVL,
+        /// and every QP_* op it learned to spell would be a second place to keep the format in sync.
+        /// </summary>
+        internal static void SendQuickPlayer(string opLine)
+        {
+            if (!IsReady || string.IsNullOrEmpty(opLine))
+                return;
+
+            AudiosurfHandle.Instance.OverlayCommand(opLine);
         }
 
         private static bool IsReady
@@ -395,7 +421,11 @@ namespace TweakerUI.Core
             {
                 var name = Uri.UnescapeDataString(content.Substring(NotifySkinPrefix.Length));
                 SkinRequested?.Invoke(null, name);
+                return;
             }
+
+            if (content.StartsWith(QuickPlayerNotifyPrefix, StringComparison.Ordinal))
+                QuickPlayerRequested?.Invoke(null, content);
         }
 
         private const uint SYNCHRONIZE = 0x00100000;

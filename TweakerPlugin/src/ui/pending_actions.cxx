@@ -3,6 +3,7 @@
 #include "ui/pending_actions.hxx"
 
 #include "ui/plugins/static/notefeed.hxx"
+#include "ui/wire_text.hxx"
 
 #include <array>
 #include <chrono>
@@ -62,29 +63,7 @@ std::size_t tweak_index(tweak_id id) noexcept
     }
 }
 
-// L3 tokens carry percent-encoded UTF-8 (Docs/Internal/overlay-protocol.md) - mirrors the
-// unreserved-char set C#'s Uri.EscapeDataString uses on the host side (OverlayHelper.cs's
-// PushCurrentSkin/PushSkinList), so both directions agree on what needs escaping.
-std::string percent_encode(std::string_view s)
-{
-    constexpr char hex[] = "0123456789ABCDEF";
-
-    std::string out;
-    out.reserve(s.size());
-    for(const unsigned char c : s) {
-        const bool unreserved =
-            (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_' || c == '.' || c == '~';
-        if(unreserved) {
-            out.push_back(static_cast<char>(c));
-            continue;
-        }
-
-        out.push_back('%');
-        out.push_back(hex[c >> 4]);
-        out.push_back(hex[c & 0x0F]);
-    }
-    return out;
-}
+using tw::ui::wire::percent_encode;
 } // namespace
 
 namespace tw::ui::pending_actions

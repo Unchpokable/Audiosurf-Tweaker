@@ -19,6 +19,12 @@ public:
     void set_rounding(float rounding) noexcept;
     void set_tabs(std::span<const std::string_view> labels);
 
+    // Programmatic tab switch, animated exactly as a click on the nav button would be. Must be
+    // called outside begin()/end(), like set_tabs. Raises selection_changed() the same way a click
+    // does - the transition is real either way, and callers that care about "who asked" already
+    // know, because they are the ones who asked.
+    void set_selected_tab(int index);
+
     void begin();
     bool begin_view(int tab_index);
     void end_view();

@@ -99,6 +99,27 @@ namespace TweakerUI.Models
         [ObservableProperty]
         private bool overrideCharacterEnabled;
 
+        // Transient drag-to-reorder state, driven entirely by QuickPlayerView's drag handlers and
+        // cleared when the drag ends - nothing here is persisted or read by QuickPlayerCore. It lives
+        // on the card rather than in the view because the indicator has to be drawn inside the item
+        // template, and Classes.<Name> bindings are how this module already does conditional styling
+        // (Classes.Playing).
+        [ObservableProperty]
+        private bool dropBefore;
+
+        [ObservableProperty]
+        private bool dropAfter;
+
+        /// <summary>This card is the one being dragged; the view dims it while it is in flight.</summary>
+        [ObservableProperty]
+        private bool isDragged;
+
+        public void ClearDropIndicator()
+        {
+            DropBefore = false;
+            DropAfter = false;
+        }
+
         public ObservableCollection<string> ActiveBadges { get; } = new();
         public ObservableCollection<TagOptionViewModel> TagOptions { get; }
         public ObservableCollection<ModOptionViewModel> ModOptions { get; }

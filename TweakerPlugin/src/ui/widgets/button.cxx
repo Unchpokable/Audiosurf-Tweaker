@@ -1,5 +1,6 @@
 #include "ui/widgets/button.hxx"
 
+#include "ui/image/svg.hxx"
 #include "ui/theme.hxx"
 #include "ui/widgets/detail/draw.hxx"
 
@@ -10,6 +11,15 @@ namespace
 constexpr float k_rounding = 8.f;
 constexpr int k_hover_ms = 150;
 constexpr int k_press_ms = 90;
+constexpr float k_icon_gap = 6.f; // between icon and label; unused when the button is icon-only
+
+// Icons are baked at 16/24/32 (see ui/image/svg.hxx's k_baked_sizes), and landing on one of those
+// exactly is what keeps ImGui from resampling the texture. Picking by button height rather than
+// always using 16 keeps a 40px transport button from looking like a mostly-empty square.
+int icon_size_for(float button_height) noexcept
+{
+    return button_height >= 36.f ? 24 : 16;
+}
 } // namespace
 
 namespace tw::ui::widgets
@@ -26,6 +36,11 @@ void button::set_size(ImVec2 size) noexcept
 void button::set_label(std::string_view label)
 {
     m_label.assign(label.begin(), label.end());
+}
+
+void button::set_icon(std::string_view resource_key)
+{
+    m_icon_key.assign(resource_key.begin(), resource_key.end());
 }
 
 void button::retarget_hover(float target)
@@ -93,13 +108,31 @@ void button::update(const char* label)
     draw->AddRect(r_min, r_max, detail::to_u32(theme::accent_border), k_rounding);
 
     const char* text = label ? label : m_label.c_str();
-    if(text && text[0] != '\0') {
-        const ImVec2 text_size = ImGui::CalcTextSize(text);
-        const ImVec2 text_pos {
-            center.x - text_size.x * 0.5f,
-            center.y - text_size.y * 0.5f,
-        };
-        draw->AddText(text_pos, detail::to_u32(text_col), text);
+    const bool has_text = text != nullptr && text[0] != '\0';
+
+    // Resolved per frame, never cached: an ImTextureID goes stale when the render device is
+    // replaced. A missing key resolves to ImTextureID_Invalid and simply contributes nothing.
+    const float icon_px = static_cast<float>(icon_size_for(bb.Max.y - bb.Min.y));
+    const ImTextureID icon = m_icon_key.empty() ? ImTextureID_Invalid : image::svg::get_resource(m_icon_key).at(static_cast<int>(icon_px));
+    const bool has_icon = icon != ImTextureID_Invalid;
+
+    // Icon and label are centred as one group, so an icon-only button centres its icon and a
+    // labelled one keeps the pair visually balanced instead of pinning the icon to an edge.
+    const ImVec2 text_size = has_text ? ImGui::CalcTextSize(text) : ImVec2 { 0.f, 0.f };
+    const float group_w = (has_icon ? icon_px : 0.f) + (has_icon && has_text ? k_icon_gap : 0.f) + text_size.x;
+    float cursor_x = center.x - group_w * 0.5f;
+
+    if(has_icon) {
+        const ImVec2 icon_min { cursor_x, center.y - icon_px * 0.5f };
+        const ImVec2 icon_max { icon_min.x + icon_px, icon_min.y + icon_px };
+        // Assets are monochrome white, so tinting with the label colour is what keeps the icon on
+        // theme and in step with the press animation.
+        detail::add_image_keep_aspect(draw, icon, ImVec2 { 0.f, 0.f }, icon_min, icon_max, detail::to_u32(text_col));
+        cursor_x += icon_px + (has_text ? k_icon_gap : 0.f);
+    }
+
+    if(has_text) {
+        draw->AddText(ImVec2 { cursor_x, center.y - text_size.y * 0.5f }, detail::to_u32(text_col), text);
     }
 
     ImGui::PopID();

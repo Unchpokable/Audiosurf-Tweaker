@@ -83,6 +83,19 @@ audiosurfHandle.OverlayMessageReceived += (_, payload) => { /* пришёл L3-p
 | `CURRENT_SKIN` | host → plugin | `<name>` (percent-encoded) | Какой скин сейчас применён. |
 | `NOTIFY_TWEAK` | plugin → host | `<TweakName> <true\|false>` | Пользователь щёлкнул твик прямо в оверлее — просьба хосту применить это состояние. |
 | `NOTIFY_SKIN` | plugin → host | `<name>` (percent-encoded) | Пользователь нажал «Apply» на выбранном скине в оверлее — просьба хосту установить его. |
+| `QP_*` | обе стороны | см. `Docs/Internal/overlay-quickplayer.md` | Quick Player: каталог плейлистов, состав, очередь, транспорт, правки трека. |
+
+**`QP_*` — отдельное семейство, описанное в `Docs/Internal/overlay-quickplayer.md`.** Оно живёт
+поверх ровно этого же L1/L2 и ничего в них не меняет. Диспетчеризация обеих сторон устроена
+одинаково: `overlay_ipc.cxx` проверяет префикс `QP_` и отдаёт payload целиком в
+`tw::ui::qp::handle_op`, а `OverlayHelper` поднимает `QuickPlayerRequested` для всего, что
+начинается с `QP_NOTIFY_`, и разбирает это `QuickPlayerOverlayBridge`. Ни транспортный слой, ни этот
+документ грамматику Quick Player не знают — иначе оба выросли бы на дюжину операций.
+
+**Percent-кодек — общий.** Раньше декодер лежал приватно в `ipc/overlay_ipc.cxx`, а энкодер —
+приватно в `ui/pending_actions.cxx`; Quick Player стал бы третьей копией. Обе половины обязаны
+совпадать байт в байт с `Uri.EscapeDataString`/`UnescapeDataString` на хосте, поэтому они вынесены в
+`TweakerPlugin/src/ui/wire_text.hxx|.cxx`, а прежние копии удалены.
 
 Нет операции «удалить один скин из списка» или «включить/выключить один твик без имени» — состояние либо целиком заменяется (`SKIN_LIST`, `CURRENT_SKIN`), либо адресуется по имени (`TWEAK_SET`), namespace для будущих операций открыт (`INSTALL_SKIN`, `APPLY_CONFIG` — см. «Чего пока нет»). Третий токен `TWEAK_SET` backward-compatible: старые плагины читают первые два токена и показывают правильное effective-значение без QP-маркера; отсутствие токена новый плагин трактует как `global`.
 
@@ -287,5 +300,7 @@ ImGui-панели (menu/notefeed/pins/watermark, см. `Docs/Internal/tweaker-p
   смысл, `APPLY_CONFIG`) по-прежнему не определены — установка скина остаётся кнопкой «Apply» в
   Skins-вкладке меню, не индивидуальным togglе на элементе списка.
 - **`SkinChangerViewModel.InstallSkin` может показать интерактивный диалог подтверждения** (`AskForAction`, при небезопасном стейте текстур), пока ждёт ответа пользователя — если это займёт больше 5с, `pending_actions` на стороне плагина успеет решить, что запрос не подтверждён, и показать notefeed-уведомление о неудаче, даже если установка в итоге пройдёт. Не исправлено сознательно — редкий edge case, не блокирующий обычный сценарий.
-- Quick Player (play/next/prev) в оверлее — сознательно не входил в первый заход (см.
-  `Docs/Internal/roadmap.md`), остаётся отдельной более поздней итерацией.
+- ~~Quick Player (play/next/prev) в оверлее~~ — **сделан отдельным заходом**, см.
+  `Docs/Internal/overlay-quickplayer.md` (протокол `QP_*`, вкладка Player, reverse-sync правок
+  трека). В этом документе он намеренно описан только ссылкой: транспортные слои L1/L2 он не
+  трогает, а его собственная грамматика живёт в своём файле.

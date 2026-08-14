@@ -9,13 +9,17 @@
              x:Class="TweakerUI.Views.QuickPlayerView"
              x:DataType="vm:QuickPlayerViewModel">
 
-    <!-- QuickPlayer (Фаза 5) - no mockup, laid out from a verbal description and expected to be
-    iterated visually from here. Same page-chrome pattern as every other module (edge-to-edge
+    <!-- QuickPlayer (Фаза 5) - originally laid out from a verbal description with no mockup. The
+    character band and the transport bar were resynced to one (Claude Design, "Audio Player Mockup",
+    2026-08-13); the playlist sidebar, the queue and the per-track right-click menu are still the
+    verbally-described originals. Same page-chrome pattern as every other module (edge-to-edge
     Border for the background, inset Grid for content - avoids the Windows 11 DWM corner-rounding
     artifact found in Фаза 4.2). -->
     <UserControl.Resources>
         <conv:IsNotNullConverter x:Key="IsNotNullConverter"/>
         <conv:IsNullConverter x:Key="IsNullConverter"/>
+        <!-- Maps each playback mode onto the class that picks its glyph - see the transport bar below. -->
+        <conv:StringEqualsConverter x:Key="StringEqualsConverter"/>
     </UserControl.Resources>
 
     <Border Background="{DynamicResource AppBackgroundBrush}">
@@ -23,7 +27,9 @@
         to share the transport bar with everything else, and the two fought over one row's width - six
         playback chips pushed the 14 characters into a corner narrow enough to hyphenate their names,
         while the transport buttons sat marooned at the far left (Fuckups/WTF_PlayerLayout.png). They are
-        unrelated settings, so they no longer share a line. -->
+        unrelated settings, so they no longer share a line. Both lower bands are single rows tall now
+        (the character grid is behind a disclosure, the transport's three stacked rows became one), which
+        is what gives the queue above them its height back. -->
         <Grid Margin="20" RowDefinitions="*,14,Auto,14,Auto">
 
             <!-- Playlists (left) | Queue (right) -->
@@ -80,12 +86,15 @@
                         <TextBlock Grid.Row="1" Text="Select or create a playlist to see its queue" Classes="QPEmptyState"
                                    IsVisible="{Binding SelectedPlaylistRow, Converter={StaticResource IsNullConverter}}"/>
 
-                        <ScrollViewer Grid.Row="1" IsVisible="{Binding SelectedPlaylistRow, Converter={StaticResource IsNotNullConverter}}">
+                        <!-- The ListBox is deliberately inside a ScrollViewer rather than scrolling
+                        itself: this is the one that actually moves, so it is also what the drag
+                        auto-scroll drives (QuickPlayerView.UpdateAutoScroll). -->
+                        <ScrollViewer Grid.Row="1" x:Name="QueueScroll" IsVisible="{Binding SelectedPlaylistRow, Converter={StaticResource IsNotNullConverter}}">
                             <ListBox x:Name="QueueListBox" Classes="QPQueueList" ItemsSource="{Binding Queue}" SelectedItem="{Binding SelectedTrackCard, Mode=TwoWay}"
                                      DragDrop.AllowDrop="True">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate x:DataType="models:TrackCardViewModel">
-                                        <Border Classes="QPTrackCard" Classes.Playing="{Binding IsPlaying}">
+                                        <Border Classes="QPTrackCard" Classes.Playing="{Binding IsPlaying}" Classes.Dragged="{Binding IsDragged}">
                                             <Border.ContextFlyout>
                                                 <Flyout Placement="Pointer">
                                                     <Border Classes="QPMenuPanel">
@@ -143,52 +152,61 @@
                                                 </Flyout>
                                             </Border.ContextFlyout>
 
-                                            <Grid ColumnDefinitions="52,10,*,8,Auto,6,Auto" Margin="8">
-                                                <Border Grid.Column="0" Classes="QPTrackCover">
-                                                    <Grid>
-                                                        <!-- The bitmap is decoded to roughly this size
-                                                        already (TrackCardViewModel.DecodeCover); this
-                                                        covers the residual scaling from the decode size
-                                                        to the tile and from the display's DPI, which at
-                                                        the default interpolation point-samples and
-                                                        speckles. -->
-                                                        <Image Source="{Binding CoverBitmap}" Stretch="UniformToFill"
-                                                               RenderOptions.BitmapInterpolationMode="HighQuality"
-                                                               IsVisible="{Binding CoverBitmap, Converter={StaticResource IsNotNullConverter}}"/>
-                                                        <Path Classes="QPCoverPlaceholderIcon" Data="{StaticResource IconQPCoverPlaceholder}"
-                                                              IsVisible="{Binding CoverBitmap, Converter={StaticResource IsNullConverter}}"
-                                                              HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                    </Grid>
-                                                </Border>
-
-                                                <Grid Grid.Column="2" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" VerticalAlignment="Center">
-                                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Title}" Classes="QPTrackTitle" VerticalAlignment="Center"/>
-                                                    <ItemsControl Grid.Row="0" Grid.Column="1" ItemsSource="{Binding ActiveBadges}" Margin="8,0,0,0" VerticalAlignment="Center">
-                                                        <ItemsControl.ItemsPanel>
-                                                            <ItemsPanelTemplate>
-                                                                <WrapPanel/>
-                                                            </ItemsPanelTemplate>
-                                                        </ItemsControl.ItemsPanel>
-                                                        <ItemsControl.ItemTemplate>
-                                                            <DataTemplate x:DataType="x:String">
-                                                                <Border Classes="QPBadge Active">
-                                                                    <TextBlock Text="{Binding}" Classes="QPBadgeText"/>
-                                                                </Border>
-                                                            </DataTemplate>
-                                                        </ItemsControl.ItemTemplate>
-                                                    </ItemsControl>
-
-                                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding Artist}" Classes="QPTrackArtist" VerticalAlignment="Center" Margin="0,3,0,0"/>
-                                                    <Border Grid.Row="1" Grid.Column="1" Classes="QPBadge" Margin="8,3,0,0" HorizontalAlignment="Left">
-                                                        <TextBlock Text="{Binding AudioPropertiesText}" Classes="QPBadgeText"/>
+                                            <Grid>
+                                                <Grid ColumnDefinitions="52,10,*,8,Auto,6,Auto" Margin="8">
+                                                    <Border Grid.Column="0" Classes="QPTrackCover">
+                                                        <Grid>
+                                                            <!-- The bitmap is decoded to roughly this size
+                                                            already (TrackCardViewModel.DecodeCover); this
+                                                            covers the residual scaling from the decode size
+                                                            to the tile and from the display's DPI, which at
+                                                            the default interpolation point-samples and
+                                                            speckles. -->
+                                                            <Image Source="{Binding CoverBitmap}" Stretch="UniformToFill"
+                                                                   RenderOptions.BitmapInterpolationMode="HighQuality"
+                                                                   IsVisible="{Binding CoverBitmap, Converter={StaticResource IsNotNullConverter}}"/>
+                                                            <Path Classes="QPCoverPlaceholderIcon" Data="{StaticResource IconQPCoverPlaceholder}"
+                                                                  IsVisible="{Binding CoverBitmap, Converter={StaticResource IsNullConverter}}"
+                                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                        </Grid>
                                                     </Border>
+
+                                                    <Grid Grid.Column="2" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto" VerticalAlignment="Center">
+                                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="{Binding Title}" Classes="QPTrackTitle" VerticalAlignment="Center"/>
+                                                        <ItemsControl Grid.Row="0" Grid.Column="1" ItemsSource="{Binding ActiveBadges}" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                            <ItemsControl.ItemsPanel>
+                                                                <ItemsPanelTemplate>
+                                                                    <WrapPanel/>
+                                                                </ItemsPanelTemplate>
+                                                            </ItemsControl.ItemsPanel>
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate x:DataType="x:String">
+                                                                    <Border Classes="QPBadge Active">
+                                                                        <TextBlock Text="{Binding}" Classes="QPBadgeText"/>
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+
+                                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="{Binding Artist}" Classes="QPTrackArtist" VerticalAlignment="Center" Margin="0,3,0,0"/>
+                                                        <Border Grid.Row="1" Grid.Column="1" Classes="QPBadge" Margin="8,3,0,0" HorizontalAlignment="Left">
+                                                            <TextBlock Text="{Binding AudioPropertiesText}" Classes="QPBadgeText"/>
+                                                        </Border>
+                                                    </Grid>
+
+                                                    <TextBlock Grid.Column="4" Text="{Binding DurationText}" Classes="QPTrackDuration"/>
+
+                                                    <Button Grid.Column="6" Classes="QPTrackRemoveButton" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove from playlist">
+                                                        <Path Data="{StaticResource IconQPRemove}" Width="13" Height="13" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round"/>
+                                                    </Button>
                                                 </Grid>
 
-                                                <TextBlock Grid.Column="4" Text="{Binding DurationText}" Classes="QPTrackDuration"/>
-
-                                                <Button Grid.Column="6" Classes="QPTrackRemoveButton" Command="{Binding RemoveCommand}" ToolTip.Tip="Remove from playlist">
-                                                    <Path Data="{StaticResource IconQPRemove}" Width="13" Height="13" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round"/>
-                                                </Button>
+                                                <!-- Where a dragged card would land. Drawn as an overlay rather than by
+                                                giving the card a top/bottom border, which would push the row's content
+                                                2px sideways every time the pointer crossed a card. Inset horizontally so
+                                                the ends stay inside the row's rounded corners. -->
+                                                <Border Classes="QPDropLine" VerticalAlignment="Top" IsVisible="{Binding DropBefore}"/>
+                                                <Border Classes="QPDropLine" VerticalAlignment="Bottom" IsVisible="{Binding DropAfter}"/>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
@@ -200,34 +218,70 @@
             </Grid>
 
             <!-- Default character - its own band, tinted like Skin Changer's Custom Installation panel
-            (same AccentSoft/AccentBorder tokens under this module's prefix). Full width now, so the 14
-            names have room to render instead of wrapping mid-word; capped and centred rather than
-            stretched edge to edge, which would turn every chip into a wide flat bar.
-            No caption: the names are the game's own character list, and anyone who plays Audiosurf reads
-            this grid for what it is without a line of text spending a row to say so. -->
+            (same AccentSoft/AccentBorder tokens under this module's prefix).
+            Collapsed to a summary row (2026-08-13 mockup pass): the 14-chip grid was open permanently
+            and spent ~90px of page height on a setting touched about once a session, while the queue -
+            the one thing here that scrolls - went short for it. The header names the current pick, so
+            the grid being closed hides nothing.
+            The grid itself is unchanged: full width so the 14 names render instead of wrapping mid-word,
+            capped rather than stretched edge to edge (which would turn every chip into a wide flat bar),
+            and no caption - the names are the game's own character list and anyone who plays Audiosurf
+            reads the grid for what it is without a row of text saying so. -->
             <Border Grid.Row="2" Classes="QPCharacterPanel">
-                <ItemsControl ItemsSource="{Binding DefaultCharacterOptions}"
-                              HorizontalAlignment="Stretch" MaxWidth="880">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <UniformGrid Columns="7" Rows="2"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="models:CharacterOptionViewModel">
-                            <RadioButton Classes="QPCharacterButton" GroupName="DefaultCharacter"
-                                         Content="{Binding DisplayName}"
-                                         IsChecked="{Binding IsSelected}"
-                                         Command="{Binding SelectCommand}"/>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <StackPanel>
+                    <Button Classes="QPCharacterHeader" Classes.Expanded="{Binding IsCharacterPickerExpanded}"
+                            Command="{Binding ToggleCharacterPickerCommand}"
+                            ToolTip.Tip="The character every track plays as, unless it overrides it itself">
+                        <Grid ColumnDefinitions="Auto,10,*,Auto,6,Auto">
+                            <Path Grid.Column="0" Classes="QPCharacterGlyph" Data="{StaticResource IconQPCharacterPlaceholder}"/>
+                            <TextBlock Grid.Column="2" Classes="QPCharacterSummary"
+                                       Text="{Binding DefaultCharacterName, StringFormat={}Character: {0}}"/>
+                            <!-- Margin, not another spacer column: the summary sits in the star column and
+                            only meets "Change" when a name is long enough to eat all the slack. -->
+                            <TextBlock Grid.Column="3" Classes="QPCharacterAction" Text="Change" Margin="12,0,0,0"/>
+                            <Path Grid.Column="5" Classes="QPCharacterChevron" Data="{StaticResource IconQPChevronDown}"
+                                  Classes.Expanded="{Binding IsCharacterPickerExpanded}"/>
+                        </Grid>
+                    </Button>
+
+                    <Border Classes="QPCharacterReveal" IsVisible="{Binding IsCharacterPickerExpanded}">
+                        <ItemsControl ItemsSource="{Binding DefaultCharacterOptions}"
+                                      HorizontalAlignment="Stretch" MaxWidth="880">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="7" Rows="2"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:CharacterOptionViewModel">
+                                    <RadioButton Classes="QPCharacterButton" GroupName="DefaultCharacter"
+                                                 Content="{Binding DisplayName}"
+                                                 IsChecked="{Binding IsSelected}"
+                                                 Command="{Binding SelectCommand}"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+                </StackPanel>
             </Border>
 
-            <!-- Transport: buttons, then the two per-playlist settings, stacked and centred. No progress
-            bar anywhere - the game's protocol has no scrub/seek/progress reporting to drive one. -->
+            <!-- Transport: one row - buttons | rule | MODE | rule | PLAYBACK - per the 2026-08-13
+            mockup. It was three centred rows stacked vertically, each with a caption above it; the
+            captions are inline micro-caps beside their group now, which is where the two rows of
+            height went. No progress bar anywhere - the game's protocol has no scrub/seek/progress
+            reporting to drive one.
+
+            The gaps between the groups are star columns, not fixed spacing: measured, the row's own
+            content is 647px wide, and this bar is ~664px at the window's MinWidth of 1000 but ~1038px at
+            1380 - so left to itself the row packs against the left edge and pools every spare pixel at
+            the right-hand end (~345px of it: Fuckups/playback_control_tight.png). Spreading the slack
+            across the four gaps instead anchors the buttons at the left and the PLAYBACK group at the
+            right at any width, and collapses to the dividers' own margins at the narrowest window.
+            Star columns rather than a WrapPanel (which was the first attempt) because with glyph pills
+            the row does fit at MinWidth=1000, so there is nothing left to wrap - and a WrapPanel cannot
+            distribute leftover width, which is the actual problem. -->
             <Border Grid.Row="4" Classes="QPTransportBar">
-                <StackPanel Spacing="14" HorizontalAlignment="Center">
+                <Grid ColumnDefinitions="Auto,*,Auto,*,Auto,*,Auto,*,Auto">
                     <!-- Fixed-height Grid keeps the four buttons' own bounds aligned with each
                     other (see the row-alignment fix). Icons are wrapped in Viewbox rather than
                     sized via Path.Width/Height+Stretch - user-confirmed by experiment that neither
@@ -237,81 +291,97 @@
                     Play). Viewbox measures the Path at its natural geometry size and
                     scales+centers THAT to fit, which is a layout-level guarantee independent of
                     whatever the geometry's own coordinates are - doesn't depend on fixing every
-                    path's authoring. -->
-                    <Grid ColumnDefinitions="Auto,8,Auto,8,Auto,8,Auto" Height="46" HorizontalAlignment="Center">
+                    path's authoring.
+                    Prev/Stop/Next glyphs are muted rather than accent, unlike every other icon button in
+                    the app: on this bar the accent is what marks Play, and three accent arrows beside it
+                    flatten that distinction out (the mockup makes the same call). -->
+                    <Grid Grid.Column="0" ColumnDefinitions="Auto,8,Auto,8,Auto,8,Auto" Height="44" VerticalAlignment="Center">
                         <Button Grid.Column="0" Classes="QPTransportButton" Command="{Binding PrevCommand}" ToolTip.Tip="Previous track">
-                            <Viewbox Width="16" Height="16">
-                                <Path Data="{StaticResource IconQPPrev}" Fill="{DynamicResource AccentPrimaryBrush}"/>
+                            <Viewbox Width="15" Height="15">
+                                <Path Data="{StaticResource IconQPPrev}" Fill="{DynamicResource TextMutedBrush}"/>
                             </Viewbox>
                         </Button>
                         <Button Grid.Column="2" Classes="QPTransportButton Primary" Command="{Binding PlaySelectedCommand}" ToolTip.Tip="Play selected track">
-                            <Viewbox Width="18" Height="18">
+                            <Viewbox Width="17" Height="17">
                                 <Path Data="{StaticResource IconQPPlay}" Fill="{DynamicResource TextOnAccentBrush}"/>
                             </Viewbox>
                         </Button>
                         <Button Grid.Column="4" Classes="QPTransportButton" Command="{Binding StopCommand}"
                                 IsEnabled="{Binding CurrentTrackCard, Converter={StaticResource IsNotNullConverter}}" ToolTip.Tip="Stop">
-                            <Viewbox Width="14" Height="14">
-                                <Path Data="{StaticResource IconQPStop}" Fill="{DynamicResource AccentPrimaryBrush}"/>
+                            <Viewbox Width="13" Height="13">
+                                <Path Data="{StaticResource IconQPStop}" Fill="{DynamicResource TextMutedBrush}"/>
                             </Viewbox>
                         </Button>
                         <Button Grid.Column="6" Classes="QPTransportButton" Command="{Binding NextCommand}" ToolTip.Tip="Next track">
-                            <Viewbox Width="16" Height="16">
-                                <Path Data="{StaticResource IconQPNext}" Fill="{DynamicResource AccentPrimaryBrush}"/>
+                            <Viewbox Width="15" Height="15">
+                                <Path Data="{StaticResource IconQPNext}" Fill="{DynamicResource TextMutedBrush}"/>
                             </Viewbox>
                         </Button>
                     </Grid>
 
-                    <!-- Each setting is a caption over its own centred row. Putting the caption inline to
-                    the left of the chips instead made the two rows read as left-aligned no matter what
-                    the container did: their contents are 250px and 440px wide, so a shared label column
-                    lines up the left edges and leaves everything visibly off-centre.
+                    <Border Grid.Column="2" Classes="QPBarDivider" Margin="8,0"/>
 
-                    Advance mode is a row here and not a fifth transport button because it does not act on
-                    playback now - it decides what the *next* track waits for. Both rows are words rather
-                    than icons: the original icon toggle failed (no glyph reads unambiguously, and the
-                    accent fill of the "on" state swallowed it), and for the six playback modes a cycling
-                    button would also make the user click through modes they do not want. Disabled with no
-                    playlist selected - both settings are stored per playlist, and IsEnabled reaches the
-                    chips inside the ItemsControl through IsEffectivelyEnabled. -->
-                    <StackPanel Spacing="5" HorizontalAlignment="Center">
-                        <TextBlock Classes="QPRowCaption" Text="Advance mode"/>
-                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
-                            <RadioButton Classes="QPSegmentButton" GroupName="QPAdvanceMode" Content="Auto"
-                                         IsChecked="{Binding IsAdvanceAuto, Mode=TwoWay}"
-                                         IsEnabled="{Binding SelectedPlaylistRow, Converter={StaticResource IsNotNullConverter}}"
-                                         ToolTip.Tip="{Binding AdvanceAutoHint}"/>
-                            <RadioButton Classes="QPSegmentButton" GroupName="QPAdvanceMode" Content="Manual"
-                                         IsChecked="{Binding IsAdvanceManual, Mode=TwoWay}"
-                                         IsEnabled="{Binding SelectedPlaylistRow, Converter={StaticResource IsNotNullConverter}}"
-                                         ToolTip.Tip="{Binding AdvanceManualHint}"/>
-                        </StackPanel>
+                    <!-- Advance mode is a setting on this bar and not a fifth transport button because it
+                    does not act on playback now - it decides what the *next* track waits for. Two words
+                    rather than a glyph: the original icon toggle failed (no glyph reads unambiguously for
+                    this, and the accent fill of the "on" state swallowed it). Disabled with no playlist
+                    selected - both settings here are stored per playlist, and IsEnabled reaches the pills
+                    inside the ItemsControl through IsEffectivelyEnabled. -->
+                    <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <TextBlock Classes="QPBarCaption" Text="MODE"/>
+                        <Border Classes="QPSegmentTrack">
+                            <StackPanel Orientation="Horizontal" Spacing="2">
+                                <RadioButton Classes="QPSegmentButton" GroupName="QPAdvanceMode" Content="Auto"
+                                             IsChecked="{Binding IsAdvanceAuto, Mode=TwoWay}"
+                                             IsEnabled="{Binding SelectedPlaylistRow, Converter={StaticResource IsNotNullConverter}}"
+                                             ToolTip.Tip="{Binding AdvanceAutoHint}"/>
+                                <RadioButton Classes="QPSegmentButton" GroupName="QPAdvanceMode" Content="Manual"
+                                             IsChecked="{Binding IsAdvanceManual, Mode=TwoWay}"
+                                             IsEnabled="{Binding SelectedPlaylistRow, Converter={StaticResource IsNotNullConverter}}"
+                                             ToolTip.Tip="{Binding AdvanceManualHint}"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
-                    <StackPanel Spacing="5" HorizontalAlignment="Center">
-                        <TextBlock Classes="QPRowCaption" Text="Playback"/>
-                        <ItemsControl ItemsSource="{Binding PlaybackModeOptions}" HorizontalAlignment="Center"
-                                      IsEnabled="{Binding SelectedPlaylistRow, Converter={StaticResource IsNotNullConverter}}">
-                            <!-- Explicit horizontal panel: ItemsControl's default stacks vertically. Six
-                            chips come to roughly 440px against 668px of usable width at the window's own
-                            minimum, so there is nothing to wrap. -->
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <StackPanel Orientation="Horizontal" Spacing="6"/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="models:PlaybackModeOptionViewModel">
-                                    <RadioButton Classes="QPSegmentButton Compact" GroupName="QPPlaybackMode"
-                                                 Content="{Binding DisplayName}"
-                                                 IsChecked="{Binding IsSelected}"
-                                                 Command="{Binding SelectCommand}"
-                                                 ToolTip.Tip="{Binding Hint}"/>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                    <Border Grid.Column="6" Classes="QPBarDivider" Margin="8,0"/>
+
+                    <!-- Six glyphs, not six words: six text chips plus these two captions plus the
+                    buttons come to ~950px and this bar has ~656px at the window's minimum width. The
+                    mode NAME therefore comes from the tooltip (PlaybackModeOptionViewModel.Tooltip
+                    leads with it), and the glyphs are a family with shared modifiers rather than six
+                    unrelated pictures so the pairs that differ by one thing look like it - see the
+                    IconQPMode* block in QuickPlayerStyles.axaml. Which glyph a pill gets is selected
+                    by the mode's own enum name as a class, the same token -> class -> Data route the
+                    status bar uses (StatusBarStyles.axaml). -->
+                    <StackPanel Grid.Column="8" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <TextBlock Classes="QPBarCaption" Text="PLAYBACK"/>
+                        <Border Classes="QPSegmentTrack">
+                            <ItemsControl ItemsSource="{Binding PlaybackModeOptions}"
+                                          IsEnabled="{Binding SelectedPlaylistRow, Converter={StaticResource IsNotNullConverter}}">
+                                <!-- Explicit horizontal panel: ItemsControl's default stacks vertically. -->
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" Spacing="2"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="models:PlaybackModeOptionViewModel">
+                                        <RadioButton Classes="QPSegmentIconButton" GroupName="QPPlaybackMode"
+                                                     Classes.Single="{Binding Value, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Single}"
+                                                     Classes.Sequential="{Binding Value, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Sequential}"
+                                                     Classes.RepeatOne="{Binding Value, Converter={StaticResource StringEqualsConverter}, ConverterParameter=RepeatOne}"
+                                                     Classes.RepeatAll="{Binding Value, Converter={StaticResource StringEqualsConverter}, ConverterParameter=RepeatAll}"
+                                                     Classes.Shuffle="{Binding Value, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Shuffle}"
+                                                     Classes.ShuffleLoop="{Binding Value, Converter={StaticResource StringEqualsConverter}, ConverterParameter=ShuffleLoop}"
+                                                     IsChecked="{Binding IsSelected}"
+                                                     Command="{Binding SelectCommand}"
+                                                     ToolTip.Tip="{Binding Tooltip}"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Border>
                     </StackPanel>
-                </StackPanel>
+                </Grid>
             </Border>
         </Grid>
     </Border>

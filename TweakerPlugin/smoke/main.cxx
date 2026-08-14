@@ -40,13 +40,19 @@
 #include "ui/plugins/static/notefeed.hxx"
 #include "ui/plugins/static/pins.hxx"
 #include "ui/plugins/static/watermark.hxx"
+#include "ui/qp/qp_pending.hxx"
+#include "ui/qp/qp_state.hxx"
+#include "ui/qp/qp_wire.hxx"
 #include "ui/texture_cache.hxx"
 #include "ui/theme.hxx"
+#include "ui/wire_text.hxx"
 #include "ui/widgets/button.hxx"
 #include "ui/widgets/color_picker.hxx"
 #include "ui/widgets/item_group.hxx"
 #include "ui/widgets/list_item.hxx"
+#include "ui/widgets/number_input.hxx"
 #include "ui/widgets/popup_menu.hxx"
+#include "ui/widgets/segmented.hxx"
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace
@@ -137,19 +143,321 @@ std::string smoke_percent_decode(std::string_view s)
     return out;
 }
 
+// ---------------------------------------------------------------------------------------------
+// A miniature Quick Player host.
+//
+// The plugin's QP_* state is only reachable through the wire protocol, so rather than poking
+// qp::state's setters directly (as the overlay_state seeding above does), this builds real QP_*
+// payloads and feeds them to the real parser. That makes the smoke harness exercise the whole
+// chain - serialization, parsing, state, UI - and gives the Player tab something to show without a
+// running game. See Docs/Internal/overlay-quickplayer.md for the op formats.
+// ---------------------------------------------------------------------------------------------
+struct smoke_tag {
+    std::string wire_name;
+    std::string parameter = "-";
+};
+
+struct smoke_track {
+    std::string id;
+    std::string artist;
+    std::string title;
+    std::string character = "-";
+    std::vector<smoke_tag> tags;
+    std::vector<std::string> mods;
+};
+
+struct smoke_playlist {
+    std::string id;
+    std::string name;
+    std::string mode = "Sequential";
+    std::string advance = "auto";
+    std::vector<smoke_track> tracks;
+};
+
+std::vector<smoke_playlist> g_smoke_playlists;
+std::string g_smoke_open_id;
+std::string g_smoke_playing_id;
+std::string g_smoke_default_character = "Mono";
+
+void smoke_feed(const std::string& payload)
+{
+    const auto space = payload.find(' ');
+    const std::string_view op = space == std::string::npos ? std::string_view { payload } : std::string_view { payload }.substr(0, space);
+    const std::string_view rest = space == std::string::npos ? std::string_view {} : std::string_view { payload }.substr(space + 1);
+    tw::ui::qp::handle_op(op, rest);
+}
+
+// Matches QuickPlayerOverlayBridge.Text(): an empty token cannot exist on the wire, so empty text
+// becomes an encoded space rather than nothing at all.
+std::string smoke_text(const std::string& value)
+{
+    const std::string encoded = tw::ui::wire::percent_encode(value);
+    return encoded.empty() ? "%20" : encoded;
+}
+
+smoke_playlist* smoke_find_playlist(std::string_view id)
+{
+    for(smoke_playlist& playlist : g_smoke_playlists) {
+        if(playlist.id == id) {
+            return &playlist;
+        }
+    }
+    return nullptr;
+}
+
+void smoke_push_catalog()
+{
+    std::string payload = "QP_CATALOG " + std::to_string(g_smoke_playlists.size());
+    for(const smoke_playlist& playlist : g_smoke_playlists) {
+        payload += ' ' + playlist.id + ' ' + smoke_text(playlist.name) + ' ' + std::to_string(playlist.tracks.size());
+    }
+    smoke_feed(payload);
+}
+
+void smoke_push_tracks(std::string_view playlist_id)
+{
+    const smoke_playlist* playlist = smoke_find_playlist(playlist_id);
+    if(playlist == nullptr) {
+        return;
+    }
+
+    std::string payload = "QP_TRACKS " + playlist->id + ' ' + std::to_string(playlist->tracks.size());
+    for(const smoke_track& track : playlist->tracks) {
+        payload += ' ' + track.id + ' ' + smoke_text(track.artist) + ' ' + smoke_text(track.title) + ' ' + track.character;
+        payload += ' ' + std::to_string(track.tags.size());
+        for(const smoke_tag& tag : track.tags) {
+            payload += ' ' + tag.wire_name + ' ' + tag.parameter;
+        }
+        payload += ' ' + std::to_string(track.mods.size());
+        for(const std::string& mod : track.mods) {
+            payload += ' ' + mod;
+        }
+    }
+    smoke_feed(payload);
+}
+
+void smoke_push_order()
+{
+    const smoke_playlist* playlist = smoke_find_playlist(g_smoke_open_id);
+    if(playlist == nullptr) {
+        return;
+    }
+
+    // The upcoming queue is everything after the playing entry, capped the way the real host caps
+    // it. Nothing draws it yet - it is carried so a Next/Prev request can be confirmed exactly.
+    std::vector<std::string> upcoming;
+    bool past_current = g_smoke_playing_id.empty();
+    for(const smoke_track& track : playlist->tracks) {
+        if(past_current && upcoming.size() < 25) {
+            upcoming.push_back(track.id);
+        }
+        if(track.id == g_smoke_playing_id) {
+            past_current = true;
+        }
+    }
+
+    std::string payload = "QP_ORDER " + playlist->id + ' ' + playlist->mode + ' ' + playlist->advance + ' '
+                          + (g_smoke_playing_id.empty() ? "-" : g_smoke_playing_id) + ' ' + std::to_string(upcoming.size());
+    for(const std::string& id : upcoming) {
+        payload += ' ' + id;
+    }
+    smoke_feed(payload);
+}
+
+void smoke_push_playback_state()
+{
+    if(g_smoke_playing_id.empty()) {
+        smoke_feed("QP_STOPPED");
+        return;
+    }
+    smoke_feed("QP_NOWPLAYING " + g_smoke_open_id + ' ' + g_smoke_playing_id);
+}
+
+void smoke_push_default_character()
+{
+    smoke_feed("QP_DEFAULT_CHARACTER " + g_smoke_default_character);
+}
+
+// Applies a QP_NOTIFY_* request to the fake model and echoes the result back, which is exactly the
+// contract the real host has: the overlay never mutates its own Quick Player state, it asks and
+// waits for the authoritative answer.
+void smoke_handle_quick_player_request(std::string_view op, std::string_view rest)
+{
+    const auto next = [&rest]() -> std::string {
+        const auto space = rest.find(' ');
+        std::string token { space == std::string_view::npos ? rest : rest.substr(0, space) };
+        rest = space == std::string_view::npos ? std::string_view {} : rest.substr(space + 1);
+        return token;
+    };
+
+    if(op == "QP_NOTIFY_SELECT") {
+        g_smoke_open_id = next();
+        smoke_push_tracks(g_smoke_open_id);
+        smoke_push_order();
+        return;
+    }
+
+    if(op == "QP_NOTIFY_PLAY") {
+        g_smoke_open_id = next();
+        g_smoke_playing_id = next();
+        smoke_push_playback_state();
+        smoke_push_order();
+        return;
+    }
+
+    if(op == "QP_NOTIFY_TRANSPORT") {
+        const std::string action = next();
+        const smoke_playlist* playlist = smoke_find_playlist(g_smoke_open_id);
+        if(playlist == nullptr || playlist->tracks.empty()) {
+            return;
+        }
+
+        int index = -1;
+        for(std::size_t i = 0; i < playlist->tracks.size(); ++i) {
+            if(playlist->tracks[i].id == g_smoke_playing_id) {
+                index = static_cast<int>(i);
+                break;
+            }
+        }
+
+        if(action == "stop") {
+            g_smoke_playing_id.clear();
+        }
+        else if(action == "next") {
+            index = (index + 1) % static_cast<int>(playlist->tracks.size());
+            g_smoke_playing_id = playlist->tracks[static_cast<std::size_t>(index)].id;
+        }
+        else if(action == "prev") {
+            index = index <= 0 ? static_cast<int>(playlist->tracks.size()) - 1 : index - 1;
+            g_smoke_playing_id = playlist->tracks[static_cast<std::size_t>(index)].id;
+        }
+
+        smoke_push_playback_state();
+        smoke_push_order();
+        return;
+    }
+
+    if(op == "QP_NOTIFY_MODE" || op == "QP_NOTIFY_ADVANCE") {
+        smoke_playlist* playlist = smoke_find_playlist(next());
+        if(playlist == nullptr) {
+            return;
+        }
+
+        (op == "QP_NOTIFY_MODE" ? playlist->mode : playlist->advance) = next();
+        smoke_push_order();
+        return;
+    }
+
+    if(op == "QP_NOTIFY_DEFAULT_CHARACTER") {
+        g_smoke_default_character = next();
+        smoke_push_default_character();
+        return;
+    }
+
+    // Per-track edits. The fake host applies them the way the real one does - by rewriting the
+    // entry and echoing the whole playlist back - so the overlay's optimistic display is confirmed
+    // by real state rather than by its own assumption.
+    if(op == "QP_NOTIFY_TAG" || op == "QP_NOTIFY_MOD" || op == "QP_NOTIFY_CHARACTER") {
+        const std::string entry_id = next();
+        smoke_track* track = nullptr;
+        for(smoke_playlist& playlist : g_smoke_playlists) {
+            for(smoke_track& candidate : playlist.tracks) {
+                if(candidate.id == entry_id) {
+                    track = &candidate;
+                }
+            }
+        }
+        if(track == nullptr) {
+            return;
+        }
+
+        if(op == "QP_NOTIFY_CHARACTER") {
+            track->character = next();
+        }
+        else if(op == "QP_NOTIFY_MOD") {
+            const std::string wire_name = next();
+            const bool enabled = next() == "true";
+            std::erase(track->mods, wire_name);
+            if(enabled) {
+                track->mods.push_back(wire_name);
+            }
+        }
+        else {
+            const std::string wire_name = next();
+            const bool enabled = next() == "true";
+            const std::string parameter = next();
+            std::erase_if(track->tags, [&wire_name](const smoke_tag& tag) {
+                return tag.wire_name == wire_name;
+            });
+            if(enabled) {
+                track->tags.push_back({ wire_name, parameter });
+            }
+        }
+
+        smoke_push_tracks(g_smoke_open_id);
+        return;
+    }
+}
+
+void seed_fake_quick_player()
+{
+    smoke_playlist mixtape { .id = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1", .name = "Mixtape" };
+    mixtape.tracks.push_back({ .id = "1000000000000000000000000000000a",
+        .artist = "Boards of Canada",
+        .title = "Roygbiv",
+        .character = "NinjaMono",
+        .tags = { { "FourLanes" }, { "MinimumMatchSize", "12" } },
+        .mods = { "InvisibleRoad" } });
+    mixtape.tracks.push_back({ .id = "1000000000000000000000000000000b", .artist = "", .title = "Untitled [demo]" });
+    mixtape.tracks.push_back({ .id = "1000000000000000000000000000000c",
+        .artist = "Aphex Twin",
+        .title = "Xtal",
+        .tags = { { "Portal" } },
+        .mods = { "BankingCamera", "HiddenSongTitle" } });
+
+    // Deliberately long: this is the case ImGuiListClipper exists for, and the only way to notice
+    // it regressing is to have a list here that would visibly stutter without it.
+    smoke_playlist grind { .id = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa2", .name = "Grind", .mode = "RepeatOne", .advance = "manual" };
+    for(int i = 0; i < 250; ++i) {
+        char id[33];
+        std::snprintf(id, sizeof(id), "2000000000000000000000000000%04d", i);
+        grind.tracks.push_back({ .id = id, .artist = "Practice", .title = "Chart #" + std::to_string(i + 1) });
+    }
+
+    smoke_playlist empty { .id = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa3", .name = "Freeride", .mode = "ShuffleLoop" };
+
+    g_smoke_playlists = { std::move(mixtape), std::move(grind), std::move(empty) };
+    g_smoke_open_id = g_smoke_playlists.front().id;
+    g_smoke_playing_id = g_smoke_playlists.front().tracks.front().id;
+
+    smoke_push_catalog();
+    smoke_push_default_character();
+    smoke_push_tracks(g_smoke_open_id);
+    smoke_push_order();
+    smoke_push_playback_state();
+}
+
 // pending_actions' send backend (see ui/pending_actions.hxx) - stands in for tw::ipc::send_overlay_command,
 // which doesn't exist in this build (no real TW_OVL IPC here). When g_smoke_auto_confirm is on, applies
 // the request straight into overlay_state, as if the host had echoed TWEAK_SET/CURRENT_SKIN back
 // immediately; when off, it's a no-op "sent into the void" so pending_actions' own deadline fires.
 bool smoke_send_overlay_command(std::string_view op_line)
 {
-    if(!g_smoke_auto_confirm) {
-        return true;
-    }
-
     const auto space = op_line.find(' ');
     const std::string_view op = space == std::string_view::npos ? op_line : op_line.substr(0, space);
     const std::string_view rest = space == std::string_view::npos ? std::string_view {} : op_line.substr(space + 1);
+
+    // Quick Player requests are always answered, regardless of the auto-confirm switch: that switch
+    // exists to exercise pending_actions' timeout path for tweaks/skins, and a Player tab that
+    // could not load a playlist would just be inert rather than instructive.
+    if(op.starts_with("QP_NOTIFY_")) {
+        smoke_handle_quick_player_request(op, rest);
+        return true;
+    }
+
+    if(!g_smoke_auto_confirm) {
+        return true;
+    }
 
     if(op == "NOTIFY_TWEAK") {
         const auto sp2 = rest.find(' ');
@@ -198,7 +506,14 @@ void draw_smoke_controls()
     static button toggle_qp_btn { "smoke_toggle_qp", { 200.f, 32.f } };
     static button open_popup_btn { "smoke_open_popup", { 200.f, 32.f } };
     static item_group actions { "smoke_actions", "Actions" };
+    static item_group controls_group { "smoke_controls", "Controls" };
     static item_group icons_group { "smoke_icons", "Icons" };
+    static segmented modes { "smoke_modes" };
+    static segmented advance { "smoke_advance" };
+    static number_input match_size { "smoke_match_size" };
+    static button play_btn { "smoke_play", { 40.f, 34.f } };
+    static button labelled_btn { "smoke_labelled", { 150.f, 34.f } };
+    static bool modes_ready = false;
     static item_group color_group { "smoke_color", "Color" };
     static color_picker accent_picker { "smoke_accent", { 280.f, 0.f } };
     static ImVec4 bound_color { 0.2f, 0.83f, 0.75f, 1.f };
@@ -248,6 +563,46 @@ void draw_smoke_controls()
     ImGui::Checkbox("Auto-confirm NOTIFY_TWEAK/NOTIFY_SKIN (simulate host online)", &g_smoke_auto_confirm);
     ImGui::TextUnformatted("Off = requests time out after ~5s and show a notefeed failure toast.");
     actions.end();
+
+    // The bench for the widgets Quick Player's tab is built from: the mode strip, a parameterized
+    // tag's numeric field, and an icon-only transport button.
+    controls_group.set_inner_padding({ 10.f, 8.f });
+    controls_group.begin();
+
+    if(!modes_ready) {
+        static const std::string_view k_mode_labels[] = { "Single", "In order", "Repeat one", "Repeat all", "Shuffle", "Shuffle loop" };
+        modes.set_options(k_mode_labels);
+        static const std::string_view k_advance_labels[] = { "Auto", "Manual" };
+        advance.set_options(k_advance_labels);
+        match_size.set_range(0, 24); // SongTagCatalog's real bounds for [as-msz<n>]
+        match_size.set_value(8);
+        modes_ready = true;
+    }
+
+    ImGui::TextUnformatted("Playback");
+    modes.update();
+    if(modes.hovered_index() >= 0) {
+        ImGui::SetTooltip("Mode %d - tooltips are the caller's job, the strip only reports the hover.", modes.hovered_index());
+    }
+
+    ImGui::TextUnformatted("Advance");
+    advance.update();
+
+    ImGui::TextUnformatted("Minimum match size");
+    match_size.update();
+    if(match_size.changed()) {
+        char buf[64];
+        std::snprintf(buf, sizeof(buf), "[as-msz%d]", match_size.value());
+        tw::ui::plugins::statics::notefeed::push(buf);
+    }
+
+    play_btn.set_icon("icons/play.svg");
+    play_btn.update();
+    ImGui::SameLine();
+    labelled_btn.set_icon("icons/music.svg");
+    labelled_btn.update("With label");
+
+    controls_group.end();
 
     // The bench for ui/image/svg: every packed icon, at each baked size plus one that has to be
     // rasterized on demand through image::at(). This is where the k_supersample_factor question is
@@ -408,8 +763,14 @@ int main(int, char**)
     // the frame loop below - same two-step the DLL goes through.
     tw::ui::image::svg::initialize();
     tw::ui::pending_actions::set_send_backend(&smoke_send_overlay_command);
+    tw::ui::qp::set_send_backend(&smoke_send_overlay_command);
     tw::ui::overlay_config::load("smoke_overlay.cfg");
     seed_fake_overlay_state();
+    seed_fake_quick_player();
+
+    // Land straight on the Player tab: it is the one with the most moving parts, and starting every
+    // run with Insert plus a click adds nothing.
+    tw::ui::plugins::interactive::menu::show_tab(2);
 
     tw::ui::theme::apply_dark();
     tw::ui::theme::from_config(tw::ui::overlay_config::theme_overrides());
@@ -453,6 +814,15 @@ int main(int, char**)
         return 1;
     }
     wglMakeCurrent(g_main_window.hdc, g_hRC);
+
+    // Cap to the display's refresh rate. Uncapped, this window renders at thousands of FPS, which is
+    // not what the overlay ever sees inside the game - and judging animation timing here (the whole
+    // point of the harness) against a frame rate the real thing never reaches is misleading. Best
+    // effort: the extension is absent on some drivers, and its absence is not worth failing over.
+    if(const auto swap_interval = reinterpret_cast<BOOL(WINAPI*)(int)>(wglGetProcAddress("wglSwapIntervalEXT"))) {
+        swap_interval(1);
+    }
+
     ::ShowWindow(hwnd, SW_SHOWDEFAULT);
     ::UpdateWindow(hwnd);
 
@@ -525,11 +895,15 @@ int main(int, char**)
         tw::ui::overlay_state::refresh(cache);
         tw::ui::pending_actions::update(cache);
 
+        static tw::ui::qp::state::cache qp_cache;
+        tw::ui::qp::state::refresh(qp_cache);
+        tw::ui::qp::pending::update(qp_cache);
+
         draw_smoke_controls();
         tw::ui::plugins::statics::watermark::update();
         tw::ui::plugins::statics::pins::update(cache);
         tw::ui::plugins::statics::notefeed::update();
-        tw::ui::plugins::interactive::menu::update(cache);
+        tw::ui::plugins::interactive::menu::update(cache, qp_cache);
 
         ImGui::Render();
         glViewport(0, 0, g_width, g_height);

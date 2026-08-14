@@ -11,6 +11,11 @@ constexpr float k_rounding = 8.f;
 constexpr float k_pad = 8.f;
 constexpr float k_icon_gap = 8.f;
 constexpr int k_anim_ms = 150;
+
+// Secondary line: noticeably smaller than the primary without dropping below what the baked atlas
+// resolves cleanly at.
+constexpr float k_subtext_size = 12.f;
+constexpr float k_subtext_gap = 2.f;
 } // namespace
 
 namespace tw::ui::widgets
@@ -118,13 +123,28 @@ void list_item::draw_frame(const list_item_content& content)
         text_x = slot_max.x + k_icon_gap;
     }
 
-    if(!content.text.empty()) {
+    // Ellipsized rather than clipped at the row's edge: a list of long names (playlists, most of the
+    // time) otherwise ends in a hard vertical cut mid-glyph with no sign that anything was lost.
+    const float text_max_x = bb.Max.x - k_pad;
+
+    if(!content.text.empty() && content.subtext.empty()) {
         const ImVec2 text_size = ImGui::CalcTextSize(content.text.c_str());
-        const ImVec2 text_pos {
-            text_x,
-            bb.Min.y + (size.y - text_size.y) * 0.5f,
-        };
-        draw->AddText(text_pos, detail::to_u32(theme::text_primary), content.text.c_str());
+        const ImVec2 text_pos { text_x, bb.Min.y + (size.y - text_size.y) * 0.5f };
+        detail::add_text_ellipsis(draw, text_pos, text_max_x, detail::to_u32(theme::text_primary), content.text.c_str());
+    }
+    else if(!content.text.empty()) {
+        // Two lines, centred as a block: primary at the window font size, secondary smaller and
+        // muted, the same relationship the desktop's playlist rows use for name and track count.
+        const float primary_h = ImGui::GetFontSize();
+        const float block_h = primary_h + k_subtext_gap + k_subtext_size;
+        const float top = bb.Min.y + (size.y - block_h) * 0.5f;
+
+        detail::add_text_ellipsis(draw, ImVec2 { text_x, top }, text_max_x, detail::to_u32(theme::text_primary), content.text.c_str());
+        detail::add_text_scaled(draw,
+            k_subtext_size,
+            ImVec2 { text_x, top + primary_h + k_subtext_gap },
+            detail::to_u32(theme::text_muted),
+            content.subtext.c_str());
     }
 
     ImGui::PopID();

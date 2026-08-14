@@ -45,7 +45,21 @@ namespace TweakerUI.ViewModels
                 Playlists.Add(new PlaylistRowViewModel(playlist));
 
             SelectedPlaylistRow = Playlists.FirstOrDefault();
+
+            // Built last, so it sees a fully populated playlist list: it subscribes to the state
+            // above rather than being driven by it, and would otherwise push an empty catalog to an
+            // overlay that connected during construction.
+            _overlayBridge = new QuickPlayerOverlayBridge(this, _playback);
         }
+
+        /// <summary>
+        /// A playlist's contents or settings changed. Raised from <see cref="SaveCurrentPlaylist"/>
+        /// because every mutation already funnels through it - tags, mods, per-track character,
+        /// adding and removing tracks, reordering, playback mode, advance trigger - so there is one
+        /// place to hook rather than seven. Exists for the in-game overlay, which is push-based and
+        /// cannot poll (see Docs/Internal/overlay-quickplayer.md).
+        /// </summary>
+        public event EventHandler<Playlist> PlaylistChanged;
 
         public ObservableCollection<PlaylistRowViewModel> Playlists { get; } = new();
         public ObservableCollection<TrackCardViewModel> Queue { get; } = new();
@@ -64,7 +78,21 @@ namespace TweakerUI.ViewModels
         [ObservableProperty]
         private GameCharacter defaultCharacter = CharacterRoster.RealCharacters[0].Value;
 
+        /// <summary>
+        /// Whether the 14-character grid is open. It is closed by default: the grid is a once-a-session
+        /// setting and it was permanently costing the queue - the only part of this page that scrolls -
+        /// about 90px of height. The collapsed header states the current pick (see
+        /// <see cref="DefaultCharacterName"/>), so nothing is actually hidden by this.
+        /// </summary>
+        [ObservableProperty]
+        private bool isCharacterPickerExpanded;
+
+        /// <summary>Current default character's label, for the collapsed picker's header row.</summary>
+        public string DefaultCharacterName =>
+            DefaultCharacterOptions.FirstOrDefault(option => option.Value == DefaultCharacter)?.DisplayName;
+
         private readonly PlaybackController _playback;
+        private readonly QuickPlayerOverlayBridge _overlayBridge;
         private StatusHandle _nowPlayingStatus;
 
         // Preparing a track runs on a background thread in both directions (Task.Run for a manual play,
@@ -171,8 +199,15 @@ namespace TweakerUI.ViewModels
         partial void OnDefaultCharacterChanged(GameCharacter value)
         {
             CharacterOptionViewModel.SelectOnly(DefaultCharacterOptions, value);
+            OnPropertyChanged(nameof(DefaultCharacterName));
             _playback.DefaultCharacter = value;
+            // Picking closes the panel: the header reads "Character: X" + "Change", i.e. as a dropdown,
+            // and a dropdown that stays open after a choice reads as though the click missed.
+            IsCharacterPickerExpanded = false;
         }
+
+        [RelayCommand]
+        private void ToggleCharacterPicker() => IsCharacterPickerExpanded = !IsCharacterPickerExpanded;
 
         [RelayCommand]
         private void NewPlaylist()
@@ -298,7 +333,44 @@ namespace TweakerUI.ViewModels
             SaveCurrentPlaylist();
         }
 
-        public void SaveCurrentPlaylist() => SelectedPlaylist?.Save();
+        /// <summary>
+        /// Drops the card at <paramref name="from"/> into position <paramref name="to"/>, both being
+        /// indices into the queue *after* the card is lifted out of it - the same convention
+        /// ObservableCollection.Move uses. The view converts its own "insert before this card" into
+        /// that (QuickPlayerView.ResolveDropIndex); doing it in one place is the whole reason this
+        /// method takes a Move index rather than an insertion point.
+        ///
+        /// Move rather than remove-then-insert: it raises a single Move notification, so the ListBox
+        /// keeps the container and the selection instead of rebuilding the row that was just dropped.
+        /// </summary>
+        public void MoveTrack(int from, int to)
+        {
+            var playlist = SelectedPlaylist;
+            if (playlist == null || from == to)
+                return;
+
+            if (from < 0 || from >= Queue.Count || to < 0 || to >= Queue.Count)
+                return;
+
+            playlist.Entries.Move(from, to);
+            Queue.Move(from, to);
+
+            // The order is a list of playlist indices, so a reorder invalidates it outright - the same
+            // index names a different entry now. This is also what re-derives the queue position, which
+            // otherwise stays pointing at whatever slid into the slot the playing track left.
+            _playback.RebuildOrder(playlist);
+            SaveCurrentPlaylist();
+        }
+
+        public void SaveCurrentPlaylist()
+        {
+            var playlist = SelectedPlaylist;
+            if (playlist == null)
+                return;
+
+            playlist.Save();
+            PlaylistChanged?.Invoke(this, playlist);
+        }
 
         // Sends gotocharacterscreen and resets the module to idle - the only way to interrupt a
         // song, since the game protocol has no pause and PlaybackController on its own only reacts

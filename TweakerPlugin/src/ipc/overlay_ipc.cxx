@@ -8,6 +8,11 @@
 
 #include "ui/overlay_state.hxx"
 #include "ui/pending_actions.hxx"
+#include "ui/wire_text.hxx"
+
+#include "ui/qp/qp_pending.hxx"
+#include "ui/qp/qp_state.hxx"
+#include "ui/qp/qp_wire.hxx"
 
 namespace
 {
@@ -25,46 +30,7 @@ constexpr std::size_t k_max_fixed_op_tokens = 3;
 std::atomic<HWND> g_bridge_hwnd { nullptr };
 std::atomic<bool> g_handshake_complete { false };
 
-std::uint8_t from_hex(char c) noexcept
-{
-    if(c >= '0' && c <= '9') {
-        return static_cast<std::uint8_t>(c - '0');
-    }
-
-    if(c >= 'a' && c <= 'f') {
-        return static_cast<std::uint8_t>(10 + c - 'a');
-    }
-
-    if(c >= 'A' && c <= 'F') {
-        return static_cast<std::uint8_t>(10 + c - 'A');
-    }
-
-    return 0xFF;
-}
-
-std::string percent_decode(std::string_view s)
-{
-    std::string out;
-    out.reserve(s.size());
-
-    for(std::size_t i = 0; i < s.size();) {
-        if(s[i] == '%' && i + 2 < s.size()) {
-            const auto hi = from_hex(s[i + 1]);
-            const auto lo = from_hex(s[i + 2]);
-
-            if(hi != 0xFF && lo != 0xFF) {
-                out.push_back(static_cast<char>((hi << 4) | lo));
-                i += 3;
-                continue;
-            }
-        }
-
-        out.push_back(s[i]);
-        ++i;
-    }
-
-    return out;
-}
+using tw::ui::wire::percent_decode;
 
 // Splits off the first whitespace-delimited token (the OP) and returns the remainder unparsed, so
 // each op handler below can decide for itself whether to further split via the bounded
@@ -178,6 +144,15 @@ void handle_tw_ovl_op(std::string_view payload)
     }
 
     TW_LOG_DEBUG("ipc: <- '{}'", payload);
+
+    // Quick Player owns a whole family of ops (Docs/Internal/overlay-quickplayer.md) and is handed
+    // the payload whole rather than parsed here: this module is the transport, and a dozen more
+    // op names in this chain is exactly the "unreadable dumping ground" the QP module exists to
+    // avoid.
+    if(op.starts_with("QP_")) {
+        tw::ui::qp::handle_op(op, rest);
+        return;
+    }
 
     if(op == "HANDSHAKE_BEGIN") {
         std::size_t token_count = 0;
@@ -302,7 +277,9 @@ void shutdown() noexcept
     g_bridge_hwnd.store(nullptr, std::memory_order_relaxed);
     g_handshake_complete.store(false, std::memory_order_relaxed);
     tw::ui::overlay_state::reset();
+    tw::ui::qp::state::reset();
     tw::ui::pending_actions::reset();
+    tw::ui::qp::pending::reset();
 }
 
 bool send_overlay_command(std::string_view op_line)

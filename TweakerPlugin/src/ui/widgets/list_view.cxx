@@ -9,6 +9,11 @@ namespace
 {
 constexpr float k_row_gap = 4.f;
 constexpr float k_row_height = 36.f;
+
+// Rows carrying a second line need the height for it. One height for the whole list, decided by
+// whether any item has a subtext at all: a list where only some rows were taller would read as
+// misaligned rather than as informative.
+constexpr float k_row_height_two_line = 46.f;
 } // namespace
 
 namespace tw::ui::widgets
@@ -30,9 +35,17 @@ void list_view::set_items(std::span<const list_item_content> items)
     m_rows.reserve(m_items.size());
     m_row_ids.reserve(m_items.size());
 
+    m_row_height = k_row_height;
+    for(const list_item_content& item : m_items) {
+        if(!item.subtext.empty()) {
+            m_row_height = k_row_height_two_line;
+            break;
+        }
+    }
+
     for(std::size_t i = 0; i < m_items.size(); ++i) {
         m_row_ids.push_back(std::format("row_{}", i));
-        m_rows.emplace_back(m_row_ids.back().c_str(), ImVec2 { 0.f, k_row_height });
+        m_rows.emplace_back(m_row_ids.back().c_str(), ImVec2 { 0.f, m_row_height });
         m_rows.back().set_content(m_items[i]);
         m_rows.back().set_selected(static_cast<int>(i) == m_selected_index);
     }
@@ -40,6 +53,11 @@ void list_view::set_items(std::span<const list_item_content> items)
     if(m_selected_index >= static_cast<int>(m_items.size())) {
         m_selected_index = -1;
     }
+}
+
+void list_view::set_selected(int index) noexcept
+{
+    m_selected_index = index >= 0 && index < static_cast<int>(m_items.size()) ? index : -1;
 }
 
 void list_view::update()
@@ -61,7 +79,7 @@ void list_view::update()
         for(std::size_t i = 0; i < m_rows.size(); ++i) {
             m_rows[i].set_content(m_items[i]);
             m_rows[i].set_selected(static_cast<int>(i) == m_selected_index);
-            m_rows[i].set_size(ImVec2 { 0.f, k_row_height });
+            m_rows[i].set_size(ImVec2 { 0.f, m_row_height });
             m_rows[i].update();
 
             if(m_rows[i].clicked()) {

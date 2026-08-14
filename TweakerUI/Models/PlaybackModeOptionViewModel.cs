@@ -29,8 +29,16 @@ namespace TweakerUI.Models
         public PlaybackMode Value { get; }
         public string DisplayName { get; }
 
-        /// <summary>Tooltip text - the labels distinguish the modes but do not explain them.</summary>
+        /// <summary>Explanation of the mode - the labels distinguish them but do not explain them.</summary>
         public string Hint { get; }
+
+        /// <summary>
+        /// What the chip actually shows on hover. The name has to be in here because the chip itself is
+        /// a glyph, not a word - six words do not fit on the transport bar at the window's minimum width
+        /// (see Border.QPTransportBar in QuickPlayerStyles.axaml). <see cref="DisplayName"/> stays
+        /// separate so the row can go back to text without unpicking this.
+        /// </summary>
+        public string Tooltip => DisplayName + "\n" + Hint;
 
         [ObservableProperty]
         private bool isSelected;

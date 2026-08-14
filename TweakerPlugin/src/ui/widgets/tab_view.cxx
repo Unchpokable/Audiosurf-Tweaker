@@ -93,6 +93,12 @@ void tab_view::select_tab(int index)
     retarget_content(1.f);
 }
 
+void tab_view::set_selected_tab(int index)
+{
+    assert(!m_active && "tab_view::set_selected_tab() must be called outside begin()/end()");
+    select_tab(index);
+}
+
 void tab_view::begin()
 {
     assert(!m_active && "tab_view::begin() called while already active");

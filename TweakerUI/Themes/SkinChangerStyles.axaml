@@ -135,6 +135,13 @@
     <Style Selector="Button.SCRowIconButton:pointerover">
         <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
     </Style>
+    <!-- Its own resting value, overriding SCRowIconButton's AccentGhostBrush above: this variant fades
+    to red, and starting the transition on the accent hue would move hue and alpha at once - the button
+    flashes teal/purple before it reddens. Zero-alpha red is just as invisible at rest. See
+    SurfaceHoverGhostBrush in NeutralColors.axaml for the rule. -->
+    <Style Selector="Button.SCRowIconButton.Danger">
+        <Setter Property="Background" Value="#00DC3C3C"/>
+    </Style>
     <Style Selector="Button.SCRowIconButton.Danger:pointerover">
         <Setter Property="Background" Value="#1FDC3C3C"/>
     </Style>

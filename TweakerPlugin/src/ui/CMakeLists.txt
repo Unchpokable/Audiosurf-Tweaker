@@ -7,11 +7,18 @@ add_library(tweaker_ui STATIC
     overlay_state.cxx
     overlay_config.cxx
     pending_actions.cxx
+    wire_text.cxx
+    qp/qp_catalog.cxx
+    qp/qp_state.cxx
+    qp/qp_wire.cxx
+    qp/qp_pending.cxx
     gpu_texture.cxx
     texture_cache.cxx
     image/svg.cxx
     widgets/button.cxx
     widgets/toggle.cxx
+    widgets/segmented.cxx
+    widgets/number_input.cxx
     widgets/list_item.cxx
     widgets/list_view.cxx
     widgets/tab_view.cxx
@@ -22,6 +29,7 @@ add_library(tweaker_ui STATIC
     plugins/static/pins.cxx
     plugins/static/watermark.cxx
     plugins/interactive/menu.cxx
+    plugins/interactive/player.cxx
 )
 
 target_include_directories(tweaker_ui PUBLIC

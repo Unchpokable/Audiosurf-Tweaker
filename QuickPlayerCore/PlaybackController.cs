@@ -185,6 +185,22 @@ namespace QuickPlayerCore
             }
         }
 
+        /// <summary>
+        /// Which playlist the module is positioned in, or null before anything has been started.
+        /// Companion to <see cref="CurrentEntry"/>: a caller holding some other playlist needs this to
+        /// tell "the queue below describes what you are looking at" from "it describes something else"
+        /// - the same distinction CurrentIndexIn makes internally. Survives a track ending for the
+        /// same reason the position does.
+        /// </summary>
+        public Guid? CurrentPlaylistId
+        {
+            get
+            {
+                lock (_gate)
+                    return _playlist?.Id;
+            }
+        }
+
         /// <summary>Quick Player is driving a track - either starting one or playing one.</summary>
         public bool IsActive
         {
@@ -261,6 +277,13 @@ namespace QuickPlayerCore
         private int _currentIndex = -1;
         private PlaybackPhase _phase = PlaybackPhase.Idle;
 
+        // The entry _currentIndex named when it was set. NOT a second position - the position is still
+        // the index, and CurrentEntry is still derived from it. This is only how the index is
+        // *re-derived* after the entries move underneath it: the UI reorders and removes entries while
+        // a track is playing, and an index that named the playing track before such an edit names a
+        // different one after it. See RebuildOrder.
+        private PlaylistEntry _currentEntry;
+
         // Only used while Completed: where to go once the player closes the score screen. Cleared by
         // anything that takes over the queue (an explicit Play, a Stop) so a deferred advance can never
         // fire on top of a decision the user made after it was queued.
@@ -325,11 +348,16 @@ namespace QuickPlayerCore
         }
 
         /// <summary>
-        /// The playlist's entries or mode changed - start a fresh pass around the current position. The
-        /// owner of the playlist says when this happens rather than this class watching for it: entries
-        /// only ever change because the UI changed them, and a caller that knows is cheaper and clearer
-        /// than reconciling against the collection on every query. Also the hook a future "reorder the
-        /// queue by hand" would use.
+        /// The playlist's entries or mode changed - re-derive the queue position and start a fresh pass
+        /// around it. The owner of the playlist says when this happens rather than this class watching
+        /// for it: entries only ever change because the UI changed them, and a caller that knows is
+        /// cheaper and clearer than reconciling against the collection on every query. Adding, removing
+        /// and reordering entries all go through here.
+        ///
+        /// The position is re-derived rather than kept, because it is an index and an edit moves the
+        /// entries out from under it. Removing an entry above the playing one used to leave the index
+        /// pointing one track too far down the list, which silently skipped a track at the next
+        /// advance; dragging entries around makes that the normal case rather than the odd one.
         ///
         /// Ignored for a playlist other than the one being driven: that one's order is built when it
         /// starts playing, and rebuilding it here would throw away the running one's pass.
@@ -341,7 +369,20 @@ namespace QuickPlayerCore
                 if (playlist == null || _playlist != null && _playlist.Id != playlist.Id)
                     return;
 
-                _order.Rebuild(playlist, CurrentIndexIn(playlist));
+                // Gone from the playlist entirely - the module no longer has a position in it, and the
+                // order answers the next question from its own start.
+                _currentIndex = _currentEntry != null ? playlist.Entries.IndexOf(_currentEntry) : -1;
+                if (_currentIndex < 0)
+                    _currentEntry = null;
+
+                _order.Rebuild(playlist, _currentIndex);
+
+                // Waiting on the score screen with an advance already decided (AdvanceTrigger
+                // .CharacterScreen): that decision was an index into the old order, so it has to be
+                // taken again. Unconditionally, not only when there was already one - moving the
+                // playing track off the end of the playlist gives it a successor it did not have.
+                if (_phase == PlaybackPhase.Completed)
+                    _pendingAdvanceIndex = _order.Next(playlist, _currentIndex, isAutoAdvance: true);
             }
 
             PlaybackOrderChanged?.Invoke();
@@ -381,6 +422,7 @@ namespace QuickPlayerCore
                 _playlist = playlist;
                 _currentIndex = index;
                 entry = CurrentEntryLocked();
+                _currentEntry = entry;
 
                 // Claimed before the slow preparation below, so an oncharacterscreen arriving while the
                 // file is still being copied is recognised as the player taking over and cancels it.

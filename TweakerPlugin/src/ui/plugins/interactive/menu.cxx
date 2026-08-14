@@ -15,6 +15,8 @@
 
 #include "ui/overlay_config.hxx"
 
+#include "ui/plugins/interactive/player.hxx"
+
 #include "ui/pending_actions.hxx"
 
 #include "ui/theme.hxx"
@@ -144,6 +146,15 @@ constexpr int k_swatch_hover_ms = 150;    // matches button.cxx's k_hover_ms
 constexpr ImVec2 k_min_size { 320.f, 260.f };
 constexpr const char* k_title = "Audiosurf Tweaker";
 
+// Index of the Player tab in the label array below - referenced from three places, and an inline 2
+// in any of them would silently become the wrong tab the moment a tab is inserted before it.
+constexpr int k_player_tab = 2;
+
+// What the tab_view's own nav column and the window chrome take off the top before any tab gets to
+// use the space. Approximate on purpose: it feeds the one-shot window grow below, whose job is
+// "make the Player tab usable", not pixel-exact fitting.
+constexpr float k_chrome_allowance_x = 96.f;
+
 // Written from the message-pump thread (toggle_visible/set_visible), read from the render thread
 // (update) and from the dinput hooks on whichever thread the game polls its devices.
 std::atomic<bool> g_visible = false;
@@ -156,6 +167,17 @@ bool g_widgets_ready = false;
 
 ImVec2 g_pos { -1.f, -1.f }; // sentinel: pick a centered default on first show
 ImVec2 g_size { 420.f, 520.f };
+
+// Smallest size the *currently selected* tab can live with, recomputed each frame. Tab content does
+// not reflow: the Player tab's transport row is a fixed-width arrangement of buttons, rules and
+// glyph strips, so a window narrower than it does not compact - the row simply runs off the edge.
+// Clamping the resize grip instead is the honest answer, and it is per-tab because the other three
+// are perfectly usable at k_min_size.
+ImVec2 g_active_min_size = k_min_size;
+
+// Which tab was selected last frame, so entering the Player tab can be detected as an edge rather
+// than re-applied on every frame it stays open.
+int g_last_tab = 0;
 
 bool g_dragging_move = false;
 bool g_dragging_resize = false;
@@ -178,7 +200,7 @@ void ensure_widgets_ready()
         return;
     }
 
-    static const std::string_view labels[] = { "Skins", "Tweaks", "Settings" };
+    static const std::string_view labels[] = { "Skins", "Tweaks", "Player", "Settings" };
     g_tabs.set_tabs(labels);
     g_tabs.set_rounding(k_rounding);
 
@@ -428,6 +450,32 @@ void draw_theme_groups()
     }
 }
 
+// Window size a tab's content needs, chrome included and clamped to the viewport - the window can
+// never be asked to exceed the screen, whatever the content wants.
+ImVec2 window_size_for(ImVec2 content)
+{
+    const ImVec2 viewport = ImGui::GetIO().DisplaySize;
+    return ImVec2 {
+        (std::min)(viewport.x, content.x + k_chrome_allowance_x + k_padding * 2.f),
+        (std::min)(viewport.y, content.y + k_title_h + k_padding * 2.f),
+    };
+}
+
+// Grows the menu to fit a tab that needs more room than the current size gives it. Never shrinks:
+// the size is the user's, saved in overlay_config, and a tab that pulled it back in on every switch
+// would undo every resize.
+void grow_to_fit(ImVec2 wanted)
+{
+    const ImVec2 grown { (std::max)(g_size.x, wanted.x), (std::max)(g_size.y, wanted.y) };
+    if(grown.x == g_size.x && grown.y == g_size.y) {
+        return;
+    }
+
+    g_size = grown;
+    tw::ui::overlay_config::set_menu_size(g_size);
+    tw::ui::overlay_config::request_save();
+}
+
 void draw_settings_tab()
 {
     draw_side_row("Notefeed / watermark corner",
@@ -464,11 +512,14 @@ void initialize() noexcept
     g_widgets_ready = false;
     g_visible.store(false, std::memory_order_relaxed);
     g_last_skin_names.clear();
+    g_last_tab = 0;
+    player::initialize();
 }
 
 void shutdown() noexcept
 {
     g_visible.store(false, std::memory_order_relaxed);
+    player::shutdown();
 }
 
 bool is_visible() noexcept
@@ -489,7 +540,16 @@ void set_visible(bool visible) noexcept
     g_visible.store(visible, std::memory_order_relaxed);
 }
 
-void update(const tw::ui::overlay_state::cache& snapshot) noexcept
+void show_tab(int index) noexcept
+{
+    // ensure_widgets_ready() first: the tab labels have to exist before a tab can be selected, and
+    // this can be called before the first frame ever drew.
+    ensure_widgets_ready();
+    g_tabs.set_selected_tab(index);
+    g_visible.store(true, std::memory_order_relaxed);
+}
+
+void update(const tw::ui::overlay_state::cache& snapshot, const tw::ui::qp::state::cache& qp_snapshot) noexcept
 {
     ensure_widgets_ready();
 
@@ -594,8 +654,8 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
             const ImVec2 mouse = ImGui::GetMousePos();
             const ImVec2 delta { mouse.x - g_drag_start_mouse.x, mouse.y - g_drag_start_mouse.y };
             g_size = ImVec2 {
-                (std::max)(k_min_size.x, g_drag_start_value.x + delta.x),
-                (std::max)(k_min_size.y, g_drag_start_value.y + delta.y),
+                (std::max)(g_active_min_size.x, g_drag_start_value.x + delta.x),
+                (std::max)(g_active_min_size.y, g_drag_start_value.y + delta.y),
             };
         }
         else {
@@ -619,12 +679,36 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
         draw_tweaks_tab(snapshot);
         g_tabs.end_view();
     }
-    if(g_tabs.begin_view(2)) {
+    if(g_tabs.begin_view(k_player_tab)) {
+        tw::ui::plugins::interactive::player::draw(qp_snapshot);
+        g_tabs.end_view();
+    }
+    if(g_tabs.begin_view(3)) {
         draw_settings_tab();
         g_tabs.end_view();
     }
     g_tabs.end();
 
     ImGui::End();
+
+    // Grown after the frame, not before it: the Player tab needs more room than the others, and
+    // asking for the size it wants requires ImGui's font metrics, which are only valid inside a
+    // frame. One-shot on entering the tab, and only ever upward - the user's saved size is theirs,
+    // and silently shrinking the window back on leaving would fight every resize they make.
+    if(g_tabs.selected_tab() == k_player_tab) {
+        const ImVec2 wanted = window_size_for(player::desired_content_size(qp_snapshot));
+        g_active_min_size = ImVec2 { (std::max)(k_min_size.x, wanted.x), (std::max)(k_min_size.y, wanted.y) };
+
+        // Grow only on the way in. Re-applying it every frame would undo any deliberate enlargement
+        // the user made, and the clamp above already stops the window going the other way.
+        if(g_last_tab != k_player_tab) {
+            grow_to_fit(g_active_min_size);
+        }
+    }
+    else {
+        g_active_min_size = k_min_size;
+    }
+
+    g_last_tab = g_tabs.selected_tab();
 }
 } // namespace tw::ui::plugins::interactive::menu

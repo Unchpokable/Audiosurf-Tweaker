@@ -48,6 +48,18 @@
             same as any other card) - exists as its own token purely so Dark can diverge; see
             SurfaceElevatedColor's Dark comment. -->
             <Color x:Key="SurfaceElevatedColor">#FFFFFFFF</Color>
+            <!-- Zero-alpha SurfaceHoverColor. Exactly the same trick, and for exactly the same reason,
+            as AccentColors.axaml's AccentGhostColor - see the block comment on SurfaceHoverGhostBrush
+            below for why a control that fades in to SurfaceHover must rest on THIS and not on a plain
+            Transparent. -->
+            <Color x:Key="SurfaceHoverGhostColor">#00F0F0F3</Color>
+            <!-- Opaque "destructive action" hover fill. The danger RED itself is deliberately not a
+            token (see the roadmap's Фаза 4.7 exclusion list) - this is a neutral SURFACE tier that
+            happens to be tinted by it, which is this file's remit, and it has to exist as a token
+            because it needs a different value per theme. Opaque rather than the translucent
+            #1FDC3C3C the danger buttons used to fade to, so the transition off an opaque resting
+            fill moves hue only. -->
+            <Color x:Key="SurfaceDangerHoverColor">#FFF9E4E4</Color>
             <Color x:Key="ControlTrackOffColor">#FFD5D5DA</Color>
             <Color x:Key="ControlThumbColor">#FFFFFFFF</Color>
 
@@ -102,6 +114,11 @@
             Light's selected tab does (its own background is just white, same as any card); see
             file header. -->
             <Color x:Key="SurfaceElevatedColor">#FF33363C</Color>
+            <!-- See Light's own comment - zero-alpha SurfaceHoverColor, dark value. -->
+            <Color x:Key="SurfaceHoverGhostColor">#002A2D32</Color>
+            <!-- See Light's own comment. Dark-side value: the same danger hue laid over the dark
+            card surface rather than the light one, so it reads as a red-tinted chip in both. -->
+            <Color x:Key="SurfaceDangerHoverColor">#FF3A2529</Color>
             <!-- Not a direct mockup role (no toggle switches in the mockup) - a mid-gray with enough
             separation from both SurfaceColor and BorderColor to read as an "off" track. -->
             <Color x:Key="ControlTrackOffColor">#FF40434A</Color>
@@ -161,6 +178,19 @@
     <SolidColorBrush x:Key="SurfaceSkeletonBrush" Color="{DynamicResource SurfaceSkeletonColor}"/>
     <SolidColorBrush x:Key="SurfaceBadgeBrush" Color="{DynamicResource SurfaceBadgeColor}"/>
     <SolidColorBrush x:Key="SurfaceElevatedBrush" Color="{DynamicResource SurfaceElevatedColor}"/>
+    <!-- Resting Background for any control that fades IN to SurfaceHoverBrush (2026-08-13). The
+    neutral counterpart to AccentColors.axaml's AccentGhostBrush, and it exists because of the same
+    BrushTransition behaviour: a transition interpolates the R, G, B and A channels of the two
+    brushes INDEPENDENTLY, so it only looks right when one of the two is held still. Resting on a
+    literal Transparent (#00000000) moves both - RGB ramps up from black while alpha ramps up from
+    zero - and the control visibly passes through a dark smudge on its way to the hover colour
+    (user-reported 2026-08-13: buttons "blinking" through several colours on hover, across several
+    modules). Resting on the hover colour's own RGB at zero alpha is invisible at rest, exactly like
+    Transparent, but leaves alpha as the only channel that moves.
+    The rule this file and AccentColors.axaml both follow: a transition may move hue (both endpoints
+    opaque) or alpha (both endpoints the same RGB), never both. -->
+    <SolidColorBrush x:Key="SurfaceHoverGhostBrush" Color="{DynamicResource SurfaceHoverGhostColor}"/>
+    <SolidColorBrush x:Key="SurfaceDangerHoverBrush" Color="{DynamicResource SurfaceDangerHoverColor}"/>
     <SolidColorBrush x:Key="ControlTrackOffBrush" Color="{DynamicResource ControlTrackOffColor}"/>
     <SolidColorBrush x:Key="ControlThumbBrush" Color="{DynamicResource ControlThumbColor}"/>
 
