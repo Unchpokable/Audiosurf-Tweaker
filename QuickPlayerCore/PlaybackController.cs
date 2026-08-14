@@ -389,8 +389,45 @@ namespace QuickPlayerCore
         }
 
         /// <summary>
+        /// Stops playback the way a Stop button means it: ends this module's run and, only when the game
+        /// is actually inside a track this module started, asks it to leave that track.
+        ///
+        /// The condition is the entire point of this method existing next to <see cref="Stop"/>.
+        /// gotocharacterscreen sent while the game is already on the character screen - or, more rarely,
+        /// on the leaderboard - leaves it drawing a white screen where its UI should be, and the only way
+        /// back is to start another song. That is the game's own bug, but sending the command
+        /// unconditionally is what triggers it, and this module knows perfectly well whether a track is
+        /// running. The desktop hid the problem by disabling its Stop button when nothing was playing;
+        /// the overlay's own Stop has no such guard, which is how it surfaced.
+        ///
+        /// Only <see cref="PlaybackPhase.Playing"/> counts, not Starting: a start that has not been
+        /// confirmed yet is most likely still copying its file with the player sitting on the character
+        /// screen, which is precisely the state that must not be told to go there again. Stop() below
+        /// cancels that start locally anyway.
+        /// </summary>
+        public void StopAndLeaveSong()
+        {
+            bool inSong;
+            lock (_gate)
+                inSong = _phase == PlaybackPhase.Playing;
+
+            // Deliberately outside _gate, which is never held across a call into the game session (see
+            // the field's own comment). The window between deciding and sending is one report wide, and
+            // losing that race costs at most the stray command this method exists to avoid.
+            if (inSong)
+                _gameSession.Command(GameProtocol.Command(GameProtocol.GoToCharacterScreen));
+
+            Stop();
+        }
+
+        /// <summary>
         /// Ends the current track and cancels any start still being prepared. Keeps the queue position -
         /// the module goes idle, it doesn't forget where it was.
+        ///
+        /// Purely local: it never asks the game for anything, which is what makes it safe for the
+        /// internal callers that run *because* the game already moved on (the player walked out to the
+        /// character screen, the game disconnected, an auto-advance ran out of playable entries). A user
+        /// pressing Stop wants <see cref="StopAndLeaveSong"/> instead.
         /// </summary>
         public void Stop()
         {

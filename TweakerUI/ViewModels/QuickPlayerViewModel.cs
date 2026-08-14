@@ -372,15 +372,12 @@ namespace TweakerUI.ViewModels
             PlaylistChanged?.Invoke(this, playlist);
         }
 
-        // Sends gotocharacterscreen and resets the module to idle - the only way to interrupt a
-        // song, since the game protocol has no pause and PlaybackController on its own only reacts
-        // to the game telling *it* things ended, it never asks the game to stop anything.
+        // Interrupting a song means gotocharacterscreen - the game protocol has no pause - but whether
+        // to send it at all depends on the module's phase, so that decision lives with the phase rather
+        // than here (see PlaybackController.StopAndLeaveSong). The overlay's Stop routes through this
+        // very command, so both surfaces get the check from one place.
         [RelayCommand]
-        private void Stop()
-        {
-            AudiosurfHandle.Instance.Command(GameProtocol.Command(GameProtocol.GoToCharacterScreen));
-            _playback.Stop();
-        }
+        private void Stop() => _playback.StopAndLeaveSong();
 
         // The "Preparing..." chip is raised by PlaybackController (EntryPreparing/EntryPrepared), not
         // here: auto-advance never goes through this method, and it is the path where the user has no

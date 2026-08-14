@@ -3,7 +3,9 @@ namespace QuickPlayerCore.Tests
     using System;
     using System.Collections.Generic;
     using System.IO;
+    using System.Linq;
     using System.Threading;
+    using AudiosurfInterface;
     using NUnit.Framework;
 
     // Report semantics these tests encode, as verified against the running game:
@@ -33,6 +35,71 @@ namespace QuickPlayerCore.Tests
             Assert.IsTrue(game.WaitForCommandCount(2), "the next entry was never started");
             Assert.AreSame(playlist.Entries[1], controller.CurrentEntry);
             Assert.IsTrue(controller.IsActive);
+        }
+
+        // gotocharacterscreen sent while the game is not in a song leaves it drawing a white screen
+        // instead of its UI (the game's own bug, recoverable only by starting another song). Stop
+        // used to send it unconditionally, which the desktop hid by disabling its button when nothing
+        // was playing - the overlay's Stop has no such guard and hit it immediately.
+        [Test]
+        public void StopAndLeaveSong_DuringAConfirmedTrack_AsksTheGameToLeaveIt()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
+            var playlist = BuildPlaylist(2);
+
+            controller.Play(playlist, 0);
+            reports.RaiseNowPlaying();
+            controller.StopAndLeaveSong();
+
+            Assert.That(game.Commands, Does.Contain(GameProtocol.Command(GameProtocol.GoToCharacterScreen)));
+        }
+
+        [Test]
+        public void StopAndLeaveSong_WithNothingPlaying_LeavesTheGameAlone()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
+
+            controller.StopAndLeaveSong();
+
+            Assert.That(game.Commands, Is.Empty);
+        }
+
+        // Still preparing: the file copy has not finished, so no playsong has gone out and the player
+        // is sitting on the character screen - the exact state that must not be told to go there.
+        [Test]
+        public void StopAndLeaveSong_BeforeTheStartIsConfirmed_LeavesTheGameAlone()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
+            var playlist = BuildPlaylist(2);
+
+            controller.Play(playlist, 0);
+            controller.StopAndLeaveSong();
+
+            Assert.That(game.Commands, Does.Not.Contain(GameProtocol.Command(GameProtocol.GoToCharacterScreen)));
+        }
+
+        // The player walked out of the song themselves, so the game is already where the command would
+        // have sent it. This path goes through the internal Stop(), which must stay silent.
+        [Test]
+        public void WalkingOutMidSong_DoesNotSendGoToCharacterScreen()
+        {
+            var reports = new FakeReportSource();
+            var game = new FakeGameSession();
+            using var controller = new PlaybackController(reports, game, new FakePrewarmer());
+            var playlist = BuildPlaylist(2);
+
+            controller.Play(playlist, 0);
+            reports.RaiseNowPlaying();
+            reports.RaiseCharacterScreen();
+
+            Assert.That(game.Commands, Does.Not.Contain(GameProtocol.Command(GameProtocol.GoToCharacterScreen)));
+            Assert.IsFalse(controller.IsActive);
         }
 
         [Test]
@@ -944,6 +1011,16 @@ namespace QuickPlayerCore.Tests
                 lock (_gate)
                     _isValid = value;
                 StateChanged?.Invoke(this, EventArgs.Empty);
+            }
+
+            /// <summary>Everything sent so far, in order.</summary>
+            public IReadOnlyList<string> Commands
+            {
+                get
+                {
+                    lock (_gate)
+                        return _commands.ToList();
+                }
             }
 
             /// <summary>
