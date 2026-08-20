@@ -22,7 +22,7 @@ namespace TweakerUI.ViewModels
     /// app-wide status bar (StatusService) - the wiring TempFileTagger/PlaybackController were built
     /// UI-agnostic for, see QuickPlayerCore's "Расположение кода" notes.
     /// </summary>
-    public partial class QuickPlayerViewModel : ViewModelBase
+    public partial class QuickPlayerViewModel : ViewModelBase, IDisposable
     {
         public QuickPlayerViewModel()
         {
@@ -113,7 +113,7 @@ namespace TweakerUI.ViewModels
 
         partial void OnSelectedPlaylistRowChanged(PlaylistRowViewModel value)
         {
-            Queue.Clear();
+            ClearQueue();
             NotifyAdvanceModeChanged();
             NotifyPlaybackModeChanged();
             if (value == null)
@@ -222,15 +222,24 @@ namespace TweakerUI.ViewModels
         [RelayCommand]
         private async Task RemovePlaylist()
         {
-            if (SelectedPlaylistRow == null)
+            // Captured before the await and acted on afterwards: the confirmation dialog gives the
+            // user (and the overlay, which drives the same selection) a whole dialog's worth of time
+            // to select something else or nothing at all. Re-reading SelectedPlaylistRow after the
+            // dialog would either NRE on a cleared selection or delete a playlist the prompt never
+            // named - so the answer applies to the row that was actually asked about.
+            var removed = SelectedPlaylistRow;
+            if (removed == null)
                 return;
 
             if (!await ApplicationNotificationManager.Manager.AskForAction("Remove Playlist",
-                    $"This will delete \"{SelectedPlaylistRow.Name}\" and its saved tags/mods. Are you sure?"))
+                    $"This will delete \"{removed.Name}\" and its saved tags/mods. Are you sure?"))
                 return;
 
-            var removed = SelectedPlaylistRow;
+            // Gone already (deleted from the overlay while the dialog was up) - nothing left to do.
             var index = Playlists.IndexOf(removed);
+            if (index < 0)
+                return;
+
             removed.Playlist.Delete();
             Playlists.Remove(removed);
             SelectedPlaylistRow = Playlists.Count > 0 ? Playlists[Math.Min(index, Playlists.Count - 1)] : null;
@@ -329,8 +338,23 @@ namespace TweakerUI.ViewModels
 
             SelectedPlaylist.Entries.Remove(card.Entry);
             Queue.Remove(card);
+            card.Dispose();
             _playback.RebuildOrder(SelectedPlaylist);
             SaveCurrentPlaylist();
+        }
+
+        /// <summary>
+        /// Empties the queue, releasing each card's decoded cover on the way out. Every card holds a
+        /// Skia-backed <see cref="Avalonia.Media.Imaging.Bitmap"/>, whose memory the GC only gives
+        /// back on a finalizer pass - a plain Queue.Clear() leaves a full playlist's worth of covers
+        /// floating on every playlist switch.
+        /// </summary>
+        private void ClearQueue()
+        {
+            foreach (var card in Queue)
+                card.Dispose();
+
+            Queue.Clear();
         }
 
         /// <summary>
@@ -513,5 +537,55 @@ namespace TweakerUI.ViewModels
         {
             new FilePickerFileType("Audio files") { Patterns = SupportedAudioFormats.Extensions.Select(e => "*" + e).ToList() }
         };
+
+        /// <summary>
+        /// Tears down everything this VM owns: the overlay bridge, the PlaybackController (which
+        /// stops playback and drops its asconfig overrides), the queue's cover bitmaps and any status
+        /// chips still up. Reached from MainWindowViewModel on application exit - the tab itself lives
+        /// as long as the window does, so this is a shutdown path, not a hot one.
+        /// </summary>
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+
+            // Bridge first: it listens to both this VM and the controller, and has no business
+            // reacting to the unsubscribes and the stop that follow.
+            _overlayBridge.Dispose();
+
+            _playback.EntryPreparing -= OnEntryPreparing;
+            _playback.EntryPrepared -= OnEntryPrepared;
+            _playback.EntryStarted -= OnEntryStarted;
+            _playback.EntryEnded -= OnEntryEnded;
+            _playback.OperationFailed -= OnPlaybackFailed;
+            _playback.EntryUnavailable -= OnEntryUnavailable;
+            _playback.PrewarmProgressed -= OnPrewarmProgressed;
+            _playback.Dispose();
+
+            // Both are aliases into Queue, which owns the cards - dropped, not disposed, and dropped
+            // before ClearQueue so neither outlives the objects it points at.
+            SelectedTrackCard = null;
+            CurrentTrackCard = null;
+            ClearQueue();
+
+            _nowPlayingStatus?.Dispose();
+            _nowPlayingStatus = null;
+
+            lock (_preparingGate)
+            {
+                _preparingStatus?.Dispose();
+                _preparingStatus = null;
+            }
+
+            lock (_prewarmGate)
+            {
+                _prewarmStatus?.Dispose();
+                _prewarmStatus = null;
+            }
+        }
+
+        private bool _disposed;
     }
 }

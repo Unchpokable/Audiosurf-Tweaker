@@ -101,7 +101,6 @@ bool enumerate_type(HMODULE module, tw::resource::type kind, LPCWSTR type_name, 
     ctx.kind = kind;
     ctx.type_name = type_name;
     ctx.out = &out;
-    ctx.ok = true;
 
     // EnumResourceNamesW returns FALSE when there are no resources of that type
     // OR on hard failure. Distinguish via GetLastError.

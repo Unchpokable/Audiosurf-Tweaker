@@ -16,14 +16,12 @@ namespace TweakerUI
 {
     public partial class App : Application
     {
-        private readonly Logger _logger = new Logger();
-
         public App()
         {
             AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
             SkinPackager.OperationFailed += OnSkinPackagerOperationFailed;
             LegacyConverter.ConversionFailed += OnLegacyConversionFailed;
-            _logger.ReadWriteException += OnLoggerReadWriteException;
+            Logger.ReadWriteException += OnLoggerReadWriteException;
         }
 
         public override void Initialize()
@@ -49,6 +47,11 @@ namespace TweakerUI
                 {
                     DataContext = mainViewModel,
                 };
+
+                // Exit rather than ShutdownRequested: the latter can still be cancelled, and tearing
+                // playback down under a shutdown the user then called off would leave the Quick Player
+                // tab alive but gutted.
+                desktop.Exit += (_, _) => mainViewModel.Dispose();
             }
 
             base.OnFrameworkInitializationCompleted();
@@ -56,17 +59,17 @@ namespace TweakerUI
 
         private void OnSkinPackagerOperationFailed(string context, Exception exception)
         {
-            _logger.Log("SkinPackager", $"{context}: {exception}");
+            Logger.Log("SkinPackager", $"{context}: {exception}");
         }
 
         private void OnLegacyConversionFailed(string path, Exception exception)
         {
-            _logger.Log("LegacyConverter", $"Failed to convert '{path}': {exception}");
+            Logger.Log("LegacyConverter", $"Failed to convert '{path}': {exception}");
         }
 
         private void OnAudiosurfBridgeDiagnostic(AsBridgeDiagnostic diagnostic)
         {
-            _logger.Log($"AudiosurfBridge/{diagnostic.Context}", diagnostic.Exception != null
+            Logger.Log($"AudiosurfBridge/{diagnostic.Context}", diagnostic.Exception != null
                 ? $"{diagnostic.Message}\n{diagnostic.Exception}"
                 : diagnostic.Message);
         }
@@ -76,7 +79,7 @@ namespace TweakerUI
         // user-facing half of the same event (see AudiosurfHandle.GiveUpRegistrationLocked).
         private void OnAudiosurfCommunicationFailed(string message)
         {
-            Dispatcher.UIThread.Post(() => ApplicationNotificationManager.Manager.ShowErrorWnd(
+            Dispatcher.UIThread.Post(() => ApplicationNotificationManager.Manager.ShowError(
                 "Audiosurf connection broken", message));
         }
 
@@ -85,18 +88,18 @@ namespace TweakerUI
         // from a background thread, hence the same Dispatcher.Post as above.
         private void OnAudiosurfServiceSuspended(string reason)
         {
-            _logger.Log("AudiosurfHandle", $"Service suspended: {reason}");
-            Dispatcher.UIThread.Post(() => ApplicationNotificationManager.Manager.ShowErrorWnd(
+            Logger.Log("AudiosurfHandle", $"Service suspended: {reason}");
+            Dispatcher.UIThread.Post(() => ApplicationNotificationManager.Manager.ShowError(
                 "Audiosurf service stopped", reason));
         }
 
         // The logger itself couldn't write to disk (restricted MyDocuments path, log dir deleted while
         // running, etc.) - surfacing this beats losing every subsequent Log() call silently, since
         // Logger is usually the only place an original failure's details are recorded at all.
-        private void OnLoggerReadWriteException(object sender, UnhandledExceptionEventArgs e)
+        private void OnLoggerReadWriteException(Exception exception)
         {
             ApplicationNotificationManager.Manager.ShowWarning("Logging error",
-                $"Could not write to the log file: {(e.ExceptionObject as Exception)?.Message}");
+                $"Could not write to the log file: {exception.Message}");
         }
 
         // Avalonia has no WPF-style DispatcherUnhandledException event to catch UI-thread exceptions
@@ -109,7 +112,7 @@ namespace TweakerUI
                 return;
 
             var formattedMessage = $"{exception.Message}\nStack Trace: {exception.StackTrace}";
-            _logger.Log("Unhandled exception", formattedMessage);
+            Logger.Log("Unhandled exception", formattedMessage);
 
             try
             {

@@ -189,7 +189,7 @@ void handle_tw_ovl_op(std::string_view payload)
     if(op == "SKIN_LIST") {
         std::vector<std::string> names;
         for_each_token(rest, [&names](std::string_view token) {
-            names.push_back(percent_decode(token));
+            names.emplace_back(percent_decode(token));
         });
         tw::ui::overlay_state::set_skin_list(std::move(names));
         return;
@@ -233,8 +233,8 @@ bool handle_copydata(HWND /*hwnd*/, UINT /*msg*/, WPARAM /*wparam*/, LPARAM lpar
     }
 
     const auto* raw = static_cast<const char*>(copydata->lpData);
-    const auto raw_len = static_cast<std::size_t>(copydata->cbData);
-    const auto data_len = raw_len > 0 ? raw_len - 1 : 0; // cbData includes null terminator
+    // cbData includes the null terminator, and the cbData == 0 case was rejected above.
+    const auto data_len = static_cast<std::size_t>(copydata->cbData) - 1;
 
     std::string data;
     data.assign(raw, data_len);

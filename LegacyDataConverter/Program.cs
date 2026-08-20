@@ -37,15 +37,21 @@ namespace LegacyDataConverter
 
             try
             {
+                // Every converter below either completes or throws (a legacy blob that BinaryFormatter
+                // cannot read, a file that cannot be rewritten) - failure reaches the caller as exit
+                // code 1 through the catch, never as a return value.
                 switch (Path.GetExtension(path).ToLowerInvariant())
                 {
                     case ".tasp":
                     case ".askin2":
-                        return ConvertSkin(path) ? 0 : 1;
+                        ConvertSkin(path);
+                        return 0;
                     case ".pltc":
-                        return ConvertPaletteContainer(path) ? 0 : 1;
+                        ConvertPaletteContainer(path);
+                        return 0;
                     case ".palette":
-                        return ConvertSinglePalette(path) ? 0 : 1;
+                        ConvertSinglePalette(path);
+                        return 0;
                     default:
                         Console.WriteLine($"Unrecognized file type: {path}");
                         return 2;
@@ -58,15 +64,14 @@ namespace LegacyDataConverter
             }
         }
 
-        private static bool ConvertSkin(string path)
+        private static void ConvertSkin(string path)
         {
             var skin = Deserialize<AudiosurfSkinExtended>(path);
             SkinWriter.Write(skin, path);
             Console.WriteLine($"Converted skin '{skin.Name}' to the current format.");
-            return true;
         }
 
-        private static bool ConvertPaletteContainer(string path)
+        private static void ConvertPaletteContainer(string path)
         {
             var container = Deserialize<PaletteDynamicLoadContainer>(path);
             var dto = new PaletteContainerDto();
@@ -75,15 +80,13 @@ namespace LegacyDataConverter
 
             File.WriteAllText(path, JsonSerializer.Serialize(dto, JsonOptions), Encoding.UTF8);
             Console.WriteLine($"Converted palette storage with {dto.ColorPalettes.Count} palette(s) to the current format.");
-            return true;
         }
 
-        private static bool ConvertSinglePalette(string path)
+        private static void ConvertSinglePalette(string path)
         {
             var print = Deserialize<ColorPalettePrint>(path);
             File.WriteAllText(path, JsonSerializer.Serialize(ToDto(print), JsonOptions), Encoding.UTF8);
             Console.WriteLine($"Converted palette '{print.Name}' to the current format.");
-            return true;
         }
 
         private static PaletteDto ToDto(ColorPalettePrint print)

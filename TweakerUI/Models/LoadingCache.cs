@@ -19,10 +19,7 @@ namespace TweakerUI.Models
 
         public List<LoadedSkinData> Data { get; private set; }
 
-        private static readonly string _fileName = "load.cache";
-        private static readonly Logger _logger = new Logger();
-        private bool _disposedValue;
-
+        private const string _fileName = "load.cache";
         public bool Serialize(string path)
         {
             try
@@ -42,16 +39,9 @@ namespace TweakerUI.Models
             }
             catch (Exception ex)
             {
-                _logger.Log("LoadingCache", $"Failed to save loading cache to '{path}': {ex}");
+                Logger.Log("LoadingCache", $"Failed to save loading cache to '{path}': {ex}");
                 return false;
             }
-        }
-
-        public static LoadingCache Find(string path)
-        {
-            if (TryFind(path, out LoadingCache cache))
-                return cache;
-            return null;
         }
 
         public static bool TryFind(string path, out LoadingCache cache)
@@ -83,7 +73,7 @@ namespace TweakerUI.Models
                 // This is a local disposable cache, not user data - any read failure (malformed JSON,
                 // a locked/deleted/inaccessible cache dir) is treated as "no cache", not propagated to
                 // crash the caller; SkinChangerViewModel falls back to rebuilding it from source files.
-                _logger.Log("LoadingCache", $"Failed to load loading cache from '{path}': {ex}");
+                Logger.Log("LoadingCache", $"Failed to load loading cache from '{path}': {ex}");
                 return false;
             }
         }
@@ -114,23 +104,13 @@ namespace TweakerUI.Models
             public List<string> ScreenshotsPng { get; set; }
         }
 
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposedValue)
-            {
-                if (disposing)
-                {
-                    Data.ForEach(x => x.Dispose());
-                }
-                Data = null;
-                _disposedValue = true;
-            }
-        }
-
         public void Dispose()
         {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            if (Data == null)
+                return;
+
+            Data.ForEach(entry => entry.Dispose());
+            Data = null;
         }
     }
 }

@@ -265,7 +265,7 @@ namespace TweakerUI.ViewModels
             }
             catch (Exception e)
             {
-                ApplicationNotificationManager.Manager.ShowErrorWnd("Error", $"Error while writing game configuration file: {e.Message}");
+                ApplicationNotificationManager.Manager.ShowError("Error", $"Error while writing game configuration file: {e.Message}");
                 return;
             }
 
@@ -274,7 +274,7 @@ namespace TweakerUI.ViewModels
                 await Task.Run(() => Utils.Cmd($"cd /d \"{Directory.GetParent(SettingsProvider.GameTexturesPath)?.Parent?.FullName}\" && timeout /t 1 && Audiosurf.exe"));
             }
 
-            ApplicationNotificationManager.Manager.ShowSuccessWnd("Done!", "Operation completed!");
+            ApplicationNotificationManager.Manager.ShowSuccess("Done!", "Operation completed!");
         }
 
         [RelayCommand]
@@ -294,7 +294,7 @@ namespace TweakerUI.ViewModels
             }
             catch (Exception e)
             {
-                ApplicationNotificationManager.Manager.ShowErrorWnd("Error", $"Error while reading game configuration: {e.Message}");
+                ApplicationNotificationManager.Manager.ShowError("Error", $"Error while reading game configuration: {e.Message}");
                 return;
             }
 
@@ -321,9 +321,9 @@ namespace TweakerUI.ViewModels
             var palette = BuildWorkingPalette();
             var ok = await Task.Run(() => ColorPalette.Save(palette, folder));
             if (!ok)
-                ApplicationNotificationManager.Manager.ShowErrorWnd("Error", "Error while exporting palette");
+                ApplicationNotificationManager.Manager.ShowError("Error", "Error while exporting palette");
             else
-                ApplicationNotificationManager.Manager.ShowSuccessWnd("Done!", "Operation completed!");
+                ApplicationNotificationManager.Manager.ShowSuccess("Done!", "Operation completed!");
         }
 
         [RelayCommand]
@@ -337,13 +337,13 @@ namespace TweakerUI.ViewModels
             var palette = ColorPalette.Load(file);
             if (palette == null)
             {
-                ApplicationNotificationManager.Manager.ShowErrorWnd("Error", "Could not load the selected palette");
+                ApplicationNotificationManager.Manager.ShowError("Error", "Could not load the selected palette");
                 return;
             }
 
             Palettes.Add(palette);
             PaletteDynamicLoadContainer.Add(palette, PaletteContainerFilename);
-            ApplicationNotificationManager.Manager.ShowInformationWnd("", "Operation completed!");
+            ApplicationNotificationManager.Manager.ShowInformation("", "Operation completed!");
             SelectPalette(palette);
         }
     }

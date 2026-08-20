@@ -446,8 +446,6 @@ namespace TweakerUI.ViewModels
             ReloadButtonUnlocked = true;
         }
 
-        private static readonly Logger _logger = new Logger();
-
         private async Task LoadSkinsCoreAsync(bool rebuildCache, StatusHandle status)
         {
             var skinsRootExists = Directory.Exists(SkinsRootPath);
@@ -456,7 +454,7 @@ namespace TweakerUI.ViewModels
             // AppContext.BaseDirectory in particular pointed at a %TEMP%\.net\... self-extraction folder
             // under Deploy.ps1's single-file publish, which is exactly what this line's own output
             // caught the first time this was diagnosed.
-            _logger.Log("SkinChanger.LoadSkins",
+            Logger.Log("SkinChanger.LoadSkins",
                 $"SkinsRootPath='{SkinsRootPath}' (exists={skinsRootExists}); AppDirectory='{AppDirectory}'; " +
                 $"AppContext.BaseDirectory='{AppContext.BaseDirectory}'; Environment.CurrentDirectory='{Environment.CurrentDirectory}'; " +
                 $"AdditionalSkinsFolderPath='{SettingsProvider.SkinsFolderPath}' (exists={Directory.Exists(SettingsProvider.SkinsFolderPath)})");
@@ -469,7 +467,7 @@ namespace TweakerUI.ViewModels
 
             var files = CollectSkinFiles();
             var cacheDir = AppDirectory;
-            _logger.Log("SkinChanger.LoadSkins", $"Collected {files.Count} skin file(s) from '{SkinsRootPath}' (+ additional folder if configured); cacheDir='{cacheDir}'");
+            Logger.Log("SkinChanger.LoadSkins", $"Collected {files.Count} skin file(s) from '{SkinsRootPath}' (+ additional folder if configured); cacheDir='{cacheDir}'");
 
             if (!rebuildCache && LoadingCache.TryFind(cacheDir, out LoadingCache cache) &&
                 UnorderedSequenceEquals(files, cache.Data.Select(x => x.PathToOriginFile).ToList()))

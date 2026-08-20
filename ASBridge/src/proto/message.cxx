@@ -1,3 +1,5 @@
+#include <format>
+#include <optional>
 #include <sstream>
 #include <string_view>
 #include <utility>
@@ -135,38 +137,32 @@ bool parse_details(std::string_view s, std::vector<std::string>& out)
     }
 }
 
-// Picks the validation model matching the parsed header/msg pair.
-vd::result validate(const asbridge_msg& msg) noexcept
+// Everything the protocol asserts about an already-tokenised message. Returns the reason it is not
+// a valid message, or nothing if it is.
+std::optional<std::string> validation_error(const asbridge_msg& msg)
 {
-    if(msg.header == asbridge_msg_header::client_command) {
-        switch(msg.msg) {
-            case asbridge_msg_type::send:
-                return rules::asbridge_msg_client_command_send_check.check(msg);
-            case asbridge_msg_type::overlay_send:
-                return rules::asbridge_msg_client_command_overlay_send_check.check(msg);
-            default:
-                return rules::asbridge_msg_client_command_send_check.check(msg);
-        }
+    const auto header_name = rules::to_string(msg.header);
+    const auto msg_name = rules::to_string(msg.msg);
+
+    if(header_name.empty() || msg_name.empty()) {
+        return std::format("Unknown header or msg: {}/{}", static_cast<int>(msg.header), static_cast<int>(msg.msg));
     }
 
-    if(msg.header == asbridge_msg_header::server_report) {
-        switch(msg.msg) {
-            case asbridge_msg_type::failed:
-                return rules::asbridge_msg_failed_check.check(msg);
-            case asbridge_msg_type::broadcast_forward:
-                return rules::asbridge_msg_broadcast_forward_check.check(msg);
-            case asbridge_msg_type::overlay_failed:
-                return rules::asbridge_msg_overlay_failed_check.check(msg);
-            case asbridge_msg_type::overlay_forward:
-                return rules::asbridge_msg_overlay_forward_check.check(msg);
-            case asbridge_msg_type::service:
-                return rules::asbridge_msg_service_check.check(msg);
-            default:
-                return rules::asbridge_msg_server_report_check.check(msg);
-        }
+    switch(rules::shape_of(msg.header, msg.msg)) {
+        case rules::message_shape::undefined:
+            return std::format("Invalid header/msg combination: {}/{}", header_name, msg_name);
+
+        case rules::message_shape::details_required:
+            if(msg.details.empty()) {
+                return std::format("details must be non-empty when msg is {}", msg_name);
+            }
+            break;
+
+        case rules::message_shape::details_optional:
+            break;
     }
 
-    return rules::asbridge_msg_full_check.check(msg);
+    return std::nullopt;
 }
 } // namespace
 
@@ -191,8 +187,8 @@ std::expected<as::proto::asbridge_msg, as::proto::asbridge_msg_parse_error> as::
         return std::unexpected(asbridge_msg_parse_error { "Malformed message: details must be double-quoted and whitespace-separated" });
     }
 
-    if(auto validation = validate(msg); !validation.is_valid) {
-        return std::unexpected(asbridge_msg_parse_error { validation.short_format() });
+    if(auto error = validation_error(msg)) {
+        return std::unexpected(asbridge_msg_parse_error { std::move(*error) });
     }
 
     return msg;

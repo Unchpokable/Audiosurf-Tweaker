@@ -8,15 +8,23 @@ namespace TweakerUI.Core.Utils
 {
     public static class Utils
     {
-        public static async void DisposeAndClear(params IDisposable[] disposable)
+        /// <summary>
+        /// Disposes the given objects and, a second later, forces a full collection.
+        ///
+        /// Forcing the GC by hand is normally a smell; here it is deliberate. Everything handed to
+        /// this method owns SkiaSharp bitmaps, whose pixel buffers are unmanaged - the GC sees a
+        /// handful of tiny wrappers and no reason to hurry, so freed skin textures sat on hundreds of
+        /// megabytes for minutes at a time. Delayed and off the calling thread so a collection never
+        /// lands inside the operation that triggered it. Fire-and-forget by design - there is nothing
+        /// for a caller to await or react to.
+        /// </summary>
+        public static void DisposeAndClear(params IDisposable[] disposables)
         {
-            foreach (var d in disposable)
-                d?.Dispose();
+            foreach (var disposable in disposables)
+                disposable?.Dispose();
 
-            await Task.Run(async () =>
+            _ = Task.Delay(1000).ContinueWith(_ =>
             {
-                await Task.Delay(1000);
-                // Ye, i know that manual calling GC.Collct() is a very bad practice, but idk why, in this certain case GC works as shit bag and lefts OVER NINE THOUSANDS unused memory for an undefined long while
                 GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, false, true);
                 GC.WaitForPendingFinalizers();
                 GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, false, true);
@@ -34,30 +42,62 @@ namespace TweakerUI.Core.Utils
                     WindowStyle = ProcessWindowStyle.Hidden,
                 });
             }
-            catch
+            catch (Exception ex)
             {
-                // ignored
+                // Fire-and-forget by design - the caller has nothing to react with - but a silent
+                // failure here was indistinguishable from the command running and doing nothing.
+                Logger.Log("Utils.Cmd", $"'{command}' could not be started: {ex}");
             }
         }
 
         public static void HardClear(string path)
         {
             // Absolute and fast annihilation of any content in specified folder
-            if (Directory.Exists(path))
+            if (!Directory.Exists(path))
+                return;
+
+            try
             {
-                try
+                Directory.GetFiles(path).AsParallel().ForAll(file =>
                 {
-                    Directory.GetFiles(path).AsParallel().ForAll(x =>
+                    try
                     {
-                        try { File.SetAttributes(path, File.GetAttributes(path) & ~FileAttributes.ReadOnly); } catch { }
-                        try { File.Delete(x); } catch { }
-                    });
-                    Directory.GetDirectories(path).AsParallel().ForAll(x =>
+                        // Was clearing the attribute on the *folder* rather than on the file being
+                        // deleted, which is why read-only leftovers survived a HardClear.
+                        File.SetAttributes(file, File.GetAttributes(file) & ~FileAttributes.ReadOnly);
+                    }
+                    catch (Exception ex)
                     {
-                        try { Directory.Delete(x, true); } catch { };
-                    });
-                }
-                catch { }
+                        Logger.Log("Utils.HardClear", $"could not clear the read-only attribute on '{file}': {ex.Message}");
+                    }
+
+                    try
+                    {
+                        File.Delete(file);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log("Utils.HardClear", $"could not delete '{file}': {ex.Message}");
+                    }
+                });
+
+                Directory.GetDirectories(path).AsParallel().ForAll(directory =>
+                {
+                    try
+                    {
+                        Directory.Delete(directory, true);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log("Utils.HardClear", $"could not delete '{directory}': {ex.Message}");
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                // Whatever the enumeration itself threw (the folder going away mid-sweep, an entry
+                // that cannot be read), wrapped by AsParallel().ForAll into an AggregateException.
+                Logger.Log("Utils.HardClear", $"sweep of '{path}' did not complete: {ex}");
             }
         }
     }

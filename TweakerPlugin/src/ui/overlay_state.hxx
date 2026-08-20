@@ -29,6 +29,14 @@ enum class tweak_id : std::uint8_t {
 
 constexpr std::size_t k_tweak_count = 7;
 
+// The enum members double as the indices into every k_tweak_count-sized array in the overlay, so
+// there is nothing to map: tweak_id::unknown is the only value this is not valid for, and every
+// caller rejects it first. A static_assert in overlay_state.cxx keeps that true.
+constexpr std::size_t tweak_index(tweak_id id) noexcept
+{
+    return static_cast<std::size_t>(id);
+}
+
 // Maps a TW_OVL wire token (e.g. "InvisibleRoad") to its tweak_id, or tweak_id::unknown.
 tweak_id resolve_tweak_id(std::string_view wire_name) noexcept;
 
@@ -49,7 +57,7 @@ tweak_id resolve_tweak_id(std::string_view wire_name) noexcept;
 // tweak_id::unknown.
 [[nodiscard]] std::string_view tweak_wire_name(tweak_id id) noexcept;
 
-// All 7 known tweak ids, in the same order as k_tweak_count/tweak_index - convenient for widgets
+// All 7 known tweak ids, in enum order - convenient for widgets
 // that need to iterate every tweak (menu Tweaks tab, pins).
 [[nodiscard]] const std::array<tweak_id, k_tweak_count>& all_tweak_ids() noexcept;
 

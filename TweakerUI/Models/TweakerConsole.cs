@@ -1,7 +1,6 @@
 using System;
 using System.Text;
 using AudiosurfInterface;
-using TweakerUI.Core.Utils;
 
 namespace TweakerUI.Models
 {
@@ -12,7 +11,7 @@ namespace TweakerUI.Models
             _content = new StringBuilder();
             _asHandle = AudiosurfHandle.Instance;
             _asHandle.CommandSent += AppendInfo;
-            _asHandle.MessageResieved += AppendIncomingMessage;
+            _asHandle.MessageReceived += AppendIncomingMessage;
         }
 
         public event EventHandler ContentUpdated;
@@ -21,7 +20,6 @@ namespace TweakerUI.Models
         {
             _content.Clear();
             ContentUpdated?.Invoke(this, EventArgs.Empty);
-            Utils.DisposeAndClear();
         }
 
         public override string ToString() => _content.ToString();

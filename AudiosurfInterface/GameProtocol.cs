@@ -52,7 +52,7 @@ namespace AudiosurfInterface
         internal const string RegisterListenerWindow = "registerlistenerwindow";
 
         // asreport names, as they appear after the "asreport " prefix. Broadcasts reach the managed
-        // side through AudiosurfHandle.MessageResieved with that prefix still on them - asbridge
+        // side through AudiosurfHandle.MessageReceived with that prefix still on them - asbridge
         // forwards the game's WM_COPYDATA payload verbatim - and GameReportListener is the one place
         // that strips it (see the comment there).
         public const string ReportSongComplete = "songcomplete";

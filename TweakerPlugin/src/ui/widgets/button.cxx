@@ -108,7 +108,7 @@ void button::update(const char* label)
     draw->AddRect(r_min, r_max, detail::to_u32(theme::accent_border), k_rounding);
 
     const char* text = label ? label : m_label.c_str();
-    const bool has_text = text != nullptr && text[0] != '\0';
+    const bool has_text = text[0] != '\0';
 
     // Resolved per frame, never cached: an ImTextureID goes stale when the render device is
     // replaced. A missing key resolves to ImTextureID_Invalid and simply contributes nothing.

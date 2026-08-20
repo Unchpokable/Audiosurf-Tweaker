@@ -44,7 +44,7 @@ void list_view::set_items(std::span<const list_item_content> items)
     }
 
     for(std::size_t i = 0; i < m_items.size(); ++i) {
-        m_row_ids.push_back(std::format("row_{}", i));
+        m_row_ids.emplace_back(std::format("row_{}", i));
         m_rows.emplace_back(m_row_ids.back().c_str(), ImVec2 { 0.f, m_row_height });
         m_rows.back().set_content(m_items[i]);
         m_rows.back().set_selected(static_cast<int>(i) == m_selected_index);

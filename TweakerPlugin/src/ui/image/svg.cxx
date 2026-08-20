@@ -199,7 +199,7 @@ ImTextureID image::at(int px) const noexcept
     const ImTextureID tex = doc != nullptr ? rasterize(*doc, px) : ImTextureID_Invalid;
     // Recorded even when the bake failed: a size that can't be produced now can't be produced next
     // frame either, and this is reached from draw code that would otherwise retry forever.
-    s.extra.push_back({ px, tex });
+    s.extra.emplace_back(px, tex);
     return tex;
 }
 

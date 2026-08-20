@@ -1,10 +1,9 @@
 using System;
-using System.Security.Cryptography;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Json;
 using System.IO;
+using System.Linq;
+using System.Security.Cryptography;
+using System.Text.Json;
 
 namespace TweakerCore.FolderChecker
 {
@@ -16,23 +15,19 @@ namespace TweakerCore.FolderChecker
 
         public IList<byte[]> ContainedFilesHashes { get; set; }
 
-        private static readonly string _stdExt = ".hinf";
+        private const string StateFileExtension = ".hinf";
+        private const string StateFileName = "current" + StateFileExtension;
 
         // Used by System.Text.Json when reading a saved cache entry back.
         public FolderHashInfo()
         {
         }
 
-        public FolderHashInfo(string location)
+        public FolderHashInfo(string location, string stateName)
         {
             FolderName = Path.GetDirectoryName(location);
             Location = location;
-
-        }
-
-        public FolderHashInfo(string location, string statneName) : this(location)
-        {
-            StateName = statneName;
+            StateName = stateName;
         }
 
         public bool Equals(FolderHashInfo obj)
@@ -49,92 +44,74 @@ namespace TweakerCore.FolderChecker
             return true;
         }
 
-        public override string ToString()
+        public override bool Equals(object obj)
         {
-            var stringBuilder = new StringBuilder();
-            stringBuilder.Append($"Folder: {FolderName}\n");
-            stringBuilder.Append($"Absolute Path: {Location}\n");
-            stringBuilder.Append("Containment files Checksums:\n");
+            return Equals(obj as FolderHashInfo);
+        }
+
+        // Equals compares hash *contents* and ignores their order, so the hash code has to be
+        // order-independent as well: per-array content hashes XOR-ed together. A null hash list
+        // never compares equal to anything (see Equals above), so its hash code is irrelevant.
+        public override int GetHashCode()
+        {
+            if (ContainedFilesHashes == null)
+                return 0;
+
+            var accumulator = ContainedFilesHashes.Count;
             foreach (var hash in ContainedFilesHashes)
             {
-                stringBuilder.Append($"[{hash}]\n");
+                if (hash == null)
+                    continue;
+
+                var content = new HashCode();
+                content.AddBytes(hash);
+                accumulator ^= content.ToHashCode();
             }
-            return stringBuilder.ToString();
+
+            return accumulator;
         }
 
         public void Save(string path)
         {
-            path = path + @"\current" + _stdExt;
-            File.WriteAllText(path, JsonSerializer.Serialize(this));
+            File.WriteAllText(Path.Combine(path, StateFileName), JsonSerializer.Serialize(this));
         }
 
-        // Local cache only - if a file at this path predates the JSON format (or is otherwise
+        // Local cache only - if the file at this path predates the JSON format (or is otherwise
         // unreadable), it's simply treated as "no saved state" rather than converted; the caller
         // recomputes and overwrites it via Create()/Save().
         public static bool TryFind(string path, out FolderHashInfo folderInfo)
         {
-            var isOk = TryFind(path, _stdExt, out FolderHashInfo result);
-            if (isOk)
-            {
-                folderInfo = result;
-                return true;
-            }
             folderInfo = null;
-            return false;
-        }
 
-        public static bool TryFind(string path, string specificExtension, out FolderHashInfo folderInfo)
-        {
-            folderInfo = Find(path, specificExtension);
+            var stateFile = Path.Combine(path, StateFileName);
+            if (!File.Exists(stateFile))
+                return false;
+
+            try
+            {
+                folderInfo = JsonSerializer.Deserialize<FolderHashInfo>(File.ReadAllText(stateFile));
+            }
+            catch (JsonException)
+            {
+                return false;
+            }
+
             return folderInfo != null;
         }
 
-        public static FolderHashInfo Find(string path)
+        public static FolderHashInfo Create(string path, string stateName = "default")
         {
-            return Find(path, _stdExt);
-        }
-
-        public static FolderHashInfo Find(string path, string specificExtension)
-        {
-            if (!Directory.Exists(path))
-            {
-                return null;
-            }
-            var containedFiles = Directory.EnumerateFiles(path);
-            foreach (var file in containedFiles)
-            {
-                if (Path.GetExtension(file) == specificExtension)
-                {
-                    try
-                    {
-                        return JsonSerializer.Deserialize<FolderHashInfo>(File.ReadAllText(file));
-                    }
-                    catch (JsonException)
-                    {
-                        return null;
-                    }
-                }
-            }
-            return null;
-        }
-
-        public static FolderHashInfo Create(string path)
-        {
-            return Create(path, "default");
-        }
-
-        public static FolderHashInfo Create(string path, string stateName)
-        {
-            var containedFiles = Directory.EnumerateFiles(path);
             var hashes = new List<byte[]>();
 
-            using (var hashProvider = SHA256.Create())
-                foreach (var file in containedFiles)
-                {
-                    if (Path.GetExtension(file) == _stdExt) continue;
-                    using (var stream = File.OpenRead(file))
-                        hashes.Add(hashProvider.ComputeHash(stream));
-                }
+            foreach (var file in Directory.EnumerateFiles(path))
+            {
+                if (Path.GetExtension(file) == StateFileExtension)
+                    continue;
+
+                using (var stream = File.OpenRead(file))
+                    hashes.Add(SHA256.HashData(stream));
+            }
+
             return new FolderHashInfo(path, stateName) { ContainedFilesHashes = hashes };
         }
     }

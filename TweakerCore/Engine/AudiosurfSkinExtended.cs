@@ -1,46 +1,19 @@
-﻿using System;
+using System;
 
 namespace TweakerCore.Engine
 {
-
-    [Serializable]
-    public class AudiosurfSkinExtended : AudiosurfSkin, IDisposable
+    public class AudiosurfSkinExtended : AudiosurfSkin
     {
         public NamedBitmap Cover { get; set; }
-        public string ID => _id.ToString();
 
-        private UID _id;
+        // Written into the archive manifest as its Uid. Assigned on construction so every path that
+        // produces a skin - decompile, "Import from Game", DeepClone - gets a distinct one; nothing
+        // reads it back, so an id from an older manifest is simply replaced on the next write.
+        public string ID { get; private set; } = Guid.NewGuid().ToString();
 
-        public AudiosurfSkinExtended() : base()
+        public AudiosurfSkinExtended()
         {
             Cover = new NamedBitmap();
-            // Reinterpret/Clone/DeepClone all already assign a fresh id on creation - the default
-            // constructor (used by CreateSkinFromFolder and every ReadSkinArchive decompile) was the
-            // only path that left this at its zero default, defeating "Import from Game"/every
-            // decompiled skin's uniqueness.
-            _id = new UID((uint)DateTime.Now.Ticks);
-        }
-
-        public static AudiosurfSkinExtended Reinterpret(AudiosurfSkin source)
-        {
-            var tempSkin = new AudiosurfSkinExtended();
-            tempSkin.Cover = new NamedBitmap();
-            
-            tempSkin.Name = source.Name;
-            tempSkin.SkySpheres = source.SkySpheres;
-            tempSkin.SkySphereSource = source.SkySphereSource;
-            tempSkin.Particles = source.Particles;
-            tempSkin.Cliffs = source.Cliffs;
-            tempSkin.Hits = source.Hits;
-            tempSkin.Tiles = source.Tiles;
-            tempSkin.TilesFlyup = source.TilesFlyup;
-            tempSkin.Rings = source.Rings;
-            tempSkin.Previews = source.Previews;
-
-            var id = new UID((uint)DateTime.Now.Ticks);
-            tempSkin._id = id;
-
-            return tempSkin;
         }
 
         public new AudiosurfSkinExtended DeepClone()
@@ -58,37 +31,16 @@ namespace TweakerCore.Engine
                 Particles = Particles?.DeepClone(),
                 Rings = Rings?.DeepClone(),
                 Previews = Previews?.DeepClone(),
-                Cover = Cover?.DeepClone(),
-                _id = new UID((uint)DateTime.Now.Ticks)
+                Cover = Cover?.DeepClone()
             };
         }
 
-        public new AudiosurfSkinExtended Clone()
+        // Base Dispose never touches Cover - it's a member only this subclass adds.
+        public override void Dispose()
         {
-            return new AudiosurfSkinExtended()
-            {
-                Source = this.Source,
-                Name = this.Name,
-                SkySpheres = this.SkySpheres,
-                Cliffs = this.Cliffs,
-                Hits = this.Hits,
-                Tiles = this.Tiles,
-                TilesFlyup = this.TilesFlyup,
-                Particles = this.Particles,
-                Rings = this.Rings,
-                Previews = this.Previews,
-                Cover = this.Cover,
-                _id = new UID((uint)DateTime.Now.Ticks)
-            };
-        }
-
-        // Base Dispose(bool) never touches Cover - it's a member only this subclass adds.
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-                Cover?.Dispose();
+            Cover?.Dispose();
             Cover = null;
-            base.Dispose(disposing);
+            base.Dispose();
         }
     }
 }

@@ -1,23 +1,15 @@
 using System;
-using System.Linq;
+using System.IO;
 using SkiaSharp;
-using TweakerCore.Utilities;
 
 namespace TweakerCore.Engine
 {
-
     public class NamedBitmap : IDisposable
     {
-        public int Width => source.Width;
-        public int Height => source.Height;
         public string Name;
 
-        public ImageInfo Info => new ImageInfo(format, Name);
-
-        private SKBitmap source;
-        private string format;
-
-        private bool disposedValue;
+        private SKBitmap _source;
+        private SKEncodedImageFormat _format = SKEncodedImageFormat.Png;
 
         private const int JpegEncodeQuality = 95;
 
@@ -27,76 +19,39 @@ namespace TweakerCore.Engine
 
         public NamedBitmap(SKBitmap source)
         {
-            this.source = source;
+            _source = source;
         }
 
         public NamedBitmap(string name, SKBitmap source)
         {
             Name = name;
-            this.source = source;
-            format = ProcessImageFormat(name).ToString();
-        }
-
-        public NamedBitmap(string path, ImageInfo imageInfo)
-        {
-            source = SKBitmap.Decode(path);
-            Name = imageInfo.FileName;
-            format = imageInfo.Format;
-        }
-
-        public NamedBitmap(SKBitmap original, ImageInfo imageInfo)
-        {
-            source = original;
-            Name = imageInfo.FileName;
-            format = imageInfo.Format;
-        }
-
-        public void Apply(Func<SKBitmap, SKBitmap> transform)
-        {
-            source = transform(source);
+            _source = source;
+            _format = GetImageFormat(name);
         }
 
         public NamedBitmap DeepClone()
         {
-            return new NamedBitmap(Name, source.Copy());
-        }
-
-        private SKEncodedImageFormat ProcessImageFormat(string srcFileName)
-        {
-            return GetImageFormatByExtension(srcFileName.Split('.').Last());
+            return new NamedBitmap(Name, _source.Copy());
         }
 
         public void SetImage(SKBitmap source)
         {
-            this.source = source;
+            _source = source;
         }
 
-        public void SetImage(NamedBitmap other)
+        // Skia can't encode BMP; the skin file masks only ever admit .png/.jpg,
+        // so anything else falls back to PNG rather than failing.
+        internal static SKEncodedImageFormat GetImageFormat(string fileName)
         {
-            this.source = other.source;
-            this.Name = other.Name;
-            this.format = other.format;
-        }
-
-        private SKEncodedImageFormat GetImageFormatByExtension(string extension)
-        {
-            switch (extension.ToLowerInvariant())
-            {
-                case "png":
-                    return SKEncodedImageFormat.Png;
-                case "jpg":
-                case "jpeg":
-                    return SKEncodedImageFormat.Jpeg;
-                // Skia can't encode BMP; the skin file masks only ever admit .png/.jpg,
-                // so anything else falls back to PNG rather than failing.
-                default:
-                    return SKEncodedImageFormat.Png;
-            }
+            var extension = Path.GetExtension(fileName).ToLowerInvariant();
+            return extension == ".jpg" || extension == ".jpeg"
+                ? SKEncodedImageFormat.Jpeg
+                : SKEncodedImageFormat.Png;
         }
 
         public static explicit operator SKBitmap(NamedBitmap obj)
         {
-            return obj.source;
+            return obj._source;
         }
 
         public static implicit operator NamedBitmap(SKBitmap obj)
@@ -106,39 +61,26 @@ namespace TweakerCore.Engine
 
         public void Save(string filepath)
         {
-            if (source == null)
+            if (_source == null)
                 return;
 
             // Name can come straight from a decompiled skin's manifest.json, which is untrusted
             // (skins are shared user files) - strip any directory component so a crafted manifest
             // entry like "..\..\Startup\x.png" can't write outside the target folder.
-            var safeName = System.IO.Path.GetFileName(Name);
+            var safeName = Path.GetFileName(Name);
 
-            using (var image = SKImage.FromBitmap(source))
-            using (var data = image.Encode(GetImageFormatByExtension(format.ToLower()), JpegEncodeQuality))
-            using (var filestream = System.IO.File.Create(System.IO.Path.Combine(filepath, safeName)))
+            using (var image = SKImage.FromBitmap(_source))
+            using (var data = image.Encode(_format, JpegEncodeQuality))
+            using (var filestream = File.Create(Path.Combine(filepath, safeName)))
             {
                 data.SaveTo(filestream);
             }
         }
 
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    source?.Dispose();
-                }
-
-                disposedValue = true;
-            }
-        }
-
         public void Dispose()
         {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            _source?.Dispose();
+            _source = null;
         }
     }
 }

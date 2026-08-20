@@ -1,32 +1,18 @@
-﻿namespace TweakerCore.FolderChecker
+namespace TweakerCore.FolderChecker
 {
-    public class EnvironmentChecker
+    public static class EnvironmentChecker
     {
-        public static bool CheckEnvironment(FolderHashInfo info)
-        {
-            var actualInfo = FolderHashInfo.Create(info.Location);
-            return info.Equals(actualInfo);
-        }
-
+        /// <summary>
+        /// Whether the folder still holds exactly the files it held when its state was last saved.
+        /// False also when there is no saved state at all - the caller treats "unknown" the same way
+        /// it treats "drifted": it can't vouch for the folder either way.
+        /// </summary>
         public static bool CheckEnvironment(string path, out FolderHashInfo currentState)
         {
-            currentState = null;
-            if (!FolderHashInfo.TryFind(path, out FolderHashInfo savedInfo))
+            if (!FolderHashInfo.TryFind(path, out currentState))
                 return false;
-            var actualInfo = FolderHashInfo.Create(path);
-            currentState = savedInfo;
-            return savedInfo.Equals(actualInfo);
-        }
 
-        public static void SaveState(string path)
-        {
-            SaveState(path, "default");
-        }
-
-        public static void SaveState(string path, string stateName)
-        {
-            var state = FolderHashInfo.Create(path, stateName);
-            state.Save(path);
+            return currentState.Equals(FolderHashInfo.Create(path));
         }
     }
 }

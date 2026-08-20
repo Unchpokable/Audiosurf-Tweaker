@@ -16,9 +16,11 @@
 // per frame to pull a snapshot into its own cache.
 namespace tw::ui::qp::state
 {
+// Field order is size-descending on purpose: tag_id is a uint8_t enum, so declaring it before the
+// int padded this out to 12 bytes for no reason. Tracks live in vectors of these.
 struct tag_state {
-    tag_id id = tag_id::unknown;
     int parameter = 0;
+    tag_id id = tag_id::unknown;
     bool has_parameter = false;
 };
 

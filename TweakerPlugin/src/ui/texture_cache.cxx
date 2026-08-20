@@ -69,11 +69,13 @@ ImTextureID get_or_load(std::string_view resource_key)
         return ImTextureID_Invalid;
     }
 
+    const auto& bytes = res->bytes;
+
     int width = 0;
     int height = 0;
     int components = 0;
-    stbi_uc* pixels = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(res->bytes.data()),
-        static_cast<int>(res->bytes.size()),
+    stbi_uc* pixels = stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(bytes.data()),
+        static_cast<int>(bytes.size()),
         &width,
         &height,
         &components,

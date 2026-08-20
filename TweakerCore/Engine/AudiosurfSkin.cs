@@ -1,14 +1,10 @@
-﻿using System;
+using System;
 using TweakerCore.Utilities;
 
 namespace TweakerCore.Engine
 {
-
-    [Serializable]
     public class AudiosurfSkin : IDisposable
     {
-        private bool _disposedValue;
-
         public string Source { get; set; }
         public string Name { get; set; }
         public ImageGroup SkySpheres { get; set; }
@@ -31,22 +27,6 @@ namespace TweakerCore.Engine
             Rings = new ImageGroup();
             Tiles = new NamedBitmap();
             TilesFlyup = new NamedBitmap();
-        }
-
-        public AudiosurfSkin Clone()
-        {
-            return new AudiosurfSkin()
-            {
-                Source = this.Source,
-                Name = this.Name,
-                SkySpheres = this.SkySpheres,
-                Cliffs = this.Cliffs,
-                Hits = this.Hits,
-                Tiles = this.Tiles,
-                TilesFlyup = this.TilesFlyup,
-                Particles = this.Particles,
-                Rings = this.Rings
-            };
         }
 
         public AudiosurfSkin DeepClone()
@@ -72,41 +52,29 @@ namespace TweakerCore.Engine
             return Name;
         }
 
-        protected virtual void Dispose(bool disposing)
+        // Every member is null-checked rather than only SkySphereSource: ReadSkinArchive builds
+        // instances field by field, so any of them can legitimately be unset.
+        public virtual void Dispose()
         {
-            if (!_disposedValue)
-            {
-                if (disposing)
-                {
-                    SkySpheres.Dispose();
-                    // Unlike the other groups, SkySphereSource isn't set up by the default constructor
-                    // (only ever populated by Reinterpret/ReadSkinArchive), so it can legitimately be null.
-                    SkySphereSource?.Dispose();
-                    Cliffs.Dispose();
-                    Hits.Dispose();
-                    Tiles.Dispose();
-                    TilesFlyup.Dispose();
-                    Rings.Dispose();
-                    Previews.Dispose();
-                    Particles.Dispose();
-                }
-                SkySpheres = null;
-                SkySphereSource = null;
-                Cliffs = null;
-                Tiles = null;
-                TilesFlyup = null;
-                Rings = null;
-                Hits = null;
-                Previews = null;
-                Particles = null;
-                _disposedValue = true;
-            }
-        }
+            SkySpheres?.Dispose();
+            SkySphereSource?.Dispose();
+            Cliffs?.Dispose();
+            Hits?.Dispose();
+            Tiles?.Dispose();
+            TilesFlyup?.Dispose();
+            Rings?.Dispose();
+            Previews?.Dispose();
+            Particles?.Dispose();
 
-        public void Dispose()
-        {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            SkySpheres = null;
+            SkySphereSource = null;
+            Cliffs = null;
+            Tiles = null;
+            TilesFlyup = null;
+            Rings = null;
+            Hits = null;
+            Previews = null;
+            Particles = null;
         }
     }
 }

@@ -83,7 +83,6 @@ namespace TweakerUI.Models
         public override bool Equals(object obj) => obj is ColorPalette other && Equals(other);
         public override int GetHashCode() => Id.GetHashCode();
 
-        private static readonly Logger _logger = new Logger();
         private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions { WriteIndented = true };
 
         public static bool Save(ColorPalette obj, string path)
@@ -97,7 +96,7 @@ namespace TweakerUI.Models
             }
             catch (Exception ex)
             {
-                _logger.Log("ColorPalette", $"Failed to save palette to '{fullPath}': {ex}");
+                Logger.Log("ColorPalette", $"Failed to save palette to '{fullPath}': {ex}");
                 return false;
             }
         }
@@ -115,7 +114,7 @@ namespace TweakerUI.Models
             }
             catch (Exception ex)
             {
-                _logger.Log("ColorPalette", $"Failed to load palette from '{path}': {ex}");
+                Logger.Log("ColorPalette", $"Failed to load palette from '{path}': {ex}");
                 return null;
             }
         }

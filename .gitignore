@@ -369,3 +369,9 @@ InternalOverlayRenderer/imgui/
 /InternalOverlayRenderer/imgui/imstb_truetype.h
 /InternalOverlayRenderer/detours.h
 /InternalOverlayRenderer/detours.lib
+
+# PVS-Studio: analyzer reports and the intermodular dependency cache it drops next to sources
+PVS-Report/
+.PVS-Studio/
+*.PVS-Studio.dfo
+*.PVS-Studio.i

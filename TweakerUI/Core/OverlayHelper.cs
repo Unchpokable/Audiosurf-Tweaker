@@ -42,7 +42,6 @@ namespace TweakerUI.Core
         // injection. Long enough to cover a WM_COPYDATA round trip through asbridge on a loaded machine.
         private static readonly TimeSpan ProbeTimeout = TimeSpan.FromMilliseconds(1500);
 
-        private static readonly Logger _logger = new Logger();
         private static readonly object _lock = new object();
 
         private static bool _initialized;
@@ -169,13 +168,13 @@ namespace TweakerUI.Core
 
             if (!File.Exists(pluginPath))
             {
-                _logger.Log("OverlayHelper", $"TweakerPlugin.dll not found at '{pluginPath}' - overlay not injected.");
+                Logger.Log("OverlayHelper", $"TweakerPlugin.dll not found at '{pluginPath}' - overlay not injected.");
                 return;
             }
 
             if (!File.Exists(injectorPath))
             {
-                _logger.Log("OverlayHelper", $"InjectHelper.exe not found at '{injectorPath}' - overlay not injected.");
+                Logger.Log("OverlayHelper", $"InjectHelper.exe not found at '{injectorPath}' - overlay not injected.");
                 return;
             }
 
@@ -204,7 +203,7 @@ namespace TweakerUI.Core
             // second set of hooks on top of it.
             if (await BeginHandshakeAsync(ProbeTimeout))
             {
-                _logger.Log("OverlayHelper",
+                Logger.Log("OverlayHelper",
                     "An undetected but responsive overlay plugin answered the probe - adopted it instead of injecting.");
                 return;
             }
@@ -308,7 +307,7 @@ namespace TweakerUI.Core
                 "The Audiosurf service has been stopped, because a plugin in that state leaves the rest of the game " +
                 "process suspect too. Restart Audiosurf, then press Reset next to the connection status.";
 
-            _logger.Log("OverlayHelper", reason);
+            Logger.Log("OverlayHelper", reason);
 
             // SuspendService kills the bridge subprocess and joins its pump thread - up to ~2s of
             // blocking, and this continuation runs on the UI thread (same reason MainWindowViewModel's
@@ -337,7 +336,7 @@ namespace TweakerUI.Core
                 {
                     var stderr = await stderrTask;
                     var stdout = await stdoutTask;
-                    _logger.Log("OverlayHelper",
+                    Logger.Log("OverlayHelper",
                         $"InjectHelper.exe exited with code {process.ExitCode}. stderr: {stderr} stdout: {stdout}");
                     return false;
                 }
@@ -346,7 +345,7 @@ namespace TweakerUI.Core
             }
             catch (Exception ex)
             {
-                _logger.Log("OverlayHelper", $"Failed to start InjectHelper.exe: {ex}");
+                Logger.Log("OverlayHelper", $"Failed to start InjectHelper.exe: {ex}");
                 return false;
             }
         }
@@ -367,7 +366,7 @@ namespace TweakerUI.Core
             var completed = await Task.WhenAny(tcs.Task, Task.Delay(timeout));
             if (completed != tcs.Task)
             {
-                _logger.Log("OverlayHelper", $"No HANDSHAKE_ACK from TweakerPlugin within {timeout.TotalMilliseconds:F0} ms.");
+                Logger.Log("OverlayHelper", $"No HANDSHAKE_ACK from TweakerPlugin within {timeout.TotalMilliseconds:F0} ms.");
                 lock (_lock)
                     _handshakeAckTcs = null;
                 return false;

@@ -26,32 +26,18 @@ namespace TweakerUI.Models
             PathToOriginFile = pathToOrigin;
         }
 
-        private bool _disposedValue;
-
         public string Name { get; set; }
         public SKBitmap[] Screenshots { get; set; }
         public string PathToOriginFile { get; set; }
 
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposedValue)
-            {
-                if (disposing)
-                {
-                    // A corrupted/truncated load.cache entry can decode to a null SKBitmap (SKBitmap.Decode
-                    // returns null rather than throwing on bad data) - skip those instead of NRE-ing here.
-                    foreach (var bmp in Screenshots ?? Enumerable.Empty<SKBitmap>())
-                        bmp?.Dispose();
-                }
-                Screenshots = null;
-                _disposedValue = true;
-            }
-        }
-
         public void Dispose()
         {
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            // A corrupted/truncated load.cache entry can decode to a null SKBitmap (SKBitmap.Decode
+            // returns null rather than throwing on bad data) - skip those instead of NRE-ing here.
+            foreach (var bitmap in Screenshots ?? Enumerable.Empty<SKBitmap>())
+                bitmap?.Dispose();
+
+            Screenshots = null;
         }
     }
 }
