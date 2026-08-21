@@ -79,11 +79,10 @@ void number_input::update()
             m_value = clamped;
             m_changed = true;
         }
-        else if(clamped != edited) {
-            // Typed something out of range: the value did not move, but the field is still showing
-            // what was typed and has to be redrawn from the clamped value on the next frame.
-            m_value = clamped;
-        }
+        // No else: typing something out of range that clamps back to the value already held leaves
+        // nothing to publish and nothing to write (the assignment that used to sit here could only
+        // ever store m_value into itself). The field redraws itself regardless - `edited` is
+        // re-seeded from m_value at the top of the next frame.
     }
 
     ImGui::PopStyleVar();

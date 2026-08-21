@@ -691,9 +691,11 @@ bool create_device_wgl(HWND hwnd, wgl_window_data* data)
 
     const int pf = ::ChoosePixelFormat(hdc, &pfd);
     if(pf == 0) {
+        ::ReleaseDC(hwnd, hdc);
         return false;
     }
     if(::SetPixelFormat(hdc, pf, &pfd) == FALSE) {
+        ::ReleaseDC(hwnd, hdc);
         return false;
     }
     ::ReleaseDC(hwnd, hdc);
@@ -702,7 +704,8 @@ bool create_device_wgl(HWND hwnd, wgl_window_data* data)
     if(!g_hRC) {
         g_hRC = wglCreateContext(data->hdc);
     }
-    return wglMakeCurrent(data->hdc, g_hRC) == TRUE;
+    // != FALSE, not == TRUE: BOOL is an int, and "nonzero" is all a Win32 BOOL ever promises.
+    return wglMakeCurrent(data->hdc, g_hRC) != FALSE;
 }
 
 void cleanup_device_wgl(HWND hwnd, wgl_window_data* data)
@@ -840,6 +843,7 @@ int main(int, char**)
             &font_cfg);
         if(loaded == nullptr) {
             std::fprintf(stderr, "smoke_test: AddFontFromMemoryTTF failed\n");
+            ImGui::DestroyContext();
             cleanup_device_wgl(hwnd, &g_main_window);
             wglDeleteContext(g_hRC);
             ::DestroyWindow(hwnd);

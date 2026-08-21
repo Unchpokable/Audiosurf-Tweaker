@@ -1,8 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-
-  <PropertyGroup>
-    <RootNamespace>TweakerScriptsInterpreter</RootNamespace>
-    <AssemblyName>TweakerScriptsInterpreter</AssemblyName>
-  </PropertyGroup>
-
-</Project>

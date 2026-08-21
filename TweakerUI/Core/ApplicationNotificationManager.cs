@@ -42,20 +42,14 @@ namespace TweakerUI.Core
         public void ShowWarning(string title, string message) => Show(title, message, NotificationType.Warning);
         public void ShowInformation(string title, string message) => Show(title, message, NotificationType.Information);
 
-        public void ShowErrorWnd(string title, string message) => Show(title, message, NotificationType.Error);
-        public void ShowSuccessWnd(string title, string message) => Show(title, message, NotificationType.Success);
-        public void ShowWarningWnd(string title, string message) => Show(title, message, NotificationType.Warning);
-        public void ShowInformationWnd(string title, string message) => Show(title, message, NotificationType.Information);
-
-        // Replaces the old blocking WPF ShowDialog() - Avalonia's Window.ShowDialog<T>() runs on
-        // Dispatcher.UIThread rather than a nested message loop, so a synchronous wrapper here would
-        // deadlock the UI thread waiting on itself. Call sites become "await"-ed as each module is ported.
+        // Awaited, not blocking: Avalonia's Window.ShowDialog<T>() runs on Dispatcher.UIThread rather
+        // than a nested message loop, so a synchronous wrapper would deadlock the UI thread on itself.
         public Task<bool> AskForAction(string title, string message)
         {
-            return AskForActionCore(title, message);
+            return AskForActionAsync(title, message);
         }
 
-        private static async Task<bool> AskForActionCore(string title, string message)
+        private static async Task<bool> AskForActionAsync(string title, string message)
         {
             var result = await TweakerDialogWindow.ShowAsync(AppShell.MainWindow, message, title, TweakerDialogButtons.OKCancel);
             return result == TweakerDialogResult.OK;

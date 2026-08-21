@@ -266,7 +266,7 @@ bool tab_view::begin_view(int tab_index)
     }
 
     const bool is_selected = tab_index == m_selected_tab;
-    const bool is_previous = tab_index == m_previous_tab && m_previous_tab >= 0;
+    const bool is_previous = tab_index == m_previous_tab;
     if(!is_selected && !is_previous) {
         return false;
     }

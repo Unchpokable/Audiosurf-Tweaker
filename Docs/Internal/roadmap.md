@@ -107,7 +107,7 @@ QP-оверрайдов происходят сразу, иначе времен
 
 ### Как проверять дальше
 
-Вкладка Tweaker → карточка Logs (`TweakerConsole` подписан на `AudiosurfHandle.MessageResieved`) показывает
+Вкладка Tweaker → карточка Logs (`TweakerConsole` подписан на `AudiosurfHandle.MessageReceived`) показывает
 входящие репорты как есть.
 
 ---

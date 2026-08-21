@@ -148,8 +148,11 @@ void popup_menu::poll_dismiss()
 
 void popup_menu::paint_chrome(ImVec2 frame_min, ImVec2 frame_max) const
 {
-    float rounding = m_rounding;
-    rounding = std::clamp(rounding, 0.f, std::min(frame_max.x - frame_min.x, frame_max.y - frame_min.y) * 0.5f);
+    // std::max on the upper bound first: a collapsed or inverted frame (max <= min, which the
+    // caller does not rule out) would otherwise hand std::clamp a hi below its lo - undefined
+    // behaviour, not a zero rounding.
+    const float max_rounding = std::max(0.f, std::min(frame_max.x - frame_min.x, frame_max.y - frame_min.y) * 0.5f);
+    const float rounding = std::clamp(m_rounding, 0.f, max_rounding);
 
     ImDrawList* draw = ImGui::GetWindowDrawList();
 

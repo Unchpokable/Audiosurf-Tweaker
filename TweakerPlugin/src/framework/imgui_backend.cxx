@@ -183,11 +183,13 @@ bool load_font()
         return false;
     }
 
+    const auto& bytes = font->bytes;
+
     ImGuiIO& io = ImGui::GetIO();
     ImFontConfig font_cfg;
     font_cfg.FontDataOwnedByAtlas = false; // bytes live in PE LockResource memory - never freed by ImGui
     return io.Fonts->AddFontFromMemoryTTF(
-               const_cast<void*>(static_cast<const void*>(font->bytes.data())), static_cast<int>(font->bytes.size()), 18.0f, &font_cfg)
+               const_cast<void*>(static_cast<const void*>(bytes.data())), static_cast<int>(bytes.size()), 18.0f, &font_cfg)
            != nullptr;
 }
 } // namespace

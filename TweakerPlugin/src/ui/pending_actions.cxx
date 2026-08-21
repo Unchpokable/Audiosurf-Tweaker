@@ -12,6 +12,7 @@
 namespace
 {
 using tw::ui::overlay_state::tweak_id;
+using tw::ui::overlay_state::tweak_index;
 using my_clock_t = std::chrono::steady_clock;
 
 // Matches OverlayHelper.cs's own HandshakeTimeout on the host - a reasonable "something's wrong,
@@ -21,9 +22,11 @@ constexpr auto k_confirm_timeout = std::chrono::milliseconds { 5000 };
 // Bigger than tweak confirm timeout because it takes a some time to install skin
 constexpr auto k_skin_confirm_timeout = std::chrono::milliseconds { 10000 };
 
+// Deadline first in both: it is the only wide member, and leading with the bools padded these out
+// by a full word each (24 bytes instead of 16 for pending_tweak, one per tracked tweak).
 struct pending_tweak {
-    bool desired_enabled = false;
     my_clock_t::time_point deadline {};
+    bool desired_enabled = false;
     bool active = false;
 };
 
@@ -37,31 +40,6 @@ tw::ui::pending_actions::send_fn g_send = nullptr;
 
 std::array<pending_tweak, tw::ui::overlay_state::k_tweak_count> g_pending_tweaks {};
 pending_skin g_pending_skin {};
-
-// Mirrors overlay_state.cxx's own private tweak_index() - duplicated rather than exposed because
-// it's an internal packing detail of that module, not part of its public contract. Both switches
-// are driven by the same fixed 7-tweak enum and only ever change together.
-std::size_t tweak_index(tweak_id id) noexcept
-{
-    switch(id) {
-        case tweak_id::invisible_road:
-            return 0;
-        case tweak_id::hidden_song_title:
-            return 1;
-        case tweak_id::sidewinder_camera:
-            return 2;
-        case tweak_id::banking_camera:
-            return 3;
-        case tweak_id::freeride_no_blocks:
-            return 4;
-        case tweak_id::freeride_blocks_caterpillars:
-            return 5;
-        case tweak_id::freeride_auto_advance_disable:
-            return 6;
-        default:
-            return 0;
-    }
-}
 
 using tw::ui::wire::percent_encode;
 } // namespace

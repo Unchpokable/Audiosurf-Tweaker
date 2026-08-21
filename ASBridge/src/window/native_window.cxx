@@ -46,7 +46,7 @@ namespace as::wnd
 void initialize(as::raw_sys_const_string title)
 {
     vd::require<asbridge_native_window_failure>(!window.valid(), "as::wnd::initialize: window titled already initialized");
-    vd::require<asbridge_native_window_failure>(std::wcslen(title) > 0, "as::wnd::initialize: title cannot be empty");
+    vd::require<asbridge_native_window_failure>(title != nullptr && title[0] != L'\0', "as::wnd::initialize: title cannot be empty");
 
     window = wnd_handle::create_new(nullptr, title, 0, 0);
 

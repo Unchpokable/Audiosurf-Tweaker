@@ -32,17 +32,21 @@ namespace TweakerUI.Core
         /// </summary>
         internal static bool TryAcquire()
         {
+            // Owned by the local until it is known to be ours to keep: the finally below then disposes
+            // exactly the handle nobody took, whether that is the normal "somebody else holds it" exit
+            // or a throw between the two.
+            Mutex candidate = null;
             try
             {
+                candidate = new Mutex(true, MutexName, out var createdNew);
+                if (!createdNew)
+                    return false;
+
                 // Held in a static field on purpose: a collected Mutex would release the guard while
                 // the app is still running.
-                _mutex = new Mutex(true, MutexName, out var createdNew);
-                if (createdNew)
-                    return true;
-
-                _mutex.Dispose();
-                _mutex = null;
-                return false;
+                _mutex = candidate;
+                candidate = null;
+                return true;
             }
             catch (Exception ex) when (ex is UnauthorizedAccessException || ex is System.IO.IOException)
             {
@@ -51,6 +55,10 @@ namespace TweakerUI.Core
                 // rather than starting a second instance behind the guard's back.
                 _mutex = null;
                 return false;
+            }
+            finally
+            {
+                candidate?.Dispose();
             }
         }
 

@@ -10,10 +10,8 @@ using TweakerUI.Core;
 
 namespace TweakerUI.ViewModels
 {
-    public partial class MainWindowViewModel : ViewModelBase
+    public partial class MainWindowViewModel : ViewModelBase, IDisposable
     {
-        private static readonly Logger _logger = new Logger();
-
         public MainWindowViewModel()
         {
             // Mirrors the donor MainViewModel's constructor order exactly: config has to be loaded into
@@ -80,6 +78,17 @@ namespace TweakerUI.ViewModels
         [RelayCommand]
         private Task ResetBridge() => Task.Run(() => _asHandle.ReinitializeWndProcMessageService());
 
+        /// <summary>
+        /// Application-exit teardown, driven from App's IClassicDesktopStyleApplicationLifetime.Exit.
+        /// Only the Quick Player tab owns anything worth releasing deterministically (playback,
+        /// overlay bridge, cover bitmaps); the rest of the tabs are pure view state.
+        /// </summary>
+        public void Dispose()
+        {
+            _asHandle.StateChanged -= OnAudiosurfStateChanged;
+            QuickPlayerVM.Dispose();
+        }
+
         private void OnAudiosurfStateChanged(object sender, EventArgs e)
         {
             OnPropertyChanged(nameof(AudiosurfStatusMessage));
@@ -98,8 +107,8 @@ namespace TweakerUI.ViewModels
             // the underlying exception was), making exactly this class of bug (config silently missing
             // under some publish mode) unreachable without a debugger. See SkinChangerViewModel's
             // LoadSkinsCoreAsync logging for the same reasoning applied to the Skins folder lookup.
-            _logger.Log("ConfigurationManager", exception.ToString());
-            Dispatcher.UIThread.Post(() => ApplicationNotificationManager.Manager.ShowErrorWnd(
+            Logger.Log("ConfigurationManager", exception.ToString());
+            Dispatcher.UIThread.Post(() => ApplicationNotificationManager.Manager.ShowError(
                 "Settings initialization error",
                 "Could not detect the Audiosurf installation. Check the Settings tab, set the game textures path manually, then restart Audiosurf Tweaker."),
                 DispatcherPriority.Loaded);

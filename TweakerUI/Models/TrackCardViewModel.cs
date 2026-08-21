@@ -25,10 +25,9 @@ namespace TweakerUI.Models
     /// asks the owning QuickPlayerViewModel to persist the playlist - same "rebuild the whole set
     /// rather than track incremental deltas" simplicity used elsewhere in this app.
     /// </summary>
-    public partial class TrackCardViewModel : ObservableObject
+    public partial class TrackCardViewModel : ObservableObject, IDisposable
     {
         private static readonly LocalFileCoverArtProvider _coverProvider = new();
-
         public TrackCardViewModel(PlaylistEntry entry, QuickPlayerViewModel owner)
         {
             Entry = entry;
@@ -229,11 +228,14 @@ namespace TweakerUI.Models
             {
                 var bitmap = await Task.Run(() => DecodeCover(path));
                 if (bitmap != null)
-                    Dispatcher.UIThread.Post(() => CoverBitmap = bitmap);
+                    Dispatcher.UIThread.Post(() => AttachCover(bitmap));
             }
-            catch
+            catch (Exception ex)
             {
-                // No usable cover file - the view falls back to its placeholder icon.
+                // The view falls back to its placeholder icon either way; this is only ever reached
+                // by a cover that exists and still cannot be read (truncated file, unsupported
+                // encoding), which is worth a line in the log rather than a silent blank tile.
+                Logger.Log("TrackCard", $"cover '{path}' could not be decoded: {ex.Message}");
             }
         }
 
@@ -258,5 +260,45 @@ namespace TweakerUI.Models
             using var stream = File.OpenRead(path);
             return Bitmap.DecodeToWidth(stream, CoverDisplaySize * 3, BitmapInterpolationMode.HighQuality);
         }
+
+        /// <summary>
+        /// Publishes a freshly decoded cover on the UI thread, releasing whatever it replaces. The
+        /// decode is asynchronous, so the card can already be gone by the time it lands (playlist
+        /// switched, track removed) - in that case the new bitmap is dropped straight away rather
+        /// than resurrecting a disposed card.
+        /// </summary>
+        private void AttachCover(Bitmap bitmap)
+        {
+            if (_disposed)
+            {
+                bitmap.Dispose();
+                return;
+            }
+
+            var previous = CoverBitmap;
+            CoverBitmap = bitmap;
+            previous?.Dispose();
+        }
+
+        /// <summary>
+        /// Releases the decoded cover. Called by <see cref="QuickPlayerViewModel"/> when the card
+        /// leaves the queue: the bitmap is Skia-backed unmanaged memory that would otherwise sit
+        /// there until a finalizer pass gets around to it.
+        /// </summary>
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+
+            // Through the generated property, not the backing field (MVVMTK0034): a view still bound
+            // to it has to see the null before the bitmap goes away.
+            var bitmap = CoverBitmap;
+            CoverBitmap = null;
+            bitmap?.Dispose();
+        }
+
+        private bool _disposed;
     }
 }

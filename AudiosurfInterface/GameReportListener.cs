@@ -4,7 +4,7 @@ using System.Globalization;
 namespace AudiosurfInterface
 {
     /// <summary>
-    /// Typed view over AudiosurfHandle.MessageResieved's report strings ("asreport songcomplete
+    /// Typed view over AudiosurfHandle.MessageReceived's report strings ("asreport songcomplete
     /// 142798", "asreport nowplayingartistname nine inch nails") - strips the "asreport " prefix,
     /// splits on the first space and raises a strongly-typed event per report kind, so callers don't
     /// each hand-parse the same prefixes. The three "nowplaying..." reports always arrive as three
@@ -22,7 +22,7 @@ namespace AudiosurfInterface
     {
         public GameReportListener()
         {
-            AudiosurfHandle.Instance.MessageResieved += OnMessageResieved;
+            AudiosurfHandle.Instance.MessageReceived += OnMessageReceived;
         }
 
         public event Action<int> SongCompleted;
@@ -34,10 +34,10 @@ namespace AudiosurfInterface
 
         public void Dispose()
         {
-            AudiosurfHandle.Instance.MessageResieved -= OnMessageResieved;
+            AudiosurfHandle.Instance.MessageReceived -= OnMessageReceived;
         }
 
-        private void OnMessageResieved(object sender, string content)
+        private void OnMessageReceived(object sender, string content)
         {
             ProcessReport(content);
         }

@@ -26,8 +26,7 @@ namespace AudiosurfInterface
             // touched from the UI) so subscribers keep seeing events on the thread they always did.
             _syncContext = SynchronizationContext.Current;
 
-            var caption = "AsMsgHandler_" + Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Substring(0, 5);
-            _connection = new AsBridgeConnection(caption);
+            _connection = new AsBridgeConnection(NewListenerCaption());
             _connection.ReportReceived += OnReportReceived;
             _connection.ConnectionLost += OnBridgeConnectionLost;
             _connection.Diagnostic += OnConnectionDiagnostic;
@@ -36,10 +35,9 @@ namespace AudiosurfInterface
 
         public event EventHandler StateChanged;
         public event EventHandler Registered;
-        public event MessageEventHandler MessageResieved;
+        public event MessageEventHandler MessageReceived;
         public event MessageEventHandler OverlayMessageReceived;
         public event EventHandler<CommandInfo> CommandSent;
-        public event EventHandler MessageServiceInitialized;
         public event Action<AsBridgeDiagnostic> Diagnostic;
 
         // Fired once the registration watchdog exhausts every recovery step (see RegistrationStage)
@@ -101,6 +99,11 @@ namespace AudiosurfInterface
 
         public static AudiosurfHandle Instance => _lazyInstance.Value;
 
+        // Every connection gets its own listener window caption: a leftover bridge from a previous
+        // session must not be able to answer for this one.
+        private static string NewListenerCaption() =>
+            "AsMsgHandler_" + Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Substring(0, 5);
+
         /// <summary>
         /// Tears down and recreates the bridge subprocess + pipe. Historically this recreated the
         /// WndProc listener window; the semantic - "reset the whole IPC channel" - is unchanged.
@@ -109,9 +112,7 @@ namespace AudiosurfInterface
         {
             lock (_lockObject)
             {
-                CancelRegistrationWatchdogLocked();
-                _registrationStage = RegistrationStage.Idle;
-                _registrationGivenUp = false;
+                ResetRegistrationLocked();
 
                 // Resetting out of a suspension is the one case where the fresh bridge deserves its
                 // own quickstart-or-normal guess: there is no unanswered attempt behind it (the whole
@@ -146,10 +147,7 @@ namespace AudiosurfInterface
                     return;
 
                 IsSuspended = true;
-                CancelRegistrationWatchdogLocked();
-                _registrationStage = RegistrationStage.Idle;
-                _registrationGivenUp = false;
-                _forceNormalRegistrationOnNextWindow = false;
+                ResetRegistrationLocked();
 
                 IsValid = false;
                 GamePID = 0;
@@ -189,8 +187,7 @@ namespace AudiosurfInterface
                 // Build and start the replacement fully before touching the field: if construction
                 // or Start() throws, _connection must still be left pointing at a live object
                 // (the old one) rather than a disposed/half-wired one.
-                var caption = "AsMsgHandler_" + Convert.ToBase64String(Guid.NewGuid().ToByteArray()).Substring(0, 5);
-                var next = new AsBridgeConnection(caption, suppressAutoRegister);
+                var next = new AsBridgeConnection(NewListenerCaption(), suppressAutoRegister);
                 next.ReportReceived += OnReportReceived;
                 next.ConnectionLost += OnBridgeConnectionLost;
                 next.Diagnostic += OnConnectionDiagnostic;
@@ -206,7 +203,6 @@ namespace AudiosurfInterface
 
                 _forceNormalRegistrationOnNextWindow = suppressAutoRegister;
 
-                MessageServiceInitialized?.Invoke(this, EventArgs.Empty);
                 return true;
             }
             catch (Exception ex)
@@ -214,22 +210,6 @@ namespace AudiosurfInterface
                 Diagnostic?.Invoke(new AsBridgeDiagnostic(AsBridgeDiagnosticLevel.Error, "Reinitialize", ex.Message, ex));
                 return false;
             }
-        }
-
-        // The bridge subprocess owns game discovery and reconnects on its own 30ms timer; these
-        // remain as no-ops so the calling code (auto-handling toggles, manual reconnect button)
-        // keeps compiling and behaving sensibly.
-        public void StopAutoHandling()
-        {
-        }
-
-        public void StartAutoHandling()
-        {
-        }
-
-        public bool TryConnect()
-        {
-            return IsValid;
         }
 
         private static readonly string ReloadTexturesCommand = GameProtocol.Command(GameProtocol.ReloadTextures);
@@ -355,12 +335,9 @@ namespace AudiosurfInterface
                     GamePID = 0;
                     IsValid = false;
                     _currentState = ASHandleState.NotConnected;
-                    CancelRegistrationWatchdogLocked();
-                    _registrationStage = RegistrationStage.Idle;
-                    _forceNormalRegistrationOnNextWindow = false;
                     // The game process that never acked is gone - a freshly (re)started game deserves
                     // a clean shot at registration rather than staying latched in the broken state.
-                    _registrationGivenUp = false;
+                    ResetRegistrationLocked();
                     StateChanged?.Invoke(this, EventArgs.Empty);
                     break;
             }
@@ -373,17 +350,14 @@ namespace AudiosurfInterface
 
             if (content.Contains("successfullyregistered") || content.Contains("successfullyquickstartregistered"))
             {
-                CancelRegistrationWatchdogLocked();
-                _registrationStage = RegistrationStage.Idle;
-                _forceNormalRegistrationOnNextWindow = false;
-                _registrationGivenUp = false;
+                ResetRegistrationLocked();
 
                 _currentState = ASHandleState.Connected;
                 StateChanged?.Invoke(this, EventArgs.Empty);
                 OnRegistered();
             }
 
-            MessageResieved?.Invoke(this, content);
+            MessageReceived?.Invoke(this, content);
         }
 
         private void HandleOverlayBroadcast(string content)
@@ -400,10 +374,7 @@ namespace AudiosurfInterface
             {
                 lock (_lockObject)
                 {
-                    CancelRegistrationWatchdogLocked();
-                    _registrationStage = RegistrationStage.Idle;
-                    _forceNormalRegistrationOnNextWindow = false;
-                    _registrationGivenUp = false;
+                    ResetRegistrationLocked();
 
                     if (_currentState == ASHandleState.NotConnected)
                         return;
@@ -449,6 +420,16 @@ namespace AudiosurfInterface
         {
             _registrationTimeoutTimer?.Dispose();
             _registrationTimeoutTimer = null;
+        }
+
+        // Abandons whatever registration cycle is in flight and forgets everything learned from it,
+        // so the next WINDOW_FOUND starts a clean one. Must be called with _lockObject held.
+        private void ResetRegistrationLocked()
+        {
+            CancelRegistrationWatchdogLocked();
+            _registrationStage = RegistrationStage.Idle;
+            _forceNormalRegistrationOnNextWindow = false;
+            _registrationGivenUp = false;
         }
 
         private void SendPlainRegisterListenerWindowLocked()
@@ -512,16 +493,20 @@ namespace AudiosurfInterface
                     case RegistrationStage.WaitingAfterRestart:
                         GiveUpRegistrationLocked();
                         break;
+
+                    case RegistrationStage.Idle:
+                        // No registration cycle is in flight: a watchdog is only ever armed together
+                        // with a non-Idle stage, so landing here means a timer callback outlived its
+                        // CancelRegistrationWatchdogLocked. Nothing to retry, nothing to give up on.
+                        break;
                 }
             }
         }
 
         private void GiveUpRegistrationLocked()
         {
+            ResetRegistrationLocked();
             _registrationGivenUp = true;
-            _registrationStage = RegistrationStage.Idle;
-            _forceNormalRegistrationOnNextWindow = false;
-            CancelRegistrationWatchdogLocked();
 
             IsValid = false;
             _currentState = ASHandleState.CommunicationBroken;

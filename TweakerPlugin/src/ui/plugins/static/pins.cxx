@@ -58,12 +58,12 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
             const bool quick_player = tw::ui::overlay_state::is_tweak_quick_player(snapshot, id);
             std::string label = quick_player ? "QP: " : "";
             label += tw::ui::overlay_state::tweak_display_name(id);
-            labels.push_back({ std::move(label), tw::ui::overlay_state::tweak_icon_key(id), quick_player });
+            labels.emplace_back(std::move(label), tw::ui::overlay_state::tweak_icon_key(id), quick_player);
         }
     }
     const std::string_view skin_name = tw::ui::pending_actions::skin_display_name(snapshot);
     if(!skin_name.empty()) {
-        labels.push_back({ "Skin: " + std::string(skin_name), tw::ui::overlay_state::skin_icon_key(), false });
+        labels.emplace_back("Skin: " + std::string(skin_name), tw::ui::overlay_state::skin_icon_key(), false);
     }
 
     if(labels.empty()) {

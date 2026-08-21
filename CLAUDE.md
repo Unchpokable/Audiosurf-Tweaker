@@ -19,7 +19,7 @@ Audiosurf Tweaker — сторонний инструмент для игры Au
 
 ## Устройство решения
 
-12 проектов в `Audiosurf SkinChanger.sln`, три платформенных слоя снизу вверх:
+9 проектов в `Audiosurf SkinChanger.sln`, три платформенных слоя снизу вверх:
 
 - **`TweakerCore`** — модельный/файловый слой без UI-зависимостей: формат скинов (zip +
   `manifest.json` + PNG), цветовые пресеты, `FolderChecker` (дрейф папки текстур), кэш превью.
@@ -48,11 +48,7 @@ Audiosurf Tweaker — сторонний инструмент для игры Au
   раздел ниже). Собирается аналогично `ASBridge`, но **best-effort**: неудачная сборка (нет
   DirectX/Quest3D SDK, ImGui или Detours submodule) не ломает сборку остального решения.
 - **`Installer`** — COM-интероп для ярлыков, собирается только полным MSBuild (не `dotnet build`).
-- Тесты (NUnit): `TweakerCore.Tests`, `QuickPlayerCore.Tests`, `AudiosurfInterface.Tests`,
-  `TweakerScriptsInterpreter.Tests` (актуальность последнего под вопросом).
-- **`SkinChangerRestyle`** (старый WPF-фронтенд) и **`TweakerScriptsInterpreter`** — донор/референс,
-  держатся в `.sln` до ручной проверки паритета `TweakerUI` с реальной игрой, затем будут удалены.
-  Не развивать эти два проекта дальше, если явно не попросили.
+- Тесты (NUnit): `TweakerCore.Tests`, `QuickPlayerCore.Tests`, `AudiosurfInterface.Tests`.
 
 **Почему так** (детали и обоснование — `Docs/Internal/overview.md`): игра — внешний процесс, а не
 библиотека, поэтому весь Win32/`WM_COPYDATA` изолирован в `asbridge`, а не встроен P/Invoke-ом в

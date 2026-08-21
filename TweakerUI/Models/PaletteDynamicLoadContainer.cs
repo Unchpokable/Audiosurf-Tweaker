@@ -19,7 +19,6 @@ namespace TweakerUI.Models
 
         public List<ColorPalettePrint> ColorPalettes { get; set; }
 
-        private static readonly Logger _logger = new Logger();
         private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions { WriteIndented = true };
 
         // Matches by Id, not by value - two untouched "New Palette" defaults have identical
@@ -66,7 +65,7 @@ namespace TweakerUI.Models
             }
             catch (Exception ex)
             {
-                _logger.Log("PaletteDynamicLoadContainer", $"Failed to load palette storage from '{path}': {ex}");
+                Logger.Log("PaletteDynamicLoadContainer", $"Failed to load palette storage from '{path}': {ex}");
                 return null;
             }
         }
@@ -81,7 +80,7 @@ namespace TweakerUI.Models
             }
             catch (Exception ex)
             {
-                _logger.Log("PaletteDynamicLoadContainer", $"Failed to save palette storage to '{fullPath}': {ex}");
+                Logger.Log("PaletteDynamicLoadContainer", $"Failed to save palette storage to '{fullPath}': {ex}");
                 return false;
             }
         }

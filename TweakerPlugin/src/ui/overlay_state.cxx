@@ -9,13 +9,38 @@ namespace
 {
 using tw::ui::overlay_state::tweak_id;
 
-constexpr std::string_view k_tweak_invisible_road = "InvisibleRoad";
-constexpr std::string_view k_tweak_hidden_song_title = "HiddenSongTitle";
-constexpr std::string_view k_tweak_sidewinder_camera = "SidewinderCamera";
-constexpr std::string_view k_tweak_banking_camera = "BankingCamera";
-constexpr std::string_view k_tweak_freeride_no_blocks = "FreerideNoBlocks";
-constexpr std::string_view k_tweak_freeride_blocks_caterpillars = "FreerideBlocksCaterpillars";
-constexpr std::string_view k_tweak_freeride_auto_advance_disable = "FreerideAutoAdvanceDisable";
+// Everything that varies per tweak, in enum order. One table instead of the five parallel switches
+// this used to be (wire name, display name, icon, id list, index) - adding a tweak is a line here
+// plus an enum member, and the two cannot silently disagree because of the static_assert below.
+struct tweak_info {
+    tweak_id id;
+    std::string_view wire_name;
+    std::string_view display_name;
+    std::string_view icon_key;
+};
+
+constexpr std::array<tweak_info, tw::ui::overlay_state::k_tweak_count> k_tweaks { {
+    { tweak_id::invisible_road, "InvisibleRoad", "Invisible road", "icons/tweak_invisible_road.svg" },
+    { tweak_id::hidden_song_title, "HiddenSongTitle", "Hidden song title", "icons/tweak_hidden_song_title.svg" },
+    { tweak_id::sidewinder_camera, "SidewinderCamera", "Sidewinder camera", "icons/tweak_sidewinder_camera.svg" },
+    { tweak_id::banking_camera, "BankingCamera", "Banking camera", "icons/tweak_banking_camera.svg" },
+    { tweak_id::freeride_no_blocks, "FreerideNoBlocks", "Freeride: no blocks", "icons/tweak_freeride_no_blocks.svg" },
+    { tweak_id::freeride_blocks_caterpillars, "FreerideBlocksCaterpillars", "Freeride: block caterpillars",
+        "icons/tweak_freeride_blocks_caterpillars.svg" },
+    { tweak_id::freeride_auto_advance_disable, "FreerideAutoAdvanceDisable", "Freeride: disable auto-advance",
+        "icons/tweak_freeride_auto_advance_disable.svg" },
+} };
+
+// tweak_index() is a plain cast only as long as the table is in enum order; if it ever isn't, every
+// lookup below silently returns the wrong tweak.
+static_assert([] {
+    for(std::size_t i = 0; i < k_tweaks.size(); ++i) {
+        if(static_cast<std::size_t>(k_tweaks[i].id) != i) {
+            return false;
+        }
+    }
+    return true;
+}(), "k_tweaks must be in tweak_id order");
 
 // Single critical section guarding every field below, plus g_generation. The writer (IPC thread)
 // takes a normal blocking lock; refresh() (UI thread, once per frame) only ever takes a
@@ -27,60 +52,16 @@ std::array<std::uint8_t, tw::ui::overlay_state::k_tweak_count> g_tweak_enabled {
 std::array<std::uint8_t, tw::ui::overlay_state::k_tweak_count> g_tweak_quick_player {};
 std::vector<std::string> g_skin_names;
 std::string g_current_skin_name;
-
-std::size_t tweak_index(tweak_id id) noexcept
-{
-    switch(id) {
-        case tweak_id::invisible_road:
-            return 0;
-        case tweak_id::hidden_song_title:
-            return 1;
-        case tweak_id::sidewinder_camera:
-            return 2;
-        case tweak_id::banking_camera:
-            return 3;
-        case tweak_id::freeride_no_blocks:
-            return 4;
-        case tweak_id::freeride_blocks_caterpillars:
-            return 5;
-        case tweak_id::freeride_auto_advance_disable:
-            return 6;
-        default:
-            return 0;
-    }
-}
 } // namespace
 
 namespace tw::ui::overlay_state
 {
 tweak_id resolve_tweak_id(std::string_view wire_name) noexcept
 {
-    if(wire_name == k_tweak_invisible_road) {
-        return tweak_id::invisible_road;
-    }
-
-    if(wire_name == k_tweak_hidden_song_title) {
-        return tweak_id::hidden_song_title;
-    }
-
-    if(wire_name == k_tweak_sidewinder_camera) {
-        return tweak_id::sidewinder_camera;
-    }
-
-    if(wire_name == k_tweak_banking_camera) {
-        return tweak_id::banking_camera;
-    }
-
-    if(wire_name == k_tweak_freeride_no_blocks) {
-        return tweak_id::freeride_no_blocks;
-    }
-
-    if(wire_name == k_tweak_freeride_blocks_caterpillars) {
-        return tweak_id::freeride_blocks_caterpillars;
-    }
-
-    if(wire_name == k_tweak_freeride_auto_advance_disable) {
-        return tweak_id::freeride_auto_advance_disable;
+    for(const auto& tweak : k_tweaks) {
+        if(tweak.wire_name == wire_name) {
+            return tweak.id;
+        }
     }
 
     return tweak_id::unknown;
@@ -88,46 +69,12 @@ tweak_id resolve_tweak_id(std::string_view wire_name) noexcept
 
 std::string_view tweak_display_name(tweak_id id) noexcept
 {
-    switch(id) {
-        case tweak_id::invisible_road:
-            return "Invisible road";
-        case tweak_id::hidden_song_title:
-            return "Hidden song title";
-        case tweak_id::sidewinder_camera:
-            return "Sidewinder camera";
-        case tweak_id::banking_camera:
-            return "Banking camera";
-        case tweak_id::freeride_no_blocks:
-            return "Freeride: no blocks";
-        case tweak_id::freeride_blocks_caterpillars:
-            return "Freeride: block caterpillars";
-        case tweak_id::freeride_auto_advance_disable:
-            return "Freeride: disable auto-advance";
-        default:
-            return {};
-    }
+    return id == tweak_id::unknown ? std::string_view {} : k_tweaks[tweak_index(id)].display_name;
 }
 
 std::string_view tweak_icon_key(tweak_id id) noexcept
 {
-    switch(id) {
-        case tweak_id::invisible_road:
-            return "icons/tweak_invisible_road.svg";
-        case tweak_id::hidden_song_title:
-            return "icons/tweak_hidden_song_title.svg";
-        case tweak_id::sidewinder_camera:
-            return "icons/tweak_sidewinder_camera.svg";
-        case tweak_id::banking_camera:
-            return "icons/tweak_banking_camera.svg";
-        case tweak_id::freeride_no_blocks:
-            return "icons/tweak_freeride_no_blocks.svg";
-        case tweak_id::freeride_blocks_caterpillars:
-            return "icons/tweak_freeride_blocks_caterpillars.svg";
-        case tweak_id::freeride_auto_advance_disable:
-            return "icons/tweak_freeride_auto_advance_disable.svg";
-        default:
-            return {};
-    }
+    return id == tweak_id::unknown ? std::string_view {} : k_tweaks[tweak_index(id)].icon_key;
 }
 
 std::string_view skin_icon_key() noexcept
@@ -137,37 +84,18 @@ std::string_view skin_icon_key() noexcept
 
 std::string_view tweak_wire_name(tweak_id id) noexcept
 {
-    switch(id) {
-        case tweak_id::invisible_road:
-            return k_tweak_invisible_road;
-        case tweak_id::hidden_song_title:
-            return k_tweak_hidden_song_title;
-        case tweak_id::sidewinder_camera:
-            return k_tweak_sidewinder_camera;
-        case tweak_id::banking_camera:
-            return k_tweak_banking_camera;
-        case tweak_id::freeride_no_blocks:
-            return k_tweak_freeride_no_blocks;
-        case tweak_id::freeride_blocks_caterpillars:
-            return k_tweak_freeride_blocks_caterpillars;
-        case tweak_id::freeride_auto_advance_disable:
-            return k_tweak_freeride_auto_advance_disable;
-        default:
-            return {};
-    }
+    return id == tweak_id::unknown ? std::string_view {} : k_tweaks[tweak_index(id)].wire_name;
 }
 
 const std::array<tweak_id, k_tweak_count>& all_tweak_ids() noexcept
 {
-    static constexpr std::array<tweak_id, k_tweak_count> k_ids {
-        tweak_id::invisible_road,
-        tweak_id::hidden_song_title,
-        tweak_id::sidewinder_camera,
-        tweak_id::banking_camera,
-        tweak_id::freeride_no_blocks,
-        tweak_id::freeride_blocks_caterpillars,
-        tweak_id::freeride_auto_advance_disable,
-    };
+    static constexpr auto k_ids = [] {
+        std::array<tweak_id, k_tweak_count> ids {};
+        for(std::size_t i = 0; i < k_tweaks.size(); ++i) {
+            ids[i] = k_tweaks[i].id;
+        }
+        return ids;
+    }();
     return k_ids;
 }
 

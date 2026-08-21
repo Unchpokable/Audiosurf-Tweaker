@@ -231,7 +231,7 @@ void draw_skins_tab(const tw::ui::overlay_state::cache& snapshot)
         std::vector<list_item_content> items;
         items.reserve(snapshot.skin_names.size());
         for(const auto& name : snapshot.skin_names) {
-            items.push_back(list_item_content { .text = name });
+            items.emplace_back(name);
         }
         g_skins_list.set_items(items);
         g_last_skin_names = snapshot.skin_names;

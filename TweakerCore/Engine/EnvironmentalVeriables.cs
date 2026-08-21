@@ -1,24 +1,13 @@
-﻿namespace TweakerCore
+namespace TweakerCore
 {
     public static class EnvironmentalVeriables
     {
-        #region Editable Variables
-        public static string TempSkinName { get; set; }
-        #endregion
-
-        #region Readonly Variables
-        //internal static string gamePath = "";
-        //internal static string skinsFolderPath = "None";
-        public static readonly string CliffImagesMask = "cliff";
-        public static readonly string HitImageMask = "hit";
-        public static readonly string ParticlesImageMask = "particles";
-        public static readonly string RingsImageMask = "ring";
-        public static readonly string SkysphereImagesMask = "skysphere";
-        public static readonly string TileFlyupImageMask = "tileflyup.png";
-        public static readonly string TilesImageNameMask = "tiles.png";
-        public static readonly bool DCSWarningsAllowed = true;
-        public static readonly string LegacySkinExtention = ".askin2";
-        public static readonly string ActualSkinExtention = ".tasp";
-        #endregion
+        public const string CliffImagesMask = "cliff";
+        public const string HitImageMask = "hit";
+        public const string ParticlesImageMask = "particles";
+        public const string RingsImageMask = "ring";
+        public const string SkysphereImagesMask = "skysphere";
+        public const string LegacySkinExtention = ".askin2";
+        public const string ActualSkinExtention = ".tasp";
     }
 }

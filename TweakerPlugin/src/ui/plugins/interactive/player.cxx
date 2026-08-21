@@ -240,9 +240,9 @@ void ensure_widgets_ready()
     // "No override" first, then the roster - the extra row is why this cannot just index
     // all_characters() directly.
     std::vector<list_item_content> character_items;
-    character_items.push_back(list_item_content { .text = "No override" });
+    character_items.emplace_back("No override");
     for(const auto& character : qp::all_characters()) {
-        character_items.push_back(list_item_content { .text = std::string(character.display_name) });
+        character_items.emplace_back(std::string(character.display_name));
     }
     g_context_characters.set_items(character_items);
 
@@ -260,7 +260,7 @@ std::vector<std::string> build_badges(const state::track& entry)
     }
 
     for(const state::tag_state& tag : entry.tags) {
-        badges.push_back(qp::format_tag(tag.id, tag.parameter, tag.has_parameter));
+        badges.emplace_back(qp::format_tag(tag.id, tag.parameter, tag.has_parameter));
     }
 
     for(const tw::ui::overlay_state::tweak_id mod : entry.mods) {
@@ -291,11 +291,9 @@ void sync_playlists(const state::cache& snapshot)
         // name for the one line they shared, and that line is already short enough to be truncating
         // real playlist names (Fuckups/playlist_name_too_long.png). Same split the desktop sidebar
         // uses (QPPlaylistName over QPPlaylistCount).
-        items.push_back(list_item_content {
-            .text = playlist.name,
-            .subtext = std::to_string(playlist.track_count) + (playlist.track_count == 1 ? " track" : " tracks"),
-        });
-        g_playlist_ids.push_back(playlist.playlist_id);
+        items.emplace_back(playlist.name,
+            std::to_string(playlist.track_count) + (playlist.track_count == 1 ? " track" : " tracks"));
+        g_playlist_ids.emplace_back(playlist.playlist_id);
     }
 
     g_playlists.set_items(items);
@@ -313,7 +311,7 @@ void sync_rows(const state::cache& snapshot)
     const state::track_list& tracks = state::tracks_of(snapshot);
     g_rows.reserve(tracks.size());
     for(const state::track& entry : tracks) {
-        g_rows.push_back(row_view { .track = &entry, .badges = build_badges(entry) });
+        g_rows.emplace_back(&entry, build_badges(entry));
     }
 
     // Heights depend on the badges that were just rebuilt, so the cached layout is stale by
@@ -379,7 +377,7 @@ void layout_rows(float content_w)
                     x = text_x;
                 }
 
-                row.badge_layout.push_back(badge_placement { .x = x, .width = w, .line = line });
+                row.badge_layout.emplace_back(x, w, line);
                 x += w + k_badge_gap;
             }
 
@@ -790,8 +788,6 @@ void draw_character_row(const state::cache& snapshot)
 
 void draw_transport_buttons(const state::cache& snapshot)
 {
-    const std::string_view playlist_id = acting_playlist_id(snapshot);
-
     // What is playing right now, as the host last reported it - the baseline a next/prev request is
     // confirmed against (see request_transport).
     const std::string_view playing_id = snapshot.playing_entry_id;
@@ -808,6 +804,7 @@ void draw_transport_buttons(const state::cache& snapshot)
         // the top, which is what the desktop's own Play does (SelectedTrackCard ?? first).
         const int index = g_selected_track >= 0 ? g_selected_track : 0;
         if(index < static_cast<int>(g_rows.size())) {
+            const std::string_view playlist_id = acting_playlist_id(snapshot);
             qp::pending::request_play(playlist_id, g_rows[static_cast<std::size_t>(index)].track->entry_id);
         }
     }
@@ -1045,9 +1042,10 @@ void draw(const tw::ui::qp::state::cache& snapshot)
         }
     }
 
-    const ImVec2 header_pos = ImGui::GetCursorScreenPos();
     const float header_w = ImGui::GetContentRegionAvail().x;
     if(!open_name.empty()) {
+        // Sampled here rather than above the branch: the cursor does not move until the Dummy below.
+        const ImVec2 header_pos = ImGui::GetCursorScreenPos();
         detail::add_text_ellipsis(ImGui::GetWindowDrawList(),
             header_pos,
             header_pos.x + header_w,

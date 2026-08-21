@@ -41,6 +41,18 @@ namespace TweakerUI.Models
                    && Red == other.Red;
         }
 
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as ColorPalettePrint);
+        }
+
+        // Mirrors Equals exactly: Id is deliberately left out of both - two prints with the same
+        // name and the same five colors are the same palette regardless of which file they came from.
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Name, Purple, Blue, Green, Yellow, Red);
+        }
+
         // Only plain sRGB bytes are kept - the WPF original also carried scRGB (linear) float
         // components, but those were never read back from the JSON, only recomputed by WPF's own
         // Color struct at access time. Avalonia.Media.Color has no scRGB representation, and the

@@ -6,17 +6,14 @@ using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.IO;
-using System.Linq;
 using Settings = TweakerUI.Core.SettingsProvider;
 
 namespace TweakerUI.Core
 {
 
-    internal delegate void ExternExceptionHandler(Exception innerException);
-
     internal static class ConfigurationManager
     {
-        internal static event ExternExceptionHandler InitializationFaultCallback;
+        internal static event Action<Exception> InitializationFaultCallback;
 
         // OpenExeConfiguration(path) looks for "<path>.config". AppDomain.CurrentDomain.FriendlyName
         // was "audiosurftweaker.exe" on .NET Framework (matching the shipped audiosurftweaker.exe.config),
@@ -35,32 +32,44 @@ namespace TweakerUI.Core
         // via the self-healing path below (EnsureDefaultKeysExist) if it isn't there yet.
         private static string ExePath => Environment.ProcessPath;
 
-        // Mirrors the <appSettings> keys shipped in App.config. Read by EnsureDefaultKeysExist below -
-        // OpenExeConfiguration on a missing/incomplete config file returns a non-null but empty
-        // AppSettings section (confirmed by direct test), so Settings["FirstRun"].Value threw a
-        // NullReferenceException that SetUpDefaultSettings' own try/catch swallowed *before* it ever
-        // reached cfg.Save() - meaning a missing config file could never self-heal, it would just fail
-        // the same way on every single launch. This keeps that failure mode from being silent/permanent
-        // regardless of why the file's missing or incomplete (packaging step, manually deleted key, a
-        // setting added after a user's config was already on disk, ...).
-        private static readonly (string Key, string Default)[] DefaultAppSettings =
+        private const string FirstRunKey = "FirstRun";
+
+        // The single source of truth for every <appSettings> key: its default and how it maps onto
+        // SettingsProvider in both directions. Three parallel lists of the same keys used to live here
+        // (defaults, read, write) - a key added to one and forgotten in another silently stopped
+        // persisting, with nothing to point at why.
+        //
+        // The defaults exist because OpenExeConfiguration on a missing/incomplete config file returns a
+        // non-null but empty AppSettings section (confirmed by direct test), so Settings[key].Value threw
+        // a NullReferenceException that SetUpDefaultSettings' own try/catch swallowed *before* it ever
+        // reached cfg.Save() - meaning a missing config file could never self-heal, it would just fail the
+        // same way on every launch. EnsureDefaultKeysExist closes that regardless of why a key is missing
+        // (packaging step, manual edit, a setting added after a user's config was already on disk, ...).
+        private static readonly SettingBinding[] Bindings =
         {
-            ("FirstRun", "true"),
-            ("TexturesPath", "None"),
-            ("AddSkinsPath", "None"),
-            ("HotReload", "true"),
-            ("DCSActive", "true"),
-            ("SafeInstall", "false"),
-            ("UseFastPreview", "false"),
-            ("WatcherEnabled", "false"),
-            ("WatcherTempFile", "Storage/temp.tasp"),
-            ("WatcherShouldStoreTextures", "false"),
-            ("WatcherTempFileOverrided", "false"),
-            ("UWPNotificationsAllowed", "false"),
-            ("UWPNotificationSilent", "true"),
-            ("DarkTheme", "false"),
-            ("EnableInGameOverlay", "false"),
+            Bind("TexturesPath", "None", () => Settings.GameTexturesPath, v => Settings.GameTexturesPath = v),
+            Bind("AddSkinsPath", "None", () => Settings.SkinsFolderPath, v => Settings.SkinsFolderPath = v),
+            Bind("HotReload", true, () => Settings.HotReload, v => Settings.HotReload = v),
+            Bind("DCSActive", true, () => Settings.ControlSystemActive, v => Settings.ControlSystemActive = v),
+            Bind("SafeInstall", false, () => Settings.SafeInstall, v => Settings.SafeInstall = v),
+            Bind("UseFastPreview", false, () => Settings.UseFastPreview, v => Settings.UseFastPreview = v),
+            Bind("WatcherEnabled", false, () => Settings.WatcherEnabled, v => Settings.WatcherEnabled = v),
+            Bind("WatcherTempFile", "Storage/temp.tasp", () => Settings.WatcherTempFile, v => Settings.WatcherTempFile = v),
+            Bind("WatcherShouldStoreTextures", false, () => Settings.WatcherShouldStoreTextures, v => Settings.WatcherShouldStoreTextures = v),
+            Bind("WatcherTempFileOverrided", false, () => Settings.WatcherTempFileOverrided, v => Settings.WatcherTempFileOverrided = v),
+            Bind("UWPNotificationsAllowed", false, () => Settings.IsUWPNotificationsAllowed, v => Settings.IsUWPNotificationsAllowed = v),
+            Bind("UWPNotificationSilent", true, () => Settings.IsUWPNotificationSilent, v => Settings.IsUWPNotificationSilent = v),
+            Bind("DarkTheme", false, () => Settings.IsDarkTheme, v => Settings.IsDarkTheme = v),
+            Bind("EnableInGameOverlay", false, () => Settings.EnableInGameOverlay, v => Settings.EnableInGameOverlay = v),
         };
+
+        private sealed record SettingBinding(string Key, string Default, Func<string> Read, Action<string> Write);
+
+        private static SettingBinding Bind(string key, string defaultValue, Func<string> read, Action<string> write) =>
+            new SettingBinding(key, defaultValue, read, write);
+
+        private static SettingBinding Bind(string key, bool defaultValue, Func<bool> read, Action<bool> write) =>
+            new SettingBinding(key, defaultValue ? "true" : "false", () => read().ToString(), value => write(bool.Parse(value)));
 
         public static void SetUpDefaultSettings()
         {
@@ -76,10 +85,10 @@ namespace TweakerUI.Core
 
                 EnsureDefaultKeysExist(cfg);
 
-                if (!bool.Parse(cfg.AppSettings.Settings["FirstRun"].Value) && Directory.Exists(cfg.AppSettings.Settings["TexturesPath"].Value))
+                if (!bool.Parse(cfg.AppSettings.Settings[FirstRunKey].Value) && Directory.Exists(cfg.AppSettings.Settings["TexturesPath"].Value))
                     return;
 
-                cfg.AppSettings.Settings["FirstRun"].Value = bool.FalseString;
+                cfg.AppSettings.Settings[FirstRunKey].Value = bool.FalseString;
                 cfg.Save();
 
                 var gameInstallPath = GetAudiosurfBaseDirectory();
@@ -105,14 +114,19 @@ namespace TweakerUI.Core
         private static void EnsureDefaultKeysExist(Configuration cfg)
         {
             var addedAnyKey = false;
-            foreach (var (key, defaultValue) in DefaultAppSettings)
+
+            void EnsureKey(string key, string defaultValue)
             {
                 if (cfg.AppSettings.Settings[key] != null)
-                    continue;
+                    return;
 
                 cfg.AppSettings.Settings.Add(key, defaultValue);
                 addedAnyKey = true;
             }
+
+            EnsureKey(FirstRunKey, "true");
+            foreach (var binding in Bindings)
+                EnsureKey(binding.Key, binding.Default);
 
             if (addedAnyKey)
                 cfg.Save();
@@ -126,22 +140,9 @@ namespace TweakerUI.Core
                 // the implicit resolution mirrors the same FriendlyName-based lookup that's broken on modern .NET
                 // (see ExePath comment above), so it misses the real config file the same way.
                 var settings = System.Configuration.ConfigurationManager.OpenExeConfiguration(ExePath).AppSettings.Settings;
-                string Get(string key) => settings[key]?.Value;
 
-                Settings.GameTexturesPath = Get("TexturesPath");
-                Settings.SkinsFolderPath = Get("AddSkinsPath");
-                Settings.ControlSystemActive = bool.Parse(Get("DCSActive"));
-                Settings.HotReload = bool.Parse(Get("HotReload"));
-                Settings.SafeInstall = bool.Parse(Get("SafeInstall"));
-                Settings.WatcherTempFile = Get("WatcherTempFile");
-                Settings.WatcherShouldStoreTextures = bool.Parse(Get("WatcherShouldStoreTextures"));
-                Settings.WatcherTempFileOverrided = bool.Parse(Get("WatcherTempFileOverrided"));
-                Settings.WatcherEnabled = bool.Parse(Get("WatcherEnabled"));
-                Settings.UseFastPreview = bool.Parse(Get("UseFastPreview"));
-                Settings.IsUWPNotificationsAllowed = bool.Parse(Get("UWPNotificationsAllowed"));
-                Settings.IsUWPNotificationSilent = bool.Parse(Get("UWPNotificationSilent"));
-                Settings.IsDarkTheme = bool.Parse(Get("DarkTheme"));
-                Settings.EnableInGameOverlay = bool.Parse(Get("EnableInGameOverlay"));
+                foreach (var binding in Bindings)
+                    binding.Write(settings[binding.Key]?.Value);
             }
             catch (Exception e)
             {
@@ -153,46 +154,16 @@ namespace TweakerUI.Core
         {
             try
             {
-                Configuration cfg = System.Configuration.ConfigurationManager.OpenExeConfiguration(ExePath);
-                cfg.AppSettings.Settings["TexturesPath"].Value = Settings.GameTexturesPath;
-                cfg.AppSettings.Settings["AddSkinsPath"].Value = Settings.SkinsFolderPath;
-                cfg.AppSettings.Settings["HotReload"].Value = Settings.HotReload.ToString();
-                cfg.AppSettings.Settings["DCSActive"].Value = Settings.ControlSystemActive.ToString();
-                cfg.AppSettings.Settings["SafeInstall"].Value = Settings.SafeInstall.ToString();
-                cfg.AppSettings.Settings["WatcherTempFile"].Value = Settings.WatcherTempFile;
-                cfg.AppSettings.Settings["WatcherShouldStoreTextures"].Value = Settings.WatcherShouldStoreTextures.ToString();
-                cfg.AppSettings.Settings["WatcherTempFileOverrided"].Value = Settings.WatcherTempFileOverrided.ToString();
-                cfg.AppSettings.Settings["WatcherEnabled"].Value = Settings.WatcherEnabled.ToString();
-                cfg.AppSettings.Settings["UseFastPreview"].Value = Settings.UseFastPreview.ToString();
-                cfg.AppSettings.Settings["UWPNotificationsAllowed"].Value = Settings.IsUWPNotificationsAllowed.ToString();
-                cfg.AppSettings.Settings["UWPNotificationSilent"].Value = Settings.IsUWPNotificationSilent.ToString();
-                cfg.AppSettings.Settings["DarkTheme"].Value = Settings.IsDarkTheme.ToString();
-                cfg.AppSettings.Settings["EnableInGameOverlay"].Value = Settings.EnableInGameOverlay.ToString();
+                var cfg = System.Configuration.ConfigurationManager.OpenExeConfiguration(ExePath);
+
+                foreach (var binding in Bindings)
+                    cfg.AppSettings.Settings[binding.Key].Value = binding.Read();
+
                 cfg.Save();
             }
             catch (Exception e)
             {
                 InitializationFaultCallback?.Invoke(e);
-            }
-        }
-
-        public static bool UpdateSection(string key, string value)
-        {
-            try
-            {
-                var cfg = System.Configuration.ConfigurationManager.OpenExeConfiguration(ExePath);
-
-                if (cfg.AppSettings.Settings.AllKeys.Contains(key))
-                {
-                    cfg.AppSettings.Settings[key].Value = value;
-                    cfg.Save();
-                    return true;
-                }
-                return false;
-            }
-            catch
-            {
-                return false;
             }
         }
 
@@ -246,14 +217,10 @@ namespace TweakerUI.Core
             return null;
         }
 
+        // Only the two fields this lookup needs; Json.NET ignores the rest of the record.
         private class LibraryFoldersRecord
         {
             public string Path { get; set; }
-            public string Label { get; set; }
-            public string ContentId { get; set; }
-            public string TotalSize { get; set; }
-            public string UpdateCleanBytesTally { get; set; }
-            public string TimeLastUpdateCorruption { get; set; }
             public Dictionary<string, string> Apps { get; set; }
         }
     }
