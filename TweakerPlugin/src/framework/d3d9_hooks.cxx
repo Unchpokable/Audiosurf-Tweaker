@@ -12,18 +12,39 @@ namespace
 using create_device_fn = long(__stdcall*)(LPDIRECT3D9, UINT, D3DDEVTYPE, HWND, DWORD, D3DPRESENT_PARAMETERS*, LPDIRECT3DDEVICE9*);
 using reset_fn = long(__stdcall*)(LPDIRECT3DDEVICE9, D3DPRESENT_PARAMETERS*);
 using end_scene_fn = long(__stdcall*)(LPDIRECT3DDEVICE9);
+using set_texture_fn = long(__stdcall*)(LPDIRECT3DDEVICE9, DWORD, IDirect3DBaseTexture9*);
+using draw_primitive_fn = long(__stdcall*)(LPDIRECT3DDEVICE9, D3DPRIMITIVETYPE, UINT, UINT);
+using draw_indexed_primitive_fn = long(__stdcall*)(LPDIRECT3DDEVICE9, D3DPRIMITIVETYPE, INT, UINT, UINT, UINT, UINT);
 
 create_device_fn o_create_device = nullptr;
 reset_fn o_reset = nullptr;
 end_scene_fn o_end_scene = nullptr;
+set_texture_fn o_set_texture = nullptr;
+draw_primitive_fn o_draw_primitive = nullptr;
+draw_indexed_primitive_fn o_draw_indexed_primitive = nullptr;
 
 tw::framework::d3d9::ui_plugin_draw_fn g_ui_draw = nullptr;
-tw::framework::d3d9::device_reset_listener_fn g_ui_reset_pre = nullptr;
-tw::framework::d3d9::device_reset_listener_fn g_ui_reset_post = nullptr;
-tw::framework::d3d9::device_bind_fn g_ui_bind = nullptr;
-tw::framework::d3d9::device_unbind_fn g_ui_unbind = nullptr;
+tw::framework::d3d9::draw_intercept_fn g_draw_intercept = nullptr;
+
+// Registration happens once, at plugin load, from the single bootstrap thread; the vectors are
+// read-only from then on. Same shape and same reasoning as wndproc_hub's subscriber vectors: a
+// handful of entries, walked linearly, and never mutated while the render thread is walking them
+// (see install_d3d9_hooks - subscribing has to be done before the detours go live).
+std::vector<std::pair<tw::framework::d3d9::device_reset_listener_fn, tw::framework::d3d9::device_reset_listener_fn>> g_reset_listeners;
+std::vector<std::pair<tw::framework::d3d9::device_bind_fn, tw::framework::d3d9::device_unbind_fn>> g_bind_listeners;
 
 LPDIRECT3DDEVICE9 g_bound_device = nullptr;
+
+// Stage 0..7 texture bindings, mirrored off hk_set_texture so an interceptor can ask "what is bound
+// right now" without a GetTexture()/Release() pair on every single draw call. Not owning
+// references - the game owns the lifetime, and the mirror is cleared wherever that lifetime could
+// have ended underneath us (bind/unbind, and either side of a Reset).
+constexpr DWORD k_tracked_stages = 8;
+std::array<IDirect3DBaseTexture9*, k_tracked_stages> g_stage_texture {};
+
+// Set for the duration of a draw_intercept_fn call. Anything the interceptor draws re-enters the
+// draw hooks below, and without this the very first replacement draw would recurse forever.
+bool g_in_draw_intercept = false;
 
 // The two facts about the bound device that a *different* thread needs to read.
 //
@@ -105,19 +126,38 @@ void bind_device(LPDIRECT3DDEVICE9 device)
         return;
     }
 
-    // Something we were already bound to is being replaced - tear the old binding down first. With
-    // no Release hook this is the only place a device change is ever noticed, so the unbind listener
-    // has to be driven from here rather than left to the listener's own internal bookkeeping.
-    if(g_bound_device != nullptr) {
+    // Only a genuinely different device gets the old binding torn down. With no Release hook this is
+    // the only place a device change is ever noticed, so the unbind listener has to be driven from
+    // here rather than left to the listener's own internal bookkeeping.
+    //
+    // The `device != g_bound_device` half is hardening rather than a bug fix, and it is worth being
+    // precise about which: hFocusWindow is fixed when the device is created and does not change
+    // across Reset, so `device == g_bound_device` already implies the windows match and the early
+    // return above catches every same-device case. This branch was therefore only ever reachable
+    // with a genuinely different device.
+    //
+    // It is still worth stating, for two reasons. It matches what d3d9_hooks.hxx documents -
+    // on_unbind fires when a *different* device replaces the current one - so the code and the
+    // contract now agree instead of agreeing by accident. And it stops the log line below from
+    // claiming "device changed 0x1234 -> 0x1234", which is what it printed if the branch were ever
+    // entered with the same pointer, and which would send anyone reading it in the wrong direction.
+    if(g_bound_device != nullptr && device != g_bound_device) {
         TW_LOG_INFO("d3d9: device changed {} -> {}, unbinding the old one",
             static_cast<const void*>(g_bound_device),
             static_cast<const void*>(device));
         unbind_device();
     }
+    else if(g_bound_device != nullptr) {
+        TW_LOG_INFO("d3d9: same device {}, focus window {} -> {} - re-targeting without unbinding",
+            static_cast<const void*>(device),
+            static_cast<const void*>(g_bound_window.load(std::memory_order_relaxed)),
+            static_cast<const void*>(params.hFocusWindow));
+    }
 
     g_bound_device = device;
     g_bound_window.store(params.hFocusWindow, std::memory_order_relaxed);
     g_bound_windowed.store(windowed, std::memory_order_relaxed);
+    g_stage_texture.fill(nullptr);
     tw::plugin::quest3d::g_game_handle = params.hFocusWindow;
 
     TW_LOG_INFO("d3d9: bind_device device={} hwnd={} windowed={}",
@@ -127,8 +167,10 @@ void bind_device(LPDIRECT3DDEVICE9 device)
 
     tw::framework::wndproc::install(params.hFocusWindow);
 
-    if(g_ui_bind != nullptr) {
-        g_ui_bind(device, params.hFocusWindow);
+    for(const auto& [on_bind, on_unbind] : g_bind_listeners) {
+        if(on_bind != nullptr) {
+            on_bind(device, params.hFocusWindow);
+        }
     }
 }
 
@@ -145,11 +187,16 @@ void unbind_device()
     g_bound_device = nullptr;
     g_bound_window.store(nullptr, std::memory_order_relaxed);
     g_bound_windowed.store(true, std::memory_order_relaxed);
+    g_stage_texture.fill(nullptr);
 
     tw::framework::wndproc::uninstall();
 
-    if(g_ui_unbind != nullptr) {
-        g_ui_unbind();
+    // Reverse registration order: a consumer that registered later may have been built on top of an
+    // earlier one, so it gets to tear down while that earlier one is still standing.
+    for(auto it = g_bind_listeners.rbegin(); it != g_bind_listeners.rend(); ++it) {
+        if(it->second != nullptr) {
+            it->second();
+        }
     }
 }
 
@@ -200,8 +247,17 @@ long __stdcall hk_reset(LPDIRECT3DDEVICE9 p_device, D3DPRESENT_PARAMETERS* p_pre
     // the device we're bound to right now.
     const bool bound_here = p_device == g_bound_device;
 
-    if(bound_here && g_ui_reset_pre != nullptr) {
-        g_ui_reset_pre();
+    if(bound_here) {
+        // Every stage binding is about to become meaningless: whatever the game had bound is either
+        // released across the Reset or re-set afterwards, and a mirror entry surviving the gap is
+        // exactly how a stale pointer would alias a freshly allocated texture.
+        g_stage_texture.fill(nullptr);
+
+        for(const auto& [pre, post] : g_reset_listeners) {
+            if(pre != nullptr) {
+                pre();
+            }
+        }
     }
 
     if(bound_here) {
@@ -216,8 +272,10 @@ long __stdcall hk_reset(LPDIRECT3DDEVICE9 p_device, D3DPRESENT_PARAMETERS* p_pre
     }
 
     if(bound_here && SUCCEEDED(result)) {
-        if(g_ui_reset_post != nullptr) {
-            g_ui_reset_post();
+        for(const auto& [pre, post] : g_reset_listeners) {
+            if(post != nullptr) {
+                post();
+            }
         }
 
         // Reset() can swap the focus window (e.g. a windowed<->exclusive-fullscreen toggle)
@@ -244,6 +302,64 @@ long __stdcall hk_end_scene(LPDIRECT3DDEVICE9 p_device)
     return o_end_scene(p_device);
 }
 
+// Hot path, three of them. Everything below runs per SetTexture / per draw call, i.e. hundreds to
+// thousands of times a frame, so each one is a couple of predictable branches over file-local state
+// and no COM traffic of its own.
+
+long __stdcall hk_set_texture(LPDIRECT3DDEVICE9 p_device, DWORD stage, IDirect3DBaseTexture9* p_texture)
+{
+    // Deliberately blind while an interceptor is running. The mirror describes what *the game* has
+    // bound, and an interceptor is contractually required to put the device back the way it found
+    // it - which it does with a state block, and a state block's Apply() does not come through
+    // here. Recording the interceptor's own binds would therefore leave the mirror stuck on a
+    // texture that is no longer bound, and the next draw of the same object would go unrecognised.
+    if(stage < k_tracked_stages && p_device == g_bound_device && !g_in_draw_intercept) [[likely]] {
+        g_stage_texture[stage] = p_texture;
+    }
+
+    return o_set_texture(p_device, stage, p_texture);
+}
+
+// True when the interceptor claimed this draw and the game's own call must not run. Shared by both
+// draw hooks so the guard/ordering rules live in exactly one place.
+bool intercept_draw(LPDIRECT3DDEVICE9 p_device)
+{
+    if(g_draw_intercept == nullptr || g_in_draw_intercept || p_device != g_bound_device) [[likely]] {
+        return false;
+    }
+
+    g_in_draw_intercept = true;
+    const bool handled = g_draw_intercept(p_device, g_stage_texture[0]);
+    g_in_draw_intercept = false;
+
+    return handled;
+}
+
+long __stdcall hk_draw_primitive(LPDIRECT3DDEVICE9 p_device, D3DPRIMITIVETYPE primitive_type, UINT start_vertex, UINT primitive_count)
+{
+    if(intercept_draw(p_device)) {
+        return D3D_OK;
+    }
+
+    return o_draw_primitive(p_device, primitive_type, start_vertex, primitive_count);
+}
+
+long __stdcall hk_draw_indexed_primitive(LPDIRECT3DDEVICE9 p_device,
+    D3DPRIMITIVETYPE primitive_type,
+    INT base_vertex_index,
+    UINT min_vertex_index,
+    UINT num_vertices,
+    UINT start_index,
+    UINT primitive_count)
+{
+    if(intercept_draw(p_device)) {
+        return D3D_OK;
+    }
+
+    return o_draw_indexed_primitive(
+        p_device, primitive_type, base_vertex_index, min_vertex_index, num_vertices, start_index, primitive_count);
+}
+
 // There is deliberately no IDirect3DDevice9::Release hook.
 //
 // One used to live here, probing the refcount (AddRef() - 1) to spot the game's final Release and
@@ -263,7 +379,17 @@ long __stdcall hk_end_scene(LPDIRECT3DDEVICE9 p_device)
 // hk_reset both run bind_device(), which unbinds the previous device before adopting a new one. The
 // only case that leaves uncovered is a game that destroys its device and never makes another, which
 // happens at process exit, where there is nothing left to tear down.
-bool resolve_d3d9_functions(void*& out_create_device, void*& out_reset, void*& out_end_scene)
+// Every vtable entry this module detours, resolved in one pass off a single throwaway device.
+struct resolved_entries {
+    void* create_device;
+    void* reset;
+    void* end_scene;
+    void* set_texture;
+    void* draw_primitive;
+    void* draw_indexed_primitive;
+};
+
+bool resolve_d3d9_functions(resolved_entries& out)
 {
     HMODULE d3d9_module = GetModuleHandle(L"d3d9.dll");
     if(d3d9_module == nullptr) {
@@ -321,9 +447,12 @@ bool resolve_d3d9_functions(void*& out_create_device, void*& out_reset, void*& o
             void** d3d9_vtable = *reinterpret_cast<void***>(d3d9);
             void** device_vtable = *reinterpret_cast<void***>(device);
 
-            out_create_device = d3d9_vtable[16];
-            out_reset = device_vtable[16];
-            out_end_scene = device_vtable[42];
+            out.create_device = d3d9_vtable[16];
+            out.reset = device_vtable[16];
+            out.end_scene = device_vtable[42];
+            out.set_texture = device_vtable[65];
+            out.draw_primitive = device_vtable[81];
+            out.draw_indexed_primitive = device_vtable[82];
 
             resolved = true;
 
@@ -356,42 +485,49 @@ void detach_ui_plugin()
 
 void attach_device_reset_listener(device_reset_listener_fn pre, device_reset_listener_fn post)
 {
-    g_ui_reset_pre = pre;
-    g_ui_reset_post = post;
+    g_reset_listeners.emplace_back(pre, post);
 }
 
-void detach_device_reset_listener()
+void detach_device_reset_listener(device_reset_listener_fn pre, device_reset_listener_fn post)
 {
-    g_ui_reset_pre = nullptr;
-    g_ui_reset_post = nullptr;
+    std::erase(g_reset_listeners, std::pair { pre, post });
 }
 
 void attach_device_bind_listener(device_bind_fn on_bind, device_unbind_fn on_unbind)
 {
-    g_ui_bind = on_bind;
-    g_ui_unbind = on_unbind;
+    g_bind_listeners.emplace_back(on_bind, on_unbind);
 }
 
-void detach_device_bind_listener()
+void detach_device_bind_listener(device_bind_fn on_bind, device_unbind_fn on_unbind)
 {
-    g_ui_bind = nullptr;
-    g_ui_unbind = nullptr;
+    std::erase(g_bind_listeners, std::pair { on_bind, on_unbind });
+}
+
+void attach_draw_interceptor(draw_intercept_fn fn)
+{
+    g_draw_intercept = fn;
+}
+
+void detach_draw_interceptor()
+{
+    g_draw_intercept = nullptr;
 }
 
 bool install_d3d9_hooks()
 {
-    void* p_create_device = nullptr;
-    void* p_reset = nullptr;
-    void* p_end_scene = nullptr;
+    resolved_entries entries {};
 
-    if(!resolve_d3d9_functions(p_create_device, p_reset, p_end_scene)) {
+    if(!resolve_d3d9_functions(entries)) {
         TW_LOG_ERROR("d3d9: could not resolve vtable entries off a bootstrap device - no overlay this session");
         return false;
     }
 
-    o_create_device = reinterpret_cast<create_device_fn>(p_create_device);
-    o_reset = reinterpret_cast<reset_fn>(p_reset);
-    o_end_scene = reinterpret_cast<end_scene_fn>(p_end_scene);
+    o_create_device = reinterpret_cast<create_device_fn>(entries.create_device);
+    o_reset = reinterpret_cast<reset_fn>(entries.reset);
+    o_end_scene = reinterpret_cast<end_scene_fn>(entries.end_scene);
+    o_set_texture = reinterpret_cast<set_texture_fn>(entries.set_texture);
+    o_draw_primitive = reinterpret_cast<draw_primitive_fn>(entries.draw_primitive);
+    o_draw_indexed_primitive = reinterpret_cast<draw_indexed_primitive_fn>(entries.draw_indexed_primitive);
 
     // Subscribe BEFORE the detours go live, not after. attach() publishes hk_end_scene to the
     // render thread the instant it commits, and that thread's very first frame runs bind_device ->
@@ -409,6 +545,9 @@ bool install_d3d9_hooks()
         { reinterpret_cast<void**>(&o_create_device), reinterpret_cast<void*>(hk_create_device) },
         { reinterpret_cast<void**>(&o_reset), reinterpret_cast<void*>(hk_reset) },
         { reinterpret_cast<void**>(&o_end_scene), reinterpret_cast<void*>(hk_end_scene) },
+        { reinterpret_cast<void**>(&o_set_texture), reinterpret_cast<void*>(hk_set_texture) },
+        { reinterpret_cast<void**>(&o_draw_primitive), reinterpret_cast<void*>(hk_draw_primitive) },
+        { reinterpret_cast<void**>(&o_draw_indexed_primitive), reinterpret_cast<void*>(hk_draw_indexed_primitive) },
     });
 
     if(!ok) {
@@ -416,9 +555,12 @@ bool install_d3d9_hooks()
         o_create_device = nullptr;
         o_reset = nullptr;
         o_end_scene = nullptr;
+        o_set_texture = nullptr;
+        o_draw_primitive = nullptr;
+        o_draw_indexed_primitive = nullptr;
     }
     else {
-        TW_LOG_INFO("d3d9: hooks installed (CreateDevice/Reset/EndScene)");
+        TW_LOG_INFO("d3d9: hooks installed (CreateDevice/Reset/EndScene/SetTexture/DrawPrimitive/DrawIndexedPrimitive)");
     }
 
     return ok;

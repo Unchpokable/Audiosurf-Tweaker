@@ -11,6 +11,8 @@
 
 #include "plugin/diagnostics.hxx"
 
+#include "skybox/sky_ui.hxx"
+
 #include "ui/image/svg.hxx"
 #include "ui/overlay_state.hxx"
 #include "ui/pending_actions.hxx"
@@ -109,8 +111,9 @@ void initialize() noexcept
 void shutdown() noexcept
 {
     tw::framework::d3d9::detach_ui_plugin();
-    tw::framework::d3d9::detach_device_reset_listener();
-    tw::framework::d3d9::detach_device_bind_listener();
+    tw::framework::d3d9::detach_device_reset_listener(
+        &tw::framework::imgui_backend::on_lost_device, &tw::framework::imgui_backend::on_reset_device);
+    tw::framework::d3d9::detach_device_bind_listener(&on_device_bound, &on_device_unbound);
     tw::framework::imgui_backend::detach_input_gate();
     tw::framework::dinput::detach_input_gate();
 
@@ -212,10 +215,19 @@ void draw_frame(IDirect3DDevice9* device)
     tw::ui::pending_actions::update(g_overlay_cache);
     tw::ui::qp::pending::update(g_qp_cache);
 
+    // Before notefeed::update(), so a toast raised this frame is drawn this frame rather than
+    // waiting for the next one.
+    tw::skybox::ui::update();
+
     tw::ui::plugins::statics::watermark::update();
     tw::ui::plugins::statics::pins::update(g_overlay_cache);
     tw::ui::plugins::statics::notefeed::update();
     tw::ui::plugins::interactive::menu::update(g_overlay_cache, g_qp_cache);
+
+    // After the menu, unlike the update() above: the skybox parameter panel docks to the menu's
+    // window rectangle, which is only final once the menu has drawn, and has to land above it where
+    // the two overlap.
+    tw::skybox::ui::draw_windows();
 
     tw::framework::imgui_backend::render();
 }

@@ -21,6 +21,12 @@
 #include <d3dx9.h>
 #include <d3dx9math.h>
 
+// ID3D10Blob and ID3DInclude, for compiling HLSL in-process (skybox/sky_compile). Deliberately
+// D3Dcommon.h and not D3Dcompiler.h: the latter drags in the whole D3D11 reflection surface for a
+// 32-bit D3D9 plugin, and the one function we call is resolved through GetProcAddress anyway - so
+// its signature is declared where it is used, next to the other hook typedefs in this project.
+#include <D3Dcommon.h>
+
 // Microsoft Detours
 #include <detours.h>
 
@@ -52,12 +58,24 @@
 #include <array>
 #include <atomic>
 #include <cassert>
+#include <cctype>
+#include <charconv>
+#include <chrono>
+#include <climits>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <expected>
+#include <filesystem>
+#include <format>
 #include <fstream>
+#include <future>
 #include <initializer_list>
+#include <iterator>
+#include <memory>
+#include <mutex>
+#include <new>
 #include <span>
 #include <sstream>
 #include <string>
@@ -66,4 +84,3 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
-

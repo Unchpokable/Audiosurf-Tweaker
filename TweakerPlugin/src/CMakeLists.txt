@@ -11,4 +11,7 @@ add_subdirectory(resource)
 add_subdirectory(libstb)
 add_subdirectory(ui)
 
+# After libstb/resource: skybox links both.
+add_subdirectory(skybox)
+
 target_link_libraries(TweakerPlugin PRIVATE libstb libuulog)

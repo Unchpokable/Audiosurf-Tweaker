@@ -4,6 +4,7 @@ target_sources(TweakerPlugin PRIVATE
     detour_transaction.cxx
     dinput8_hooks.cxx
     imgui_backend.cxx
+    texture_hook.cxx
     wndproc_hub.cxx
 )
 

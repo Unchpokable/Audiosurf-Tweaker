@@ -19,12 +19,14 @@ add_library(tweaker_ui STATIC
     widgets/toggle.cxx
     widgets/segmented.cxx
     widgets/number_input.cxx
+    widgets/slider.cxx
     widgets/list_item.cxx
     widgets/list_view.cxx
     widgets/tab_view.cxx
     widgets/item_group.cxx
     widgets/popup_menu.cxx
     widgets/color_picker.cxx
+    widgets/color_field.cxx
     plugins/static/notefeed.cxx
     plugins/static/pins.cxx
     plugins/static/watermark.cxx

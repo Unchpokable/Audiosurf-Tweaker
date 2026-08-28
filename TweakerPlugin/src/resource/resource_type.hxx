@@ -7,5 +7,6 @@ enum class type {
     vector,  // SVG source, rasterized by lunasvg (ui/image/svg.cxx)
     font,
     text,
+    shader, // compiled D3D9 shader bytecode (.fxo), produced by fxc at build time
 };
 } // namespace tw::resource

@@ -3,6 +3,8 @@
 #include "ui/overlay_state.hxx"
 #include "ui/qp/qp_state.hxx"
 
+#include <imgui.h>
+
 // Toggleable (Insert key) custom-chrome menu window - Skins/Tweaks/Settings tabs. Fully
 // self-drawn (own background/title bar/drag-move/drag-resize), no stock ImGui window chrome.
 // See Docs/Internal/tweaker-plugin-widgets.md.
@@ -38,4 +40,29 @@ void set_visible(bool visible) noexcept;
 // tab being worked on instead of making every run start with two clicks; the plugin itself has no
 // reason to steer the user's tab choice.
 void show_tab(int index) noexcept;
+
+using extra_tab_draw_fn = void (*)();
+
+// Appends one more tab, drawn by a module this one cannot link against.
+//
+// The Skybox tab is the reason: it belongs to tw::skybox, which talks to a live D3D9 device, while
+// this file compiles into tweaker_ui - a static library deliberately shared with smoke_test, which
+// has no device and no skybox at all. A direct call would drag the whole module into a target that
+// cannot build it. Registering a function pointer keeps the dependency pointing the right way, and
+// leaves the tab out entirely where nobody registers one.
+//
+// Must be called before the first update(): the tab strip is built once, on the first frame.
+void set_extra_tab(std::string_view label, extra_tab_draw_fn draw) noexcept;
+
+// Where the menu window currently is, in screen space. False when the menu is hidden, or before it
+// has ever been shown and picked a position.
+//
+// For panels that dock to the menu rather than float on their own. Valid only after update() has run
+// for the frame, which is why such a panel is drawn after it (see ui_main::draw_frame) - reading this
+// earlier returns the previous frame's rectangle, and the panel lags a drag by a frame.
+[[nodiscard]] bool window_rect(ImVec2& pos, ImVec2& size) noexcept;
+
+// Whether the tab registered through set_extra_tab is the selected one. False when nobody registered
+// a tab, so smoke_test never has to special-case it.
+[[nodiscard]] bool extra_tab_selected() noexcept;
 } // namespace tw::ui::plugins::interactive::menu

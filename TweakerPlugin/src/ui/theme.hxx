@@ -49,6 +49,12 @@ inline ImVec4 text_faint {};
 inline ImVec4 text_glyph_muted {};
 inline ImVec4 text_on_accent {};
 
+// Diagnostic text. Here rather than as literals at the call site because the rule is that every
+// colour comes from the theme every frame - and because a user theme that recolours the whole
+// overlay has no way to reach a hard-coded red buried in the Skybox tab.
+inline ImVec4 text_error {};
+inline ImVec4 text_warning {};
+
 void apply_dark() noexcept;
 void from_config(std::string_view config) noexcept;
 

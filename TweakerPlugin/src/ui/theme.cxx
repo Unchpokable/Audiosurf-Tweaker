@@ -105,6 +105,8 @@ const std::unordered_map<std::string_view, ImVec4*>& theme_keys() noexcept
         { "text_faint", &text_faint },
         { "text_glyph_muted", &text_glyph_muted },
         { "text_on_accent", &text_on_accent },
+        { "text_error", &text_error },
+        { "text_warning", &text_warning },
     };
     return k_keys;
 }
@@ -162,6 +164,8 @@ void apply_dark() noexcept
     text_faint = from_argb(0xFF6C7078);
     text_glyph_muted = from_argb(0xFF5C5F66);
     text_on_accent = from_argb(0xFFF2FDFB);
+    text_error = from_argb(0xFFF27366);
+    text_warning = from_argb(0xFFF2CC59);
 }
 
 void from_config(std::string_view config) noexcept

@@ -145,6 +145,10 @@ bool run(HMODULE module, std::vector<entry>& out) noexcept
         clear(out);
         return false;
     }
+    if(!enumerate_type(module, type::shader, L"TW_SHADER", out)) {
+        clear(out);
+        return false;
+    }
     return true;
 }
 
