@@ -3,12 +3,16 @@
 #include "framework/channel_hook.hxx"
 #include "framework/d3d9_hooks.hxx"
 #include "framework/dinput8_hooks.hxx"
+#include "framework/texture_hook.hxx"
 
 #include "plugin/diagnostics.hxx"
 #include "plugin/globals.hxx"
 #include "plugin/load.hxx"
 
 #include "resource/resource.hxx"
+
+#include "skybox/sky_ui.hxx"
+#include "skybox/skybox.hxx"
 
 #include "ui/ui_main.hxx"
 
@@ -82,9 +86,23 @@ void load_thread(void* module_handle)
     // resumes every other thread, which is a full barrier on the pointers written above.
     tw::ui::initialize();
 
+    // Same "subscribe before the hooks go live" rule as tw::ui::initialize() above: this registers
+    // a device bind/unbind listener, a device reset listener and the draw interceptor, all of which
+    // the render thread starts calling the instant install_d3d9_hooks() commits.
+    tw::skybox::initialize();
+
+    // After tw::ui::initialize() (which builds the menu) and before the first frame (which builds
+    // the tab strip) - see menu::set_extra_tab.
+    tw::skybox::ui::initialize();
+
     if(!tw::framework::install_channel_hook()) {
         TW_LOG_WARNING("load: channel hook not installed - Quest3D engine pointer will stay null");
     }
+
+    // Best-effort here, and retried from the skybox module's device bind listener: the game loads
+    // channel DLLs on demand, so an injection early enough can beat the Texture channel into the
+    // process. By the time there is a D3D9 device, it is certainly mapped.
+    tw::framework::texture::install_texture_hook();
 
     tw::framework::d3d9::install_d3d9_hooks();
     tw::framework::dinput::install_hooks();

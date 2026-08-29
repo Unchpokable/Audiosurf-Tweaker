@@ -159,6 +159,12 @@ constexpr float k_chrome_allowance_x = 96.f;
 // (update) and from the dinput hooks on whichever thread the game polls its devices.
 std::atomic<bool> g_visible = false;
 
+// Optional fifth tab contributed from outside tweaker_ui - see menu.hxx::set_extra_tab. Null in
+// smoke_test, where the module that would register it does not exist.
+constexpr int k_extra_tab = 4;
+std::string g_extra_tab_label;
+tw::ui::plugins::interactive::menu::extra_tab_draw_fn g_extra_tab_draw = nullptr;
+
 tab_view g_tabs { "menu_tabs" };
 list_view g_skins_list { "menu_skins" };
 button g_skins_apply_btn { "menu_skins_apply", { 100.f, 28.f } };
@@ -200,7 +206,13 @@ void ensure_widgets_ready()
         return;
     }
 
-    static const std::string_view labels[] = { "Skins", "Tweaks", "Player", "Settings" };
+    // The extra tab is appended, never inserted: k_player_tab and the literal indices in update()
+    // are positional, and anything that shifted them would silently draw the wrong page.
+    std::vector<std::string_view> labels { "Skins", "Tweaks", "Player", "Settings" };
+    if(g_extra_tab_draw != nullptr) {
+        labels.emplace_back(g_extra_tab_label);
+    }
+
     g_tabs.set_tabs(labels);
     g_tabs.set_rounding(k_rounding);
 
@@ -549,6 +561,34 @@ void show_tab(int index) noexcept
     g_visible.store(true, std::memory_order_relaxed);
 }
 
+void set_extra_tab(std::string_view label, extra_tab_draw_fn draw) noexcept
+{
+    g_extra_tab_label.assign(label);
+    g_extra_tab_draw = draw;
+}
+
+bool window_rect(ImVec2& pos, ImVec2& size) noexcept
+{
+    if(!g_visible.load(std::memory_order_relaxed)) {
+        return false;
+    }
+
+    // The sentinel means "never shown, position not chosen yet" - update() resolves it to a centered
+    // default on the frame it first draws. Reporting it verbatim would dock a panel off-screen.
+    if(g_pos.x < 0.f || g_pos.y < 0.f) {
+        return false;
+    }
+
+    pos = g_pos;
+    size = g_size;
+    return true;
+}
+
+bool extra_tab_selected() noexcept
+{
+    return g_extra_tab_draw != nullptr && g_tabs.selected_tab() == k_extra_tab;
+}
+
 void update(const tw::ui::overlay_state::cache& snapshot, const tw::ui::qp::state::cache& qp_snapshot) noexcept
 {
     ensure_widgets_ready();
@@ -685,6 +725,10 @@ void update(const tw::ui::overlay_state::cache& snapshot, const tw::ui::qp::stat
     }
     if(g_tabs.begin_view(3)) {
         draw_settings_tab();
+        g_tabs.end_view();
+    }
+    if(g_extra_tab_draw != nullptr && g_tabs.begin_view(k_extra_tab)) {
+        g_extra_tab_draw();
         g_tabs.end_view();
     }
     g_tabs.end();
