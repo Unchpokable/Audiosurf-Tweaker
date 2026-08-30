@@ -177,8 +177,19 @@
 		<PropertyGroup>
 			<TweakerPluginDll>$(TweakerPluginBuildDir)\bin\Release\TweakerPlugin.dll</TweakerPluginDll>
 		</PropertyGroup>
+		<!--
+		    The plugin's Lua scripts are loose files it loads from a scripts/ directory beside itself
+		    at runtime (see TweakerPlugin/src/lua/lua_host.cxx), deliberately - they are meant to be
+		    edited without a rebuild. That makes them part of the payload, not build intermediates:
+		    copying only the dll here would ship a scripting layer with nothing to run.
+		-->
+		<ItemGroup>
+			<TweakerPluginScripts Include="$(TweakerPluginSourceDir)\assets\scripts\**\*" />
+		</ItemGroup>
 		<!-- No <Error> here - a missing dll just means the overlay wasn't built this time (see above). -->
 		<Copy SourceFiles="$(TweakerPluginDll)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true"
+		      Condition="Exists('$(TweakerPluginDll)')" />
+		<Copy SourceFiles="@(TweakerPluginScripts)" DestinationFolder="$(OutDir)scripts\%(RecursiveDir)" SkipUnchangedFiles="true"
 		      Condition="Exists('$(TweakerPluginDll)')" />
 	</Target>
 </Project>

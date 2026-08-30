@@ -47,12 +47,14 @@
 #include "ui/theme.hxx"
 #include "ui/wire_text.hxx"
 #include "ui/widgets/button.hxx"
+#include "ui/widgets/color_field.hxx"
 #include "ui/widgets/color_picker.hxx"
 #include "ui/widgets/item_group.hxx"
 #include "ui/widgets/list_item.hxx"
 #include "ui/widgets/number_input.hxx"
 #include "ui/widgets/popup_menu.hxx"
 #include "ui/widgets/segmented.hxx"
+#include "ui/widgets/slider.hxx"
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace
@@ -514,6 +516,15 @@ void draw_smoke_controls()
     static button play_btn { "smoke_play", { 40.f, 34.f } };
     static button labelled_btn { "smoke_labelled", { 150.f, 34.f } };
     static bool modes_ready = false;
+    static item_group sky_group { "smoke_sky", "Sky parameters" };
+    static slider density { "smoke_density" };
+    static slider light_size { "smoke_light_size" };
+    static slider glow { "smoke_glow" };
+    static color_field zenith { "smoke_zenith" };
+    static color_field horizon { "smoke_horizon" };
+    static bool sky_ready = false;
+    static int sky_live_edits = 0;
+    static int sky_commits = 0;
     static item_group color_group { "smoke_color", "Color" };
     static color_picker accent_picker { "smoke_accent", { 280.f, 0.f } };
     static ImVec4 bound_color { 0.2f, 0.83f, 0.75f, 1.f };
@@ -603,6 +614,64 @@ void draw_smoke_controls()
     labelled_btn.update("With label");
 
     controls_group.end();
+
+    // The bench for the widgets the Skybox parameter panel is built from. The three ranges are the
+    // real ones from assets/shaders/sky_common.hlsli, chosen because they are what broke the stock
+    // ImGui slider: 0.99..1.0 needs Shift-drag or typing to be settable at all, and 1..1000 needs
+    // the value readout to drop its decimals instead of printing 320.0000.
+    sky_group.set_inner_padding({ 10.f, 8.f });
+    sky_group.begin();
+
+    if(!sky_ready) {
+        density.set_label("Star density");
+        density.set_range(0.005f, 0.30f);
+        density.set_value(0.07f);
+
+        light_size.set_label("Light size");
+        light_size.set_range(0.99f, 1.f);
+        light_size.set_value(0.9998f);
+
+        glow.set_label("Light glow");
+        glow.set_range(1.f, 1000.f);
+        glow.set_value(320.f);
+
+        zenith.set_label("Zenith");
+        zenith.set_color(ImVec4 { 0.10f, 0.28f, 0.62f, 1.f });
+
+        horizon.set_label("Horizon");
+        horizon.set_color(ImVec4 { 0.78f, 0.80f, 0.78f, 1.f });
+
+        sky_ready = true;
+    }
+
+    ImGui::TextUnformatted("Drag, Shift-drag for fine, double-click to type.");
+
+    for(slider* knob : { &density, &light_size, &glow }) {
+        knob->update();
+        if(knob->changed()) {
+            ++sky_live_edits;
+        }
+        if(knob->committed()) {
+            ++sky_commits;
+        }
+    }
+
+    for(color_field* field : { &zenith, &horizon }) {
+        field->update();
+        if(field->changed()) {
+            ++sky_live_edits;
+        }
+        if(field->committed()) {
+            ++sky_commits;
+        }
+    }
+
+    // The whole point of the two-flag API: the left number runs while a control moves, the right one
+    // only ticks when the gesture ends. In the real panel the first drives the live shader and the
+    // second drives a settings-file write.
+    ImGui::Text("live edits %d / commits %d", sky_live_edits, sky_commits);
+
+    sky_group.end();
 
     // The bench for ui/image/svg: every packed icon, at each baked size plus one that has to be
     // rasterized on demand through image::at(). This is where the k_supersample_factor question is

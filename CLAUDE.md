@@ -14,8 +14,30 @@ Audiosurf Tweaker — сторонний инструмент для игры Au
 План дальнейшей разработки (Фаза 6 — Quick Player QoL, Фаза 7 — внутриигровой оверлей) —
 `Docs/Internal/roadmap.md`. Протокол оверлея (`TW_OVL`, host ↔ asbridge ↔ TweakerPlugin) —
 `Docs/Internal/overlay-protocol.md`; его Quick Player-половина (операции `QP_*`, вкладка Player) —
-`Docs/Internal/overlay-quickplayer.md`. Читай эти файлы для полного контекста прежде, чем начинать
+`Docs/Internal/overlay-quickplayer.md`. Skybox Replacer (подмена скайсферы игры на cube map, плюс
+весь реверс её загрузки и отрисовки) — `Docs/Internal/skybox-replacer.md`; ресёрч и план
+процедурного (шейдерного) неба — `Docs/Internal/skybox-procedural.md`. Проект встраивания LuaJIT в
+`TweakerPlugin` (скрипты на пути обработки данных движка, выбор технологии, механика перехвата) —
+`Docs/Internal/lua-scripting.md`.
+
+**Пользовательская** документация по скриптовому API (в отличие от всего вышеперечисленного —
+на английском, для тех, кто пишет скрипты и делится ими) — `Docs/scripting.md` и `Docs/scripting/`:
+getting-started, game-model (как устроен граф каналов игры и как в нём искать), channels, hooks,
+drawing, api-reference, limits. При изменении публичного API `tw.*` обновлять их обязательно —
+`api-reference.md` перечисляет каждую функцию поимённо.
+
+Накопительный полевой журнал реверса самой игры — три файла, все описывают **чужой** код, игру, и
+служат источником для остальных документов: `Docs/Internal/reversing-journal-lua.md` (формат
+`.cgr`, Lua-движок `Aco_Lua` и его API, дамп скриптов, настройка Ghidra);
+`Docs/Internal/reversing-journal-gameplay.md` — про **игровую логику** (граф каналов Quest3D как
+язык, `StatCollector.cgr` и вся статистика заезда, 18 персонажей/режимов в `SpecialPurpose.cgr`,
+сетка `Puzzle.cgr`); `Docs/Internal/reversing-journal-engine.md` — про **нативное ядро**
+(`HighPoly.dll`, ABI каналов и vtable, раскладка объекта `A3d_Channel`, как исполняется кадр, цена
+операций, сводка экспортов для хуков). Читай эти файлы для полного контекста прежде, чем начинать
 что-то нетривиальное в соответствующей области — этот CLAUDE.md даёт только ориентацию.
+
+Внимание: §7.2 `reversing-journal-gameplay.md` (событийный поток через детур на
+`A3d_Channel::CallChannel`) **отменена** — см. `reversing-journal-engine.md` §7.
 
 ## Устройство решения
 
@@ -136,7 +158,12 @@ plutovg). Сборка: CMake + Ninja, MSVC, PCH.
 
 ```
 dllmain.cxx      — минимальный DllMain, инициализация в отдельном потоке
-src/framework/    — хуки (Detours, D3D9, dinput8, Quest3D channel), wndproc_hub (общая точка
+src/framework/    — хуки (Detours, D3D9, dinput8, Quest3D channel + texture_hook на
+                    Aco_DX8_Texture::LoadTextureFromMemory), channel_shim (перехват вызова
+                    ОДНОГО канала подменой vptr на копию vtable; подписчиков на канал может быть
+                    НЕСКОЛЬКО — все before отрабатывают до отмены, отмена это ИЛИ, у подавленного
+                    вызова нет after; оригинальная vtable возвращается с уходом последнего
+                    подписчика — см. lua-scripting.md §8.5 и Ф3), wndproc_hub (общая точка
                     подписки на WndProc игры: IPC, D3D9 WM_ACTIVATEAPP, будущий ImGui-инпут)
 src/ipc/          — overlay_ipc: разбор/сборка L3-протокола TW_OVL (см. overlay-protocol.md);
                     операции с префиксом QP_ он не разбирает, а форвардит в src/ui/qp/
@@ -149,20 +176,66 @@ src/ui/           — overlay_state (кэш состояния, generation-count
 src/ui/qp/        — Quick Player: qp_catalog (зеркала теги/персонажи/режимы), qp_state (модель +
                     generation-кэш, как overlay_state), qp_wire (грамматика QP_* в обе стороны),
                     qp_pending (optimistic reverse-sync). См. overlay-quickplayer.md
+src/skybox/       — Skybox Replacer: перехват draw-call скайсферы игры и отрисовка cube map на
+                    собственном кубе (skybox, sky_renderer, sky_cubemap, sky_paths, sky_catalog,
+                    sky_math, skybox_config) + sky_ui — вкладка оверлея, регистрируемая через
+                    menu::add_extra_tab (в tweaker_ui её быть не может: он общий со smoke_test),
+                    + sky_panel — окно параметров шейдера, пристыкованное сбоку к меню
+                    (вкладки по группам @sky, рисуется из ui_main после menu::update).
+                    Плюс процедурное небо — второй вид источника, равноправный с cube map:
+                    sky_program (реестр программ — вшитые + скомпилированные с диска),
+                    sky_compile (HLSL→ps_3_0 через d3dcompiler_47, #include из ресурсов),
+                    sky_bytecode (разбор CTAB: какие константные регистры шейдер объявляет и как
+                    их зовут), sky_params (аннотации `@sky` в исходнике шейдера → ползунки),
+                    sky_shader (кэш VS/PS на программу + invalidate для горячей перезагрузки),
+                    sky_target (рендер неба в долю разрешения), renderer::draw_program,
+                    sky_timer (время draw-call'а на GPU), sky_caps (одноразовый дамп
+                    D3DCAPS9/BehaviorFlags). См.
+                    skybox-replacer.md и skybox-procedural.md; sky_math существует затем, чтобы
+                    не линковать d3dx9
+src/lua/          — LuaJIT-скриптинг: lua_channels (доступ к графу каналов через vtable: слот 17
+                    у числовых/строковых/векторных значит РАЗНОЕ, поэтому тип проверяется до
+                    вызова), lua_api (extern "C" ABI, который скрипт зовёт через FFI — НЕ
+                    lua_CFunction, см. lua-scripting.md §2.2), lua_host (VM, пролог, песочница,
+                    диспетч on_frame под ImGui ErrorRecovery-guard'ом + реестр скриптов:
+                    метаданные из `-- @name/@author/@version/@description` читаются БЕЗ запуска
+                    файла), lua_config (какие скрипты выключены, TweakerScripts.cfg — хранятся
+                    только исключения), lua_ui (вкладка Scripts, регистрируется через
+                    menu::add_extra_tab, как и Skybox). Выключение скрипта = снятие его подписок
+                    и возврат оригинальных vtable, а не спящий хук; включение = повторный запуск
+                    файла с диска, оно же горячая перезагрузка. Скрипты — loose-файлы
+                    в scripts/ рядом с DLL, не ресурсы: их правят без пересборки; в бандл их
+                    кладут CopyTweakerPlugin (TweakerUI.csproj) и Deploy.ps1
 src/plugin/       — lifecycle, глобальное состояние, Quest3D state
-src/resource/     — .rc-based упаковка ассетов (шрифты/текстуры/SVG) прямо в DLL
+src/resource/     — .rc-based упаковка ассетов (шрифты/текстуры/SVG/шейдеры) прямо в DLL;
+                    assets/shaders/*.hlsl при этом компилируются fxc на этапе сборки, и вшивается
+                    только байткод (TW_SHADER). Профиль берётся из имени: *.vs.hlsl / *.ps.hlsl;
+                    *.hlsli — общие заголовки, вшиваются как TW_TEXT (не программы, глоб шейдеров
+                    их не берёт), чтобы пользовательский .hlsl мог их #include без копии на диске
 src/libtweeny, libstb, libuulog — vendored (Tween-анимации, stb_image + stb_image_resize2, лог) —
                     не трогать стиль
 ```
 
 **Зависимости**: DirectX SDK / Quest3D SDK / ImGui / Detours ожидаются на диске (см. `cmake/*.cmake`).
+`fxc.exe` из Windows SDK нужен для `assets/shaders/*.hlsl` — ищется автоматически (dev-окружение или
+`Windows Kits/10/bin/*/x86`), при отсутствии configure падает с инструкцией; можно задать
+`-DTWEAKER_FXC=<путь>`.
+LuaJIT — git-сабмодуль `TweakerPlugin/LuaJIT` (ветка `v2.1`), собирается `cmake/LuaJIT.cmake` —
+портом апстримного `msvcbuild.bat` на CMake (minilua → DynASM → buildvm → `lj_vm.obj`), x86,
+`/arch:SSE2` (флаг обязателен: игра создаёт D3D9-устройство без `FPU_PRESERVE`).
 LunaSVG — единственная, которая тянется сама: `FetchContent`, тег `v3.5.0`, клоны в
 `TweakerPlugin/.deps/<генератор>/` (вне `build/`, чтобы `cmake --fresh` из pre-build хука не
 переклонировал их на каждый `dotnet build`; разбивка по генератору обязательна — подкаталог
 `-subbuild` у FetchContent привязан к генератору, и общий на Ninja и VS каталог ломает второй
 configure). Значит, первый configure под каждый генератор требует сети.
 
-CMake-пресеты разработчика (`CMakePresets.json`, отдельно от MSBuild pre-build хука выше):
+CMake-пресеты разработчика (`CMakePresets.json`, отдельно от MSBuild pre-build хука выше). Пресеты
+объявляют `architecture x86` / `toolset host=x64` со стратегией `external` — то есть окружение
+обязан подготовить вызывающий: **`vcvarsall.bat amd64_x86`**, не `x86`. Если сконфигурировать из
+шелла с другим хостом, CMake решит, что компилятор сменился, удалит кэш и переконфигурируется **без
+пресета** — а `CMAKE_BUILD_TYPE` живёт только в пресете, так что `--build --preset x86-release`
+начнёт молча собирать неоптимизированное в каталог с названием release. Корневой `CMakeLists.txt`
+на этот случай падает с явной ошибкой; лечится `cmake --preset <имя>` из правильного шелла.
 
 ```
 cmake --build --preset x86-debug     # Ninja, для clangd/compile_commands.json

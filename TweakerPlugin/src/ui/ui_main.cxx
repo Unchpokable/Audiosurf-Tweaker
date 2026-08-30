@@ -9,6 +9,8 @@
 
 #include "ipc/overlay_ipc.hxx"
 
+#include "lua/lua_host.hxx"
+
 #include "plugin/diagnostics.hxx"
 
 #include "skybox/sky_ui.hxx"
@@ -223,6 +225,18 @@ void draw_frame(IDirect3DDevice9* device)
     tw::ui::plugins::statics::pins::update(g_overlay_cache);
     tw::ui::plugins::statics::notefeed::update();
     tw::ui::plugins::interactive::menu::update(g_overlay_cache, g_qp_cache);
+
+    // Scripts draw last, after every one of the overlay's own widgets has decided where it is.
+    //
+    // This is deliberate and it is the whole reason tw.hud.rect() can be trusted: each widget's
+    // rectangle depends on text it has to measure and on state that changes between frames (pins
+    // appear and vanish with tweaks, the menu moves while dragged), so a script asking "where is the
+    // notefeed" before those ran would get last frame's answer and lag every change by a frame.
+    // Running here, it reads geometry that is already final for this frame.
+    //
+    // The cost is one frame of latency on toasts a script raises - notefeed has already drawn by the
+    // time tw.notify() reaches it - which is invisible against a 3-second toast that fades in anyway.
+    tw::lua::host::draw_frame();
 
     // After the menu, unlike the update() above: the skybox parameter panel docks to the menu's
     // window rectangle, which is only final once the menu has drawn, and has to land above it where

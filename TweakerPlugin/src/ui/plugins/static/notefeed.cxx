@@ -27,6 +27,9 @@ constexpr float k_margin = 16.f;
 constexpr float k_width = 300.f;
 constexpr float k_rounding = 8.f;
 
+// How many rows reserved_rect() claims. See the comment there for why this is a fixed number.
+constexpr float k_max_reserved_rows = 3.f;
+
 struct entry {
     std::string text;
     // The resource key, not a resolved ImTextureID: a toast can easily outlive a device change, and
@@ -149,5 +152,27 @@ void update() noexcept
         const ImVec2 text_pos { text_x, p_min.y + (k_row_h - ImGui::GetTextLineHeight()) * 0.5f };
         draw->AddText(text_pos, detail::to_u32(text_col), e.text.c_str());
     }
+}
+
+void reserved_rect(float& x0, float& y0, float& x1, float& y1) noexcept
+{
+    const ImVec2 viewport = ImGui::GetIO().DisplaySize;
+    const bool right = overlay_config::feed_side() == overlay_config::side::right;
+
+    x0 = right ? viewport.x - k_margin - k_width : k_margin;
+    x1 = x0 + k_width;
+
+    // A fixed strip, not the live stack height and not the whole column.
+    //
+    // Not the live height, because a consumer that reflowed every time a toast expired would be
+    // worse than one that stays clear of a stable strip. Not the whole column either, which is what
+    // this used to be: reserving full height turned every layout that respects it into "everything
+    // shifts sideways", and a HUD trying to sit in the bottom corner ended up nowhere near it.
+    //
+    // Three rows is the honest number - the overlay pushes toasts one event at a time, and more than
+    // three alive at once needs several things to happen inside three seconds. A fourth toast does
+    // draw below the strip and can overlap whatever is there; that is the deliberate trade.
+    y0 = k_margin;
+    y1 = k_margin + k_max_reserved_rows * k_row_h + (k_max_reserved_rows - 1) * k_row_gap;
 }
 } // namespace tw::ui::plugins::statics::notefeed

@@ -6,12 +6,16 @@
 // concrete reason: everything under src/ui compiles into tweaker_ui, a static library shared with
 // smoke_test, which has no D3D9 device and therefore no skybox module at all. This file is the
 // adapter that is allowed to know about both - it registers itself with the menu through
-// menu::set_extra_tab and calls into tw::skybox directly.
+// menu::add_extra_tab and calls into tw::skybox directly.
 namespace tw::skybox::ui
 {
 // Registers the tab. Call once, after tw::ui::initialize() (which builds the menu) and before the
 // first frame.
 void initialize() noexcept;
+
+// The menu tab index this module was assigned, or -1 before initialize(). sky_panel needs it to know
+// whether the Skybox page is the one on screen.
+[[nodiscard]] int tab_handle() noexcept;
 
 // Once per frame, from ui_main::draw_frame, whether or not the menu is open: this is what turns a
 // silent resolution fallback into a notefeed toast. Drawing the tab itself is driven by the menu.

@@ -43,16 +43,18 @@ void show_tab(int index) noexcept;
 
 using extra_tab_draw_fn = void (*)();
 
-// Appends one more tab, drawn by a module this one cannot link against.
+// Appends one more tab, drawn by a module this one cannot link against, and returns its index -
+// which is what extra_tab_selected() takes.
 //
-// The Skybox tab is the reason: it belongs to tw::skybox, which talks to a live D3D9 device, while
+// The Skybox tab was the reason: it belongs to tw::skybox, which talks to a live D3D9 device, while
 // this file compiles into tweaker_ui - a static library deliberately shared with smoke_test, which
 // has no device and no skybox at all. A direct call would drag the whole module into a target that
 // cannot build it. Registering a function pointer keeps the dependency pointing the right way, and
-// leaves the tab out entirely where nobody registers one.
+// leaves the tab out entirely where nobody registers one. Scripts is the second such page, hence a
+// list rather than the single slot this started as.
 //
 // Must be called before the first update(): the tab strip is built once, on the first frame.
-void set_extra_tab(std::string_view label, extra_tab_draw_fn draw) noexcept;
+int add_extra_tab(std::string_view label, extra_tab_draw_fn draw) noexcept;
 
 // Where the menu window currently is, in screen space. False when the menu is hidden, or before it
 // has ever been shown and picked a position.
@@ -62,7 +64,7 @@ void set_extra_tab(std::string_view label, extra_tab_draw_fn draw) noexcept;
 // earlier returns the previous frame's rectangle, and the panel lags a drag by a frame.
 [[nodiscard]] bool window_rect(ImVec2& pos, ImVec2& size) noexcept;
 
-// Whether the tab registered through set_extra_tab is the selected one. False when nobody registered
-// a tab, so smoke_test never has to special-case it.
-[[nodiscard]] bool extra_tab_selected() noexcept;
+// Whether the tab with the given handle (from add_extra_tab) is the selected one. False for -1, so
+// smoke_test - where nothing registers a tab - never has to special-case it.
+[[nodiscard]] bool extra_tab_selected(int handle) noexcept;
 } // namespace tw::ui::plugins::interactive::menu

@@ -27,6 +27,13 @@ target_link_libraries(smoke_test PRIVATE
 # Embed the same packed assets as the DLL so resource::initialize can be tested.
 if(TWEAKER_ASSETS_RC)
     target_sources(smoke_test PRIVATE "${TWEAKER_ASSETS_RC}")
+
+    # That .rc references compiled shader bytecode by path (see src/resource/CMakeLists.txt), so rc
+    # cannot run before fxc has. smoke_test never binds those shaders - it has no D3D9 device - but
+    # it does have to link the resources they live in.
+    if(TARGET tweaker_shaders)
+        add_dependencies(smoke_test tweaker_shaders)
+    endif()
 endif()
 
 set_target_properties(smoke_test PROPERTIES

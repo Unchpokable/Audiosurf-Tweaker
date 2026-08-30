@@ -107,6 +107,17 @@ $tweakerPluginDll = Get-ChildItem -Path (Join-Path $repoRoot "TweakerUI\bin") -R
 if ($tweakerPluginDll) {
     Copy-Item $tweakerPluginDll.FullName -Destination $tweakerOut -Force
     Write-Host "    $($tweakerPluginDll.FullName) -> $tweakerOut"
+
+    # The plugin loads Lua scripts as loose files from scripts/ beside itself, so that they can be
+    # edited without a rebuild (TweakerPlugin/src/lua/lua_host.cxx). They are payload, not build
+    # output - shipping the dll alone would ship a scripting layer with nothing to run.
+    $pluginScripts = Join-Path $repoRoot "TweakerPlugin\assets\scripts"
+    if (Test-Path $pluginScripts) {
+        $scriptsOut = Join-Path $tweakerOut "scripts"
+        New-Item -ItemType Directory -Force -Path $scriptsOut | Out-Null
+        Copy-Item (Join-Path $pluginScripts "*") -Destination $scriptsOut -Recurse -Force
+        Write-Host "    $pluginScripts -> $scriptsOut"
+    }
 } else {
     Write-Host "    TweakerPlugin.dll not found - in-game overlay will be unavailable in this bundle (see TweakerPlugin/cmake/*.cmake)." -ForegroundColor Yellow
 }

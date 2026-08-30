@@ -11,6 +11,9 @@ add_subdirectory(resource)
 add_subdirectory(libstb)
 add_subdirectory(ui)
 
+# After ui: lua_api pushes notefeed toasts and draws on the overlay's ImGui context.
+add_subdirectory(lua)
+
 # After libstb/resource: skybox links both.
 add_subdirectory(skybox)
 

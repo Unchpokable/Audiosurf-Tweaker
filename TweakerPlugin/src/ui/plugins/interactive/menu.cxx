@@ -159,11 +159,20 @@ constexpr float k_chrome_allowance_x = 96.f;
 // (update) and from the dinput hooks on whichever thread the game polls its devices.
 std::atomic<bool> g_visible = false;
 
-// Optional fifth tab contributed from outside tweaker_ui - see menu.hxx::set_extra_tab. Null in
-// smoke_test, where the module that would register it does not exist.
-constexpr int k_extra_tab = 4;
-std::string g_extra_tab_label;
-tw::ui::plugins::interactive::menu::extra_tab_draw_fn g_extra_tab_draw = nullptr;
+// Tabs contributed from outside tweaker_ui - see menu.hxx::add_extra_tab. Empty in smoke_test, where
+// the modules that register them do not exist.
+//
+// A list rather than the single slot this used to be: Skybox is no longer the only page owned by a
+// module this library cannot link against. They are appended after the four built-in tabs in
+// registration order, and the handle add_extra_tab returns is that position.
+constexpr int k_first_extra_tab = 4;
+
+struct extra_tab {
+    std::string label;
+    tw::ui::plugins::interactive::menu::extra_tab_draw_fn draw;
+};
+
+std::vector<extra_tab> g_extra_tabs;
 
 tab_view g_tabs { "menu_tabs" };
 list_view g_skins_list { "menu_skins" };
@@ -209,8 +218,8 @@ void ensure_widgets_ready()
     // The extra tab is appended, never inserted: k_player_tab and the literal indices in update()
     // are positional, and anything that shifted them would silently draw the wrong page.
     std::vector<std::string_view> labels { "Skins", "Tweaks", "Player", "Settings" };
-    if(g_extra_tab_draw != nullptr) {
-        labels.emplace_back(g_extra_tab_label);
+    for(const extra_tab& tab : g_extra_tabs) {
+        labels.emplace_back(tab.label);
     }
 
     g_tabs.set_tabs(labels);
@@ -561,10 +570,14 @@ void show_tab(int index) noexcept
     g_visible.store(true, std::memory_order_relaxed);
 }
 
-void set_extra_tab(std::string_view label, extra_tab_draw_fn draw) noexcept
+int add_extra_tab(std::string_view label, extra_tab_draw_fn draw) noexcept
 {
-    g_extra_tab_label.assign(label);
-    g_extra_tab_draw = draw;
+    if(draw == nullptr) {
+        return -1;
+    }
+
+    g_extra_tabs.push_back(extra_tab { std::string { label }, draw });
+    return k_first_extra_tab + static_cast<int>(g_extra_tabs.size()) - 1;
 }
 
 bool window_rect(ImVec2& pos, ImVec2& size) noexcept
@@ -584,9 +597,9 @@ bool window_rect(ImVec2& pos, ImVec2& size) noexcept
     return true;
 }
 
-bool extra_tab_selected() noexcept
+bool extra_tab_selected(int handle) noexcept
 {
-    return g_extra_tab_draw != nullptr && g_tabs.selected_tab() == k_extra_tab;
+    return handle >= 0 && g_tabs.selected_tab() == handle;
 }
 
 void update(const tw::ui::overlay_state::cache& snapshot, const tw::ui::qp::state::cache& qp_snapshot) noexcept
@@ -727,9 +740,11 @@ void update(const tw::ui::overlay_state::cache& snapshot, const tw::ui::qp::stat
         draw_settings_tab();
         g_tabs.end_view();
     }
-    if(g_extra_tab_draw != nullptr && g_tabs.begin_view(k_extra_tab)) {
-        g_extra_tab_draw();
-        g_tabs.end_view();
+    for(std::size_t i = 0; i < g_extra_tabs.size(); ++i) {
+        if(g_tabs.begin_view(k_first_extra_tab + static_cast<int>(i))) {
+            g_extra_tabs[i].draw();
+            g_tabs.end_view();
+        }
     }
     g_tabs.end();
 

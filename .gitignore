@@ -375,3 +375,10 @@ PVS-Report/
 .PVS-Studio/
 *.PVS-Studio.dfo
 *.PVS-Studio.i
+
+# Game binaries for Reverse-Engineering works, DEFINITELY NOT TO PUBLIC!!!!!!!!!!!!
+/Audiosurf_Steam/
+Audiosurf_Steam/
+
+# Development scrap and temporary files
+Temp/

@@ -24,6 +24,11 @@
 
 namespace
 {
+// Which menu tab this module was given. sky_panel docks beside the menu only while the Skybox page
+// is the one on screen, and with more than one externally-registered tab that is no longer simply
+// "the extra tab".
+int g_tab_handle = -1;
+
 using tw::ui::widgets::button;
 using tw::ui::widgets::list_item_content;
 using tw::ui::widgets::list_view;
@@ -340,10 +345,15 @@ void draw_tab()
 
 namespace tw::skybox::ui
 {
+int tab_handle() noexcept
+{
+    return g_tab_handle;
+}
+
 void initialize() noexcept
 {
-    tw::ui::plugins::interactive::menu::set_extra_tab("Skybox", &draw_tab);
-    TW_LOG_INFO("sky_ui: Skybox tab registered");
+    g_tab_handle = tw::ui::plugins::interactive::menu::add_extra_tab("Skybox", &draw_tab);
+    TW_LOG_INFO("sky_ui: Skybox tab registered as tab {}", g_tab_handle);
 }
 
 void update() noexcept

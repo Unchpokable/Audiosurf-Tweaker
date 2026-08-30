@@ -8,6 +8,7 @@
 
 #include <imgui.h>
 
+#include <algorithm>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -33,6 +34,12 @@ struct pin_label {
     std::string_view icon_key;
     bool quick_player = false;
 };
+
+// The bounding box of whatever the last update() drew, for last_rect(). Recorded rather than
+// recomputed because the width depends on measured text, and measuring it twice would mean either
+// duplicating the layout or paying for it again.
+float g_rect[4] { 0.f, 0.f, 0.f, 0.f };
+bool g_rect_valid = false;
 } // namespace
 
 namespace tw::ui::plugins::statics::pins
@@ -66,6 +73,8 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
         labels.emplace_back("Skin: " + std::string(skin_name), tw::ui::overlay_state::skin_icon_key(), false);
     }
 
+    g_rect_valid = false;
+
     if(labels.empty()) {
         return;
     }
@@ -78,6 +87,13 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
     // equally spaced above/below (see Docs/Internal/tweaker-plugin-widgets.md-adjacent spec).
     const float total_h = static_cast<float>(labels.size()) * k_row_h + static_cast<float>(labels.size() - 1) * k_row_gap;
     float y = viewport.y * 0.5f - total_h * 0.5f;
+
+    g_rect[1] = y;
+    g_rect[3] = y + total_h;
+    // Grown per row below, since each row is only as wide as its own label.
+    g_rect[0] = viewport.x;
+    g_rect[2] = 0.f;
+    g_rect_valid = true;
 
     for(const auto& label : labels) {
         // Resolved per frame rather than cached with the label: an ImTextureID only survives until
@@ -92,6 +108,9 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
 
         const ImVec2 p_min { x, y };
         const ImVec2 p_max { x + box_w, y + k_row_h };
+
+        g_rect[0] = std::min(g_rect[0], p_min.x);
+        g_rect[2] = std::max(g_rect[2], p_max.x);
 
         const ImVec4 bg { theme::surface.x, theme::surface.y, theme::surface.z, theme::surface.w * 0.55f };
         draw->AddRectFilled(p_min, p_max, detail::to_u32(bg), k_rounding);
@@ -112,5 +131,19 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
 
         y += k_row_h + k_row_gap;
     }
+}
+
+bool last_rect(float& x0, float& y0, float& x1, float& y1) noexcept
+{
+    if(!g_rect_valid) {
+        return false;
+    }
+
+    x0 = g_rect[0];
+    y0 = g_rect[1];
+    x1 = g_rect[2];
+    y1 = g_rect[3];
+
+    return true;
 }
 } // namespace tw::ui::plugins::statics::pins

@@ -30,6 +30,12 @@
 // Microsoft Detours
 #include <detours.h>
 
+// LuaJIT (see cmake/LuaJIT.cmake). lua.hpp is upstream's own extern "C" wrapper around
+// lua.h/lauxlib.h/lualib.h/luajit.h - the whole C API surface the scripting layer uses, which by
+// design is small (Docs/Internal/lua-scripting.md §2.5). Nothing here pulls in the FFI: that side of
+// the boundary lives in Lua, not C++.
+#include <lua.hpp>
+
 // Vendored logging (src/libuulog, see its LICENCE). Lives in the PCH so the LOG_* macros - and the
 // TW_LOG_* release-stripping wrappers in plugin/diagnostics.hxx that sit on top of them - are
 // usable from any TU without a per-file include.
@@ -49,6 +55,8 @@
 #include <Aco_DX8_D3DDeviceUse.h>
 #include <Aco_String.h>
 #include <Aco_Float.h>
+#include <Aco_Vector.h>
+#include <Aco_Matrix.h>
 #include <Aco_DX8_Texture.h>
 #include <Aco_DX8_ObjectData.h>
 // clang-format on
@@ -73,6 +81,7 @@
 #include <future>
 #include <initializer_list>
 #include <iterator>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <new>

@@ -11,6 +11,9 @@
 
 #include "resource/resource.hxx"
 
+#include "lua/lua_host.hxx"
+#include "lua/lua_ui.hxx"
+
 #include "skybox/sky_ui.hxx"
 #include "skybox/skybox.hxx"
 
@@ -92,8 +95,12 @@ void load_thread(void* module_handle)
     tw::skybox::initialize();
 
     // After tw::ui::initialize() (which builds the menu) and before the first frame (which builds
-    // the tab strip) - see menu::set_extra_tab.
+    // the tab strip) - see menu::add_extra_tab.
     tw::skybox::ui::initialize();
+
+    // Same ordering rule, and before lua_host::initialize() below only for tidiness - the tab reads the
+    // script registry every frame rather than at registration time.
+    tw::lua::ui::initialize();
 
     if(!tw::framework::install_channel_hook()) {
         TW_LOG_WARNING("load: channel hook not installed - Quest3D engine pointer will stay null");
@@ -103,6 +110,11 @@ void load_thread(void* module_handle)
     // channel DLLs on demand, so an injection early enough can beat the Texture channel into the
     // process. By the time there is a D3D9 device, it is certainly mapped.
     tw::framework::texture::install_texture_hook();
+
+    // After the channel hook: lua_channels resolves HighPoly.dll entry points here, and the VM has to
+    // exist before the first frame calls into it. Script handles resolve lazily anyway, because the
+    // EngineInterface pointer the hook above captures arrives late (see lua-scripting.md §7).
+    tw::lua::host::initialize();
 
     tw::framework::d3d9::install_d3d9_hooks();
     tw::framework::dinput::install_hooks();

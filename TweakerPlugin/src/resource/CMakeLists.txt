@@ -178,8 +178,14 @@ target_link_libraries(tweaker_resource PRIVATE
     detours
     quest3d_sdk
     libuulog
+    luajit_headers
 )
 target_precompile_headers(tweaker_resource PRIVATE "${CMAKE_SOURCE_DIR}/src/pch.hxx")
+
+# luajit_headers only carries include paths, and one of those headers (luajit.h) is generated during
+# the luajit target's build. The PCH compile has to wait for it, which an INTERFACE library cannot
+# express on its own.
+add_dependencies(tweaker_resource luajit)
 
 # Expose the generated .rc path so smoke (and others) can embed it in their PE.
 set(TWEAKER_ASSETS_RC "${TWEAKER_ASSETS_RC}" CACHE INTERNAL "Path to generated TweakerPlugin assets.rc")

@@ -23,6 +23,11 @@ constexpr float k_rounding = 8.f;
 // visually read as "squished"). See assets/textures/ for the full size set.
 constexpr const char* k_icon_key = "textures/TweakerIcon-5.png";
 constexpr const char* k_label = "Audiosurf Tweaker";
+
+// Where the badge landed last frame, for last_rect(). Its width is text-dependent (the FPS readout
+// changes digits), so it is recorded as drawn rather than recomputed on demand.
+float g_rect[4] { 0.f, 0.f, 0.f, 0.f };
+bool g_rect_valid = false;
 } // namespace
 
 namespace tw::ui::plugins::statics::watermark
@@ -62,6 +67,12 @@ void update() noexcept
     const ImVec2 p_min { x, k_margin };
     const ImVec2 p_max { x + box_w, k_margin + k_height };
 
+    g_rect[0] = p_min.x;
+    g_rect[1] = p_min.y;
+    g_rect[2] = p_max.x;
+    g_rect[3] = p_max.y;
+    g_rect_valid = true;
+
     detail::add_rect_glow(draw, p_min, p_max, k_rounding, theme::accent_primary, 1.f);
 
     const ImVec4 bg { theme::surface.x, theme::surface.y, theme::surface.z, theme::surface.w * 0.85f };
@@ -82,5 +93,19 @@ void update() noexcept
 
     const ImVec2 fps_pos { cursor_x, p_min.y + (k_height - fps_size.y) * 0.5f };
     draw->AddText(fps_pos, detail::to_u32(theme::text_muted), fps_buf);
+}
+
+bool last_rect(float& x0, float& y0, float& x1, float& y1) noexcept
+{
+    if(!g_rect_valid) {
+        return false;
+    }
+
+    x0 = g_rect[0];
+    y0 = g_rect[1];
+    x1 = g_rect[2];
+    y1 = g_rect[3];
+
+    return true;
 }
 } // namespace tw::ui::plugins::statics::watermark

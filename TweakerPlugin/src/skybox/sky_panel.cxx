@@ -3,6 +3,7 @@
 #include "skybox/sky_panel.hxx"
 
 #include "skybox/sky_program.hxx"
+#include "skybox/sky_ui.hxx"
 
 #include "ui/plugins/interactive/menu.hxx"
 #include "ui/plugins/static/notefeed.hxx"
@@ -279,7 +280,7 @@ void draw(const status& status) noexcept
     // Every one of these hides the window without touching g_open. A cube map has no knobs, another
     // tab is not this tab - but neither is a decision to stop tuning, and coming back must not cost
     // a second click on Parameters.
-    if(!menu::extra_tab_selected()) {
+    if(!menu::extra_tab_selected(::tw::skybox::ui::tab_handle())) {
         return;
     }
 
