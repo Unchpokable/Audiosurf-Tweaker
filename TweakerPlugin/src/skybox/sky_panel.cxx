@@ -44,16 +44,27 @@ constexpr const char* k_ungrouped = "General";
 bool g_open = false;
 bool g_focus_pending = false;
 
+// One knob, addressed the way skybox::set_layer_param wants it.
+//
+// A sky is layers now, so an index into one parameter list is not an address any more. The widget
+// index is separate from both because the widgets are one flat run over every layer, which is what
+// keeps them addressable by a single number after the pages have shuffled them into groups.
+struct row {
+    int layer {};
+    int index {};
+    int widget {};
+};
+
 struct group_page {
     std::string label;
-    std::vector<int> params; // indices into program->params
+    std::vector<row> rows;
 };
 
 std::vector<group_page> g_pages;
 
-// One widget per parameter, indexed exactly like program->params so a page can hold plain indices.
-// Only the entry matching the parameter's kind is ever ticked; the other is dead weight worth a few
-// hundred bytes and buys index arithmetic that cannot drift.
+// One widget per knob of every layer, in the order the layers were walked. Only the entry matching
+// the parameter's kind is ever ticked; the other is dead weight worth a few hundred bytes and buys
+// index arithmetic that cannot drift.
 std::vector<slider> g_sliders;
 std::vector<color_field> g_colors;
 
@@ -61,58 +72,87 @@ tab_view g_tabs { "sky_param_tabs" };
 button g_reset_btn { "sky_param_reset", { 0.f, k_footer_h } };
 
 // What the pages were built from. The pointer alone is not enough: a hot reload recompiles in place
-// and can change the parameter set without changing the program.
+// and can change the parameter set without changing the program - and a sky can now bring several
+// layers, any one of which may have been the one that changed.
 const tw::skybox::sky_program* g_built_program = nullptr;
+std::size_t g_built_layers = 0;
 unsigned int g_built_generation = 0;
+
+// Cheap "has anything about this list of layers changed" - the sum of their parameter generations,
+// which every rebuild of any of them bumps.
+unsigned int layers_generation(std::span<tw::skybox::sky_program* const> layers) noexcept
+{
+    unsigned int sum = 0;
+    for(const tw::skybox::sky_program* layer : layers) {
+        sum += layer->params_generation;
+    }
+
+    return sum;
+}
 
 // Remembered by name, not by index. Switching shaders rebuilds the strip, and a shader whose second
 // group is "Clouds" should not inherit the selection of one whose second group was "Stars".
 std::string g_selected_label;
 
-void rebuild(const tw::skybox::sky_program& program)
+void rebuild(std::span<tw::skybox::sky_program* const> layers)
 {
     g_pages.clear();
     g_sliders.clear();
     g_colors.clear();
 
-    const auto& params = program.params;
-    g_sliders.reserve(params.size());
-    g_colors.reserve(params.size());
+    int widget = 0;
 
-    for(std::size_t i = 0; i < params.size(); ++i) {
-        const tw::skybox::sky_param& param = params[i];
+    for(std::size_t layer_index = 0; layer_index < layers.size(); ++layer_index) {
+        const auto& params = layers[layer_index]->params;
 
-        // The key ("c0x", "c6y") is already unique within a program and stable across relabelling -
-        // exactly what a widget id has to be.
-        g_sliders.emplace_back(param.key.c_str());
-        g_colors.emplace_back(param.key.c_str());
+        for(std::size_t i = 0; i < params.size(); ++i) {
+            const tw::skybox::sky_param& param = params[i];
 
-        g_sliders.back().set_label(param.label);
-        g_colors.back().set_label(param.label);
+            // The key is unique across the whole sky, not just within one shader - a package layer
+            // keys by "<layer>.<id>" and a shared knob by its path, precisely so that two layers
+            // cannot hand ImGui the same id and produce two sliders that move together.
+            g_sliders.emplace_back(param.key.c_str());
+            g_colors.emplace_back(param.key.c_str());
 
-        if(!param.is_color()) {
-            g_sliders.back().set_range(param.min_value, param.max_value);
-            g_sliders.back().set_value(param.value[0]);
+            g_sliders.back().set_label(param.label);
+            g_colors.back().set_label(param.label);
+
+            if(!param.is_color()) {
+                g_sliders.back().set_range(param.min_value, param.max_value);
+                g_sliders.back().set_value(param.value[0]);
+            }
+            else {
+                g_colors.back().set_color(ImVec4 { param.value[0], param.value[1], param.value[2], 1.f });
+            }
+
+            // order_by_group() has already brought each group together within a layer, so a page
+            // break is a change of group name. Across layers the same name merges into one page,
+            // which is what an author asking for it means: the group is theirs to name.
+            const std::string_view group = param.group.empty() ? std::string_view { k_ungrouped } : std::string_view { param.group };
+
+            group_page* page = nullptr;
+            for(group_page& candidate : g_pages) {
+                if(candidate.label == group) {
+                    page = &candidate;
+                    break;
+                }
+            }
+
+            if(page == nullptr) {
+                group_page created;
+                created.label.assign(group);
+                g_pages.push_back(std::move(created));
+                page = &g_pages.back();
+            }
+
+            page->rows.push_back(row { static_cast<int>(layer_index), static_cast<int>(i), widget });
+            ++widget;
         }
-        else {
-            g_colors.back().set_color(ImVec4 { param.value[0], param.value[1], param.value[2], 1.f });
-        }
-
-        // order_by_group() has already brought each group together, so a page break is simply a
-        // change of group name.
-        const std::string_view group = param.group.empty() ? std::string_view { k_ungrouped } : std::string_view { param.group };
-
-        if(g_pages.empty() || g_pages.back().label != group) {
-            group_page page;
-            page.label.assign(group);
-            g_pages.push_back(std::move(page));
-        }
-
-        g_pages.back().params.push_back(static_cast<int>(i));
     }
 
-    g_built_program = &program;
-    g_built_generation = program.params_generation;
+    g_built_program = layers.empty() ? nullptr : layers.front();
+    g_built_layers = layers.size();
+    g_built_generation = layers_generation(layers);
 
     if(g_pages.size() < 2) {
         return;
@@ -142,10 +182,19 @@ void rebuild(const tw::skybox::sky_program& program)
     g_selected_label = g_pages.front().label;
 }
 
-void draw_param_rows(const tw::skybox::sky_program& program, const std::vector<int>& indices)
+void draw_param_rows(std::span<tw::skybox::sky_program* const> layers, const std::vector<row>& rows)
 {
-    for(const int index : indices) {
-        const tw::skybox::sky_param& param = program.params[static_cast<std::size_t>(index)];
+    for(const row& entry : rows) {
+        if(static_cast<std::size_t>(entry.layer) >= layers.size()) {
+            continue;
+        }
+
+        const tw::skybox::sky_program& program = *layers[static_cast<std::size_t>(entry.layer)];
+        if(static_cast<std::size_t>(entry.index) >= program.params.size()) {
+            continue;
+        }
+
+        const tw::skybox::sky_param& param = program.params[static_cast<std::size_t>(entry.index)];
 
         // Components the control does not own are carried through untouched: a scalar parameter
         // names one channel of a register, and the rest of that register is somebody else's knob.
@@ -154,7 +203,7 @@ void draw_param_rows(const tw::skybox::sky_program& program, const std::vector<i
         bool commit = false;
 
         if(param.is_color()) {
-            color_field& widget = g_colors[static_cast<std::size_t>(index)];
+            color_field& widget = g_colors[static_cast<std::size_t>(entry.widget)];
             widget.set_color(ImVec4 { param.value[0], param.value[1], param.value[2], 1.f });
             widget.update();
 
@@ -164,7 +213,7 @@ void draw_param_rows(const tw::skybox::sky_program& program, const std::vector<i
             commit = widget.committed();
         }
         else {
-            slider& widget = g_sliders[static_cast<std::size_t>(index)];
+            slider& widget = g_sliders[static_cast<std::size_t>(entry.widget)];
             widget.set_range(param.min_value, param.max_value);
             widget.set_value(param.value[0]);
             widget.update();
@@ -177,7 +226,7 @@ void draw_param_rows(const tw::skybox::sky_program& program, const std::vector<i
         // One call even when a typed value both moves and commits in the same frame. `persist` is
         // what separates the live preview from the settings write - see skybox::set_program_param.
         if(moved || commit) {
-            tw::skybox::set_program_param(index, next, commit);
+            tw::skybox::set_layer_param(entry.layer, entry.index, next, commit);
         }
     }
 }
@@ -290,13 +339,17 @@ void draw(const status& status) noexcept
         return;
     }
 
-    const sky_program* program = status.program;
-    if(program == nullptr || program->params.empty()) {
+    const std::span<sky_program* const> layers = active_layers();
+    if(layers.empty() || status.program == nullptr) {
         return;
     }
 
-    if(program != g_built_program || program->params_generation != g_built_generation) {
-        rebuild(*program);
+    if(layers.front() != g_built_program || layers.size() != g_built_layers || layers_generation(layers) != g_built_generation) {
+        rebuild(layers);
+    }
+
+    if(g_pages.empty()) {
+        return;
     }
 
     const ImVec2 viewport = ImGui::GetIO().DisplaySize;
@@ -342,7 +395,7 @@ void draw(const status& status) noexcept
         ImVec2 { p_min.x + 12.f, title_text_y },
         title_max.x - k_padding - k_close_size - 8.f,
         detail::to_u32(theme::text_primary),
-        program->display_name.c_str());
+        layers.front()->display_name.c_str());
 
     if(draw_close_button(draw, title_max, p_min.y)) {
         close();
@@ -359,7 +412,7 @@ void draw(const status& status) noexcept
         g_tabs.begin();
         for(std::size_t i = 0; i < g_pages.size(); ++i) {
             if(g_tabs.begin_view(static_cast<int>(i))) {
-                draw_param_rows(*program, g_pages[i].params);
+                draw_param_rows(layers, g_pages[i].rows);
                 g_tabs.end_view();
             }
         }
@@ -377,7 +430,7 @@ void draw(const status& status) noexcept
         // sky_gradient and sky_probe declare no annotation of their own and inherit only the shared
         // palette, so they have exactly one group.
         begin_plain_body(body_h);
-        draw_param_rows(*program, g_pages.front().params);
+        draw_param_rows(layers, g_pages.front().rows);
         end_plain_body();
     }
 
@@ -387,7 +440,7 @@ void draw(const status& status) noexcept
     g_reset_btn.set_size(ImVec2 { content_w, k_footer_h });
     g_reset_btn.update("Reset to defaults");
     if(g_reset_btn.clicked()) {
-        reset_program_params();
+        reset_sky_params();
         tw::ui::plugins::statics::notefeed::push("Sky parameters reset");
     }
 

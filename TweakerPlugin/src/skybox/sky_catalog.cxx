@@ -176,6 +176,22 @@ void add_directory_entries()
         const std::string id = entry.path().string();
 
         if(entry.is_directory()) {
+            // A directory now means two things, so the order of these checks is the rule rather
+            // than an accident: a manifest wins. Otherwise a package whose author happens to keep
+            // six square images in its root would be listed as a cube map - see
+            // Docs/Internal/sky-package.md.
+            //
+            // The manifest is not read here, only looked for. A scan that parsed every package it
+            // found would do real work for skies nobody has picked, exactly as a scan that compiled
+            // every .hlsl would.
+            std::error_code exists_ec;
+            if(std::filesystem::is_regular_file(entry.path() / "Config.json", exists_ec)) {
+                g_entries.push_back(
+                    tw::skybox::catalog_entry { entry.path().stem().string(), id, tw::skybox::entry_kind::package, 0 });
+                ++listed;
+                continue;
+            }
+
             int face_size = 0;
             if(scan_face_directory(entry.path(), face_size)) {
                 g_entries.push_back(
@@ -288,9 +304,10 @@ int selected_catalog_index() noexcept
                 return static_cast<int>(i);
             }
 
-            // A file shader's id is an absolute path while the config may hold a relative one, so
-            // the two are compared through the same resolver, as the image paths below are.
-            if(entry.kind == entry_kind::shader_file) {
+            // A file shader and a package are both identified by a path, and the entry holds an
+            // absolute one while the config may hold a relative one - so the two are compared
+            // through the same resolver, as the image paths below are.
+            if(entry.kind == entry_kind::shader_file || entry.kind == entry_kind::package) {
                 std::error_code ec;
                 if(std::filesystem::equivalent(entry.id, resolve_source_path(program), ec)) {
                     return static_cast<int>(i);
@@ -299,7 +316,7 @@ int selected_catalog_index() noexcept
             continue;
         }
 
-        if(entry.kind == entry_kind::program || entry.kind == entry_kind::shader_file) {
+        if(entry.kind == entry_kind::program || entry.kind == entry_kind::shader_file || entry.kind == entry_kind::package) {
             continue;
         }
 

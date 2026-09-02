@@ -6,7 +6,9 @@
 
 #include "skybox/sky_catalog.hxx"
 #include "skybox/sky_panel.hxx"
+#include "skybox/sky_probe.hxx"
 #include "skybox/sky_program.hxx"
+#include "skybox/sky_sprites.hxx"
 #include "skybox/sky_timer.hxx"
 #include "skybox/skybox.hxx"
 #include "skybox/skybox_config.hxx"
@@ -18,6 +20,7 @@
 #include "ui/widgets/detail/draw.hxx"
 #include "ui/widgets/list_view.hxx"
 #include "ui/widgets/segmented.hxx"
+#include "ui/widgets/slider.hxx"
 #include "ui/widgets/toggle.hxx"
 
 #include <imgui.h>
@@ -33,6 +36,7 @@ using tw::ui::widgets::button;
 using tw::ui::widgets::list_item_content;
 using tw::ui::widgets::list_view;
 using tw::ui::widgets::segmented;
+using tw::ui::widgets::slider;
 using tw::ui::widgets::toggle;
 
 toggle g_enabled_toggle { "skybox_enabled" };
@@ -41,6 +45,7 @@ list_view g_list { "skybox_list" };
 button g_refresh_btn { "skybox_refresh", { 100.f, 28.f } };
 button g_params_btn { "skybox_params_open", { 120.f, 28.f } };
 segmented g_quality { "skybox_quality", 24.f };
+
 
 // Percentages behind the four chips, in chip order. Native first because it is the default and the
 // one nobody has to think about; the rest are the halving-ish steps that actually change the cost.
@@ -68,6 +73,8 @@ const char* kind_label(tw::skybox::entry_kind kind) noexcept
             return "built-in";
         case tw::skybox::entry_kind::face_dir:
             return "six faces";
+        case tw::skybox::entry_kind::package:
+            return "sky package";
         default:
             return "file";
     }
@@ -104,6 +111,9 @@ void apply_entry(const tw::skybox::catalog_entry& entry)
     switch(entry.kind) {
         case tw::skybox::entry_kind::program:
         case tw::skybox::entry_kind::shader_file:
+        case tw::skybox::entry_kind::package:
+            // All three are "a shader paints the sky", and the config stores the same thing for each:
+            // a built-in id, a path to a .hlsl, or a path to a package directory.
             tw::skybox::select_program(entry.id);
             break;
         case tw::skybox::entry_kind::packed:
@@ -154,6 +164,92 @@ void draw_timing(const tw::skybox::status& status)
     ImGui::TextDisabled("Sky draw: %.0f us on the GPU (%.3f ms)", status.draw_microseconds, status.draw_microseconds / 1000.f);
 }
 
+// D3DBLEND as a name rather than the number GetRenderState hands back. Worth the table: the pair is
+// only ever read to answer "what would a blended pass inherit if it set nothing", and "src 2,
+// dest 4" does not answer that to anyone without the SDK header open.
+const char* blend_name(unsigned long value)
+{
+    switch(value) {
+        case D3DBLEND_ZERO: return "ZERO";
+        case D3DBLEND_ONE: return "ONE";
+        case D3DBLEND_SRCCOLOR: return "SRCCOLOR";
+        case D3DBLEND_INVSRCCOLOR: return "INVSRCCOLOR";
+        case D3DBLEND_SRCALPHA: return "SRCALPHA";
+        case D3DBLEND_INVSRCALPHA: return "INVSRCALPHA";
+        case D3DBLEND_DESTALPHA: return "DESTALPHA";
+        case D3DBLEND_INVDESTALPHA: return "INVDESTALPHA";
+        case D3DBLEND_DESTCOLOR: return "DESTCOLOR";
+        case D3DBLEND_INVDESTCOLOR: return "INVDESTCOLOR";
+        case D3DBLEND_SRCALPHASAT: return "SRCALPHASAT";
+        default: return "?";
+    }
+}
+
+
+// What the geometry layer is doing, and nothing to turn.
+//
+// It used to be eleven sliders here: count, size, clumps, spread, four material knobs and a light
+// aimed by hand. All eleven have moved into the sky's own manifest, where they are declared by
+// whoever made the sky and drawn by the parameter panel alongside every other knob it has - and the
+// hand-aimed light is gone rather than moved, because a cloud is lit by the sky's lights now.
+//
+// What is left is the pair of claims the panel cannot make: whether the layer exists at all in this
+// sky, and whether the device would build it.
+void draw_geometry_layer()
+{
+    if(!tw::skybox::sprites::enabled()) {
+        return;
+    }
+
+    if(!tw::skybox::sprites::ready()) {
+        // "Enabled" and "drawing" are different claims, and a device that refused the shaders would
+        // otherwise look exactly like a layer nobody switched on.
+        ImGui::PushStyleColor(ImGuiCol_Text, tw::ui::theme::text_error);
+        ImGui::TextUnformatted("The device would not create the sprite shaders - see the log.");
+        ImGui::PopStyleColor();
+        return;
+    }
+
+    ImGui::TextDisabled("Geometry layer: %d sprites.", tw::skybox::sprites::live_count());
+}
+
+// What the intercepted frame looks like from inside the game (see sky_probe). Folded away because
+// none of it changes while a song plays and none of it is what somebody opens this tab for - but
+// the draw count in particular reads on the timing line above, which only ever measures one draw.
+void draw_frame_facts()
+{
+    const tw::skybox::probe::facts facts = tw::skybox::probe::current();
+    if(!facts.captured) {
+        return;
+    }
+
+    if(!ImGui::TreeNode("Intercepted frame")) {
+        return;
+    }
+
+    if(facts.draws_peak > 1) {
+        // The one number here that is a warning rather than a fact: the whole sky is redrawn on
+        // every match, and the GPU timer above reports a single one of them.
+        ImGui::PushStyleColor(ImGuiCol_Text, tw::ui::theme::text_warning);
+        ImGui::Text("Sky draws: %d this frame, %d at peak - the timing above is for one of them", facts.draws_last_frame, facts.draws_peak);
+        ImGui::PopStyleColor();
+    }
+    else {
+        ImGui::TextDisabled("Sky draws: %d this frame, %d at peak", facts.draws_last_frame, facts.draws_peak);
+    }
+
+    ImGui::TextDisabled("Render target: %dx%d (%s)", facts.target_width, facts.target_height, facts.on_back_buffer ? "back buffer" : "off-screen");
+    ImGui::TextDisabled("Viewport: %dx%d", facts.viewport_width, facts.viewport_height);
+    ImGui::TextDisabled("Depth buffer: %s", facts.depth_bound ? "bound" : "none");
+    ImGui::TextDisabled("Vertex processing: %s", facts.software_vertex_processing ? "software" : "hardware");
+    ImGui::TextDisabled("Game's blend state: %s (src %s, dest %s)",
+        facts.alpha_blend_enabled ? "on" : "off",
+        blend_name(facts.src_blend),
+        blend_name(facts.dest_blend));
+
+    ImGui::TreePop();
+}
+
 // Compiler output for a .hlsl the user is editing. Errors matter more than anything else on this
 // tab while they are happening, so they get a colour and the full text, wrapped.
 void draw_diagnostics(const tw::skybox::status& status)
@@ -192,6 +288,8 @@ void draw_status_line(const tw::skybox::status& status)
         }
 
         draw_timing(status);
+        draw_geometry_layer();
+        draw_frame_facts();
         draw_diagnostics(status);
         return;
     }
@@ -228,6 +326,7 @@ void draw_tab()
         constexpr std::array<std::string_view, 4> k_quality_labels { "Native", "67%", "50%", "33%" };
         g_quality.set_options(k_quality_labels);
         g_quality.set_selected(quality_index(initial.shader_quality));
+
 
         g_widgets_ready = true;
     }
@@ -367,6 +466,11 @@ void update() noexcept
     const bool menu_open = tw::ui::plugins::interactive::menu::is_visible();
 
     tw::skybox::timer::set_enabled(menu_open);
+
+    // Unlike the two above, this one does not follow the menu: it is the frame boundary for a
+    // counter the draw hooks increment whether anybody is watching or not, and skipping it would
+    // make the count accumulate across frames instead of describing one.
+    tw::skybox::probe::on_frame();
 
     switch(poll_reload(menu_open)) {
         case reload_outcome::started:

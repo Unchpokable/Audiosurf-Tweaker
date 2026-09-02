@@ -71,13 +71,16 @@
 #include <chrono>
 #include <climits>
 #include <cmath>
+#include <condition_variable>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <deque>
 #include <expected>
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <functional>
 #include <future>
 #include <initializer_list>
 #include <iterator>
@@ -85,7 +88,9 @@
 #include <memory>
 #include <mutex>
 #include <new>
+#include <optional>
 #include <span>
+#include <thread>
 #include <sstream>
 #include <string>
 #include <string_view>

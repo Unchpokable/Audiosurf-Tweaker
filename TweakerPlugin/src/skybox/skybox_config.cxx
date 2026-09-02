@@ -19,12 +19,6 @@ std::string g_sky_program;
 bool g_probe_markers = true;
 int g_shader_quality = 100;
 std::string g_loaded_path;
-
-// Sky program parameters, in the order they were read or first set. A vector rather than a map:
-// there are a handful of these, lookup happens when a shader loads rather than per frame, and the
-// file keeps a stable order instead of reshuffling on every save.
-std::vector<std::pair<std::string, std::string>> g_params;
-
 // Phase 0 wrote shader_test=true to mean "run the probe". Programs subsumed it, and this is the
 // one-line migration that keeps an existing .cfg meaning what it meant. Harmless to leave in - the
 // key stops being written the first time the file is saved.
@@ -135,7 +129,9 @@ void load(std::string_view path)
             g_probe_markers = parse_bool(value, g_probe_markers);
         }
         else if(key.starts_with("param.")) {
-            set_param_value(key, value);
+            // Left over from when parameters lived here. Read and dropped: they moved to a file per
+            // sky under Skies/, and a key this build does not write is a key it should not keep.
+            continue;
         }
         else if(key == "shader_test") {
             g_legacy_shader_test = parse_bool(value, false);
@@ -209,14 +205,6 @@ void save()
     file << "shader_quality=" << g_shader_quality << '\n';
     file << "# Axis markers for the probe program: +X red, +Y green, +Z blue, and a ring on the horizon.\n";
     file << "probe_markers=" << (g_probe_markers ? "true" : "false") << '\n';
-
-    if(!g_params.empty()) {
-        file << "# Sky program parameters, written by the overlay's Parameters popup. Keyed by program\n";
-        file << "# and by register, so renaming a knob's label does not lose its value.\n";
-        for(const auto& [key, value] : g_params) {
-            file << key << '=' << value << '\n';
-        }
-    }
 }
 
 bool enabled() noexcept
@@ -293,29 +281,6 @@ void select_program(std::string_view id)
 {
     g_sky_program.assign(id);
     save();
-}
-
-std::string_view param_value(std::string_view key) noexcept
-{
-    for(const auto& entry : g_params) {
-        if(entry.first == key) {
-            return entry.second;
-        }
-    }
-
-    return {};
-}
-
-void set_param_value(std::string_view key, std::string_view value)
-{
-    for(auto& entry : g_params) {
-        if(entry.first == key) {
-            entry.second.assign(value);
-            return;
-        }
-    }
-
-    g_params.emplace_back(std::string { key }, std::string { value });
 }
 
 int shader_quality() noexcept

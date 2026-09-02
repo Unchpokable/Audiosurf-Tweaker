@@ -243,6 +243,43 @@ tw::skybox::param_block parse_block(std::string_view source, const tw::skybox::b
 
 namespace tw::skybox
 {
+bool resolve_variable(const bytecode::reflection& reflection, std::string_view reference, int count, sky_param& out)
+{
+    return resolve(reflection, reference, count, false, out);
+}
+
+bool resolve_binding_target(const bytecode::reflection& reflection, std::string_view reference, resolved_binding& out)
+{
+    std::string_view variable;
+    std::string_view swizzle;
+    split_reference(reference, variable, swizzle);
+
+    const auto* constant = find_constant(reflection, variable);
+    if(constant == nullptr) {
+        return false;
+    }
+
+    const int component = component_index(swizzle);
+    if(component < 0 || component + static_cast<int>(swizzle.size()) > 4) {
+        return false;
+    }
+
+    // A run, not a set. `.xz` names two components with a hole between them, and a binding writes
+    // one contiguous span into the constant block - so that is an authoring mistake rather than
+    // something to half-honour.
+    for(std::size_t i = 1; i < swizzle.size(); ++i) {
+        if(component_index(swizzle.substr(i)) != component + static_cast<int>(i)) {
+            return false;
+        }
+    }
+
+    out.reg = constant->reg;
+    out.component = component;
+    out.count = static_cast<int>(swizzle.size());
+
+    return true;
+}
+
 param_block parse_params(std::string_view source, const bytecode::reflection& reflection)
 {
     param_block block = parse_block(source, reflection, true);
@@ -291,13 +328,22 @@ void order_by_group(std::vector<sky_param>& params)
     params = std::move(ordered);
 }
 
-void apply_params(std::span<const sky_param> params, std::span<float> constants) noexcept
+void apply_params(std::span<const sky_param> params, std::span<float> constants, std::span<float> vertex_constants) noexcept
 {
     for(const sky_param& param : params) {
+        // Shared knobs and layer properties have no register of their own: one lives in the sky's
+        // shared block and reaches this layer through a binding, the other configures the layer
+        // rather than its shader. Writing them here would land on register -1.
+        if(!param.is_constant()) {
+            continue;
+        }
+
+        const std::span<float> block = param.vertex_stage ? vertex_constants : constants;
+
         for(int i = 0; i < param.count; ++i) {
             const auto slot = static_cast<std::size_t>(param.reg * 4 + param.component + i);
-            if(slot < constants.size()) {
-                constants[slot] = param.value[static_cast<std::size_t>(i)];
+            if(slot < block.size()) {
+                block[slot] = param.value[static_cast<std::size_t>(i)];
             }
         }
     }

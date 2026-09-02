@@ -16,6 +16,13 @@ enum class entry_kind {
     packed,      // a resource baked into the DLL; `id` is a tw::resource key
     file,        // a cross or panorama image on disk; `id` is a path
     face_dir,    // a folder of six faces; `id` is a path
+
+    // A `.sky` package - a directory holding Config.json, with the sky's layers, shaders and assets.
+    // `id` is the path to that directory. See Docs/Internal/sky-package.md.
+    //
+    // Recognised before face_dir, and that order is the rule: a directory can now be either, and a
+    // manifest is the definite answer while six images in a folder is an inference.
+    package,
 };
 
 struct catalog_entry {

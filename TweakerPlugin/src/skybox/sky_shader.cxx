@@ -78,7 +78,13 @@ cache_slot* find_slot(const tw::skybox::sky_program& program) noexcept
 
 bool create_shaders(IDirect3DDevice9* device, const tw::skybox::sky_program& program, tw::skybox::shader::pair& out)
 {
-    const DWORD* vertex_code = as_bytecode(tw::skybox::vertex_bytecode(), "sky_cube.vs");
+    // Its own vertex stage when it has one, the shared cube's otherwise. Every `fullsky` sky paints
+    // the same cube and all its variety is in the pixel stage; a geometry layer's vertices are quads
+    // with a billboard basis baked in, and nothing else can produce those.
+    const std::span<const std::byte> vertex_bytes
+        = program.vertex_code.empty() ? tw::skybox::vertex_bytecode() : program.vertex_code;
+
+    const DWORD* vertex_code = as_bytecode(vertex_bytes, program.vertex_code.empty() ? "sky_cube.vs" : program.id);
     const DWORD* pixel_code = as_bytecode(program.pixel_bytecode, program.id);
     if(vertex_code == nullptr || pixel_code == nullptr) {
         return false;

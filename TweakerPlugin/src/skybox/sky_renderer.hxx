@@ -47,6 +47,23 @@ namespace tw::skybox::renderer
     int scale_percent,
     const D3DMATRIX& orientation) noexcept;
 
+// An extra pass drawn on top of the sky, inside the same state capture and at full resolution.
+//
+// Both of those are the whole point of routing it through here rather than letting a caller draw
+// after draw()/draw_program() returns. Inside the capture means the pass may set whatever state it
+// likes and the game still gets its own back untouched; after draw_program's blit means it lands on
+// the restored back buffer at native resolution, over an already-upscaled sky - so a sprite keeps
+// the sharp edge that the reduced-resolution sky deliberately gives up. At 100% there is no blit
+// and the same call site simply means "after the cube".
+//
+// `world_view_projection` is the matrix the sky itself was drawn with, so the pass shares the sky's
+// object space: a point at unit distance from the origin sits on the sky's own shell.
+//
+// One pass, set once at start-up. This is a place to hang the geometry layer, not a general plugin
+// point - see Docs/Internal/skybox-geometry.md.
+using extra_pass_fn = void (*)(IDirect3DDevice9* device, const D3DMATRIX& world_view_projection);
+void attach_extra_pass(extra_pass_fn fn) noexcept;
+
 // Drops the state block, which is the only piece that does not survive IDirect3DDevice9::Reset.
 // Wired to the pre-Reset listener; the buffers are D3DPOOL_MANAGED and deliberately kept.
 void on_device_lost() noexcept;

@@ -107,19 +107,29 @@ void set_probe_markers(bool value) noexcept;
 // Resolution the shader path renders at, as a percentage of the viewport. Persists.
 void set_shader_quality(int percent) noexcept;
 
-// Moves one of the running program's parameters. The value reaches the sky on the next draw with no
-// recompile - these are shader constants, not code.
+// Every layer of the sky currently selected, in draw order, or empty for a cube map. A built-in or
+// a lone .hlsl reports as a single layer, so callers have one shape to work with.
+//
+// The pointers stay valid for the life of the process; the span does not survive a change of sky.
+[[nodiscard]] std::span<sky_program* const> active_layers() noexcept;
+
+// Moves one knob of one layer. The value reaches the sky on the next draw with no recompile.
+//
+// What the move does depends on what backs the knob, and that is the only branch: a shader constant
+// goes into that layer's constant block; a layer property is handed to whoever draws that kind of
+// layer; a *shared* value goes into the sky's shared block, after which every layer re-evaluates its
+// bindings - so moving one light turns the clouds as well as the sky. See sky_shared.
 //
 // `persist` writes it to the settings file. The overlay passes false while a slider is being
 // dragged and true when it is released: a drag is hundreds of values, and a settings file rewritten
 // hundreds of times is a settings file being used as a scratchpad.
-void set_program_param(int index, std::array<float, 3> value, bool persist);
+void set_layer_param(int layer_index, int index, std::array<float, 3> value, bool persist);
 
-// Puts every parameter of the running program back to the value its annotation asked for.
+// Puts every knob of every layer, and every shared value, back to what the manifest asked for.
 //
-// Its own entry point rather than a loop over set_program_param(..., true) at the call site, because
+// Its own entry point rather than a loop over set_layer_param(..., true) at the call site, because
 // that loop rewrites the whole settings file once per parameter. This writes it once.
-void reset_program_params();
+void reset_sky_params();
 
 // Drops the current cube map so the next sky draw rebuilds it from whatever the config now names.
 // The rebuild is deliberately deferred rather than done here: it decodes an image and can project a

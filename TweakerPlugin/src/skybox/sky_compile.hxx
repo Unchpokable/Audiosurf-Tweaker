@@ -1,5 +1,7 @@
 #pragma once
 
+#include "plugin/bg_work.hxx"
+
 // Compiling HLSL to ps_3_0 inside the game process, so a sky can be edited without rebuilding the
 // plugin.
 //
@@ -39,15 +41,24 @@ struct result {
     }
 };
 
-// Compiles `source` as a ps_3_0 shader with entry point `main`. `source_path` is used for the
-// compiler's own diagnostics and as the base directory for #include - and #include also reaches the
-// headers packed into the DLL, so a user's shader can say `#include "sky_common.hlsli"` and get the
-// same constant layout the bundled programs use.
-[[nodiscard]] result pixel_shader(std::string_view source, const std::filesystem::path& source_path);
+// Which of the two programmable stages to build. Both are shader model 3.
+//
+// The vertex stage exists because a geometry layer is a pair: a sky that ships its own clouds ships
+// how they are shaped as well as how they are lit, and half of that lives in the vertex shader.
+enum class stage {
+    pixel,
+    vertex,
+};
+
+// Compiles `source` with entry point `main`. `source_path` is used for the compiler's own
+// diagnostics and as the base directory for #include - and #include also reaches the headers packed
+// into the DLL, so a user's shader can say `#include "sky_common.hlsli"` and get the same constant
+// layout the bundled programs use.
+[[nodiscard]] result shader(std::string_view source, const std::filesystem::path& source_path, stage target = stage::pixel);
 
 // Reads a file and compiles it. Separate from the above only because "could not open the file" is a
 // different kind of failure than "did not compile", and both have to reach the user the same way.
-[[nodiscard]] result pixel_shader_file(const std::filesystem::path& path);
+[[nodiscard]] result shader_file(const std::filesystem::path& path, stage target = stage::pixel);
 
 // The same, on a worker thread.
 //
@@ -56,5 +67,10 @@ struct result {
 // that inside EndScene freezes the game for exactly as long. Nothing here touches the device, so
 // there is nothing to serialise against: the compiler reads a file, reads the packed headers (an
 // immutable index by the time any of this runs) and returns bytes.
-[[nodiscard]] std::future<result> pixel_shader_file_async(std::filesystem::path path);
+//
+// Runs on the shared pool (plugin/bg_work) rather than on a thread of its own. The handle it hands
+// back can be dropped without blocking, which the std::future this used to return could not:
+// abandoning a compile because its program had been replaced would stall the render thread inside
+// that future's destructor.
+[[nodiscard]] tw::plugin::bg_work::task<result> shader_file_async(std::filesystem::path path, stage target = stage::pixel);
 } // namespace tw::skybox::compile

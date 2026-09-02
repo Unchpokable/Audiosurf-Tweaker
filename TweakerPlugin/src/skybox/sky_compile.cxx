@@ -27,7 +27,8 @@ using d3d_compile_fn = HRESULT(WINAPI*)(LPCVOID src_data,
 // same whether it arrived compiled or was compiled here.
 constexpr UINT k_optimization_level3 = 1 << 15;
 
-constexpr std::string_view k_target = "ps_3_0";
+constexpr std::string_view k_pixel_target = "ps_3_0";
+constexpr std::string_view k_vertex_target = "vs_3_0";
 constexpr std::string_view k_entry_point = "main";
 
 // Where an #include is looked for before the filesystem. The bundled sky_common.hlsli is packed as
@@ -180,7 +181,7 @@ std::string_view backend_name() noexcept
     return g_backend;
 }
 
-result pixel_shader(std::string_view source, const std::filesystem::path& source_path)
+result shader(std::string_view source, const std::filesystem::path& source_path, stage target)
 {
     if(!available()) {
         return result { {}, "no d3dcompiler_47.dll on this machine - only the built-in skies can run" };
@@ -204,7 +205,7 @@ result pixel_shader(std::string_view source, const std::filesystem::path& source
         nullptr,
         &includes,
         k_entry_point.data(),
-        k_target.data(),
+        target == stage::vertex ? k_vertex_target.data() : k_pixel_target.data(),
         k_optimization_level3,
         0,
         &code,
@@ -236,7 +237,7 @@ result pixel_shader(std::string_view source, const std::filesystem::path& source
     return out;
 }
 
-result pixel_shader_file(const std::filesystem::path& path)
+result shader_file(const std::filesystem::path& path, stage target)
 {
     std::ifstream file { path, std::ios::binary };
     if(!file.is_open()) {
@@ -245,19 +246,19 @@ result pixel_shader_file(const std::filesystem::path& path)
 
     std::string source { std::istreambuf_iterator<char> { file }, std::istreambuf_iterator<char> {} };
 
-    result out = pixel_shader(source, path);
+    result out = shader(source, path, target);
     out.source = std::move(source);
 
     return out;
 }
 
-std::future<result> pixel_shader_file_async(std::filesystem::path path)
+tw::plugin::bg_work::task<result> shader_file_async(std::filesystem::path path, stage target)
 {
-    // std::launch::async, not the default: the deferred policy would run the compile on whichever
-    // thread first asks for the result, which is the render thread, which is the whole thing being
-    // avoided here.
-    return std::async(std::launch::async, [path = std::move(path)] {
-        return pixel_shader_file(path);
+    // Not serialised against other compiles. D3DCompile can be called concurrently, so the two
+    // stages of one layer - or every layer of a sky - build at the same time, and how many actually
+    // run at once is the OS thread pool's decision rather than a number written here.
+    return tw::plugin::bg_work::run<result>([path = std::move(path), target] {
+        return shader_file(path, target);
     });
 }
 } // namespace tw::skybox::compile

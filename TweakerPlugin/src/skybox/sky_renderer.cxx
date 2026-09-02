@@ -54,6 +54,11 @@ constexpr std::array<std::uint16_t, 36> k_cube_indices { {
 
 constexpr UINT k_cube_primitive_count = 12;
 
+// Set once at start-up, from the bootstrap thread, before any device exists - so it is read-only by
+// the time the render thread walks it. Same shape and same reasoning as d3d9_hooks' listener
+// vectors.
+tw::skybox::renderer::extra_pass_fn g_extra_pass = nullptr;
+
 IDirect3DDevice9* g_device = nullptr;
 IDirect3DVertexBuffer9* g_vertex_buffer = nullptr;
 IDirect3DIndexBuffer9* g_index_buffer = nullptr;
@@ -427,6 +432,14 @@ bool draw(IDirect3DDevice9* device, IDirect3DCubeTexture9* cube, const D3DMATRIX
 
     timer::begin(device);
     device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, static_cast<UINT>(k_cube_vertices.size()), 0, k_cube_primitive_count);
+
+    // The geometry layer belongs to both sky paths - a sprite that vanished on switching to a cube
+    // map would read as a bug, not as a design. This path draws through the fixed-function pipeline
+    // and so never needed the combined matrix; the pass does, because it runs a vertex shader.
+    if(g_extra_pass != nullptr) {
+        g_extra_pass(device, math::multiply(math::multiply(setup.world, setup.view), setup.projection));
+    }
+
     timer::end();
 
     g_state_block->Apply();
@@ -478,11 +491,22 @@ bool draw_program(IDirect3DDevice9* device,
         target::end(device);
     }
 
+    // Deliberately after the blit and before the timer closes: the pass draws at full resolution
+    // onto the restored back buffer, and whatever it costs is part of what the sky costs.
+    if(g_extra_pass != nullptr) {
+        g_extra_pass(device, wvp);
+    }
+
     timer::end();
 
     g_state_block->Apply();
 
     return true;
+}
+
+void attach_extra_pass(extra_pass_fn fn) noexcept
+{
+    g_extra_pass = fn;
 }
 
 void on_device_lost() noexcept

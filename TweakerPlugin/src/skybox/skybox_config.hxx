@@ -74,16 +74,6 @@ void select_program(std::string_view id);
 [[nodiscard]] int shader_quality() noexcept;
 void set_shader_quality(int percent) noexcept;
 
-// Saved values for sky program parameters, under keys of the form "param.<program>.<c0x>" (see
-// sky_program::param_storage_key). Stored as text because a parameter is one float or three, and a
-// generic pair of accessors is a great deal less machinery than a typed setting per knob a shader
-// author might invent.
-//
-// Unrecognised param.* keys are kept and written back untouched: a shader that is not loaded right
-// now must not lose its settings just because something else was.
-[[nodiscard]] std::string_view param_value(std::string_view key) noexcept;
-void set_param_value(std::string_view key, std::string_view value);
-
 // The axis markers the probe program draws (+X/+Y/+Z dots and a ring on the horizon). Only that one
 // program reads it; it lives here rather than in the program table because it is the one value
 // worth flipping while looking at the screen.

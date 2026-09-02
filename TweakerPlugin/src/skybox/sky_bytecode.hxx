@@ -32,6 +32,11 @@ namespace tw::skybox::bytecode
 // is the one genuine limit in the chain, and the only number here that comes from outside.
 inline constexpr int k_float_registers = 224;
 
+// The same for vs_3_0, which is a different number for the same reason: it is what the shader model
+// says, not what the card offers. A vertex shader is told how many it may have by
+// D3DCAPS9::MaxVertexShaderConst, but 256 is the model's own ceiling and no device reports more.
+inline constexpr int k_vertex_float_registers = 256;
+
 struct constant {
     std::string name;
     int reg {};   // first register

@@ -50,9 +50,29 @@ struct sky_param {
     // per hemisphere would not.
     std::string widget_id;
 
-    int reg {};
+    // Where the value goes in the owning program's constant block. Negative means it does not go
+    // there at all: the knob is backed by something else, and exactly one of the two fields below
+    // says what.
+    int reg { -1 };
     int component {}; // first component written, 0-3 for xyzw
     int count { 1 };  // 1 = a scalar slider, 3 = a colour
+
+    // Which stage's register file `reg` indexes. The two are separate hardware, so a name resolves
+    // in one or the other and the value has to be uploaded through a different call.
+    //
+    // A `fullsky` layer never needs this: it borrows the shared cube vertex shader, which takes only
+    // a matrix. A geometry layer does - how its sprites move is vertex work, and a knob for it that
+    // could not be named in the manifest would have to be a fixed register nobody can see.
+    bool vertex_stage {};
+
+    // A knob whose value belongs to the sky rather than to one layer's registers: the canonical
+    // shared path, "lights.primary.bearing". Its value lives in shared::state, and moving it
+    // re-applies every binding in every layer that reads it - which is the whole point.
+    std::string shared_key;
+
+    // A knob that configures the layer *kind* rather than its shader: "count", "size". A sprite
+    // count rebuilds a vertex buffer, and no shader constant can express that.
+    std::string property;
 
     float min_value { 0.f };
     float max_value { 1.f };
@@ -63,9 +83,70 @@ struct sky_param {
     // the settings file overwrites `value` and deliberately not this.
     std::array<float, 3> default_value {};
 
+    // Where this parameter's value is stored, for a program that came from a `.sky` package: the
+    // layer it belongs to, and its id within that layer. Both empty for a program loaded from a
+    // lone .hlsl, which still keys its settings by register in the flat config.
+    //
+    // Carried on the parameter rather than kept in a parallel table because the panel edits these
+    // one at a time and has to know where to write without knowing which kind of sky it is looking
+    // at. One type, two origins - the alternative is the second parameter system this whole format
+    // exists to remove.
+    std::string settings_layer;
+    std::string settings_id;
+
     [[nodiscard]] bool is_color() const noexcept
     {
         return count == 3;
+    }
+
+    [[nodiscard]] bool from_package() const noexcept
+    {
+        return !settings_layer.empty();
+    }
+
+    // Exactly one of these three is true. What backs the knob decides where a move is written and
+    // what has to be refreshed afterwards, and it is the only thing the edit path branches on.
+    [[nodiscard]] bool is_constant() const noexcept
+    {
+        return reg >= 0;
+    }
+
+    [[nodiscard]] bool is_shared() const noexcept
+    {
+        return !shared_key.empty();
+    }
+
+    [[nodiscard]] bool is_property() const noexcept
+    {
+        return !property.empty();
+    }
+};
+
+// A `bind` entry of a `.sky` layer, resolved against that layer's compiled shader: where the value
+// lands, and which shared value it comes from.
+//
+// Resolved once, when the layer is built, rather than every time a knob moves. The name-to-register
+// lookup is the expensive half and it only changes when the shader is recompiled - at which point
+// the whole list is rebuilt anyway.
+struct resolved_binding {
+    // Which stage's register file `reg` indexes - see sky_param::vertex_stage.
+    bool vertex_stage {};
+
+    int reg { -1 };
+    int component {};
+
+    // How many components the target names. Zero means the swizzle was omitted, and the source's own
+    // width decides - "g_light" bound to a direction takes three, bound to an intensity takes one.
+    int count {};
+
+    // The shared path, evaluated on each apply. Kept as text because that is what it is: the sky's
+    // shared block is addressed by name, and pre-resolving it to a pointer would break the moment a
+    // manifest reload rebuilt the list it points into.
+    std::string source;
+
+    [[nodiscard]] bool valid() const noexcept
+    {
+        return reg >= 0;
     }
 };
 
@@ -86,6 +167,25 @@ struct param_block {
     std::vector<sky_param> params;
 };
 
+// Resolves a reference like "g_eclipse.x" or "g_fog_tint" against a compiled shader's constant
+// table, filling in `reg`, `component`, `count` and `key`. False when the shader declares no such
+// variable - which fxc will have done for anything the shader does not read.
+//
+// Public because the `.sky` package loader needs exactly this and nothing else from this module: a
+// manifest names variables for the same reason an annotation does, and both have to end up at the
+// register the compiler happened to choose.
+[[nodiscard]] bool resolve_variable(const bytecode::reflection& reflection, std::string_view reference, int count, sky_param& out);
+
+// Resolves a binding's target - "g_light.xyz", "g_light2.w", "g_tint" - against the same table.
+//
+// Unlike a parameter, the width comes from the swizzle rather than from the declaration: a binding
+// says where a value lands and how much of it lands there. An omitted swizzle leaves `count` at
+// zero, meaning "as wide as whatever is bound to it".
+//
+// False when the shader declares no such variable, or when the swizzle is not a run of consecutive
+// components - `.xz` names two places and a binding writes one span.
+[[nodiscard]] bool resolve_binding_target(const bytecode::reflection& reflection, std::string_view reference, resolved_binding& out);
+
 // Reads the annotation block out of `source` and resolves its variable names against `reflection`.
 //
 // Anything that does not resolve is dropped with a warning rather than failing the shader: a
@@ -102,8 +202,11 @@ struct param_block {
 // want this parameter" is answered for free by whether the name is in its constant table.
 [[nodiscard]] param_block parse_shared_params(std::string_view source, const bytecode::reflection& reflection);
 
-// Writes every parameter's current value into a program's constant block.
-void apply_params(std::span<const sky_param> params, std::span<float> constants) noexcept;
+// Writes every parameter's current value into whichever of the two constant blocks it names.
+//
+// `vertex_constants` may be empty, which is the ordinary case: every `fullsky` sky borrows the
+// shared cube vertex shader and has nothing to configure in it.
+void apply_params(std::span<const sky_param> params, std::span<float> constants, std::span<float> vertex_constants) noexcept;
 
 // Brings parameters of the same group together, groups in order of first appearance and members in
 // their existing order.

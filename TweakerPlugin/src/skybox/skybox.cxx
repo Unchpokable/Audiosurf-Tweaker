@@ -12,9 +12,12 @@
 #include "skybox/sky_cubemap.hxx"
 #include "skybox/sky_math.hxx"
 #include "skybox/sky_paths.hxx"
+#include "skybox/sky_probe.hxx"
 #include "skybox/sky_program.hxx"
 #include "skybox/sky_renderer.hxx"
+#include "skybox/sky_settings.hxx"
 #include "skybox/sky_shader.hxx"
+#include "skybox/sky_sprites.hxx"
 #include "skybox/sky_timer.hxx"
 #include "skybox/skybox_config.hxx"
 
@@ -41,6 +44,13 @@ static_assert(std::atomic<IDirect3DTexture9*>::is_always_lock_free, "sky texture
 
 IDirect3DCubeTexture9* g_cubemap = nullptr;
 
+// The device the bind listener last handed us, so the frame tick has one to build against.
+//
+// Plain, not atomic, unlike the sky texture mirrors above: those are written by the texture hook and
+// read by the draw interceptor, while this is only ever touched from the render thread - set when a
+// device is bound, cleared before it goes away, read from the tick in between.
+IDirect3DDevice9* g_device = nullptr;
+
 // Mirror of config::enabled(), read once per draw call. The config module's own getter is a
 // cross-TU call, and this is the very first thing the interceptor does on every draw the game
 // makes - the one place in this module where that distinction is worth anything.
@@ -50,6 +60,15 @@ std::atomic<bool> g_enabled { false };
 // program means the sky is computed by a shader and no image is involved at all; the entries it
 // points into are static, so the pointer stays valid for the life of the process.
 std::atomic<tw::skybox::sky_program*> g_program { nullptr };
+
+// Every layer of the sky currently selected, in manifest order, with the fullsky one that the draw
+// path calls "the program" among them. Empty for a cube map and for a lone .hlsl, neither of which
+// has layers.
+//
+// Not atomic and not read from the draw path: the extra passes are published to the modules that
+// draw them (see publish_layer) rather than walked per frame, so this list is only ever touched
+// from the overlay tick.
+std::vector<tw::skybox::sky_program*> g_layers;
 std::atomic<bool> g_probe_markers { true };
 std::atomic<int> g_shader_quality { 100 };
 
@@ -93,6 +112,93 @@ void rebuild_orientation()
     }
 }
 
+// Hands one layer to whatever draws that kind of layer.
+//
+// A `fullsky` layer needs nothing: the draw path reads its constants off the program. A `sprites`
+// layer is drawn by a module that owns vertex buffers, and that module takes the program itself -
+// its shaders, its constants and the parameters that are properties of the layer kind rather than
+// of its shader are all on it already.
+void publish_layer(const tw::skybox::sky_program& program)
+{
+    const tw::skybox::package::layer* layer = program.package_layer_ref();
+    if(layer == nullptr || layer->kind != tw::skybox::package::layer_kind::sprites) {
+        return;
+    }
+
+    tw::skybox::sprites::set_layer(&program);
+}
+
+// Re-applies every layer's parameters and bindings, and republishes them.
+//
+// Called whenever a *shared* value moves, and that breadth is the point rather than an oversight:
+// one light is read by every layer that binds to it, so moving it has to reach all of them or the
+// clouds and the sky start disagreeing about where the sun is - which is precisely the failure this
+// format was built to make impossible.
+void refresh_all_layers()
+{
+    for(tw::skybox::sky_program* layer : g_layers) {
+        tw::skybox::refresh_constants(*layer);
+        publish_layer(*layer);
+    }
+}
+
+// Reads a `.sky` directory and brings up every enabled layer it declares, returning the one that
+// paints the cube.
+//
+// All of them, in manifest order, sharing one `loaded_sky`: the shared block lives there, so this is
+// what makes "every layer of this sky agrees about its lights" true by construction rather than by
+// wiring.
+tw::skybox::sky_program* load_package_from(const std::filesystem::path& root)
+{
+    auto manifest = std::make_shared<tw::skybox::package::manifest>(tw::skybox::package::load_directory(root));
+
+    if(!manifest->usable()) {
+        // Every reason is already in the manifest's own diagnostics, and those reach the overlay.
+        TW_LOG_WARNING("skybox: '{}' has no usable layers", root.string());
+        return nullptr;
+    }
+
+    auto sky = std::make_shared<tw::skybox::shared::loaded_sky>();
+    sky->sky = manifest;
+    sky->stem = root.stem().string();
+
+    // Before any layer is loaded: a layer's bindings are resolved against this, and the layer that
+    // lists the shared knobs in the panel reads them straight out of it.
+    sky->values.adopt(manifest);
+
+    g_layers.clear();
+
+    tw::skybox::sky_program* primary = nullptr;
+
+    for(const tw::skybox::package::layer& layer : manifest->layers) {
+        if(!layer.enabled) {
+            continue;
+        }
+
+        tw::skybox::sky_program* program = tw::skybox::load_package_layer(sky, layer.id);
+        if(program == nullptr) {
+            continue;
+        }
+
+        g_layers.push_back(program);
+
+        // The first fullsky layer is what the draw path means by "the program"; the rest are extra
+        // passes over the top of it.
+        if(primary == nullptr && layer.kind == tw::skybox::package::layer_kind::fullsky) {
+            primary = program;
+        }
+
+        publish_layer(*program);
+    }
+
+    if(primary == nullptr) {
+        TW_LOG_WARNING("skybox: '{}' declares no usable fullsky layer", root.string());
+        g_layers.clear();
+    }
+
+    return primary;
+}
+
 // Resolves config::sky_program() into the pointer the draw path reads. An id nothing answers to -
 // a typo, or a program that existed in an older build - falls back to the cube map path rather than
 // to no sky at all, and says so once.
@@ -101,20 +207,36 @@ void apply_program_from_config()
     const std::string& id = tw::skybox::config::sky_program();
     tw::skybox::sky_program* program = tw::skybox::find_program(id);
 
-    // Not a built-in and not something already compiled: the id may be a path to a .hlsl the user
-    // dropped in skybox_dir. Resolved through the same three roots as skybox_file, so a relative
-    // path in the config works the way it does everywhere else here.
+    // Whatever the last sky brought with it stops here. A geometry layer belongs to the sky that
+    // declared it, so switching skies has to take it away - clouds that outlive the sky they were
+    // lit by are exactly the artefact this is meant to prevent.
+    g_layers.clear();
+    tw::skybox::sprites::set_layer(nullptr);
+
+    // Not a built-in and not something already compiled: the id may be a path - to a `.sky` package,
+    // or to a lone .hlsl the user dropped in skybox_dir. Resolved through the same three roots as
+    // skybox_file, so a relative path in the config works the way it does everywhere else here.
     if(program == nullptr && !id.empty()) {
         std::error_code ec;
         const std::filesystem::path path = tw::skybox::resolve_source_path(id);
 
-        if(!path.empty() && std::filesystem::is_regular_file(path, ec)) {
+        if(!path.empty() && std::filesystem::is_directory(path, ec)) {
+            program = load_package_from(path);
+        }
+        else if(!path.empty() && std::filesystem::is_regular_file(path, ec)) {
             program = tw::skybox::load_file_program(path);
         }
     }
 
     if(program == nullptr && !id.empty()) {
         TW_LOG_WARNING("skybox: no sky program called '{}', and no such file - falling back to the cube map path", id);
+    }
+
+    // A built-in or a lone .hlsl is a sky of one layer that happens not to say so. Recorded as one
+    // here so that everything above - the panel, the edit path, the reset - has a single shape to
+    // work with instead of a branch per kind of sky.
+    if(g_layers.empty() && program != nullptr) {
+        g_layers.push_back(program);
     }
 
     g_program.store(program, std::memory_order_relaxed);
@@ -307,6 +429,11 @@ bool intercept_draw(IDirect3DDevice9* device, IDirect3DBaseTexture9* stage0_text
         return false;
     }
 
+    // Counts this draw and, once per device, describes the frame it lands in. See sky_probe: the
+    // count is the fact that decides what a second geometry pass can afford, because the renderer
+    // below redraws the whole sky on every one of them.
+    tw::skybox::probe::observe(device);
+
     if(const tw::skybox::sky_program* program = g_program.load(std::memory_order_relaxed); program != nullptr) {
         return draw_sky_program(device, *program);
     }
@@ -322,10 +449,15 @@ bool intercept_draw(IDirect3DDevice9* device, IDirect3DBaseTexture9* stage0_text
 void on_device_bound(IDirect3DDevice9* device, HWND /*hwnd*/)
 {
     g_cubemap_failed = false;
+    g_device = device;
 
     // What this device can actually do - shader models, render target cube maps, the behaviour
     // flags CreateD3D was reversed to produce. Log-only and one-shot; see skybox/sky_caps.
     tw::skybox::caps::report(device);
+
+    // The old numbers describe a device that no longer exists - possibly a different adapter, a
+    // different back buffer size and a different vertex processing mode.
+    tw::skybox::probe::reset();
 
     // Whatever the previous device handed out is gone; the sky channels will re-publish through
     // Aco_DX8_Texture::RestoreTexture, which funnels back through LoadTextureFromMemory and so
@@ -348,6 +480,10 @@ void on_device_unbound()
 
     tw::skybox::renderer::release_device_resources();
     tw::skybox::shader::release_device_resources();
+    tw::skybox::sprites::release_device_resources();
+
+    // After the releases above, which need it alive.
+    g_device = nullptr;
 
     // A replacement device can be a different adapter, or a software one; its answers are worth
     // printing again.
@@ -360,6 +496,35 @@ void on_device_lost()
 {
     clear_all_textures();
     tw::skybox::renderer::on_device_lost();
+
+    // The overlay's per-frame tick stops while the device is lost, so anything counted across an
+    // alt-tab would otherwise land in one apparent frame. Observed as a peak of 2 that was really
+    // two frames' worth.
+    tw::skybox::probe::discard_frame();
+}
+
+// One knob's value, written to the sky's own settings file.
+//
+// One path for every kind of sky. A package orders and comments its file from its manifest and a
+// lone shader has none to order by, and that is the whole of the difference - it used to be a whole
+// second mechanism, a `param.*` section in the shared config, which could not tell a sky that was
+// not loaded from one that had been deleted and so kept the settings of both forever.
+void persist_param(const tw::skybox::sky_program& program, const tw::skybox::sky_param& param)
+{
+    // Read, amend, write. The file is small and this happens when a slider is released, not while it
+    // is dragged - and re-reading is what keeps a hand edit made while the game runs from being
+    // silently reverted by the next knob somebody touches.
+    tw::skybox::settings::store saved;
+    saved.load(tw::skybox::settings::path_for(program.settings_stem()));
+
+    saved.assign(param.settings_layer, param.settings_id, param.value, param.count);
+
+    if(program.sky != nullptr) {
+        saved.save(*program.sky->sky);
+    }
+    else {
+        saved.save(program.display_name);
+    }
 }
 
 // TweakerPlugin.dll -> .../TweakerPlugin.skybox.cfg, next to the DLL itself. Same shape as
@@ -410,6 +575,16 @@ void initialize() noexcept
     g_shader_quality.store(config::shader_quality(), std::memory_order_relaxed);
     apply_program_from_config();
 
+    // Registers the geometry layer's pass with the renderer. Before any device exists, which is what
+    // makes the pass pointer safe to read from the render thread without a lock.
+    //
+    // Nothing is configured here any more: what the layer is, and whether it exists at all, is a
+    // `sprites` layer in the selected sky's manifest. A cube map has no clouds, and neither does a
+    // lone .hlsl - not because clouds are hard to draw over either, but because neither has anywhere
+    // to say what the clouds would be lit by, and clouds lit by their own private guess were the
+    // artefact this whole format exists to remove.
+    tw::skybox::sprites::initialize();
+
     tw::framework::texture::subscribe(&on_texture_about_to_load, &on_texture_loaded);
     tw::framework::d3d9::attach_device_bind_listener(&on_device_bound, &on_device_unbound);
     tw::framework::d3d9::attach_device_reset_listener(&on_device_lost, nullptr);
@@ -454,8 +629,15 @@ void set_enabled(bool value) noexcept
 
 reload_outcome poll_reload(bool watch) noexcept
 {
-    sky_program* program = g_program.load(std::memory_order_relaxed);
-    if(program == nullptr || !program->from_file()) {
+    // Before the early-out below: a sky with no file-backed layer still has geometry to build, and
+    // this is the one call per frame that happens on the render thread outside any interception.
+    sprites::prepare(g_device);
+
+    // Destroys the futures of compiles nobody is waiting for any more - a sky switched away from
+    // while it was building. Free when there are none, which is almost always.
+    tw::plugin::bg_work::poll();
+
+    if(g_layers.empty()) {
         return reload_outcome::none;
     }
 
@@ -473,22 +655,47 @@ reload_outcome poll_reload(bool watch) noexcept
         }
     }
 
-    switch(poll_program(*program, stat_now)) {
-        case program_event::compiled:
-            // The program object is the same one the draw path holds; only its bytecode changed, and
-            // the shader already built from the old bytecode knows nothing about that.
-            shader::invalidate(*program);
-            return reload_outcome::reloaded;
+    // Every layer, not just the one that paints the cube. A sky can now compile several shaders -
+    // its own and its clouds' - and a layer whose compile is never collected is a layer that stays
+    // on its previous bytecode forever while reporting itself busy.
+    reload_outcome outcome = reload_outcome::none;
 
-        case program_event::compile_failed:
-            return reload_outcome::failed;
+    for(sky_program* layer : g_layers) {
+        if(!layer->from_file()) {
+            continue;
+        }
 
-        case program_event::compile_started:
-            return reload_outcome::started;
+        switch(poll_program(*layer, stat_now)) {
+            case program_event::compiled:
+                // The program object is the same one the draw path holds; only its bytecode changed,
+                // and the shader already built from the old bytecode knows nothing about that.
+                shader::invalidate(*layer);
 
-        default:
-            return reload_outcome::none;
+                // A recompile rebuilds this layer's parameter list, and with it the shared knobs it
+                // lists - so the sky's shared values have just been re-read from the settings file,
+                // and every other layer's bindings have to be evaluated again against them.
+                refresh_all_layers();
+                outcome = reload_outcome::reloaded;
+                break;
+
+            case program_event::compile_failed:
+                // Reported over a "started" from another layer but not over a "reloaded": a failure
+                // is the one thing whose author needs to hear about it now.
+                outcome = reload_outcome::failed;
+                break;
+
+            case program_event::compile_started:
+                if(outcome == reload_outcome::none) {
+                    outcome = reload_outcome::started;
+                }
+                break;
+
+            default:
+                break;
+        }
     }
+
+    return outcome;
 }
 
 status current_status() noexcept
@@ -519,9 +726,19 @@ void set_shader_quality(int percent) noexcept
     g_shader_quality.store(percent, std::memory_order_relaxed);
 }
 
-void set_program_param(int index, std::array<float, 3> value, bool persist)
+std::span<sky_program* const> active_layers() noexcept
 {
-    sky_program* program = g_program.load(std::memory_order_relaxed);
+    return g_layers;
+}
+
+void set_layer_param(int layer_index, int index, std::array<float, 3> value, bool persist)
+{
+    const std::span<sky_program* const> layers = active_layers();
+    if(layer_index < 0 || static_cast<std::size_t>(layer_index) >= layers.size()) {
+        return;
+    }
+
+    sky_program* program = layers[static_cast<std::size_t>(layer_index)];
     if(program == nullptr || index < 0 || static_cast<std::size_t>(index) >= program->params.size()) {
         return;
     }
@@ -529,50 +746,54 @@ void set_program_param(int index, std::array<float, 3> value, bool persist)
     sky_param& param = program->params[static_cast<std::size_t>(index)];
     param.value = value;
 
-    refresh_constants(*program);
+    if(param.is_shared() && program->sky != nullptr) {
+        // A shared knob is the sky's, not this layer's. Written where it belongs, then every layer
+        // re-evaluates its bindings - which is what makes moving one light turn the clouds as well
+        // as the sky, with nothing in between the two that has to be kept in step.
+        program->sky->values.write(param.shared_key, std::span<const float> { param.value.data(), static_cast<std::size_t>(param.count) });
+        refresh_all_layers();
+    }
+    else {
+        refresh_constants(*program);
+        publish_layer(*program);
+    }
 
     if(!persist) {
         return;
     }
 
-    std::string text;
-    for(int i = 0; i < param.count; ++i) {
-        if(i > 0) {
-            text += ',';
-        }
-        text += std::format("{}", param.value[static_cast<std::size_t>(i)]);
-    }
-
-    config::set_param_value(param_storage_key(*program, param), text);
-    config::save();
+    persist_param(*program, param);
 }
 
-void reset_program_params()
+void reset_sky_params()
 {
-    sky_program* program = g_program.load(std::memory_order_relaxed);
-    if(program == nullptr) {
+    const std::span<sky_program* const> layers = active_layers();
+    if(layers.empty()) {
         return;
     }
 
-    for(sky_param& param : program->params) {
-        param.value = param.default_value;
-
-        std::string text;
-        for(int i = 0; i < param.count; ++i) {
-            if(i > 0) {
-                text += ',';
-            }
-            text += std::format("{}", param.value[static_cast<std::size_t>(i)]);
+    for(sky_program* program : layers) {
+        for(sky_param& param : program->params) {
+            param.value = param.default_value;
         }
 
-        config::set_param_value(param_storage_key(*program, param), text);
+        if(program->sky != nullptr) {
+            program->sky->values.reset();
+        }
     }
 
-    refresh_constants(*program);
+    refresh_all_layers();
 
-    // One write for the whole reset. Looping over set_program_param(..., true) instead would rewrite
-    // the entire settings file once per knob - eleven times over for Starry Night.
-    config::save();
+    // Resetting deletes the settings file rather than writing every default into it. The file means
+    // "what the user changed", so a file listing the defaults is a file claiming every knob was
+    // moved - and the next time the sky's author changes a default, that claim would pin the old one.
+    //
+    // One write - a delete - for the whole reset, whatever kind of sky it is. Looping over
+    // set_layer_param(..., true) instead would rewrite the file once per knob.
+    const std::filesystem::path path = settings::path_for(layers.front()->settings_stem());
+
+    std::error_code ec;
+    std::filesystem::remove(path, ec);
 }
 
 void select_program(std::string_view id)
