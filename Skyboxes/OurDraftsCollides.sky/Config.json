@@ -1,0 +1,1049 @@
+{
+  // Generated from Our Drafts Collides v2.hlsl's @sky block by skyconv.
+  // See Docs/Internal/sky-package.md.
+  "format": 1,
+  "name": "Our Drafts Collides v2",
+  "version": 1,
+  "shared": {
+    // The sky's lights. Every layer binds to these rather than declaring its own, which is what
+    // makes the clouds agree with the sky about where the light is coming from.
+    //
+    // A light is a direction, a colour and an intensity, and any of the three may be left out - a
+    // light with no colour is white, one with no intensity is at full strength. Nothing here is
+    // specific to a sun: a moon, an aurora or a horizon glow is declared the same way and is bound
+    // the same way, and that is the point.
+    "lights": [
+      {
+        "id": "primary",
+        "bearing": {
+          "label": "Bearing (deg)",
+          "default": -14.48,
+          "min": -180.0,
+          "max": 180.0
+        },
+        "elevation": {
+          "label": "Elevation (deg)",
+          "default": 29.00,
+          "min": -20.0,
+          "max": 70.0
+        },
+        "color": {
+          "label": "Sun colour",
+          "default": [
+            1.00,
+            0.96,
+            0.86
+          ]
+        },
+        "intensity": {
+          "label": "Sun strength",
+          "default": 1.00,
+          "min": 0.0,
+          "max": 2.0
+        }
+      },
+      {
+        "id": "twin",
+        // Authored relative to the first: an offset in degrees, which is what a sky with a pair of
+        // suns actually wants to type. `lights.twin.direction` resolves the chain and hands out the
+        // absolute vector, so nothing binding to it has to know any of this.
+        "bearing": {
+          "label": "Twin offset (deg)",
+          "default": 180.0,
+          "min": 0.0,
+          "max": 180.0,
+          "relative_to": "primary"
+        },
+        "elevation": {
+          "same_as": "primary"
+        },
+        "color": {
+          "label": "Twin colour",
+          "default": [
+            0.72,
+            0.82,
+            1.00
+          ]
+        },
+        "intensity": {
+          "label": "Twin strength",
+          "default": 1.00,
+          "min": 0.0,
+          "max": 2.0
+        }
+      },
+      {
+        // No direction at all - the light the sky itself throws at everything hanging in it. Without
+        // one, the unlit side of a cloud is pure black and reads as a hole rather than as a cloud.
+        "id": "ambient",
+        "kind": "ambient",
+        "color": {
+          "label": "Ambient colour",
+          "default": [
+            0.55,
+            0.62,
+            0.78
+          ]
+        },
+        "intensity": {
+          "label": "Ambient level",
+          "default": 0.25,
+          "min": 0.0,
+          "max": 1.0
+        }
+      }
+    ]
+  },
+  "layers": [
+    {
+      "id": "sky",
+      "kind": "fullsky",
+      "shader": "shaders/Our Drafts Collides v2.hlsl",
+      // The shared lights, put back into the uniforms this shader reads them from. It asks for the
+      // authored form - degrees - because that is what its own maths wants; the clouds ask the same
+      // lights for unit vectors. One source, two forms, no adapter between them.
+      "bind": {
+        "g_sun.x": "lights.primary.bearing",
+        "g_sun.y": "lights.primary.elevation",
+        "g_sun.z": "lights.twin.bearing",
+        "g_sun.w": "lights.twin.intensity"
+      },
+      "params": [
+        {
+          "group": "Horizon",
+          "params": [
+            {
+              "var": "g_blend.x",
+              "label": "Split (deg)",
+              "default": 0.0,
+              "min": -40.0,
+              "max": 40.0
+            },
+            {
+              "var": "g_blend.y",
+              "label": "Blend (deg)",
+              "default": 14.0,
+              "min": 1.0,
+              "max": 60.0
+            },
+            {
+              "var": "g_blend.z",
+              "label": "Filmic tonemap",
+              "default": 0.85,
+              "min": 0.0,
+              "max": 1.0
+            },
+            {
+              "var": "g_blend.w",
+              "label": "Speed",
+              "default": 0.50,
+              "min": 0.0,
+              "max": 2.0
+            }
+          ]
+        },
+        {
+          "group": "Eclipse",
+          "params": [
+            {
+              "var": "g_eclipse.x",
+              "label": "Size (deg)",
+              "default": 5.32,
+              "min": 0.20,
+              "max": 20.0
+            },
+            {
+              "var": "g_eclipse.y",
+              "label": "Ring width",
+              "default": 0.039,
+              "min": 0.0,
+              "max": 0.40
+            },
+            {
+              "var": "g_eclipse.z",
+              "label": "Moon offset X",
+              "default": 0.028,
+              "min": -0.5,
+              "max": 0.5
+            },
+            {
+              "var": "g_eclipse.w",
+              "label": "Moon offset Y",
+              "default": -0.024,
+              "min": -0.5,
+              "max": 0.5
+            },
+            {
+              "var": "g_eclipse_fx.x",
+              "label": "Core brightness",
+              "default": 0.00,
+              "min": 0.0,
+              "max": 8.0
+            },
+            {
+              "var": "g_eclipse_fx.y",
+              "label": "Corona",
+              "default": 3.00,
+              "min": 0.0,
+              "max": 3.0
+            },
+            {
+              "var": "g_eclipse_fx.z",
+              "label": "Inner bleed",
+              "default": 4.00,
+              "min": 0.0,
+              "max": 4.0
+            },
+            {
+              "var": "g_eclipse_fx.w",
+              "label": "Flicker",
+              "default": 0.247,
+              "min": 0.0,
+              "max": 1.0
+            },
+            {
+              "var": "g_glow.x",
+              "label": "Corona reach",
+              "default": 12.00,
+              "min": 0.3,
+              "max": 12.0
+            },
+            {
+              "var": "g_glow.y",
+              "label": "Sky glow",
+              "default": 0.00,
+              "min": 0.0,
+              "max": 2.0
+            },
+            {
+              "var": "g_glow.z",
+              "label": "Sky glow tightness",
+              "default": 600.0,
+              "min": 4.0,
+              "max": 600.0
+            },
+            {
+              "var": "g_sun_tint",
+              "label": "Core colour",
+              "default": [
+                1.0,
+                0.96,
+                0.82
+              ]
+            },
+            {
+              "var": "g_corona",
+              "label": "Corona tint",
+              "default": [
+                1.0,
+                0.84,
+                0.52
+              ]
+            },
+            {
+              "var": "g_moon",
+              "label": "Moon disc",
+              "default": [
+                0.010,
+                0.012,
+                0.018
+              ]
+            },
+            {
+              "var": "g_bleed.x",
+              "label": "Bleed depth",
+              "default": 0.070,
+              "min": 0.01,
+              "max": 0.50
+            },
+            {
+              "var": "g_bleed.y",
+              "label": "Bleed sharpness",
+              "default": 2.50,
+              "min": 0.3,
+              "max": 8.0
+            }
+          ]
+        },
+        {
+          "group": "Sun veil",
+          "params": [
+            {
+              "var": "g_veil.x",
+              "label": "Amount",
+              "default": 0.55,
+              "min": 0.0,
+              "max": 1.0
+            },
+            {
+              "var": "g_veil.y",
+              "label": "Reach (deg)",
+              "default": 26.0,
+              "min": 2.0,
+              "max": 90.0
+            },
+            {
+              "var": "g_veil.z",
+              "label": "Horizon amount",
+              "default": 0.30,
+              "min": 0.0,
+              "max": 1.0
+            },
+            {
+              "var": "g_veil.w",
+              "label": "Brightness",
+              "default": 1.10,
+              "min": 0.0,
+              "max": 4.0
+            },
+            {
+              "var": "g_veil_tint",
+              "label": "Tint",
+              "default": [
+                0.72,
+                0.78,
+                0.92
+              ]
+            }
+          ]
+        },
+        {
+          "group": "Upper sky",
+          "params": [
+            {
+              "var": "g_zenith",
+              "label": "Zenith",
+              "default": [
+                0.0342,
+                0.1485,
+                0.2857
+              ]
+            },
+            {
+              "var": "g_horizon",
+              "label": "Horizon",
+              "default": [
+                0.0713,
+                0.0290,
+                0.2780
+              ]
+            },
+            {
+              "var": "g_warm",
+              "label": "Warm side",
+              "default": [
+                0.42,
+                0.13,
+                0.12
+              ]
+            },
+            {
+              "var": "g_warm.w",
+              "label": "Warm amount",
+              "default": 0.30,
+              "min": 0.0,
+              "max": 1.0
+            }
+          ]
+        },
+        {
+          "group": "Stars",
+          "params": [
+            {
+              "var": "g_star.x",
+              "label": "Density",
+              "default": 0.09,
+              "min": 0.0,
+              "max": 0.60
+            },
+            {
+              "var": "g_star.y",
+              "label": "Brightness",
+              "default": 1.40,
+              "min": 0.0,
+              "max": 6.0
+            },
+            {
+              "var": "g_star.z",
+              "label": "Size (deg)",
+              "default": 0.11,
+              "min": 0.02,
+              "max": 0.60
+            },
+            {
+              "var": "g_star.w",
+              "label": "Twinkle",
+              "default": 0.55,
+              "min": 0.0,
+              "max": 1.0
+            },
+            {
+              "var": "g_star_tint",
+              "label": "Tint",
+              "default": [
+                0.80,
+                0.90,
+                1.0
+              ]
+            }
+          ]
+        },
+        {
+          "group": "Wisps",
+          "params": [
+            {
+              "var": "g_wisp.x",
+              "label": "Intensity",
+              "default": 0.16,
+              "min": 0.0,
+              "max": 0.8
+            },
+            {
+              "var": "g_wisp.y",
+              "label": "Thickness (deg)",
+              "default": 0.55,
+              "min": 0.05,
+              "max": 4.0
+            },
+            {
+              "var": "g_wisp.z",
+              "label": "Wander (deg)",
+              "default": 4.50,
+              "min": 0.0,
+              "max": 20.0
+            },
+            {
+              "var": "g_wisp.w",
+              "label": "Spacing (deg)",
+              "default": 9.00,
+              "min": 1.0,
+              "max": 30.0
+            },
+            {
+              "var": "g_wisp_tint.w",
+              "label": "Centre (deg)",
+              "default": 16.0,
+              "min": -30.0,
+              "max": 60.0
+            },
+            {
+              "var": "g_wisp_tint",
+              "label": "Tint",
+              "default": [
+                0.75,
+                0.90,
+                1.0
+              ]
+            }
+          ]
+        },
+        {
+          "group": "Aurora",
+          "params": [
+            {
+              "var": "g_aurora.x",
+              "label": "Intensity",
+              "default": 0.45,
+              "min": 0.0,
+              "max": 2.0
+            },
+            {
+              "var": "g_aurora.y",
+              "label": "Base elev (deg)",
+              "default": 12.0,
+              "min": -10.0,
+              "max": 60.0
+            },
+            {
+              "var": "g_aurora.z",
+              "label": "Curtain height",
+              "default": 22.0,
+              "min": 1.0,
+              "max": 60.0
+            },
+            {
+              "var": "g_aurora.w",
+              "label": "Ray width (deg)",
+              "default": 0.80,
+              "min": 0.08,
+              "max": 6.0
+            },
+            {
+              "var": "g_aurora_lo",
+              "label": "Lower colour",
+              "default": [
+                0.15,
+                0.85,
+                0.55
+              ]
+            },
+            {
+              "var": "g_aurora_hi",
+              "label": "Upper colour",
+              "default": [
+                0.20,
+                0.65,
+                0.95
+              ]
+            },
+            {
+              "var": "g_aurora2.x",
+              "label": "Cluster size (deg)",
+              "default": 55.0,
+              "min": 10.0,
+              "max": 180.0
+            },
+            {
+              "var": "g_aurora2.y",
+              "label": "Cluster rarity",
+              "default": 0.62,
+              "min": 0.0,
+              "max": 0.95
+            },
+            {
+              "var": "g_aurora2.z",
+              "label": "Cluster drift",
+              "default": 0.05,
+              "min": 0.0,
+              "max": 0.5
+            },
+            {
+              "var": "g_aurora3.w",
+              "label": "Diffuse sheet",
+              "default": 0.30,
+              "min": 0.0,
+              "max": 1.0
+            },
+            {
+              "var": "g_aurora3.y",
+              "label": "Ray contrast",
+              "default": 1.60,
+              "min": 0.6,
+              "max": 6.0
+            },
+            {
+              "var": "g_aurora3.z",
+              "label": "Base edge (deg)",
+              "default": 2.60,
+              "min": 0.2,
+              "max": 12.0
+            },
+            {
+              "var": "g_aurora4.x",
+              "label": "Crest size (deg)",
+              "default": 22.0,
+              "min": 3.0,
+              "max": 60.0
+            },
+            {
+              "var": "g_aurora4.y",
+              "label": "Ragged base",
+              "default": 0.35,
+              "min": 0.0,
+              "max": 1.0
+            },
+            {
+              "var": "g_aurora4.z",
+              "label": "Spike reach",
+              "default": 0.45,
+              "min": 0.0,
+              "max": 1.0
+            }
+          ]
+        },
+        {
+          "group": "Gold film",
+          "params": [
+            {
+              "var": "g_film.x",
+              "label": "Opacity",
+              "default": 0.34,
+              "min": 0.0,
+              "max": 1.0
+            },
+            {
+              "var": "g_film.y",
+              "label": "Detail (deg)",
+              "default": 5.50,
+              "min": 0.4,
+              "max": 30.0
+            },
+            {
+              "var": "g_film.z",
+              "label": "Warp",
+              "default": 3.56,
+              "min": 0.0,
+              "max": 5.0
+            },
+            {
+              "var": "g_film.w",
+              "label": "Fringes",
+              "default": 2.00,
+              "min": 2.0,
+              "max": 70.0
+            },
+            {
+              "var": "g_gold_base",
+              "label": "Base colour",
+              "default": [
+                0.88,
+                0.68,
+                0.20
+              ]
+            },
+            {
+              "var": "g_gold_hi",
+              "label": "Highlight",
+              "default": [
+                1.0,
+                0.94,
+                0.70
+              ]
+            },
+            {
+              "var": "g_film2.x",
+              "label": "Filament",
+              "default": 0.75,
+              "min": 0.0,
+              "max": 1.0
+            },
+            {
+              "var": "g_film2.y",
+              "label": "Filament edge",
+              "default": 3.00,
+              "min": 1.0,
+              "max": 20.0
+            },
+            {
+              "var": "g_film2.z",
+              "label": "Stretch",
+              "default": 2.60,
+              "min": 1.0,
+              "max": 8.0
+            }
+          ]
+        },
+        {
+          "group": "Lower sky",
+          "params": [
+            {
+              "var": "g_ground",
+              "label": "Under horizon",
+              "default": [
+                0.09,
+                0.03,
+                0.05
+              ]
+            },
+            {
+              "var": "g_under",
+              "label": "Deep",
+              "default": [
+                0.015,
+                0.004,
+                0.010
+              ]
+            },
+            {
+              "var": "g_under.w",
+              "label": "Depth",
+              "default": 2.20,
+              "min": 0.3,
+              "max": 8.0
+            }
+          ]
+        },
+        {
+          "group": "Eclipse arc",
+          "params": [
+            {
+              "var": "g_arc.x",
+              "label": "Radius (deg)",
+              "default": 40.66,
+              "min": 5.0,
+              "max": 120.0
+            },
+            {
+              "var": "g_arc.y",
+              "label": "Width (deg)",
+              "default": 0.651,
+              "min": 0.05,
+              "max": 12.0
+            },
+            {
+              "var": "g_arc.z",
+              "label": "Span (deg)",
+              "default": 264.1,
+              "min": 0.0,
+              "max": 360.0
+            },
+            {
+              "var": "g_arc.w",
+              "label": "Intensity",
+              "default": 0.694,
+              "min": 0.0,
+              "max": 4.0
+            },
+            {
+              "var": "g_arc_dir.x",
+              "label": "Bearing (deg)",
+              "default": -45.52,
+              "min": -180.0,
+              "max": 180.0
+            },
+            {
+              "var": "g_arc_dir.y",
+              "label": "Elevation (deg)",
+              "default": -52.53,
+              "min": -90.0,
+              "max": 20.0
+            },
+            {
+              "var": "g_arc_dir.z",
+              "label": "Flicker",
+              "default": 0.470,
+              "min": 0.0,
+              "max": 1.0
+            },
+            {
+              "var": "g_arc_dir.w",
+              "label": "Glow (deg)",
+              "default": 8.00,
+              "min": 0.2,
+              "max": 30.0
+            },
+            {
+              "var": "g_arc_core",
+              "label": "Core colour",
+              "default": [
+                1.0,
+                0.98,
+                0.92
+              ]
+            },
+            {
+              "var": "g_arc_glow",
+              "label": "Glow colour",
+              "default": [
+                1.0,
+                0.72,
+                0.38
+              ]
+            },
+            {
+              "var": "g_arc2.x",
+              "label": "Twin offset (deg)",
+              "default": 180.0,
+              "min": 0.0,
+              "max": 180.0
+            },
+            {
+              "var": "g_arc2.y",
+              "label": "Twin strength",
+              "default": 1.00,
+              "min": 0.0,
+              "max": 1.0
+            },
+            {
+              "var": "g_arc2.z",
+              "label": "Edge taper",
+              "default": 0.60,
+              "min": 0.15,
+              "max": 3.0
+            },
+            {
+              "var": "g_arc2.w",
+              "label": "Core brightness",
+              "default": 5.00,
+              "min": 0.0,
+              "max": 12.0
+            }
+          ]
+        },
+        {
+          "group": "Red haze",
+          "params": [
+            {
+              "var": "g_haze.x",
+              "label": "Density",
+              "default": 0.85,
+              "min": 0.0,
+              "max": 3.0
+            },
+            {
+              "var": "g_haze.y",
+              "label": "Coverage",
+              "default": 0.55,
+              "min": 0.0,
+              "max": 1.0
+            },
+            {
+              "var": "g_haze.z",
+              "label": "Detail",
+              "default": 9.00,
+              "min": 1.0,
+              "max": 30.0
+            },
+            {
+              "var": "g_haze.w",
+              "label": "Flicker",
+              "default": 0.35,
+              "min": 0.0,
+              "max": 1.0
+            },
+            {
+              "var": "g_haze_tint",
+              "label": "Mid tone",
+              "default": [
+                0.92,
+                0.12,
+                0.18
+              ]
+            },
+            {
+              "var": "g_haze_hot",
+              "label": "Hot tone",
+              "default": [
+                1.0,
+                0.62,
+                0.42
+              ]
+            },
+            {
+              "var": "g_flow.x",
+              "label": "Flow speed",
+              "default": 0.35,
+              "min": 0.0,
+              "max": 2.0
+            },
+            {
+              "var": "g_flow.y",
+              "label": "Flow stretch",
+              "default": 1.80,
+              "min": 1.0,
+              "max": 8.0
+            },
+            {
+              "var": "g_flow.z",
+              "label": "Turn scale",
+              "default": 2.20,
+              "min": 0.5,
+              "max": 8.0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      // The geometry layer: flat quads on a shell, drawn as a second pass over the sky.
+      //
+      // Its shaders live in this package, next to the sky's own, and are compiled from there while
+      // the game runs - "shaders/clouds" names the pair, and the plugin reads "clouds.vs.hlsl" and
+      // "clouds.ps.hlsl". Leaving this out falls back to the pair built into the plugin, which draws
+      // the same clouds but leaves nobody able to see where they came from.
+      "id": "clouds",
+      "kind": "sprites",
+      "shader": "shaders/clouds",
+      // What this layer is lit by, and the whole reason the format exists. It asks for directions
+      // and colours; the sky answers from its own `shared.lights`. Neither side knows the other -
+      // the sky does not publish anything for the clouds to fetch, and the clouds do not know that
+      // a bearing in degrees is how the sky's author prefers to write a direction down.
+      "bind": {
+        "g_light.xyz": "lights.primary.direction",
+        "g_light.w": "lights.ambient.intensity",
+        "g_light2.xyz": "lights.twin.direction",
+        "g_light2.w": "lights.twin.intensity"
+      },
+      "params": [
+        {
+          "group": "Cloud cover",
+          "params": [
+            // "prop" rather than "var": these decide what is *in* the vertex buffer rather than how
+            // it is shaded, so no shader constant could express them. Moving one rebuilds the layer.
+            {
+              "prop": "count",
+              "label": "Sprites",
+              "default": 220,
+              "min": 0,
+              "max": 900
+            },
+            {
+              "prop": "clumps",
+              "label": "Clumps",
+              "default": 22,
+              "min": 1,
+              "max": 200
+            },
+            {
+              "prop": "spread",
+              "label": "Clump spread (deg)",
+              "default": 12.0,
+              "min": 0.0,
+              "max": 60.0
+            },
+            {
+              "prop": "size",
+              "label": "Size (deg)",
+              "default": 4.0,
+              "min": 0.5,
+              "max": 20.0
+            }
+          ]
+        },
+        {
+          "group": "Cloud shape",
+          "params": [
+            // 0 puts the clumps on an even lattice, which is uniform but visibly a spiral. 1 lets
+            // each wander a full cell off it, which reads as random and cannot leave a bald patch -
+            // which is what independent random directions do at these counts.
+            {
+              "prop": "scatter",
+              "label": "Scatter",
+              "default": 0.85,
+              "min": 0.0,
+              "max": 1.0
+            },
+            // Clouds are not discs. Above 1 each clump takes its own aspect ratio and its own
+            // heading, so a bank of them is drawn out along something rather than dabbed in circles.
+            {
+              "prop": "elongation",
+              "label": "Elongation",
+              "default": 2.2,
+              "min": 1.0,
+              "max": 6.0
+            },
+            // The floor keeps the layer out of the horizon haze the sky shader paints below it - a
+            // sprite drawn into that reads as a cut-out pasted over the fog rather than as a cloud
+            // behind it. Whole quads clear it, not just their centres.
+            {
+              "prop": "floor",
+              "label": "Floor (deg)",
+              "default": 9.0,
+              "min": -20.0,
+              "max": 60.0
+            },
+            {
+              "prop": "ceiling",
+              "label": "Ceiling (deg)",
+              "default": 78.0,
+              "min": 10.0,
+              "max": 90.0
+            }
+          ]
+        },
+        {
+          // Vertex-stage knobs. They resolve in the vertex shader's own constant table, exactly as
+          // the material knobs resolve in the pixel shader's - the manifest names variables and the
+          // loader finds them in whichever stage declares them.
+          "group": "Cloud motion",
+          "params": [
+            // The only knob here that accumulates, and it turns the whole layer as one - so a clump
+            // stays a clump however long the song runs. Everything below it oscillates.
+            {
+              "var": "g_motion.x",
+              "label": "Drift (deg/s)",
+              "default": 0.35,
+              "min": -6.0,
+              "max": 6.0
+            },
+            {
+              "var": "g_motion.y",
+              "label": "Wobble (deg)",
+              "default": 0.6,
+              "min": 0.0,
+              "max": 4.0
+            },
+            {
+              "var": "g_motion.z",
+              "label": "Wobble rate",
+              "default": 0.05,
+              "min": 0.0,
+              "max": 0.5
+            },
+            // Bounded low on purpose: the atlas is a baked image, so this stretches a picture rather
+            // than evolving a cloud. A little reads as life, a lot reads as pumping.
+            {
+              "var": "g_motion.w",
+              "label": "Breathe",
+              "default": 0.07,
+              "min": 0.0,
+              "max": 0.35
+            },
+            {
+              "var": "g_motion2.x",
+              "label": "Breathe rate",
+              "default": 0.08,
+              "min": 0.0,
+              "max": 0.6
+            },
+            // The lighting is computed in the unsheared basis, so past a small lean the lumps stop
+            // agreeing with the silhouette they sit on.
+            {
+              "var": "g_motion2.y",
+              "label": "Shear",
+              "default": 0.05,
+              "min": 0.0,
+              "max": 0.4
+            },
+            {
+              "var": "g_motion2.z",
+              "label": "Shear rate",
+              "default": 0.06,
+              "min": 0.0,
+              "max": 0.5
+            }
+          ]
+        },
+        {
+          "group": "Cloud material",
+          "params": [
+            {
+              "var": "g_tint",
+              "label": "Body colour",
+              "default": [
+                0.92,
+                0.94,
+                1.00
+              ]
+            },
+            {
+              "var": "g_tint.w",
+              "label": "Opacity",
+              "default": 0.85,
+              "min": 0.0,
+              "max": 1.0
+            },
+            {
+              "var": "g_material.x",
+              "label": "Surface detail",
+              "default": 0.65,
+              "min": 0.0,
+              "max": 1.0
+            },
+            {
+              "var": "g_material.y",
+              "label": "Edge softness",
+              "default": 0.35,
+              "min": 0.05,
+              "max": 3.0
+            },
+            {
+              "var": "g_material.z",
+              "label": "Silver lining",
+              "default": 0.90,
+              "min": 0.0,
+              "max": 2.0
+            },
+            {
+              "var": "g_material.w",
+              "label": "Sun halo sharpness",
+              "default": 12.0,
+              "min": 1.0,
+              "max": 48.0
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
