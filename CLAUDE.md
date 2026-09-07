@@ -16,7 +16,15 @@ Audiosurf Tweaker — сторонний инструмент для игры Au
 `Docs/Internal/overlay-protocol.md`; его Quick Player-половина (операции `QP_*`, вкладка Player) —
 `Docs/Internal/overlay-quickplayer.md`. Skybox Replacer (подмена скайсферы игры на cube map, плюс
 весь реверс её загрузки и отрисовки) — `Docs/Internal/skybox-replacer.md`; ресёрч и план
-процедурного (шейдерного) неба — `Docs/Internal/skybox-procedural.md`. Проект встраивания LuaJIT в
+процедурного (шейдерного) неба — `Docs/Internal/skybox-procedural.md`; замена процедурного
+шума запечённым объёмом и текстуры на базовом слое (что померено, чем за это заплачено в картинке) —
+`Docs/Internal/skybox-baked-noise.md`; разбор того, почему одному
+пиксельному шейдеру перестало хватать и что за геометрический слой (спрайты, в перспективе меши)
+собираемся строить — `Docs/Internal/skybox-geometry.md`; формат сменных пакетов неба `.sky` (манифест,
+слои, общие значения, пофайловые настройки) — `Docs/Internal/sky-package.md` (**устарел**: описывает
+состояние до генерализации света, `fill`, `generator` и архивной формы). **Начинать с
+`Docs/Internal/skybox-replacer-roadmap.md`** — это карта всех перечисленных документов, текущее
+состояние работ, хронология принятых решений с обоснованиями и порядок дальнейших шагов. Проект встраивания LuaJIT в
 `TweakerPlugin` (скрипты на пути обработки данных движка, выбор технологии, механика перехвата) —
 `Docs/Internal/lua-scripting.md`.
 
@@ -26,15 +34,41 @@ getting-started, game-model (как устроен граф каналов иг�
 drawing, api-reference, limits. При изменении публичного API `tw.*` обновлять их обязательно —
 `api-reference.md` перечисляет каждую функцию поимённо.
 
-Накопительный полевой журнал реверса самой игры — три файла, все описывают **чужой** код, игру, и
-служат источником для остальных документов: `Docs/Internal/reversing-journal-lua.md` (формат
+Второй такой же набор — по **формату неба** `.sky`, для тех, кто делает свои скайбоксы:
+`Docs/skyboxes.md` и `Docs/skyboxes/`: getting-started, manifest (`Config.json` целиком), shaders
+(константный контракт, чего трогать нельзя), music (музыкальный интерфейс и что он **не** может),
+clouds (спрайтовый слой, `place()`/`fill()`), limits (цена, замеры, чёрное небо). Обновлять при
+любом изменении манифеста, набора регистров или Lua-API генераторов. `Docs/Internal/sky-package.md`
+устарел и **не** является заменой — источник правды теперь публичный набор.
+
+Накопительный полевой журнал реверса самой игры — пять файлов, все описывают **чужой** код, игру,
+и служат источником для остальных документов: `Docs/Internal/reversing-journal-lua.md` (формат
 `.cgr`, Lua-движок `Aco_Lua` и его API, дамп скриптов, настройка Ghidra);
 `Docs/Internal/reversing-journal-gameplay.md` — про **игровую логику** (граф каналов Quest3D как
 язык, `StatCollector.cgr` и вся статистика заезда, 18 персонажей/режимов в `SpecialPurpose.cgr`,
-сетка `Puzzle.cgr`); `Docs/Internal/reversing-journal-engine.md` — про **нативное ядро**
+сетка `Puzzle.cgr`, **аудио** — спектр/громкость/позиция песни в `sounds/VisMusic.cgr`, §10);
+`Docs/Internal/reversing-journal-engine.md` — про **нативное ядро**
 (`HighPoly.dll`, ABI каналов и vtable, раскладка объекта `A3d_Channel`, как исполняется кадр, цена
-операций, сводка экспортов для хуков). Читай эти файлы для полного контекста прежде, чем начинать
+операций, сводка экспортов для хуков); `Docs/Internal/reversing-journal-geometry.md` — про
+**3D-геометрию** (чанки `VRCO`/`VPPI`/`PODA` в каналах `3D ObjectData`, vtable и сеттеры
+`Aco_DX8_ObjectDataChannel`, холодный патч `.cgr` и горячая подмена мешей, экспорт в OBJ,
+инвентарь всех 930 моделей игры); `Docs/Internal/reversing-journal-render.md` — про **графическое
+окружение трассы** (`Aco_Tune_Forest` как спрайтовый батчер с атласом 2×2 и сортировкой по глубине,
+`Aco_Tune_Wall` как экструзия дороги вдоль хребта `Highway.cgr`, загрузка текстур из
+`engine/textures` через Lua, полный порядок кадра `RenderNormal`/`RenderMinimalist`, разбор колец,
+партиклов, решётки и tile flyup). Там же §7 — разобранный кейс «отключить окраску партиклов» — и
+§8, **список того, чего не хватает Lua API** (запись в векторные каналы и в `Array Vector`,
+отцепление ребёнка канала): читать перед любой работой над скриптовым слоем, вместе с
+`lua-scripting.md`. Читай эти файлы для полного контекста прежде, чем начинать
 что-то нетривиальное в соответствующей области — этот CLAUDE.md даёт только ориентацию.
+
+**Инструменты, которыми всё это добыто, — `Tools/CgrPy/`** (свой `README.md`): парсер `.cgr` и
+графа каналов плюс минимальный PE-ридер, поверх них готовые команды в `rdy2use/` (`vtdump`,
+`findvt`, `disasm`, `symbols`, `chtypes`, `render`, `meshes`). Запуск — `uvrun.bat`, зависимости
+ставит `uv` сам, путь к игре берётся из `AUDIOSURF_DIR` или находится сам. Прежде чем писать
+очередной разовый скрипт разбора — посмотри, нет ли уже готового: журналы ссылаются на конкретные
+команды, которыми их числа получены, и их стоит перепроверять этими же командами. Игра
+(`Audiosurf_Steam/`) в репозиторий не входит и не должна.
 
 Внимание: §7.2 `reversing-journal-gameplay.md` (событийный поток через детур на
 `A3d_Channel::CallChannel`) **отменена** — см. `reversing-journal-engine.md` §7.
@@ -163,7 +197,15 @@ src/framework/    — хуки (Detours, D3D9, dinput8, Quest3D channel + textur
                     ОДНОГО канала подменой vptr на копию vtable; подписчиков на канал может быть
                     НЕСКОЛЬКО — все before отрабатывают до отмены, отмена это ИЛИ, у подавленного
                     вызова нет after; оригинальная vtable возвращается с уходом последнего
-                    подписчика — см. lua-scripting.md §8.5 и Ф3), wndproc_hub (общая точка
+                    подписчика — см. lua-scripting.md §8.5 и Ф4), d3d9_state (`state_scope`:
+                    сохранение и откат РОВНО того состояния устройства, которое хук тронул — старое
+                    значение читается перед записью нового, поэтому список «что ставим» и список
+                    «что возвращаем» физически один и разойтись не могут; запись, ничего не
+                    меняющая, не пишется и не занимает места; вложенные scope откатываются к
+                    состоянию вызвавшего; покрывает и то, чего не умеет ни один state block — render
+                    target, depth-stencil, SetSoftwareVertexProcessing. Пришёл на смену
+                    `CreateStateBlock(D3DSBT_ALL)`: замерено 10.9 мкс против 0.85 мкс на перехват,
+                    harness/state), wndproc_hub (общая точка
                     подписки на WndProc игры: IPC, D3D9 WM_ACTIVATEAPP, будущий ImGui-инпут)
 src/ipc/          — overlay_ipc: разбор/сборка L3-протокола TW_OVL (см. overlay-protocol.md);
                     операции с префиксом QP_ он не разбирает, а форвардит в src/ui/qp/
@@ -190,9 +232,23 @@ src/skybox/       — Skybox Replacer: перехват draw-call скайсфе
                     sky_shader (кэш VS/PS на программу + invalidate для горячей перезагрузки),
                     sky_target (рендер неба в долю разрешения), renderer::draw_program,
                     sky_timer (время draw-call'а на GPU), sky_caps (одноразовый дамп
-                    D3DCAPS9/BehaviorFlags). См.
+                    D3DCAPS9/BehaviorFlags), sky_abi (какие регистры пишет ДВИЖОК, а не автор:
+                    c5 время, c208-c210 музыка, c208-c223 зарезервированы целиком — низ файла
+                    констант роздан ручкам вручную и столкновение там неизбежно). См.
                     skybox-replacer.md и skybox-procedural.md; sky_math существует затем, чтобы
-                    не линковать d3dx9
+                    не линковать d3dx9.
+                    Пакет `.sky` — sky_package (манифест Config.json через yyjson), sky_vfs
+                    (чтение пакета: каталог ИЛИ zip через libminiz, плюс ограничение имён —
+                    ЕДИНСТВЕННОЕ место, где решается, что имя из скрипта/манифеста читать можно;
+                    locate() у архива ВСЕГДА пусто, кто трактует это как ошибку — сломан на zip),
+                    sky_shared (общий блок: свет, значения, привязки), sky_lua (своя VM для
+                    place()/fill() — отдельная от src/lua/, у которой другая задача), sky_image
+                    (float RGBA слои и операции), sky_texture (разбор .dds и создание 2D/volume/cube
+                    ИЗ БАЙТОВ — D3DX не годится, каждый его загрузчик берёт путь, а внутри zip путей
+                    нет; форму говорит сам файл, манифест её не объявляет), sky_sprites +
+                    sky_sprite_atlas (геометрический слой). Текстуры слоя живут в кэше sky_shader
+                    вместе с шейдерами: один жизненный цикл, одна инвалидация, один release.
+                    См. skybox-geometry.md и skybox-replacer-roadmap.md
 src/lua/          — LuaJIT-скриптинг: lua_channels (доступ к графу каналов через vtable: слот 17
                     у числовых/строковых/векторных значит РАЗНОЕ, поэтому тип проверяется до
                     вызова), lua_api (extern "C" ABI, который скрипт зовёт через FFI — НЕ
@@ -206,14 +262,18 @@ src/lua/          — LuaJIT-скриптинг: lua_channels (доступ к �
                     файла с диска, оно же горячая перезагрузка. Скрипты — loose-файлы
                     в scripts/ рядом с DLL, не ресурсы: их правят без пересборки; в бандл их
                     кладут CopyTweakerPlugin (TweakerUI.csproj) и Deploy.ps1
-src/plugin/       — lifecycle, глобальное состояние, Quest3D state
+src/plugin/       — lifecycle, глобальное состояние, Quest3D state, music (что играет прямо сейчас:
+                    читает `VisMusic` через lua_channels, отдаёт наружу низ/середину/верх/воздух,
+                    громкость, онсеты — НЕ «полосу k», см. reversing-journal-gameplay.md §10)
 src/resource/     — .rc-based упаковка ассетов (шрифты/текстуры/SVG/шейдеры) прямо в DLL;
                     assets/shaders/*.hlsl при этом компилируются fxc на этапе сборки, и вшивается
                     только байткод (TW_SHADER). Профиль берётся из имени: *.vs.hlsl / *.ps.hlsl;
                     *.hlsli — общие заголовки, вшиваются как TW_TEXT (не программы, глоб шейдеров
                     их не берёт), чтобы пользовательский .hlsl мог их #include без копии на диске
-src/libtweeny, libstb, libuulog — vendored (Tween-анимации, stb_image + stb_image_resize2, лог) —
-                    не трогать стиль
+src/libtweeny, libstb, libuulog, libyyjson, libminiz — vendored (Tween-анимации, stb_image +
+                    stb_image_resize2, лог, JSON-читалка манифеста, чтение zip) — не трогать стиль.
+                    У libminiz дефайны MINIZ_NO_* объявлены PUBLIC намеренно: часть из них меняет
+                    раскладку структур в miniz.h, и потребитель без них разойдётся с библиотекой
 ```
 
 **Зависимости**: DirectX SDK / Quest3D SDK / ImGui / Detours ожидаются на диске (см. `cmake/*.cmake`).
@@ -243,6 +303,15 @@ cmake --build --preset x86-release
 cmake --build --preset smoke         # smoke_test: визуальный Win32+OpenGL3 харнесс для ImGui UI
                                       # (EXCLUDE_FROM_ALL, не входит в обычный build)
 ```
+
+**Оффлайн-харнессы** — `TweakerPlugin/harness/`, вне CMake, свой `README.md`. Каждый
+линкует настоящий `.cxx` плагина и работает без игры и без девайса; `harness\run.bat` собирает и
+прогоняет сюиты с проверками, `run.bat build` — вдобавок инструменты (рендер превью, замеры
+распределения спрайтов, дампы). Правишь `sky_*` — прогони. Скриптовый слой прогоняется там же: `harness/lua/` (`ljtest` — пролог
+из `lua_host.cxx` против заглушек C-ABI и все поставляемые скрипты; `shimtest` — настоящий
+`channel_shim.cxx` плюс проверка соглашения о вызове `SetVector`). Правишь `src/lua/*` или
+`assets/scripts/*` — прогони. Часть требует собранного плагина: они
+линкуются с `build/x86-release/luajit.lib`.
 
 - Корневой namespace: `tw::`, подпространства по слоям: `tw::plugin`, `tw::framework`, `tw::ui`.
 - Публичный API — в заголовках; детали реализации (хуки, оригиналы, file-local state) — в

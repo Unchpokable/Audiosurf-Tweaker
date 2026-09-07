@@ -45,7 +45,7 @@ struct facts {
     int target_height {};
 
     // The blend state the game had set when we took the draw. Not needed to restore anything - the
-    // D3DSBT_ALL state block does that - but it says what a second, blended pass has to set for
+    // state scopes around each pass do that - but it says what a second, blended pass has to set for
     // itself rather than inherit.
     bool alpha_blend_enabled {};
     unsigned long src_blend {};

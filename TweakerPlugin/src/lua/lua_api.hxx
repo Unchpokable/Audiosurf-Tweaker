@@ -71,6 +71,13 @@ const char* tw_channel_text(void* channel) noexcept;
 // hardcoding a guess at them.
 int tw_channel_vector(void* channel, float* out) noexcept;
 
+// Writes a vector channel. The handle must have resolved as the vector kind - that is what keeps
+// this off the numeric family's incompatible slot-19 setter (see lua_channels::set_vector).
+//
+// Wider effect than tw_channel_set: the engine's own SetVector also writes each component through
+// into the numeric channel wired to that port, if there is one.
+void tw_channel_set_vector(void* channel, float x, float y, float z) noexcept;
+
 // Reads one cell of an Array Table column through its cursor pair. Both handles must have resolved
 // as numeric channels; the cursor is saved and restored around the read.
 float tw_array_read(void* array_value, void* indexer, float index) noexcept;
@@ -78,6 +85,20 @@ float tw_array_read(void* array_value, void* indexer, float index) noexcept;
 // Same for an `Array Vector` column: the column handle must have resolved as the vector kind, the
 // cursor as numeric. Writes x/y/z into `out`; zero on failure.
 int tw_array_read_vector(void* array_vector, void* indexer, float index, float* out) noexcept;
+
+// Writes one cell of an Array Table column. Zero when the write did not happen - and unlike the
+// scalar setters, "the row does not exist" is one of the reasons, because on this path the engine
+// would otherwise *create* it and quietly lengthen the game's table (engine journal §2.2.3).
+//
+// Subject to the same write gate as tw_channel_set.
+int tw_array_write(void* array_value, void* indexer, float index, float value) noexcept;
+int tw_array_write_vector(void* array_vector, void* indexer, float index, float x, float y, float z) noexcept;
+
+// How many rows that column's table has, or -1 if it cannot be asked. Exposed rather than kept
+// private because the bounds check needs it anyway, and without it a script has to discover the
+// length of a table the way traffic.lua does - through some unrelated counter channel the game
+// happens to keep nearby.
+int tw_array_rows(void* column) noexcept;
 
 // The overlay's live palette, so a script's own chrome can match it instead of inventing colours
 // that drift out of place the moment the user changes a theme.
@@ -150,6 +171,18 @@ int tw_shared_channel_count() noexcept;
 // obvious one.
 int tw_group_count() noexcept;
 const char* tw_group_name(int index) noexcept;
+
+// Whether writes to the graph are currently accepted.
+//
+// False while the game is still assembling itself, when a write does not crash anything but does
+// silently corrupt it - see the write gate in lua_api.cxx. Exposed so a script can wait deliberately
+// rather than have its writes dropped without knowing why.
+int tw_can_write() noexcept;
+
+// Called once per frame by lua_host, before dispatch. Drives the write gate: it watches how long the
+// set of loaded channel groups has been unchanged, which is what "loading has finished" looks like
+// from outside without needing to know any of the game's state values.
+void tick() noexcept;
 
 // Whether the graph is reachable at all - false until framework/channel_hook captures
 // EngineInterface*, which can take until the player touches a menu (see lua-scripting.md §7).

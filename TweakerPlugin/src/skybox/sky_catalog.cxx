@@ -205,6 +205,15 @@ void add_directory_entries()
             continue;
         }
 
+        // A packaged sky: the same format as the directory above, zipped. Listed without being
+        // opened, for the same reason the directory form is listed without being parsed - a scan
+        // that read every archive it found would decompress skies nobody has picked.
+        if(equals_ignore_case(entry.path().extension().string(), ".sky")) {
+            g_entries.push_back(tw::skybox::catalog_entry { entry.path().stem().string(), id, tw::skybox::entry_kind::package, 0 });
+            ++listed;
+            continue;
+        }
+
         // Listed without compiling: a scan that compiled every .hlsl it found would turn opening the
         // tab into a stall proportional to how many shaders somebody keeps in the folder. The
         // compile happens when one is picked, and its errors show up there.

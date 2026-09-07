@@ -7,6 +7,7 @@
 
 #include "plugin/diagnostics.hxx"
 #include "plugin/globals.hxx"
+#include "plugin/music.hxx"
 
 #include "skybox/sky_caps.hxx"
 #include "skybox/sky_cubemap.hxx"
@@ -142,15 +143,15 @@ void refresh_all_layers()
     }
 }
 
-// Reads a `.sky` directory and brings up every enabled layer it declares, returning the one that
-// paints the cube.
+// Reads a `.sky` package - a directory or the zip of one - and brings up every enabled layer it
+// declares, returning the one that paints the cube.
 //
 // All of them, in manifest order, sharing one `loaded_sky`: the shared block lives there, so this is
 // what makes "every layer of this sky agrees about its lights" true by construction rather than by
 // wiring.
 tw::skybox::sky_program* load_package_from(const std::filesystem::path& root)
 {
-    auto manifest = std::make_shared<tw::skybox::package::manifest>(tw::skybox::package::load_directory(root));
+    auto manifest = std::make_shared<tw::skybox::package::manifest>(tw::skybox::package::load(root));
 
     if(!manifest->usable()) {
         // Every reason is already in the manifest's own diagnostics, and those reach the overlay.
@@ -160,6 +161,9 @@ tw::skybox::sky_program* load_package_from(const std::filesystem::path& root)
 
     auto sky = std::make_shared<tw::skybox::shared::loaded_sky>();
     sky->sky = manifest;
+    // The stem, so `Foo.sky` the folder and `Foo.sky` the archive keep the same settings file. Which
+    // form a sky is in is packaging, not identity, and somebody who zips the folder they have been
+    // tuning should not lose the tuning.
     sky->stem = root.stem().string();
 
     // Before any layer is loaded: a layer's bindings are resolved against this, and the layer that
@@ -224,7 +228,15 @@ void apply_program_from_config()
             program = load_package_from(path);
         }
         else if(!path.empty() && std::filesystem::is_regular_file(path, ec)) {
-            program = tw::skybox::load_file_program(path);
+            // A file is either a packaged sky or a lone shader, and the extension is what says which.
+            // By name rather than by trying the archive first, because "not a zip" is a perfectly
+            // ordinary thing for an .hlsl to be and a warning about it every time would be noise.
+            std::string extension = path.extension().string();
+            std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) {
+                return static_cast<char>(std::tolower(c));
+            });
+
+            program = extension == ".sky" ? load_package_from(path) : tw::skybox::load_file_program(path);
         }
     }
 
@@ -373,6 +385,41 @@ float elapsed_seconds() noexcept
     return std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count();
 }
 
+// Seconds since the previous sky draw, which is what the music smoothing is written in terms of.
+//
+// Measured rather than assumed, because the game locks to twice the monitor's refresh rate: a filter
+// with a per-frame coefficient would decay three times faster at 360 fps than at 120, and "the sky
+// pulses differently on a different monitor" is not a bug anyone would think to look for here.
+//
+// Clamped rather than trusted: the first call, a breakpoint, or a level load all produce a gap that
+// would otherwise snap every filter straight to its target.
+float frame_delta_seconds() noexcept
+{
+    static float previous = elapsed_seconds();
+
+    const float now = elapsed_seconds();
+    const float dt = now - previous;
+    previous = now;
+
+    return std::clamp(dt, 0.f, 0.25f);
+}
+
+// The music for this draw.
+//
+// Not guarded against being called twice in a frame, and it does not need to be: every filter in
+// music::sample is written against elapsed time, so a second call with a near-zero dt moves nothing
+// and returns the same numbers. The only cost is a dozen more channel reads, and a dozen of those
+// measured at well under 0.02 ms in game.
+//
+// A frame counter would have bought nothing here and would have had to come from somewhere - the
+// draw hooks do not keep one - so it would have been a new piece of shared state existing purely to
+// guard a call that is already idempotent.
+const tw::plugin::music::frame& music_now() noexcept
+{
+    tw::plugin::music::sample(frame_delta_seconds());
+    return tw::plugin::music::current();
+}
+
 // Shader draw path: no cube map, no image decode, nothing on disk. Kept out of intercept_draw so
 // the ordinary path stays a straight line.
 bool draw_sky_program(IDirect3DDevice9* device, const tw::skybox::sky_program& program)
@@ -382,18 +429,69 @@ bool draw_sky_program(IDirect3DDevice9* device, const tw::skybox::sky_program& p
         return false;
     }
 
-    // The palette is fixed; only the runtime register carries anything this frame decides, so that
-    // is the only thing built here. The program's own array goes to the device untouched.
+    // The palette is fixed; only the clock and the music carry anything this frame decides, so those
+    // are the only things built here. The program's own array goes to the device untouched.
     //
     // This used to copy the whole block every frame in order to patch one register into it, and the
     // size of that copy was a second, independent constant - which is exactly how half a shader once
-    // went missing. Four floats and a separate upload replace both problems.
+    // went missing. Small blocks and separate uploads replace both problems.
     std::array<float, 4> runtime {};
+    std::array<float, static_cast<std::size_t>(tw::skybox::k_music_registers) * 4> music {};
+
+    // One for the clock, and up to one per music register - see below for why the music is not a
+    // single three-register block.
+    std::array<tw::skybox::renderer::frame_block, 1 + tw::skybox::k_music_registers> blocks {};
+    std::size_t block_count = 0;
 
     if(program.has_runtime()) {
         runtime[0] = elapsed_seconds();
         if(program.markers_in_runtime_y) {
             runtime[1] = g_probe_markers.load(std::memory_order_relaxed) ? 1.f : 0.f;
+        }
+
+        blocks[block_count++] = { tw::skybox::k_runtime_register, std::span<const float> { runtime } };
+    }
+
+    // Only when the shader asked for it. Every sky that does not mention the music pays nothing at
+    // all - not the upload, and not the channel reads behind it, because music_now() is not called.
+    if(program.has_music()) {
+        const tw::plugin::music::frame& m = music_now();
+
+        music[0] = m.level;
+        music[1] = m.body;
+        music[2] = m.onset;
+        music[3] = m.valid;
+
+        music[4] = m.seconds;
+        music[5] = m.length;
+        music[6] = m.progress;
+        music[7] = m.since_onset;
+
+        music[8] = m.low;
+        music[9] = m.mid;
+        music[10] = m.high;
+        music[11] = m.air;
+
+        static_assert(tw::plugin::music::k_slow_rungs == 4, "the slow ladder is one float4 register");
+        music[12] = m.slow[0];
+        music[13] = m.slow[1];
+        music[14] = m.slow[2];
+        music[15] = m.slow[3];
+
+        // One block per register the program actually declared, never one block of three.
+        //
+        // A shader is free to read `g_music` and neither of the other two - the arc in `Our Drafts
+        // Collides v2` does exactly that - and fxc then hands c209 and c210 to that shader's own
+        // `def` literals. Writing the whole block because *some* of it was declared would overwrite
+        // them, which corrupts the program rather than misconfiguring it: the same failure the
+        // per-run upload above exists to prevent, reintroduced one layer up.
+        for(int i = 0; i < tw::skybox::k_music_registers; ++i) {
+            const int reg = tw::skybox::k_music_register + i;
+            if(!program.declares(reg)) {
+                continue;
+            }
+
+            blocks[block_count++] = { reg, std::span<const float> { music.data() + static_cast<std::size_t>(i) * 4, 4 } };
         }
     }
 
@@ -402,8 +500,8 @@ bool draw_sky_program(IDirect3DDevice9* device, const tw::skybox::sky_program& p
         shaders.pixel,
         program.constants,
         program.constant_runs,
-        program.has_runtime() ? std::span<const float> { runtime } : std::span<const float> {},
-        tw::skybox::k_runtime_register,
+        std::span<const tw::skybox::renderer::frame_block> { blocks.data(), block_count },
+        tw::skybox::shader::textures(device, program),
         g_shader_quality.load(std::memory_order_relaxed),
         g_orientation);
 }

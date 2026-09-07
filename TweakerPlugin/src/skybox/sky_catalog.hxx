@@ -17,11 +17,16 @@ enum class entry_kind {
     file,        // a cross or panorama image on disk; `id` is a path
     face_dir,    // a folder of six faces; `id` is a path
 
-    // A `.sky` package - a directory holding Config.json, with the sky's layers, shaders and assets.
-    // `id` is the path to that directory. See Docs/Internal/sky-package.md.
+    // A `.sky` package - the sky's layers, shaders and assets with a Config.json at the top. `id` is
+    // the path to it. See Docs/Internal/sky-package.md.
     //
-    // Recognised before face_dir, and that order is the rule: a directory can now be either, and a
-    // manifest is the definite answer while six images in a folder is an inference.
+    // Either form: a directory holding Config.json, or a `.sky` file, which is that directory zipped.
+    // One kind rather than two because nothing downstream cares - the loader opens whichever it was
+    // handed, and a sky is not a different sky for having been packed.
+    //
+    // The directory form is recognised before face_dir, and that order is the rule: a directory can
+    // now be either, and a manifest is the definite answer while six images in a folder is an
+    // inference.
     package,
 };
 

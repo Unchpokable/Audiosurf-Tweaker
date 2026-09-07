@@ -8,11 +8,51 @@ namespace
 {
 namespace atlas = tw::skybox::sprite_atlas;
 
-constexpr int k_width = atlas::k_tiles_x * atlas::k_tile_size;
-constexpr int k_height = atlas::k_tiles_y * atlas::k_tile_size;
-
 IDirect3DDevice9* g_device = nullptr;
 IDirect3DTexture9* g_texture = nullptr;
+
+// The grid the atlas is currently packed in. Runtime because a package declares how many tiles it
+// wants and how big they are; these are what the built-in bake asks for when nothing else has.
+int g_tiles_x = 2;
+int g_tiles_y = 2;
+int g_tile_size = atlas::k_builtin_tile_size;
+int g_tile_count = atlas::k_builtin_tiles;
+
+// Where the atlas comes from. Three states rather than "supplied or not", because a `shader` fill
+// asks for no atlas at all and that is a different answer from an empty one - see set_none().
+enum class source {
+    builtin,  // the bake below
+    supplied, // tiles a package produced, held in g_supplied
+    none,     // there is no texture; the layer's own pixel shader paints the quad
+};
+
+source g_source = source::builtin;
+
+// Tiles a package supplied, already quantised.
+//
+// Kept rather than uploaded immediately because set_tiles() is called from the layer rebuild, which
+// may happen with no device bound - the texture is created on the next ensure(), where there is one.
+std::vector<std::uint32_t> g_supplied;
+
+int atlas_width() noexcept
+{
+    return g_tiles_x * g_tile_size;
+}
+
+int atlas_height() noexcept
+{
+    return g_tiles_y * g_tile_size;
+}
+
+// Adopts the grid `count` tiles are laid out in. The rule itself is public - see grid_for().
+void choose_grid(int count) noexcept
+{
+    const atlas::grid_shape shape = atlas::grid_for(count);
+
+    g_tiles_x = shape.columns;
+    g_tiles_y = shape.rows;
+    g_tile_count = count;
+}
 
 // One failure is enough: a device that will not give us a 512x512 managed texture is not going to
 // start, and the layer has a perfectly good "draw nothing" answer.
@@ -195,10 +235,10 @@ void build_mip(const std::vector<std::uint32_t>& src, int src_w, int src_h, std:
 // One tile's worth of pixels, written into the full-atlas buffer at its grid position.
 void bake_tile(std::vector<std::uint32_t>& pixels, int tile_index) noexcept
 {
-    constexpr int size = atlas::k_tile_size;
+    const int size = g_tile_size;
 
-    const int origin_x = (tile_index % atlas::k_tiles_x) * size;
-    const int origin_y = (tile_index / atlas::k_tiles_x) * size;
+    const int origin_x = (tile_index % g_tiles_x) * size;
+    const int origin_y = (tile_index / g_tiles_x) * size;
 
     const auto seed = static_cast<std::uint32_t>(tile_index) * 2654435761U + 17U;
 
@@ -309,7 +349,7 @@ void bake_tile(std::vector<std::uint32_t>& pixels, int tile_index) noexcept
             // D3DFMT_A8R8G8B8 is a 32-bit word, not a byte order: on a little-endian machine the
             // bytes land B, G, R, A, and packing the word is what makes that somebody else's
             // problem.
-            pixels[static_cast<std::size_t>(origin_y + y) * k_width + (origin_x + x)] = (a << 24) | (r << 16) | (g << 8) | b;
+            pixels[static_cast<std::size_t>(origin_y + y) * atlas_width() + (origin_x + x)] = (a << 24) | (r << 16) | (g << 8) | b;
         }
     }
 }
@@ -318,14 +358,14 @@ bool upload(IDirect3DDevice9* device, std::vector<std::uint32_t>& pixels)
 {
     // A full mip chain. 512 -> 1, which is nine levels and a third more memory than level zero
     // alone; the whole thing is a megabyte and a third.
-    if(FAILED(device->CreateTexture(k_width, k_height, 0, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &g_texture, nullptr))
+    if(FAILED(device->CreateTexture(atlas_width(), atlas_height(), 0, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &g_texture, nullptr))
         || g_texture == nullptr) {
-        TW_LOG_ERROR("sky_sprite_atlas: CreateTexture({}x{}) failed", k_width, k_height);
+        TW_LOG_ERROR("sky_sprite_atlas: CreateTexture({}x{}) failed", atlas_width(), atlas_height());
         return false;
     }
 
-    int width = k_width;
-    int height = k_height;
+    int width = atlas_width();
+    int height = atlas_height();
 
     std::vector<std::uint32_t> level = std::move(pixels);
     std::vector<std::uint32_t> next;
@@ -376,6 +416,13 @@ IDirect3DTexture9* ensure(IDirect3DDevice9* device) noexcept
         g_device = device;
     }
 
+    // Before the failure flag, not after: there is nothing to fail at. A layer that paints its own
+    // sprites asks for no texture and gets none, and the caller distinguishes this from a refusal by
+    // asking untextured() first.
+    if(g_source == source::none) {
+        return nullptr;
+    }
+
     if(g_texture != nullptr) {
         return g_texture;
     }
@@ -386,9 +433,18 @@ IDirect3DTexture9* ensure(IDirect3DDevice9* device) noexcept
 
     const auto started = std::chrono::steady_clock::now();
 
-    std::vector<std::uint32_t> pixels(static_cast<std::size_t>(k_width) * static_cast<std::size_t>(k_height));
-    for(int i = 0; i < k_tile_count; ++i) {
-        bake_tile(pixels, i);
+    std::vector<std::uint32_t> pixels;
+
+    if(g_source == source::supplied) {
+        // Already packed by set_tiles(). Copied rather than moved, and the state stays `supplied`, so
+        // a device change can re-upload the same atlas without asking the script to bake it again.
+        pixels = g_supplied;
+    }
+    else {
+        pixels.assign(static_cast<std::size_t>(atlas_width()) * static_cast<std::size_t>(atlas_height()), 0U);
+        for(int i = 0; i < g_tile_count; ++i) {
+            bake_tile(pixels, i);
+        }
     }
 
     if(!upload(device, pixels)) {
@@ -401,26 +457,140 @@ IDirect3DTexture9* ensure(IDirect3DDevice9* device) noexcept
     }
 
     const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started);
-    TW_LOG_INFO("sky_sprite_atlas: baked {} tiles into {}x{} in {} ms", k_tile_count, k_width, k_height, elapsed.count());
+    TW_LOG_INFO("sky_sprite_atlas: {} {} tiles into {}x{} in {} ms",
+        g_source == source::supplied ? "uploaded" : "baked",
+        g_tile_count,
+        atlas_width(),
+        atlas_height(),
+        elapsed.count());
 
     return g_texture;
 }
 
+int tile_count() noexcept
+{
+    return g_tile_count;
+}
+
+int tile_size() noexcept
+{
+    return g_source == source::none ? 0 : g_tile_size;
+}
+
+grid_shape grid_for(int count) noexcept
+{
+    const int wanted = (std::max)(count, 1);
+    const int columns = (std::max)(1, static_cast<int>(std::ceil(std::sqrt(static_cast<double>(wanted)))));
+
+    return { columns, (wanted + columns - 1) / columns };
+}
+
+bool untextured() noexcept
+{
+    return g_source == source::none;
+}
+
+void set_none() noexcept
+{
+    if(g_source == source::none) {
+        return;
+    }
+
+    g_source = source::none;
+
+    g_supplied.clear();
+    g_supplied.shrink_to_fit();
+
+    // One notional tile, so a generator asking how many there are gets an answer it can take a
+    // modulus of. The grid it describes is never packed into anything - tile() short-circuits before
+    // it would divide by the zero size below.
+    g_tiles_x = 1;
+    g_tiles_y = 1;
+    g_tile_count = 1;
+    g_tile_size = 0;
+
+    release_device_resources();
+}
+
+void set_tiles(std::span<const image::layer> tiles) noexcept
+{
+    // Back to the built-in bake. Selecting a sky whose layer declares no fill has to undo whatever
+    // the previous one supplied, or its clouds would keep somebody else's texture.
+    if(tiles.empty()) {
+        if(g_source == source::builtin) {
+            return;
+        }
+
+        g_source = source::builtin;
+        g_supplied.clear();
+        g_supplied.shrink_to_fit();
+
+        g_tile_size = k_builtin_tile_size;
+        choose_grid(k_builtin_tiles);
+
+        release_device_resources();
+
+        return;
+    }
+
+    const int size = tiles.front().width;
+
+    for(const image::layer& tile : tiles) {
+        if(!tile.valid() || tile.width != size || tile.height != size) {
+            TW_LOG_ERROR("sky_sprite_atlas: supplied tiles are not all {} square - keeping the previous atlas", size);
+            return;
+        }
+    }
+
+    g_tile_size = size;
+    choose_grid(static_cast<int>(tiles.size()));
+
+    g_supplied.assign(static_cast<std::size_t>(atlas_width()) * static_cast<std::size_t>(atlas_height()), 0U);
+
+    std::vector<std::uint32_t> quantised;
+
+    for(std::size_t i = 0; i < tiles.size(); ++i) {
+        image::to_bgra(tiles[i], quantised);
+
+        const int origin_x = (static_cast<int>(i) % g_tiles_x) * size;
+        const int origin_y = (static_cast<int>(i) / g_tiles_x) * size;
+
+        for(int y = 0; y < size; ++y) {
+            std::copy_n(quantised.begin() + static_cast<std::ptrdiff_t>(y) * size,
+                size,
+                g_supplied.begin() + static_cast<std::ptrdiff_t>(origin_y + y) * atlas_width() + origin_x);
+        }
+    }
+
+    g_source = source::supplied;
+
+    // The texture on the device was built from the old tiles; dropping it is what makes the next
+    // ensure() pick these up.
+    release_device_resources();
+}
+
 tile_rect tile(int index) noexcept
 {
-    const int wrapped = ((index % k_tile_count) + k_tile_count) % k_tile_count;
+    // The whole quad. Not a degenerate case of the grid below but a different answer to a different
+    // question: with no atlas there is no cell to sit in and no neighbour to stay out of, and the
+    // arithmetic below would in any case divide by an atlas zero texels wide.
+    if(g_source == source::none) {
+        return { 0.f, 0.f, 1.f, 1.f };
+    }
 
-    const int column = wrapped % k_tiles_x;
-    const int row = wrapped / k_tiles_x;
+    const int wrapped = ((index % g_tile_count) + g_tile_count) % g_tile_count;
+
+    const int column = wrapped % g_tiles_x;
+    const int row = wrapped / g_tiles_x;
 
     // Half a texel in from each side. Bilinear filtering reads two texels either way, so a quad
     // whose coordinates run to the exact tile boundary would pull in the neighbouring cloud along
     // its edge - faintly, but on every sprite, which is enough to see.
-    constexpr float inset_u = 0.5f / static_cast<float>(k_width);
-    constexpr float inset_v = 0.5f / static_cast<float>(k_height);
+    const float inset_u = 0.5f / static_cast<float>(atlas_width());
+    const float inset_v = 0.5f / static_cast<float>(atlas_height());
 
-    constexpr float span_u = 1.f / static_cast<float>(k_tiles_x);
-    constexpr float span_v = 1.f / static_cast<float>(k_tiles_y);
+    const float span_u = 1.f / static_cast<float>(g_tiles_x);
+    const float span_v = 1.f / static_cast<float>(g_tiles_y);
 
     const float u0 = static_cast<float>(column) * span_u;
     const float v0 = static_cast<float>(row) * span_v;

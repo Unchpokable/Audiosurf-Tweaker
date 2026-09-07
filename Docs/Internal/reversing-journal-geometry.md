@@ -13,7 +13,7 @@ D3D-буферы, и что из этого следует для замены �
 расхождений.
 
 Инструменты этой сессии — `cgr/mesh.py`, `cgr/container.py`, `cgr/patch.py` и CLI `meshes.py` в
-`Temp/Dumped/_work/cgrpy/`, см. §10.
+`Tools/CgrPy/`, см. §10.
 
 ---
 
@@ -421,7 +421,7 @@ OBJ-индексы `v/vt/vn` в один D3D-индекс на вершину (�
 
 ## 9. Инвентарь: где что лежит
 
-Полный машиночитаемый список — `Temp/Dumped/_work/cgrpy/out/meshes.csv`, по строке на блоб:
+Полный машиночитаемый список — `Tools/CgrPy/.cache/out/meshes.csv`, по строке на блоб:
 `file, ordinal, channel, channel_type, name, verts, tris, uv_sets, fvf, poly_type, bytes,
 size_x/y/z`. Сводка по файлам (52 файла с геометрией из 161):
 
@@ -470,7 +470,7 @@ size_x/y/z`. Сводка по файлам (52 файла с геометрие
 
 ## 10. Инструменты и как это воспроизвести
 
-В `Temp/Dumped/_work/cgrpy/` добавлено:
+В `Tools/CgrPy/` добавлено:
 
 | Модуль | Роль |
 |---|---|

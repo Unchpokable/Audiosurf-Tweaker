@@ -89,5 +89,12 @@ void set_layer(const sky_program* program) noexcept;
 // For the overlay: "enabled" and "working" are different claims, and a shader the device refused
 // to create should not look like a count of zero.
 [[nodiscard]] int live_count() noexcept;
+
+// What the package's generator script last said, or empty when there is none or it ran cleanly.
+//
+// For the Skybox tab. A script with a typo in it has to report itself where its author is looking,
+// and a layer whose generator failed keeps the sprites it had - so without this the only sign would
+// be clouds that quietly stopped responding to their own knobs.
+[[nodiscard]] std::string_view generator_error() noexcept;
 [[nodiscard]] bool ready() noexcept;
 } // namespace tw::skybox::sprites

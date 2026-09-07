@@ -2,10 +2,15 @@
 
 #include "skybox/sky_target.hxx"
 
+#include "framework/d3d9_state.hxx"
+
 #include "plugin/diagnostics.hxx"
 
 namespace
 {
+using state_scope = tw::framework::d3d9::state_scope;
+
+
 // Pre-transformed vertices for the blit back. XYZRHW skips every transform stage, so the quad needs
 // no matrices and cannot be disturbed by whatever the game left in them.
 struct blit_vertex {
@@ -112,44 +117,56 @@ void draw_blit(IDirect3DDevice9* device)
         { right - k_half_pixel, bottom - k_half_pixel, 0.f, 1.f, 1.f, 1.f },
     } };
 
-    device->SetVertexShader(nullptr);
-    device->SetPixelShader(nullptr);
-    device->SetFVF(k_blit_fvf);
+    // Its own scope, not the caller's. The blit runs in the middle of somebody else's pass - the
+    // shaded sky, whose state it is about to overwrite - so what it has to put back is that pass's
+    // state and not the game's. Nesting says exactly that, and says it without this function having
+    // to know who called it. See framework/d3d9_state.hxx.
+    //
+    // It also settles what used to be a loose end: the fixed-function state below was written
+    // straight to the device and swept up by the sky's D3DSBT_ALL block on the way out. That worked
+    // only because the block captured everything, including states this function is not aware of
+    // setting.
+    state_scope scope(device);
 
-    device->SetRenderState(D3DRS_ZENABLE, D3DZB_FALSE);
-    device->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
-    device->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
-    device->SetRenderState(D3DRS_LIGHTING, FALSE);
-    device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-    device->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
-    device->SetRenderState(D3DRS_FOGENABLE, FALSE);
-    device->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
-    device->SetRenderState(D3DRS_SRGBWRITEENABLE, FALSE);
+    scope.vertex_shader(nullptr);
+    scope.pixel_shader(nullptr);
+    scope.fvf(k_blit_fvf);
 
-    device->SetTexture(0, g_texture);
-    device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
-    device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-    device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-    device->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-    device->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 0);
-    device->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
-    device->SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
-    device->SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+    scope.render_state(D3DRS_ZENABLE, D3DZB_FALSE);
+    scope.render_state(D3DRS_ZWRITEENABLE, FALSE);
+    scope.render_state(D3DRS_CULLMODE, D3DCULL_NONE);
+    scope.render_state(D3DRS_LIGHTING, FALSE);
+    scope.render_state(D3DRS_ALPHABLENDENABLE, FALSE);
+    scope.render_state(D3DRS_ALPHATESTENABLE, FALSE);
+    scope.render_state(D3DRS_FOGENABLE, FALSE);
+    scope.render_state(D3DRS_SCISSORTESTENABLE, FALSE);
+    scope.render_state(D3DRS_SRGBWRITEENABLE, FALSE);
+
+    scope.texture(0, g_texture);
+    scope.stage_state(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+    scope.stage_state(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+    scope.stage_state(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+    scope.stage_state(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+    scope.stage_state(0, D3DTSS_TEXCOORDINDEX, 0);
+    scope.stage_state(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
+    scope.stage_state(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
+    scope.stage_state(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
 
     // Linear on the way up is the whole point - a point-sampled upscale would show the reduced
     // resolution as blocks, which is exactly what this is trying not to do.
-    device->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
-    device->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
-    device->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
-    device->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
-    device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
-    device->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, FALSE);
+    scope.sampler_state(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
+    scope.sampler_state(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+    scope.sampler_state(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
+    scope.sampler_state(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+    scope.sampler_state(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+    scope.sampler_state(0, D3DSAMP_SRGBTEXTURE, FALSE);
 
     // DrawPrimitiveUP rather than a vertex buffer of our own: four vertices, once a frame, and the
     // alternative is another D3DPOOL_MANAGED resource to keep alive across device changes.
     device->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad.data(), sizeof(blit_vertex));
 
-    device->SetTexture(0, nullptr);
+    // Stage 0 is not unbound by hand any more: the scope closing below puts back whatever was there,
+    // which unbinds this render target texture just as surely and does not depend on remembering to.
 }
 } // namespace
 

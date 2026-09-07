@@ -12,6 +12,8 @@ TweakerUI/
   scripts/
     hello.lua
     traffic.lua
+    particles.lua
+    arrayprobe.lua
     my-script.lua        <- yours
   TweakerScripts.cfg     <- created automatically; remembers which scripts you turned off
 ```

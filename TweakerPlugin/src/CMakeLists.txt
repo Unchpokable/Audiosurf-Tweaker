@@ -10,6 +10,7 @@ add_subdirectory(ipc)
 add_subdirectory(resource)
 add_subdirectory(libstb)
 add_subdirectory(libyyjson)
+add_subdirectory(libminiz)
 add_subdirectory(ui)
 
 # After ui: lua_api pushes notefeed toasts and draws on the overlay's ImGui context.

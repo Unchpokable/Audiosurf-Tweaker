@@ -43,13 +43,14 @@ std::string g_backend;
 // answered - has to be resolved exactly once even if two of them start together.
 std::once_flag g_load_once;
 
-// Resolves #include for the compiler: the DLL's packed headers first, then next to the shader.
+// Resolves #include for the compiler: the DLL's packed headers first, then whatever the caller's
+// reader answers with - a file beside the shader, or an entry of the package it came out of.
 //
 // Always hands back a copy, even for a packed header that is already in memory and will outlive the
 // compile. One allocation per include is nothing next to a compile, and the alternative is a Close()
 // that has to remember which pointers it owns.
 struct include_handler : public ID3DInclude {
-    std::filesystem::path base;
+    const tw::skybox::compile::include_reader* reader = nullptr;
 
     HRESULT STDMETHODCALLTYPE Open(
         D3D_INCLUDE_TYPE /*type*/, LPCSTR file_name, LPCVOID /*parent_data*/, LPCVOID* out_data, UINT* out_bytes) override
@@ -62,9 +63,9 @@ struct include_handler : public ID3DInclude {
         *out_bytes = 0;
 
         std::string contents;
-        if(!read_packed(file_name, contents) && !read_from_disk(file_name, contents)) {
-            TW_LOG_WARNING(
-                "sky_compile: #include \"{}\" not found (looked in the DLL's packed headers and in '{}')", file_name, base.string());
+        if(!read_packed(file_name, contents) && !read_local(file_name, contents)) {
+            TW_LOG_WARNING("sky_compile: #include \"{}\" not found (looked in the DLL's packed headers and beside the shader)",
+                file_name);
             return E_FAIL;
         }
 
@@ -100,12 +101,20 @@ private:
         return true;
     }
 
-    bool read_from_disk(std::string_view file_name, std::string& out) const
+    bool read_local(std::string_view file_name, std::string& out) const
     {
-        if(base.empty()) {
-            return false;
-        }
+        return reader != nullptr && *reader && (*reader)(file_name, out);
+    }
+};
 
+// The reader a shader on disk gets: the directory it sits in, and nothing above it.
+tw::skybox::compile::include_reader directory_includes(std::filesystem::path base)
+{
+    if(base.empty()) {
+        return {};
+    }
+
+    return [base = std::move(base)](std::string_view file_name, std::string& out) {
         std::error_code ec;
         const std::filesystem::path path = base / std::filesystem::path { file_name };
         if(!std::filesystem::is_regular_file(path, ec)) {
@@ -118,9 +127,10 @@ private:
         }
 
         out.assign(std::istreambuf_iterator<char> { file }, std::istreambuf_iterator<char> {});
+
         return true;
-    }
-};
+    };
+}
 
 std::string blob_text(ID3D10Blob* blob)
 {
@@ -183,18 +193,25 @@ std::string_view backend_name() noexcept
 
 result shader(std::string_view source, const std::filesystem::path& source_path, stage target)
 {
+    const include_reader reader = directory_includes(source_path.parent_path());
+
+    return shader(source, source_path.filename().string(), reader, target);
+}
+
+result shader(std::string_view source, std::string_view label, const include_reader& reader, stage target)
+{
     if(!available()) {
-        return result { {}, "no d3dcompiler_47.dll on this machine - only the built-in skies can run" };
+        return result { .diagnostics = "no d3dcompiler_47.dll on this machine - only the built-in skies can run" };
     }
 
     if(source.empty()) {
-        return result { {}, "the file is empty" };
+        return result { .diagnostics = "the file is empty" };
     }
 
     include_handler includes;
-    includes.base = source_path.parent_path();
+    includes.reader = &reader;
 
-    const std::string name = source_path.filename().string();
+    const std::string name { label };
 
     ID3D10Blob* code = nullptr;
     ID3D10Blob* errors = nullptr;
@@ -241,7 +258,7 @@ result shader_file(const std::filesystem::path& path, stage target)
 {
     std::ifstream file { path, std::ios::binary };
     if(!file.is_open()) {
-        return result { {}, "could not open " + path.string() };
+        return result { .diagnostics = "could not open " + path.string() };
     }
 
     std::string source { std::istreambuf_iterator<char> { file }, std::istreambuf_iterator<char> {} };
@@ -260,5 +277,20 @@ tw::plugin::bg_work::task<result> shader_file_async(std::filesystem::path path, 
     return tw::plugin::bg_work::run<result>([path = std::move(path), target] {
         return shader_file(path, target);
     });
+}
+
+tw::plugin::bg_work::task<result> shader_source_async(std::string source, std::string label, include_reader includes, stage target)
+{
+    return tw::plugin::bg_work::run<result>(
+        [source = std::move(source), label = std::move(label), includes = std::move(includes), target] {
+            result out = shader(source, label, includes, target);
+
+            // Carried back like shader_file does, and for the same reason: apply_compile reads the
+            // `@sky` annotations out of it once the bytecode exists to name registers with. The copy
+            // is one per compile of a file measured in kilobytes.
+            out.source = source;
+
+            return out;
+        });
 }
 } // namespace tw::skybox::compile

@@ -51,6 +51,24 @@ struct register_run {
     int count {};
 };
 
+// Whether `reg` falls inside one of these runs - that is, whether writing it configures the program
+// rather than corrupting it.
+//
+// A free function over the runs rather than a method on the reflection, because the two callers hold
+// the same data in different places: the reflection right after a compile, and sky_program's own copy
+// for the rest of the program's life. One of them having its own copy of this loop is how the two
+// come to disagree.
+[[nodiscard]] constexpr bool declares(std::span<const register_run> runs, int reg) noexcept
+{
+    for(const register_run& run : runs) {
+        if(reg >= run.first && reg < run.first + run.count) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 struct reflection {
     // Every register the shader declares, as runs. Empty means "declare nothing, upload nothing",
     // which is the safe answer and not an error.
@@ -67,12 +85,7 @@ struct reflection {
     // Whether register `reg` falls inside one of the runs - that is, whether writing it is safe.
     [[nodiscard]] bool declares(int reg) const noexcept
     {
-        for(const register_run& run : runs) {
-            if(reg >= run.first && reg < run.first + run.count) {
-                return true;
-            }
-        }
-        return false;
+        return tw::skybox::bytecode::declares(runs, reg);
     }
 };
 

@@ -844,6 +844,20 @@
       "id": "clouds",
       "kind": "sprites",
       "shader": "shaders/clouds",
+      // Where the clouds go. The engine keeps the billboard basis, the pole handling and the
+      // vertex format - invariants rather than choices - and this decides the one thing that was
+      // only ever an opinion. Saving it rebuilds the layer, like saving a shader recompiles it.
+      "generator": "scripts/clouds.lua",
+
+      // What the sprites are painted with. Declared here rather than returned by the script, so
+      // "this package is incomplete" is a fact about the manifest and not a discovery made halfway
+      // through baking.
+      "fill": {
+        "kind": "atlas",
+        "generator": "scripts/clouds.lua",
+        "tiles": 6,
+        "size": 256
+      },
       // What this layer is lit by, and the whole reason the format exists. It asks for directions
       // and colours; the sky answers from its own `shared.lights`. Neither side knows the other -
       // the sky does not publish anything for the clouds to fetch, and the clouds do not know that

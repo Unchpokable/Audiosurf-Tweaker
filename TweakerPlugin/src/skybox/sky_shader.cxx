@@ -7,6 +7,7 @@
 #include "resource/resource.hxx"
 
 #include "skybox/sky_program.hxx"
+#include "skybox/sky_texture.hxx"
 
 namespace
 {
@@ -18,6 +19,13 @@ struct cache_slot {
     const tw::skybox::sky_program* program {};
     tw::skybox::shader::pair shaders {};
     bool failed {};
+
+    // Resolved on the first draw, separately from the shaders: a layer may have no textures at all,
+    // and loading a volume is a far heavier thing to do than creating a shader from bytecode already
+    // in memory.
+    bool textures_resolved {};
+    std::vector<tw::skybox::texture::loaded> owned;
+    std::vector<tw::skybox::shader::sampler> samplers;
 };
 
 IDirect3DDevice9* g_device = nullptr;
@@ -52,7 +60,79 @@ void release_slot(cache_slot& slot) noexcept
         slot.shaders.vertex->Release();
     }
 
+    for(tw::skybox::texture::loaded& one : slot.owned) {
+        tw::skybox::texture::release(one);
+    }
+
     slot = {};
+}
+
+DWORD address_of(tw::skybox::package::texture_address mode) noexcept
+{
+    switch(mode) {
+        case tw::skybox::package::texture_address::clamp:
+            return D3DTADDRESS_CLAMP;
+        case tw::skybox::package::texture_address::mirror:
+            return D3DTADDRESS_MIRROR;
+        default:
+            return D3DTADDRESS_WRAP;
+    }
+}
+
+// Loads every texture the program's layer declares. Failures are logged and dropped rather than
+// fatal - see the note on shader::textures().
+void resolve_textures(IDirect3DDevice9* device, const tw::skybox::sky_program& program, cache_slot& slot)
+{
+    slot.textures_resolved = true;
+
+    const tw::skybox::package::layer* layer = program.package_layer_ref();
+    if(layer == nullptr || layer->textures.empty()) {
+        return;
+    }
+
+    const tw::skybox::package::manifest* manifest = program.sky != nullptr ? program.sky->sky.get() : nullptr;
+    if(manifest == nullptr) {
+        return;
+    }
+
+    slot.owned.reserve(layer->textures.size());
+    slot.samplers.reserve(layer->textures.size());
+
+    for(const tw::skybox::package::texture_ref& declared : layer->textures) {
+        std::vector<std::byte> bytes;
+        if(!manifest->files.read(declared.path, bytes)) {
+            TW_LOG_ERROR("sky_shader: '{}': could not read texture '{}' from the package", program.id, declared.path);
+            continue;
+        }
+
+        tw::skybox::texture::loaded one;
+        std::string error;
+
+        if(!tw::skybox::texture::create_from_dds(device, bytes, one, error)) {
+            TW_LOG_ERROR("sky_shader: '{}': texture '{}': {}", program.id, declared.path, error);
+            continue;
+        }
+
+        TW_LOG_INFO("sky_shader: '{}': '{}' loaded as a {} texture, {}x{}x{}, {} level(s), into s{}",
+            program.id,
+            declared.path,
+            tw::skybox::texture::shape_name(one.form),
+            one.width,
+            one.height,
+            one.depth,
+            one.levels,
+            declared.slot);
+
+        tw::skybox::shader::sampler bound;
+        bound.slot = declared.slot;
+        bound.texture = one.object;
+        bound.address = address_of(declared.address);
+        bound.filter = declared.filter == tw::skybox::package::texture_filter::point ? D3DTEXF_POINT : D3DTEXF_LINEAR;
+        bound.mipped = one.levels > 1;
+
+        slot.owned.push_back(one);
+        slot.samplers.push_back(bound);
+    }
 }
 
 // Drops every cached pointer without releasing anything. The only correct response to being handed
@@ -160,6 +240,24 @@ pair ensure(IDirect3DDevice9* device, const sky_program& program) noexcept
         tw::skybox::bytecode::describe(program.constant_runs));
 
     return slot.shaders;
+}
+
+std::span<const sampler> textures(IDirect3DDevice9* device, const sky_program& program) noexcept
+{
+    if(device == nullptr || device != g_device) {
+        return {};
+    }
+
+    cache_slot* slot = find_slot(program);
+    if(slot == nullptr) {
+        return {};
+    }
+
+    if(!slot->textures_resolved) {
+        resolve_textures(device, program, *slot);
+    }
+
+    return slot->samplers;
 }
 
 void invalidate(const sky_program& program) noexcept

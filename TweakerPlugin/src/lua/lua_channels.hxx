@@ -88,6 +88,27 @@ bool initialize() noexcept;
 // already be known good. On an Aco_FloatChannel this is a plain store with no side effects.
 void set_float(A3d_Channel* channel, float value) noexcept;
 
+// Writes a vector channel through vtable slot 18 (+0x48), `Aco_VectorChannel::SetVector`.
+//
+// **The kind must already be known good, and here that is a hard safety requirement rather than
+// tidiness.** Slot 19 is `SetFloat(float)` on a numeric channel and `SetFloat(int, float)` on a
+// vector one - calling the wrong one is a stack mismatch, not a wrong value (engine journal §2.2.2).
+// What makes that impossible in practice is the typed resolve: a handle only reaches here after
+// kind_of() reported `vector`, i.e. after the channel's baseguid was read off its own ChannelType.
+// That is the whole protection, and it is why there is no accessor that takes an unverified channel.
+//
+// The three floats are passed exactly as the engine's own callers pass them. SetVector takes
+// D3DXVECTOR3 **by value**, and the disassembly shows it reading three consecutive dwords from
+// [esp+4] - byte-identical to three float arguments, so the thunk needs no struct type of its own.
+// (Verified against the shipped binary, not inferred from the ABI rules; see the journal.)
+//
+// **This is not a local store.** SetVector writes x/y/z into the channel and then walks children
+// 0, 1 and 2: for each one whose baseguid is the *numeric* family it calls `child->SetFloat(component)`.
+// So writing a `Value Vector` also writes through into whatever Value channels feed its components.
+// Harmless where those are plain values, invisible where they are computed (the next evaluation
+// overwrites), but it is a wider blast radius than set_float and callers should know it.
+void set_vector(A3d_Channel* channel, float x, float y, float z) noexcept;
+
 // Evaluates a vector channel through vtable slot 17 (+0x44), writing x/y/z into `out`. Same contract
 // as get_float: the kind must already be known good.
 //
@@ -120,6 +141,48 @@ bool get_vector(A3d_Channel* channel, float out[3]) noexcept;
 // colour a track contains - `Do_GetTrafficCounts` walks exactly this - and unlike the summary
 // columns it is complete from the moment the track is generated.
 [[nodiscard]] bool read_array_vector(A3d_Channel* array_vector, A3d_Channel* indexer, float index, float out[3]) noexcept;
+
+// How many rows the table behind an `Array Value` / `Array Vector` column currently has, or -1 when
+// the channel is not one of those two types or its table is not connected.
+//
+// This is not a convenience: it is the number that makes writing a row safe at all. See write_array.
+[[nodiscard]] int array_row_count(A3d_Channel* column) noexcept;
+
+// Whether `row` exists in that column's table *without creating it*. The distinction matters - the
+// engine's own row accessor comes in two flavours and the creating one is what its setter path uses.
+[[nodiscard]] bool array_has_row(A3d_Channel* column, int row) noexcept;
+
+// Writes one cell of an Array Table, the mirror of read_array / read_array_vector: same cursor pair,
+// same save/set/act/restore, and the restore is equally unconditional.
+//
+// **The bounds check is the reason these exist as their own functions rather than as "set the cursor
+// and call set_float".** The engine does not validate the row index anywhere on this path:
+// `ArrayConnectItem::SetData` asks its column for the row, and *when the row is missing it creates
+// it* (engine journal §2.2.3). So an index past the end is not a no-op and not a wrong-cell write -
+// it appends to the game's table, changing what every other reader of that table sees. Refusing an
+// absent row is therefore part of the operation, not a nicety, and it is done with the engine's own
+// non-creating accessor rather than by comparing against a row count we might have read stale.
+//
+// Two things are deliberately different from the read path:
+//
+// - **No memo bust before the write.** The setters never call CheckRenderCount, so a write always
+//   lands; the invalidation the readers need has no counterpart here.
+// - **A memo bust *after* it.** Both setters also store the value into the channel's own scalar field
+//   (+0x7c) as a side effect, without touching the memo. If the channel is one of the memoised ones
+//   and the game had already evaluated it this frame, its next read in the same frame would return
+//   that scalar - our value - no matter which row its cursor points at. Invalidating afterwards
+//   forces the next reader back to the table.
+//
+// False means the write did not happen: unresolved channel, wrong type, disconnected table, or a row
+// that does not exist. True means the setter was called with the cursor on the requested row - which
+// is as much as can be promised, because the engine's setters return void and can still skip the
+// table silently when it is not connected (see array_row_count, which refuses in that same case).
+bool write_array(A3d_Channel* array_value, A3d_Channel* indexer, float index, float value) noexcept;
+
+// Same for an `Array Vector` column. Note that the value goes in through slot 18 (`SetVector`),
+// which on this type is the table write - not the component-propagating store that a plain
+// `Value Vector` performs.
+bool write_array_vector(A3d_Channel* array_vector, A3d_Channel* indexer, float index, float x, float y, float z) noexcept;
 
 // Reads a text channel. Handles both storage modes: the channel is asked whether it holds wide
 // characters (slot 23) and the wide string (slot 24) is converted to UTF-8 when it does - which is

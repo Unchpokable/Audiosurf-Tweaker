@@ -50,10 +50,27 @@ enum class stage {
     vertex,
 };
 
-// Compiles `source` with entry point `main`. `source_path` is used for the compiler's own
-// diagnostics and as the base directory for #include - and #include also reaches the headers packed
-// into the DLL, so a user's shader can say `#include "sky_common.hlsli"` and get the same constant
-// layout the bundled programs use.
+// Answers an `#include` for a compile: true and the header's text, or false when there is no such
+// header here.
+//
+// A callback rather than a directory, because a shader need not be on a disk. A layer of a `.sky`
+// package is read out of the package, which may be a zip - and the header beside it is in the same
+// zip. Handing this module a base path would work for a folder and quietly fail for an archive.
+using include_reader = std::function<bool(std::string_view name, std::string& out)>;
+
+// Compiles `source` with entry point `main`.
+//
+// `label` is what the compiler's own messages call it - a file name, or a package-relative one when
+// there is no file. `includes` resolves an #include the source makes; it may be empty, in which case
+// the only headers available are the ones packed into the DLL.
+//
+// The packed headers are tried *first* either way, so a user's shader can say
+// `#include "sky_common.hlsli"` and get the same constant layout the bundled programs use without
+// shipping a copy of it.
+[[nodiscard]] result shader(std::string_view source, std::string_view label, const include_reader& includes, stage target = stage::pixel);
+
+// The same, resolving #include next to the shader on disk. What a lone .hlsl the user dropped in
+// skybox_dir gets.
 [[nodiscard]] result shader(std::string_view source, const std::filesystem::path& source_path, stage target = stage::pixel);
 
 // Reads a file and compiles it. Separate from the above only because "could not open the file" is a
@@ -73,4 +90,13 @@ enum class stage {
 // abandoning a compile because its program had been replaced would stall the render thread inside
 // that future's destructor.
 [[nodiscard]] tw::plugin::bg_work::task<result> shader_file_async(std::filesystem::path path, stage target = stage::pixel);
+
+// The same for source already in hand, which is how a package layer compiles: the manifest's file
+// system has already read the text, and for an archive there was never a path to read it from again.
+//
+// Everything is taken by value and moved onto the worker. `includes` in particular must not close
+// over anything the render thread may destroy while the compile runs - a package::file_system copy
+// is exactly the right shape, and is why it is copyable.
+[[nodiscard]] tw::plugin::bg_work::task<result> shader_source_async(
+    std::string source, std::string label, include_reader includes, stage target = stage::pixel);
 } // namespace tw::skybox::compile

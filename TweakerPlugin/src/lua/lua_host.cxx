@@ -72,6 +72,11 @@ local C_array_vector    = ffi.cast("int (*)(void*, void*, float, float*)",      
 local C_theme_count     = ffi.cast("int (*)(void)",                                     P[27])
 local C_theme_name      = ffi.cast("const char* (*)(int)",                              P[28])
 local C_theme_color     = ffi.cast("unsigned int (*)(int)",                             P[29])
+local C_channel_set_vec = ffi.cast("void (*)(void*, float, float, float)",              P[30])
+local C_can_write       = ffi.cast("int (*)(void)",                                     P[31])
+local C_array_write     = ffi.cast("int (*)(void*, void*, float, float)",               P[32])
+local C_array_write_vec = ffi.cast("int (*)(void*, void*, float, float, float, float)", P[33])
+local C_array_rows      = ffi.cast("int (*)(void*)",                                    P[34])
 
 -- One reusable out-buffer for resolve results: [0] = status, [1] = the kind the channel actually is.
 -- Allocated once here rather than per call, so a resolve costs no garbage.
@@ -112,6 +117,14 @@ function tw.groups()
     return out
 end
 function tw.engine_ready() return C_engine_ready() ~= 0 end
+
+-- Whether writes to the graph are being accepted yet.
+--
+-- Writes are refused while the game is still assembling itself, because writing then does not crash
+-- anything - it silently corrupts the game, and the symptom (a broken track generator, characters
+-- shuffled in the menu) looks nothing like its cause. A refused write returns false like any other
+-- failed write; this is here so a script can wait deliberately instead of wondering.
+function tw.can_write() return C_can_write() ~= 0 end
 
 -- Resolution is lazy and retried, because it has to be: the engine pointer is captured by a detour
 -- that only fires once the game calls a channel which does not override CallChannel, which in
@@ -207,6 +220,16 @@ function VectorChannel:get()
     return vec_out[0], vec_out[1], vec_out[2]
 end
 
+-- Writing a vector channel is not the local store that float_ch:set is. The engine sets the three
+-- components and then writes each one through into the numeric channel wired to that component, if
+-- one is wired - so this can reach further into the graph than it looks. See
+-- Docs/scripting/channels.md.
+function VectorChannel:set(x, y, z)
+    if not self:resolve() then return false end
+    C_channel_set_vec(self.h, x, y, z)
+    return true
+end
+
 local function make(mt, kind, group, name)
     return setmetatable({ h = nil, group = group, name = name, kind = kind, retry_at = 0 }, mt)
 end
@@ -245,6 +268,23 @@ function Array:get(index)
     return C_array_read(self.column.h, self.cursor.h, index)
 end
 
+-- Writing a row is NOT symmetrical with reading one, and the asymmetry is deliberate: an index the
+-- table does not have is refused here, because the engine's own write path would create that row
+-- instead of rejecting it - lengthening a table the rest of the game reads. So `false` from this
+-- means either "could not resolve" or "no such row", and both are worth checking.
+function Array:set(index, value)
+    if not self.column:resolve() or not self.cursor:resolve() then return false end
+    return C_array_write(self.column.h, self.cursor.h, index, value) ~= 0
+end
+
+-- Row count of the underlying table, or nil when it cannot be asked. Valid indices are 0..rows()-1.
+function Array:rows()
+    if not self.column:resolve() then return nil end
+    local n = C_array_rows(self.column.h)
+    if n < 0 then return nil end
+    return n
+end
+
 function tw.array(group, column, cursor)
     return setmetatable({
         column = tw.float_ch(group, column),
@@ -260,6 +300,20 @@ function VectorArray:get(index)
     if not self.column:resolve() or not self.cursor:resolve() then return nil end
     if C_array_vector(self.column.h, self.cursor.h, index, vec_out) == 0 then return nil end
     return vec_out[0], vec_out[1], vec_out[2]
+end
+
+-- Same contract as Array:set. Note this goes through the array type's own SetVector, which writes
+-- the row - not the component-propagating store a plain vector_ch:set performs.
+function VectorArray:set(index, x, y, z)
+    if not self.column:resolve() or not self.cursor:resolve() then return false end
+    return C_array_write_vec(self.column.h, self.cursor.h, index, x, y, z) ~= 0
+end
+
+function VectorArray:rows()
+    if not self.column:resolve() then return nil end
+    local n = C_array_rows(self.column.h)
+    if n < 0 then return nil end
+    return n
 end
 
 function tw.array_vec(group, column, cursor)
@@ -1065,6 +1119,10 @@ void draw_frame() noexcept
     // ID scope first, then the recovery snapshot: recovery restores the ID stack to whatever depth
     // it was at when the snapshot was taken, so taking it *after* the push keeps our own PopID below
     // balanced on both the success and the failure path.
+    // Before dispatch: the write gate watches how long the set of loaded channel groups has been
+    // unchanged, and it has to sample every frame rather than only when a script happens to write.
+    tw::lua::api::tick();
+
     ImGui::PushID("tw_lua");
 
     ImGuiErrorRecoveryState saved;

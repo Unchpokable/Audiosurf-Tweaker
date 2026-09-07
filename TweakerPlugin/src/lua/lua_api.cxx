@@ -143,6 +143,56 @@ int resolve_and_subscribe(
     return subscribe(channel, owner, after, mute, out);
 }
 
+// Whether the game has finished coming up far enough to be written to.
+//
+// **This exists because of a failure mode that does not announce itself.** Writing into the graph
+// while the game is still loading does not crash it - it makes it quietly wrong. Observed: a broken
+// track generator, and characters swapped around in the menu, from a script whose only stated job was
+// recolouring tiles. Nothing connects the symptom to the cause, and the player has no way to guess.
+// A script injected early is exactly the case that hits this, because its first frames land in the
+// middle of the game assembling itself.
+//
+// **What the signal must not be: a game state.** The obvious gate is "StartupState == State_MainMenu",
+// and it is wrong twice over. StartupState (#855) is a leaf whose stored value *is* 2, the same number
+// as State_MainMenu - so it reads "in the menu" from the instant XX_StartHere loads, which is the
+// middle of the window this is supposed to protect. And latching on any particular state also breaks
+// the common case of injecting into an already-running game: sitting in the song selector, the game
+// would never present the state being waited for, and writes would stay blocked until the player
+// happened to walk back to the menu.
+//
+// **What it is instead: the game has stopped assembling itself.** Loading is exactly the period when
+// channel groups are being added, so a group count that has not moved for a while means loading has
+// finished - and that is true whether we were injected before the game started or into a session
+// already in progress. No table of state values, nothing to keep in step with the game.
+//
+// This is a heuristic, and it is worth being plain about that. It says "nothing has loaded recently",
+// not "the game is definitely ready". A latch, so a later transition (entering a run does move groups
+// around) cannot close it again.
+constexpr float k_settle_seconds = 1.0f;
+
+bool g_write_gate_open = false;
+bool g_write_gate_warned = false;
+int g_last_group_count = -1;
+float g_stable_seconds = 0.f;
+
+[[nodiscard]] bool writes_allowed() noexcept
+{
+    return g_write_gate_open;
+}
+
+// Said once, not per attempt: a script that writes every frame would otherwise paper the screen over
+// while the game is still loading.
+void report_write_refused() noexcept
+{
+    if(g_write_gate_warned) {
+        return;
+    }
+
+    g_write_gate_warned = true;
+    TW_LOG_WARNING("lua_api: a script tried to write to the graph before the game finished loading - refused");
+    tw::ui::plugins::statics::notefeed::push("Lua: write refused - the game is still loading");
+}
+
 // Whether it is safe to touch ImGui at all right now, and specifically to add to a draw list.
 //
 // Scripts draw from on_frame, which the overlay calls from inside its own ImGui frame - fine. But
@@ -250,6 +300,11 @@ void* g_entry_points[] = {
     reinterpret_cast<void*>(&tw::lua::api::tw_theme_count),
     reinterpret_cast<void*>(&tw::lua::api::tw_theme_name),
     reinterpret_cast<void*>(&tw::lua::api::tw_theme_color),
+    reinterpret_cast<void*>(&tw::lua::api::tw_channel_set_vector),
+    reinterpret_cast<void*>(&tw::lua::api::tw_can_write),
+    reinterpret_cast<void*>(&tw::lua::api::tw_array_write),
+    reinterpret_cast<void*>(&tw::lua::api::tw_array_write_vector),
+    reinterpret_cast<void*>(&tw::lua::api::tw_array_rows),
 };
 } // namespace
 
@@ -353,7 +408,22 @@ float tw_channel_get(void* channel) noexcept
 
 void tw_channel_set(void* channel, float value) noexcept
 {
+    if(!writes_allowed()) {
+        report_write_refused();
+        return;
+    }
+
     tw::lua::channels::set_float(static_cast<A3d_Channel*>(channel), value);
+}
+
+void tw_channel_set_vector(void* channel, float x, float y, float z) noexcept
+{
+    if(!writes_allowed()) {
+        report_write_refused();
+        return;
+    }
+
+    tw::lua::channels::set_vector(static_cast<A3d_Channel*>(channel), x, y, z);
 }
 
 const char* tw_channel_text(void* channel) noexcept
@@ -385,6 +455,36 @@ int tw_array_read_vector(void* array_vector, void* indexer, float index, float* 
                static_cast<A3d_Channel*>(array_vector), static_cast<A3d_Channel*>(indexer), index, out)
         ? 1
         : 0;
+}
+
+int tw_array_write(void* array_value, void* indexer, float index, float value) noexcept
+{
+    if(!writes_allowed()) {
+        report_write_refused();
+        return 0;
+    }
+
+    return tw::lua::channels::write_array(static_cast<A3d_Channel*>(array_value), static_cast<A3d_Channel*>(indexer), index, value)
+        ? 1
+        : 0;
+}
+
+int tw_array_write_vector(void* array_vector, void* indexer, float index, float x, float y, float z) noexcept
+{
+    if(!writes_allowed()) {
+        report_write_refused();
+        return 0;
+    }
+
+    return tw::lua::channels::write_array_vector(
+               static_cast<A3d_Channel*>(array_vector), static_cast<A3d_Channel*>(indexer), index, x, y, z)
+        ? 1
+        : 0;
+}
+
+int tw_array_rows(void* column) noexcept
+{
+    return tw::lua::channels::array_row_count(static_cast<A3d_Channel*>(column));
 }
 
 int tw_theme_count() noexcept
@@ -514,6 +614,38 @@ int tw_shared_channel_count() noexcept
     }
 
     return static_cast<int>(seen.size());
+}
+
+void tick() noexcept
+{
+    if(g_write_gate_open) [[likely]] {
+        return;
+    }
+
+    if(!tw::lua::channels::is_ready() || !tw::lua::channels::has_engine()) {
+        g_stable_seconds = 0.f;
+        return;
+    }
+
+    const int count = tw::lua::channels::group_count();
+    if(count != g_last_group_count) {
+        g_last_group_count = count;
+        g_stable_seconds = 0.f;
+        return;
+    }
+
+    g_stable_seconds += ImGui::GetIO().DeltaTime;
+    if(g_stable_seconds < k_settle_seconds) {
+        return;
+    }
+
+    g_write_gate_open = true;
+    TW_LOG_INFO("lua_api: write gate open - {} channel group(s) loaded and stable for {:.1f}s", count, k_settle_seconds);
+}
+
+int tw_can_write() noexcept
+{
+    return writes_allowed() ? 1 : 0;
 }
 
 int tw_engine_ready() noexcept

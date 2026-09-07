@@ -2,17 +2,22 @@
 
 #include "skybox/sky_sprites.hxx"
 
+#include "framework/d3d9_state.hxx"
+
 #include "plugin/diagnostics.hxx"
 
 #include "skybox/sky_math.hxx"
 #include "skybox/sky_program.hxx"
 #include "skybox/sky_renderer.hxx"
 #include "skybox/sky_shader.hxx"
+#include "skybox/sky_lua.hxx"
 #include "skybox/sky_sprite_atlas.hxx"
 
 namespace
 {
 namespace atlas = tw::skybox::sprite_atlas;
+
+using state_scope = tw::framework::d3d9::state_scope;
 
 // 16-bit indices, four vertices per sprite: 16383 is where the index type runs out. The real cap is
 // far lower and is about fill rate rather than vertices, but a hard ceiling belongs where the
@@ -74,14 +79,66 @@ struct build_key {
     float floor_y {};
     float ceiling_y {};
 
+    // The generator script this layer declares, and when it was last written. Empty means the layer
+    // has none and the built-in generator places the sprites.
+    //
+    // The write time is in the key rather than watched separately because it *is* part of what the
+    // buffers were built from: a script is as much an input to the layout as the count is, and the
+    // reload loop that makes shader work fast has to work the same way here.
+    std::string generator;
+    std::filesystem::file_time_type generator_time {};
+
+    // What tw.seed() answers with, resolved from the manifest's policy. In the key because with
+    // "seed": "random" it changes per rebuild, and both halves have to see the same number.
+    unsigned int seed {};
+
     [[nodiscard]] bool operator==(const build_key&) const noexcept = default;
 };
+
+// What the *atlas* was baked from - a strict subset of the above, and kept separate for one reason
+// that turned out to matter: the tiles do not depend on where the sprites are.
+//
+// Folding these into build_key meant dragging any placement knob rebaked every tile. Measured at 52
+// ms for six 256px tiles, on every frame of the drag, for an atlas that had not changed. Two keys,
+// two questions: "are the sprites in the right places" and "are they painted with the right images".
+struct fill_key {
+    tw::skybox::package::fill_kind kind { tw::skybox::package::fill_kind::builtin };
+
+    // The generator script for `atlas`, the image for `texture`, empty for the other two. One field
+    // rather than one per kind because a layer has exactly one fill and `kind` says what the name
+    // means - two fields would let a stale one of them keep the key apart from itself.
+    std::string source;
+    std::filesystem::file_time_type source_time {};
+
+    int tiles {};
+    int size {};
+
+    // Shared with the layout deliberately: with "seed": "random" a fresh number per rebuild is what
+    // the author asked for, and it has to reach both halves.
+    unsigned int seed {};
+
+    [[nodiscard]] bool operator==(const fill_key&) const noexcept = default;
+};
+
+fill_key g_filled {};
+bool g_fill_valid = false;
 
 build_key g_built {};
 
 // One failed shader creation is enough; a device that will not take vs_3_0 will not start taking it
 // later, and retrying every frame would cost more than the layer does.
 bool g_failed = false;
+
+// How many sprites the last successful build actually produced, and what went wrong if something
+// did. All of it for the overlay: "enabled" and "working" are different claims, and a script with a
+// typo in it should say so where its author is looking rather than only in the log.
+int g_live_count = 0;
+
+// Two strings, because the two failures are independent and each rebuild resolves them in order: the
+// fill bakes, then the layout places. One string meant a layout that then succeeded cleared it, and
+// a package whose texture would not load reported nothing at all.
+std::string g_fill_error;
+std::string g_layout_error;
 
 // The layer being drawn, or null when the selected sky declares none.
 //
@@ -320,7 +377,7 @@ bool create_index_buffer(IDirect3DDevice9* device, int sprites)
     return true;
 }
 
-void fill_sprite(sprite_vertex* out, int index, const build_key& key) noexcept
+void generate_builtin(tw::skybox::lua::sprite& out, int index, const build_key& key) noexcept
 {
     const auto seed = static_cast<std::uint32_t>(index) * 2654435761U;
 
@@ -377,13 +434,35 @@ void fill_sprite(sprite_vertex* out, int index, const build_key& key) noexcept
     const vec3 centre = press_to(lift_to(placed, std::sin((std::min)(std::asin(key.floor_y) + margin, 1.4f))),
         std::sin((std::max)(std::asin(key.ceiling_y) - margin, -1.4f)));
 
+    out.dir = { centre.x, centre.y, centre.z };
+    out.size = { scale, scale };
+
+    // The sprite's own turn about its view axis. Applied to the *basis* by write_quad rather than to
+    // the atlas coordinates, which is what keeps a cloud's shape and its lighting turning together -
+    // spinning the texture coordinates instead would leave the lumps lit from a fixed direction while
+    // the cloud rotated under them.
+    out.roll = hash01(seed + 4U) * 6.2831853f;
+    out.tile = static_cast<int>(hash01(seed + 5U) * static_cast<float>(atlas::tile_count()));
+}
+
+// One sprite becomes four vertices. The half of the old fill_sprite that is *not* placement, and the
+// reason the two were split: everything above this line is a choice about where clouds go, and
+// everything in here is an engine invariant - the billboard basis, the pole handling, the atlas
+// rectangle, the vertex layout.
+//
+// That split is what lets a generator script exist at all. It emits sprites; this turns them into
+// geometry, identically for the built-in generator and for a script, so neither can get the
+// invariants wrong because neither is offered the chance.
+void write_quad(sprite_vertex* out, const tw::skybox::lua::sprite& source) noexcept
+{
+    const vec3 centre = normalized({ source.dir[0], source.dir[1], source.dir[2] });
+
     // The sprite's own rotation, folded into the basis rather than into the atlas coordinates. That
     // is deliberate: the pixel shader lights the atlas normal in this basis, so turning the basis
     // turns the shape and its lighting together. Rotating the texture coordinates instead would
     // spin the cloud while leaving its lumps lit from a fixed direction.
-    const float spin = hash01(seed + 4U) * 6.2831853f;
-    const float cs = std::cos(spin);
-    const float sn = std::sin(spin);
+    const float cs = std::cos(source.roll);
+    const float sn = std::sin(source.roll);
 
     const vec3 base_t = tangent_for(centre);
     const vec3 base_b = cross(centre, base_t);
@@ -391,7 +470,11 @@ void fill_sprite(sprite_vertex* out, int index, const build_key& key) noexcept
     const vec3 tangent { base_t.x * cs + base_b.x * sn, base_t.y * cs + base_b.y * sn, base_t.z * cs + base_b.z * sn };
     const vec3 bitangent = cross(centre, tangent);
 
-    const auto rect = atlas::tile(static_cast<int>(hash01(seed + 5U) * static_cast<float>(atlas::k_tile_count)));
+    const int tile_count = (std::max)(atlas::tile_count(), 1);
+    const auto rect = atlas::tile(((source.tile % tile_count) + tile_count) % tile_count);
+
+    const float half_w = source.size[0];
+    const float half_h = source.size[1] > 0.f ? source.size[1] : source.size[0];
 
     constexpr float k_corner_u[4] = { -1.f, 1.f, 1.f, -1.f };
     constexpr float k_corner_v[4] = { -1.f, -1.f, 1.f, 1.f };
@@ -402,9 +485,9 @@ void fill_sprite(sprite_vertex* out, int index, const build_key& key) noexcept
 
         sprite_vertex& vertex = out[corner];
 
-        vertex.x = centre.x + (tangent.x * u + bitangent.x * v) * scale;
-        vertex.y = centre.y + (tangent.y * u + bitangent.y * v) * scale;
-        vertex.z = centre.z + (tangent.z * u + bitangent.z * v) * scale;
+        vertex.x = centre.x + (tangent.x * u * half_w + bitangent.x * v * half_h);
+        vertex.y = centre.y + (tangent.y * u * half_w + bitangent.y * v * half_h);
+        vertex.z = centre.z + (tangent.z * u * half_w + bitangent.z * v * half_h);
 
         vertex.u = u;
         vertex.v = v;
@@ -422,9 +505,9 @@ void fill_sprite(sprite_vertex* out, int index, const build_key& key) noexcept
     }
 }
 
-bool create_vertex_buffer(IDirect3DDevice9* device, const build_key& key)
+bool create_vertex_buffer(IDirect3DDevice9* device, std::span<const tw::skybox::lua::sprite> layout)
 {
-    const UINT bytes = static_cast<UINT>(key.count) * 4 * sizeof(sprite_vertex);
+    const UINT bytes = static_cast<UINT>(layout.size()) * 4 * sizeof(sprite_vertex);
 
     if(FAILED(device->CreateVertexBuffer(bytes, D3DUSAGE_WRITEONLY, k_sprite_fvf, D3DPOOL_MANAGED, &g_vertex_buffer, nullptr))
         || g_vertex_buffer == nullptr) {
@@ -439,8 +522,8 @@ bool create_vertex_buffer(IDirect3DDevice9* device, const build_key& key)
     }
 
     auto* vertices = static_cast<sprite_vertex*>(mapped);
-    for(int i = 0; i < key.count; ++i) {
-        fill_sprite(vertices + i * 4, i, key);
+    for(std::size_t i = 0; i < layout.size(); ++i) {
+        write_quad(vertices + i * 4, layout[i]);
     }
 
     g_vertex_buffer->Unlock();
@@ -454,6 +537,238 @@ void destroy_buffers() noexcept
     release_and_clear(g_vertex_buffer);
 
     g_built = {};
+}
+
+// The generator this layer declares, or empty when it has none.
+std::string generator_name()
+{
+    const tw::skybox::package::layer* layer = g_program != nullptr ? g_program->package_layer_ref() : nullptr;
+
+    return layer != nullptr ? layer->generator : std::string {};
+}
+
+std::filesystem::file_time_type package_file_time(const std::string& name)
+{
+    if(name.empty() || g_program == nullptr || g_program->sky == nullptr || g_program->sky->sky == nullptr) {
+        return {};
+    }
+
+    // Asked of the package, not of a path. For an archive the answer is the archive's own stamp,
+    // which is exactly right: rewriting the zip is how anything in it changes.
+    return g_program->sky->sky->files.write_time(name);
+}
+
+// Reports a fill that did not happen, on the tab and once in the log.
+//
+// Once, because apply_fill runs on every rebuild and a broken path is broken on all of them: the
+// same line repeated at frame rate buries whatever else was being diagnosed.
+void report_fill_error(std::string message)
+{
+    if(g_fill_error != message) {
+        TW_LOG_ERROR("sky_sprites: {}", message);
+    }
+
+    g_fill_error = std::move(message);
+}
+
+// `"fill": { "kind": "texture" }` - a ready-made sheet shipped in the package, cut into tiles.
+//
+// The cut is the same grid the atlas packs into: ceil(sqrt(n)) columns, filled left to right and
+// then top to bottom, each cell scaled to the declared `size`. Stated as a rule rather than inferred
+// from the image's proportions, because inference here has no defensible answer - a 1024x256 sheet
+// of four tiles and a 1024x256 sheet of one very wide one are the same pixels - and because sharing
+// the atlas's own grid means an author can take what the built-in bake produces, paint over it, and
+// ship it back.
+//
+// One tile is the whole image, which falls out of the same rule rather than needing a case.
+bool bake_texture_fill(const tw::skybox::package::layer& layer, std::vector<tw::skybox::image::layer>& out)
+{
+    const tw::skybox::package::file_system& files = g_program->sky->sky->files;
+
+    std::vector<std::byte> bytes;
+    if(!files.read(layer.fill.path, bytes)) {
+        report_fill_error("fill texture '" + layer.fill.path + "' could not be read from the package");
+        return false;
+    }
+
+    tw::skybox::image::layer sheet;
+    if(!tw::skybox::image::decode(bytes, sheet)) {
+        report_fill_error("fill texture '" + layer.fill.path + "' is not an image this build can decode");
+        return false;
+    }
+
+    const int count = (std::max)(layer.fill.tiles, 1);
+    const int size = (std::max)(layer.fill.size, 1);
+
+    const atlas::grid_shape grid = atlas::grid_for(count);
+
+    out = tw::skybox::image::slice(sheet, grid.columns, grid.rows, count, size);
+
+    if(out.empty()) {
+        report_fill_error("fill texture '" + layer.fill.path + "' is " + std::to_string(sheet.width) + "x"
+            + std::to_string(sheet.height) + ", too small to cut into a " + std::to_string(grid.columns) + "x"
+            + std::to_string(grid.rows) + " grid of " + std::to_string(count) + " tiles");
+        return false;
+    }
+
+    TW_LOG_INFO("sky_sprites: fill texture '{}' ({}x{}) cut into {} tiles on a {}x{} grid, each scaled to {}px",
+        layer.fill.path,
+        sheet.width,
+        sheet.height,
+        count,
+        grid.columns,
+        grid.rows,
+        size);
+
+    return true;
+}
+
+// `"fill": { "kind": "atlas" }` - the package's own script bakes every tile.
+bool bake_script_fill(const tw::skybox::package::layer& layer, unsigned int seed, std::vector<tw::skybox::image::layer>& out)
+{
+    tw::skybox::lua::fill_context ctx;
+    ctx.files = &g_program->sky->sky->files;
+    ctx.params = g_program->params;
+    ctx.tiles = layer.fill.tiles;
+    ctx.size = layer.fill.size;
+    ctx.seed = seed;
+
+    tw::skybox::lua::fill_result result = tw::skybox::lua::run_fill(layer.fill.generator, ctx);
+
+    if(!result.ok()) {
+        report_fill_error("fill '" + layer.fill.generator + "': " + result.error);
+        return false;
+    }
+
+    out = std::move(result.tiles);
+
+    return true;
+}
+
+// What the layer's sprites are painted with, from the manifest's `fill` block.
+//
+// Runs before the layout, because the placement generator picks tile indices and needs to know how
+// many there are. Failure leaves whatever atlas was there - the same bargain as a shader that will
+// not compile, and for the same reason: an edit in progress should not blank the sky.
+void apply_fill(const build_key& key)
+{
+    const tw::skybox::package::layer* layer = g_program != nullptr ? g_program->package_layer_ref() : nullptr;
+
+    fill_key wanted;
+    wanted.seed = key.seed;
+
+    if(layer != nullptr) {
+        wanted.kind = layer->fill.kind;
+
+        switch(wanted.kind) {
+            case tw::skybox::package::fill_kind::atlas:
+                wanted.source = layer->fill.generator;
+                break;
+
+            case tw::skybox::package::fill_kind::texture:
+                wanted.source = layer->fill.path;
+                break;
+
+            default:
+                // `builtin` and `shader` are named by nothing and sized by nothing - leaving the rest
+                // of the key at its defaults is what stops a `tiles` an author left behind on a layer
+                // that no longer reads it from invalidating anything.
+                break;
+        }
+
+        if(!wanted.source.empty()) {
+            wanted.source_time = package_file_time(wanted.source);
+            wanted.tiles = layer->fill.tiles;
+            wanted.size = layer->fill.size;
+        }
+    }
+
+    // The whole point of the second key: a placement knob moving must not rebake anything. Six 256px
+    // tiles cost 52 ms, and a drag asks for a rebuild every frame.
+    if(g_fill_valid && g_filled == wanted) {
+        return;
+    }
+
+    g_filled = wanted;
+    g_fill_valid = true;
+
+    std::vector<tw::skybox::image::layer> tiles;
+
+    switch(wanted.kind) {
+        case tw::skybox::package::fill_kind::shader:
+            // No atlas at all: the layer's pixel shader is handed a quad and coordinates and paints
+            // the sprite itself. Not an empty texture - see sprite_atlas::set_none().
+            atlas::set_none();
+            g_fill_error.clear();
+            return;
+
+        case tw::skybox::package::fill_kind::texture:
+            if(!bake_texture_fill(*layer, tiles)) {
+                return;
+            }
+            break;
+
+        case tw::skybox::package::fill_kind::atlas:
+            if(!bake_script_fill(*layer, key.seed, tiles)) {
+                return;
+            }
+            break;
+
+        default:
+            // No fill block, or no package at all - the plugin's own bake, which is what every sky
+            // before the format had.
+            atlas::set_tiles({});
+            return;
+    }
+
+    atlas::set_tiles(tiles);
+    g_fill_error.clear();
+}
+
+// The layout: where the sprites are. Either from the package's generator script or from the built-in
+// generator, and the two produce the same thing - which is the point of the split. A script does not
+// get a different kind of layer, it gets to answer the one authorial question.
+//
+// False means the script failed and the caller should keep what it has. An empty layout with a true
+// return is a generator that legitimately placed nothing.
+bool build_layout(const build_key& key, std::vector<tw::skybox::lua::sprite>& out)
+{
+    if(key.generator.empty()) {
+        out.resize(static_cast<std::size_t>(key.count));
+        for(int i = 0; i < key.count; ++i) {
+            generate_builtin(out[static_cast<std::size_t>(i)], i, key);
+        }
+
+        g_layout_error.clear();
+
+        return true;
+    }
+
+    tw::skybox::lua::context ctx;
+    ctx.files = &g_program->sky->sky->files;
+    ctx.values = &g_program->sky->values;
+    ctx.params = g_program->params;
+    ctx.max_sprites = k_max_sprites;
+
+    // Resolved once into the build key, so place() and fill() of the same rebuild agree about it.
+    ctx.seed = key.seed;
+
+    tw::skybox::lua::place_result result = tw::skybox::lua::run_place(key.generator, ctx);
+
+    if(!result.ok()) {
+        if(g_layout_error != result.error) {
+            TW_LOG_ERROR("sky_sprites: generator '{}': {}", key.generator, result.error);
+        }
+
+        g_layout_error = std::move(result.error);
+
+        return false;
+    }
+
+    g_layout_error.clear();
+    out = std::move(result.sprites);
+
+    return true;
 }
 
 // Cold path: only when the device changes or a slider moved.
@@ -474,11 +789,6 @@ bool ensure_resources(IDirect3DDevice9* device)
         return false;
     }
 
-    if(atlas::ensure(device) == nullptr) {
-        g_failed = true;
-        return false;
-    }
-
     build_key key {};
     key.count = std::clamp(g_count, k_min_sprites, k_max_sprites);
     key.half_size = std::tan(tw::skybox::math::to_radians((std::max)(g_size_degrees, 0.05f)));
@@ -496,39 +806,87 @@ bool ensure_resources(IDirect3DDevice9* device)
     key.floor_y = std::sin(tw::skybox::math::to_radians(floor_degrees));
     key.ceiling_y = std::sin(tw::skybox::math::to_radians(ceiling_degrees));
 
+    // The generator's own identity, so that saving the script rebuilds the layout the same way saving
+    // a shader recompiles it. Without the write time in here, editing a .lua would change nothing
+    // until some unrelated knob happened to move.
+    key.generator = generator_name();
+    key.generator_time = package_file_time(key.generator);
+
+    if(const tw::skybox::package::layer* layer = g_program != nullptr ? g_program->package_layer_ref() : nullptr;
+        layer != nullptr) {
+        key.seed = layer->seed;
+
+        if(layer->seed_per_build) {
+            // Deliberately not a clock read inside the script - `os` is stripped precisely so a
+            // generator cannot reach for entropy behind the engine's back. Asked for here, granted
+            // here, and put in the key so both halves of the layer see the same number.
+            key.seed = static_cast<unsigned int>(std::chrono::steady_clock::now().time_since_epoch().count());
+        }
+    }
+    else {
+        key.seed = 0x5EED1234U;
+    }
+
     if(g_vertex_buffer != nullptr && g_index_buffer != nullptr && g_built == key) {
         return true;
     }
 
+    // Before the layout, not after: the placement generator chooses tile indices, and the built-in
+    // one scales a hash by atlas::tile_count(). Baking afterwards would have the first build of a
+    // 12-tile sky pick from 4.
+    apply_fill(key);
+
+    // After the fill, not before, and asked in that order: what the atlas *is* - the built-in bake,
+    // a sheet the package supplied, or nothing at all - was decided a line ago. Asking the device for
+    // a texture first would bake one for a layer that has just declared it paints its own, and would
+    // read the refusal of a texture nobody wants as a reason to draw nothing.
+    if(!atlas::untextured() && atlas::ensure(device) == nullptr) {
+        g_failed = true;
+        return false;
+    }
+
+    std::vector<tw::skybox::lua::sprite> layout;
+
+    if(!build_layout(key, layout)) {
+        // The script failed. Its message is already on g_layout_error for the tab to show, and the
+        // previous buffers are deliberately left alone: an edit that does not run leaves the clouds
+        // that were there, exactly as an edit that does not compile leaves the previous sky up.
+        g_built = key;
+        return g_vertex_buffer != nullptr && g_index_buffer != nullptr;
+    }
+
     destroy_buffers();
 
-    if(!create_vertex_buffer(device, key) || !create_index_buffer(device, key.count)) {
+    if(layout.empty()) {
+        g_built = key;
+        return false;
+    }
+
+    if(!create_vertex_buffer(device, layout) || !create_index_buffer(device, static_cast<int>(layout.size()))) {
         destroy_buffers();
         g_failed = true;
         return false;
     }
 
     g_built = key;
+    g_live_count = static_cast<int>(layout.size());
 
-    TW_LOG_INFO("sky_sprites: built {} sprites in {} clumps at {:.2f} deg",
-        key.count,
-        key.clusters,
-        static_cast<double>(g_size_degrees));
+    TW_LOG_INFO("sky_sprites: built {} sprites from {}", layout.size(), key.generator.empty() ? "the built-in generator" : key.generator);
 
     return true;
 }
 
-void apply_state(IDirect3DDevice9* device, const D3DMATRIX& wvp, const tw::skybox::shader::pair& shaders)
+void apply_state(IDirect3DDevice9* device, state_scope& scope, const D3DMATRIX& wvp, const tw::skybox::shader::pair& shaders)
 {
-    device->SetFVF(k_sprite_fvf);
-    device->SetStreamSource(0, g_vertex_buffer, 0, sizeof(sprite_vertex));
-    device->SetIndices(g_index_buffer);
+    scope.fvf(k_sprite_fvf);
+    scope.stream_source(0, g_vertex_buffer, 0, sizeof(sprite_vertex));
+    scope.indices(g_index_buffer);
 
-    device->SetVertexShader(shaders.vertex);
-    device->SetPixelShader(shaders.pixel);
+    scope.vertex_shader(shaders.vertex);
+    scope.pixel_shader(shaders.pixel);
 
     const D3DMATRIX wvp_transposed = tw::skybox::math::transpose(wvp);
-    device->SetVertexShaderConstantF(0, &wvp_transposed.m[0][0], 4);
+    scope.vertex_constants(0, std::span<const float>(&wvp_transposed.m[0][0], 16));
 
     // The vertex stage's own knobs - how the layer drifts and breathes. Same rule as the pixel side:
     // only the runs the shader declares, because the gaps between them hold its `def` literals.
@@ -552,7 +910,7 @@ void apply_state(IDirect3DDevice9* device, const D3DMATRIX& wvp, const tw::skybo
         const auto floats = static_cast<std::size_t>(count) * 4;
 
         if(first + floats <= g_program->vertex_constants.size()) {
-            device->SetVertexShaderConstantF(static_cast<UINT>(first_register), &g_program->vertex_constants[first], static_cast<UINT>(count));
+            scope.vertex_constants(static_cast<UINT>(first_register), std::span<const float>(&g_program->vertex_constants[first], floats));
         }
     }
 
@@ -569,7 +927,7 @@ void apply_state(IDirect3DDevice9* device, const D3DMATRIX& wvp, const tw::skybo
 
         runtime[static_cast<std::size_t>(g_program->vertex_time_component)] = elapsed_seconds();
 
-        device->SetVertexShaderConstantF(static_cast<UINT>(g_program->vertex_time_register), runtime.data(), 1);
+        scope.vertex_constants(static_cast<UINT>(g_program->vertex_time_register), runtime);
     }
 
     // Everything this shader is configured by, in one place: the layer's own parameters and the
@@ -589,48 +947,51 @@ void apply_state(IDirect3DDevice9* device, const D3DMATRIX& wvp, const tw::skybo
         const auto floats = static_cast<std::size_t>(run.count) * 4;
 
         if(first + floats <= g_program->constants.size()) {
-            device->SetPixelShaderConstantF(static_cast<UINT>(run.first), &g_program->constants[first], static_cast<UINT>(run.count));
+            scope.pixel_constants(static_cast<UINT>(run.first), std::span<const float>(&g_program->constants[first], floats));
         }
     }
 
     // The game leaves ONE / INVSRCCOLOR set with blending switched off (measured - see sky_probe),
     // so there is nothing here worth inheriting: every factor is set explicitly.
-    device->SetRenderState(D3DRS_ZENABLE, D3DZB_FALSE);
-    device->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
-    device->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
-    device->SetRenderState(D3DRS_LIGHTING, FALSE);
-    device->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
-    device->SetRenderState(D3DRS_SEPARATEALPHABLENDENABLE, FALSE);
-    device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+    scope.render_state(D3DRS_ZENABLE, D3DZB_FALSE);
+    scope.render_state(D3DRS_ZWRITEENABLE, FALSE);
+    scope.render_state(D3DRS_CULLMODE, D3DCULL_NONE);
+    scope.render_state(D3DRS_LIGHTING, FALSE);
+    scope.render_state(D3DRS_ALPHABLENDENABLE, TRUE);
+    scope.render_state(D3DRS_SEPARATEALPHABLENDENABLE, FALSE);
+    scope.render_state(D3DRS_BLENDOP, D3DBLENDOP_ADD);
     // Straight alpha: everything the cloud sends towards the eye is scattered by its own material,
     // so it scales with how much material there is - which is what the hardware multiply does. See
     // assets/shaders/sky_sprite.ps.hlsl for why premultiplying here was a mistake.
-    device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
-    device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
+    scope.render_state(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+    scope.render_state(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
 
     // The shader's own clip() does the rejecting; alpha test would be a second, redundant one.
-    device->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
-    device->SetRenderState(D3DRS_FOGENABLE, FALSE);
-    device->SetRenderState(D3DRS_STENCILENABLE, FALSE);
-    device->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
-    device->SetRenderState(D3DRS_SRGBWRITEENABLE, FALSE);
-    device->SetRenderState(
+    scope.render_state(D3DRS_ALPHATESTENABLE, FALSE);
+    scope.render_state(D3DRS_FOGENABLE, FALSE);
+    scope.render_state(D3DRS_STENCILENABLE, FALSE);
+    scope.render_state(D3DRS_SCISSORTESTENABLE, FALSE);
+    scope.render_state(D3DRS_SRGBWRITEENABLE, FALSE);
+    scope.render_state(
         D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_ALPHA);
 
-    device->SetTexture(0, atlas::ensure(device));
+    scope.texture(0, atlas::ensure(device));
 
     // CLAMP rather than WRAP: a quad's coordinates stay inside one tile, and clamping is what makes
     // a rounding error at the edge repeat the border texel instead of jumping to the far side of
     // the atlas - which would be a different cloud.
-    device->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
-    device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
-    device->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
-    device->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
-    device->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_LINEAR);
-    device->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, FALSE);
+    scope.sampler_state(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+    scope.sampler_state(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+    scope.sampler_state(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
+    scope.sampler_state(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+    scope.sampler_state(0, D3DSAMP_MIPFILTER, D3DTEXF_LINEAR);
+    scope.sampler_state(0, D3DSAMP_SRGBTEXTURE, FALSE);
 }
 
-// The pass itself. Runs inside sky_renderer's state capture, so nothing here needs restoring.
+// The pass itself. Runs inside the sky's own state scope but keeps one of its own: what this pass
+// has to put back is the state the sky left, not the state the game left, and a nested scope says
+// that without either side having to know about the other. It used to rely on the sky's D3DSBT_ALL
+// block sweeping up after it, which worked only because that block captured the entire device.
 void draw_pass(IDirect3DDevice9* device, const D3DMATRIX& wvp)
 {
     if(g_program == nullptr || device == nullptr) {
@@ -658,7 +1019,9 @@ void draw_pass(IDirect3DDevice9* device, const D3DMATRIX& wvp)
         return;
     }
 
-    apply_state(device, wvp, shaders);
+    state_scope scope(device);
+
+    apply_state(device, scope, wvp, shaders);
 
     device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, static_cast<UINT>(g_built.count * 4), 0, static_cast<UINT>(g_built.count * 2));
 }
@@ -754,6 +1117,13 @@ void prepare(IDirect3DDevice9* device) noexcept
 
 void set_layer(const sky_program* program) noexcept
 {
+    // A different layer bakes a different atlas, and the fill key alone cannot tell "same script,
+    // different sky" apart - two packages may ship the same relative path. Invalidated on every
+    // change of layer, so the first rebuild after a switch always bakes.
+    if(program != g_program) {
+        g_fill_valid = false;
+    }
+
     g_program = program;
 
     if(program == nullptr) {
@@ -774,7 +1144,17 @@ void set_layer(const sky_program* program) noexcept
 
 int live_count() noexcept
 {
-    return g_built.count;
+    // What was actually built, not what was asked for: a generator script decides how many sprites
+    // there are, and the two stop agreeing the moment one exists.
+    return g_live_count;
+}
+
+std::string_view generator_error() noexcept
+{
+    // The fill first when both are set. A layer whose tiles did not bake is drawing whatever the
+    // previous sky left in the atlas, which is the more misleading of the two things to be looking
+    // at - the placement failure at least shows the clouds it failed to move.
+    return !g_fill_error.empty() ? std::string_view { g_fill_error } : std::string_view { g_layout_error };
 }
 
 bool ready() noexcept

@@ -4,6 +4,8 @@
 
 #include "plugin/diagnostics.hxx"
 
+#include "skybox/sky_texture.hxx"
+
 namespace
 {
 bool g_reported = false;
@@ -174,6 +176,21 @@ void report(IDirect3DDevice9* device) noexcept
         yes_no((caps.DevCaps & D3DDEVCAPS_HWTRANSFORMANDLIGHT) != 0));
 
     TW_LOG_INFO("sky_caps: available texture memory {} MB", static_cast<unsigned long>(device->GetAvailableTextureMem() / (1024 * 1024)));
+
+    // Volumes get their own line rather than a bit in the one above, because a package can now
+    // depend on them: a sky whose noise is baked into a 3D texture has nothing to draw on a card
+    // that cannot sample one, and "the sky is black" is a much worse way to learn that than a line
+    // in the log.
+    //
+    // Filtering is reported separately from support for the same reason. Point-sampled volumes are
+    // supported volumes, and they turn a baked noise field into a lattice of hard cubes - a
+    // different symptom needing a different answer.
+    const tw::skybox::texture::volume_support volumes = tw::skybox::texture::volumes(device);
+
+    TW_LOG_INFO("sky_caps: volume textures {}, trilinear between voxels {}, largest volume extent {}",
+        yes_no(volumes.supported),
+        yes_no(volumes.filtered),
+        volumes.max_extent);
 
     if(have_params) {
         report_render_target_formats(device, params);

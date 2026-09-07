@@ -166,6 +166,77 @@ end
 Three return values rather than a table, on purpose: a table per read would be garbage collected
 every frame on the drawing path, and every caller wants the components immediately anyway.
 
+### Writing a vector
+
+```lua
+purple:set(1.0, 0.4, 0.8)      -- returns true if it was written
+```
+
+**This is not the local store that `float:set` is, and the difference is worth understanding before
+you use it.**
+
+The engine's own setter writes the three components into the channel and then walks the channels
+wired to its X, Y and Z inputs: for each one that is a numeric channel, it writes that component into
+it too. So writing a vector can reach one level further into the graph than the channel you named.
+
+### The rule that decides whether any write survives
+
+This applies to numbers as much as vectors, and it is the single most useful thing to know before
+writing anything:
+
+> **A channel with an input wired to it is derived, not stored. Writing it is undone the next time
+> the game evaluates it. Only a channel with nothing wired in — a leaf — holds a write.**
+
+The engine's read path is literally "if I am stale and I have a child, recompute from the child".
+Your value lives in the same field that recompute overwrites.
+
+This is why a vector write reaches one level down: setting the components *is* the attempt to write
+the leaves. Whether it works depends on what those components turn out to be:
+
+```
+StartGroup #1526 (red, fallback palette)      XX_gui::Color1 (red, live palette)
+  ├─ Value "default"      <- leaf, holds        ├─ Value "colorcomponent"
+  ├─ Value "default"                            │    └─ Envelope "Slider Value"   <- not a leaf
+  └─ Value "default"                            ├─ Value "colorcomponent"
+                                                └─ Value "colorcomponent"
+```
+
+Both are vector channels. Both accept the write. The first one keeps it, because the components are
+leaves. The second loses it, because each component re-derives from the settings slider behind it.
+
+And it does not lose it *cleanly*. Evaluation is memoised per frame, and the two cases alternate:
+
+```
+frame N     you write         -> the memo is warm, the engine never re-derives -> your value survives
+frame N+1   the memo is stale -> the engine re-derives from the slider         -> your value is gone
+```
+
+Measured on a real channel, that comes out at **exactly 50%** — not a race, a strict alternation. So a
+contested write is not "usually overwritten", it is "overwritten every other frame", and anything
+reading the channel sees a value flickering between yours and the game's.
+
+That has a practical consequence for how you measure one. A script that prints a verdict from the
+current frame prints a *different* verdict every frame, and at a high refresh rate two different
+strings at the same position blur into each other rather than flickering legibly. Count over a window
+and show a ratio.
+
+**Two consequences worth internalising:**
+
+- Before writing, look at what is wired into the channel. Nothing wired means it will hold.
+- If you measure a write by printing a verdict each frame, a contested channel produces a line that
+  changes every frame — which at a high refresh rate is unreadable rather than informative. Count
+  over a window and show a ratio. `vecwrite.lua` does exactly this, and it does it because the first
+  version got it wrong.
+
+It is not dangerous in the way a bad numeric write can be — the engine checks the type of each child
+before writing to it, so nothing is called with the wrong signature. But it does mean "I only changed
+one channel" is not quite true.
+
+Writing a vector channel is also the reason the accessors are typed. The slot the engine uses for
+"set" means different things on numeric and vector channels, with *different argument counts* — so
+calling the wrong one would corrupt the stack rather than write a wrong value. Because a handle can
+only reach `:set` after resolving as a vector, that mistake is impossible to make from a script.
+
 ## Tables
 
 A table column plus its cursor, as one object:
@@ -187,6 +258,44 @@ local colour_id = pattern:get(0)   -- x of row 0
 Both save the cursor, move it, read, and put it back — see
 [How Audiosurf is built § Tables and cursors](game-model.md#tables-and-cursors) for why that last
 part is not optional.
+
+### Writing a table row
+
+```lua
+local ok = pattern:set(12, 1, 1, 1)     -- three numbers for a vector column
+local ok = counts:set(4, 0)             -- one for a numeric column
+```
+
+Same cursor handling as reading. `array:rows()` gives the length, so valid indices are
+`0 .. rows()-1`.
+
+**This is the one write in the API that refuses an out-of-range argument instead of attempting it,
+and the reason is worth knowing.** Underneath, the engine's row setter asks the column for the row
+and, *if the row is not there, creates it*. So a bad index is not a no-op and not a wrong-cell write
+— it appends to the game's table. `rows()` afterwards reports a different number, and everything that
+walks that table sees rows nobody put there. Nothing about that failure looks like a failure.
+
+So `array:set` checks first, using the engine's own non-creating row lookup, and returns `false` for
+a row that does not exist. `false` therefore means either "could not resolve" or "no such row"; both
+are worth handling, and neither is a crash.
+
+What it cannot promise is that the value reached the table. The engine's setters return nothing at
+all and will silently skip the table write when the column is not connected to one — the same
+disconnected case that makes `rows()` return `nil`, which is the signal to check.
+
+**Reading a row back to check a write does work**, and it is worth saying why, because the mechanism
+underneath has a trap in it that `array:get` happens to step over.
+
+The row setter also stores the value into the channel's own scalar as a side effect. The engine
+caches a channel's result for the rest of the frame, so a reader that has already run could hand back
+that scalar instead of going to the table — and then a read-back would agree with you even if nothing
+had been written. `array:get` invalidates that cache before every read (it has to, or walking a table
+would return row 0 over and over), so it always goes to the table. The check is real.
+
+What that does **not** protect is the game's own readers. They do not invalidate anything, so between
+your write and the end of the frame one of them could still be holding the stale scalar. `array:set`
+invalidates the cache after writing for exactly that reason. You do not have to do anything about it;
+it is the reason writes are not simply "move the cursor and call set".
 
 ### Walking a big table
 

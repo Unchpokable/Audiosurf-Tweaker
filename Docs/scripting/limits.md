@@ -46,19 +46,76 @@ Nothing here is exotic. The one genuinely counter-intuitive rule is the first on
 
 `handle:set()` works. The engine will not crash from being handed a number.
 
+### Writes are refused until the game has finished loading
+
+This is enforced, not advice: a write attempted while the game is still loading is dropped, and you
+get one notification saying so.
+
+The reason is the nastiest failure mode found so far. Writing into the graph while the game is still
+assembling itself **does not crash it** — it makes it quietly wrong. Observed symptoms include a
+broken track generator and characters swapped around in the menu, produced by a script whose only
+stated job was recolouring tiles. Nothing links the symptom to the cause, and a player has no way to
+guess that a colour script broke their track.
+
+Scripts injected early are exactly the ones that hit this, because their first frames land in the
+middle of the load.
+
+The signal is **"the game has stopped loading things"**, not any particular game state: once the set
+of loaded channel groups has been unchanged for a second, writing is allowed for the rest of the
+session. That works whether the plugin went in before the game started or into a session already in
+progress - injecting mid-run does not require walking back to a menu first.
+
+It is a heuristic and worth treating as one: it says nothing has loaded recently, not that the game
+is definitely ready. `tw.can_write()` reports it, so a script can wait deliberately instead of
+having writes disappear.
+
+A refused write returns `false`, the same as one that could not resolve — there is no third outcome
+for a script to handle.
+
 What the API cannot do is tell you whether the number *makes sense*. It has no idea that the value
 you just wrote is one the game will use as a table index, or divide by, or compare against a total it
 keeps separately. Writing is the one part of this API where being wrong is not caught.
 
 Practical guidance:
 
-- **Values the game only reads** (thresholds, colours, cosmetic settings) are usually safe.
+- **A channel with an input wired to it will not hold a write at all** — it is re-derived from that
+  input on the next evaluation, and because evaluation is memoised per frame, it does not even fail
+  consistently. Only leaves hold. See
+  [The rule that decides whether any write survives](channels.md#the-rule-that-decides-whether-any-write-survives).
+- **Values the game only reads** (thresholds, cosmetic settings) are usually safe.
 - **Values the game also writes** are a race you lose — it overwrites you on the next frame.
 - **Table cursors** break whatever the game reads next. Use `tw.array`, which restores them.
+- **A table row index outside the table is not a harmless miss.** The engine's write path *creates*
+  the missing row, lengthening a table everything else reads. `array:set` refuses such an index for
+  you, and `array:rows()` tells you the range — but only writes made through `array:set` get that
+  protection.
+- **Vector writes reach further than they look** - the engine also writes each component into the
+  numeric channel feeding it. See [Writing a vector](channels.md#writing-a-vector).
 - **Anything with a plausible valid range** almost certainly has one, and going outside it is on you.
 
 If your goal is to remove behaviour rather than change a number, `tw.mute` is usually the safer tool —
 it does not fabricate a value at all.
+
+### Finding the channel is not the hard part
+
+Before writing anything, **dump the channel's parents and children several generations in both
+directions** and work out what actually drives it and who actually reads it. Every attempt so far
+that skipped this step wrote to the wrong place and looked like a bug in the API:
+
+- A vector that looked like the grid colour turned out to colour road furniture and the hit flash.
+- A palette that read back plausible colours turned out to be the *fallback* branch of a three-level
+  switch, live only when the player has configured no colours.
+- A channel that accepted the write lost it again on alternate frames, because a settings slider was
+  wired into it two levels down.
+
+None of those failed loudly. All of them returned sensible-looking numbers.
+
+It is worse than ordinary reverse engineering because the graph was not written to be read. There are
+dead channels, channels wired back into themselves, connections that make no structural sense, and
+names that mean nothing. Proximity in the graph implies nothing about relatedness. Treat any belief
+about a channel that you have not traced as a guess.
+
+Reading is forgiving of this — a wrong read shows a wrong number and you notice. Writing is not.
 
 ## Muting is a scalpel, not a switch
 
@@ -115,6 +172,11 @@ you draw is output only.
 
 **No access to the Tweaker's own state.** Playlists, skins, tweak toggles and the Quick Player are
 not exposed yet. This is a planned addition rather than a principle.
+
+**No creating or removing table rows.** `array:set` writes a row that exists and refuses one that
+does not — see [Writing a table row](channels.md#writing-a-table-row). The engine's own row
+management (add, insert, remove) sits one vtable slot away from the cell write and is deliberately
+not exposed: a row of a game table is an object in the game's model, not a slot in an array.
 
 **No images or arbitrary shapes.** Text, rectangles and lines. The drawing surface grew from what
 scripts actually needed.

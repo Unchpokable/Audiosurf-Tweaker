@@ -2,6 +2,8 @@
 
 #include "skybox/sky_package.hxx"
 
+#include "skybox/sky_vfs.hxx"
+
 #include "plugin/diagnostics.hxx"
 
 #include <libyyjson/yyjson.h>
@@ -218,6 +220,51 @@ void read_light(yyjson_val* element, std::string_view group, tw::skybox::package
         out.diagnostics.emplace_back("light '" + light.id + "' is ambient but declares a direction - the direction is ignored");
     }
 
+    // Anything else the author put on this light. Every object-valued member that is not one of the
+    // well-known names is a knob of its own, reachable at `lights.<id>.<name>` like the rest.
+    //
+    // Object-valued specifically: `"kind": "ambient"` is a string and `"id"` is a string, so the
+    // shape already separates a declaration from a setting, and a typo like `"colour"` becomes a
+    // knob nobody reads rather than a silently ignored line.
+    yyjson_obj_iter iter;
+    yyjson_obj_iter_init(element, &iter);
+
+    while(yyjson_val* key = yyjson_obj_iter_next(&iter)) {
+        const std::string_view name = as_string(key);
+        if(name.empty()) {
+            continue;
+        }
+
+        if(tw::skybox::package::light::is_reserved_field(name)) {
+            // Two of the reserved names are *derived* rather than stored, so declaring one is not a
+            // harmless duplicate - it is a knob that would never be read, because the computed answer
+            // always wins. The other reserved names are the ordinary fields every manifest carries
+            // and warning about those would be noise.
+            if(name == "direction" || name == "radiance") {
+                out.diagnostics.emplace_back("light '" + light.id + "': '" + std::string(name)
+                    + "' is computed from the other fields and cannot be declared - the declaration was ignored");
+            }
+
+            continue;
+        }
+
+        yyjson_val* value = yyjson_obj_iter_get_val(key);
+        if(value == nullptr || !yyjson_is_obj(value)) {
+            out.diagnostics.emplace_back(
+                "light '" + light.id + "': '" + std::string(name) + "' is not a knob declaration - it was ignored");
+            continue;
+        }
+
+        tw::skybox::package::param field = read_param(value, group);
+        field.id.assign(name);
+
+        if(field.label.empty()) {
+            field.label.assign(name);
+        }
+
+        light.extra.push_back(std::move(field));
+    }
+
     out.lights.push_back(std::move(light));
 }
 
@@ -346,6 +393,165 @@ void read_params(yyjson_val* object, tw::skybox::package::layer& out, tw::skybox
     }
 }
 
+// The `fill` block: what a geometry layer's sprites are painted with.
+//
+// Every kind is checked for what it needs *here*, before any code runs, which is the whole reason the
+// manifest owns this decision rather than the script. "This package is incomplete" is a fact about
+// the document, not a discovery made halfway through baking.
+void read_fill(yyjson_val* element, tw::skybox::package::layer& layer, tw::skybox::package::manifest& out)
+{
+    yyjson_val* fill = yyjson_obj_get(element, "fill");
+    if(fill == nullptr) {
+        return;
+    }
+
+    if(!yyjson_is_obj(fill)) {
+        out.diagnostics.emplace_back("layer '" + layer.id + "': 'fill' must be an object");
+        return;
+    }
+
+    const std::string_view kind = member_string(fill, "kind", "builtin");
+
+    if(kind == "atlas") {
+        layer.fill.kind = tw::skybox::package::fill_kind::atlas;
+        layer.fill.generator.assign(member_string(fill, "generator"));
+
+        if(layer.fill.generator.empty()) {
+            out.diagnostics.emplace_back("layer '" + layer.id + "': fill kind 'atlas' needs a 'generator' to bake the tiles");
+            layer.fill.kind = tw::skybox::package::fill_kind::builtin;
+        }
+    }
+    else if(kind == "texture") {
+        layer.fill.kind = tw::skybox::package::fill_kind::texture;
+        layer.fill.path.assign(member_string(fill, "path"));
+
+        if(layer.fill.path.empty()) {
+            out.diagnostics.emplace_back("layer '" + layer.id + "': fill kind 'texture' needs a 'path'");
+            layer.fill.kind = tw::skybox::package::fill_kind::builtin;
+        }
+        else if(layer.shader.empty()) {
+            // Not refused - the sheet is loaded and drawn either way, and an author checking what
+            // their image looks like on a sprite is a reasonable thing to be doing. But the built-in
+            // shader reads rgb as a *surface normal*, so a painting arrives as lighting nonsense, and
+            // "my texture came out wrong" is worth one line here rather than an evening.
+            out.diagnostics.emplace_back("layer '" + layer.id
+                + "': fill kind 'texture' with no shader of its own - the built-in sprite shader reads rgb as a surface normal and "
+                  "alpha as density, which is unlikely to be what this image holds");
+        }
+    }
+    else if(kind == "shader") {
+        layer.fill.kind = tw::skybox::package::fill_kind::shader;
+
+        // The one combination that cannot work. The plugin's own sprite shader samples the atlas for
+        // its normal and its density, and a `shader` fill is the declaration that there is no atlas -
+        // so this asks the built-in shader to read a texture that will not be bound. Said here rather
+        // than left to look like a broken texture at run time.
+        if(layer.shader.empty()) {
+            out.diagnostics.emplace_back("layer '" + layer.id
+                + "': fill kind 'shader' needs the layer to name its own shader - the built-in one samples an atlas, and this "
+                  "kind is the declaration that there is none");
+            layer.fill.kind = tw::skybox::package::fill_kind::builtin;
+        }
+    }
+    else if(kind != "builtin") {
+        out.diagnostics.emplace_back("layer '" + layer.id + "': unknown fill kind '" + std::string(kind)
+            + "' - this build understands builtin, atlas, texture and shader");
+    }
+
+    layer.fill.tiles = std::clamp(as_int(yyjson_obj_get(fill, "tiles"), layer.fill.tiles), 1, 64);
+
+    // Powers of two only, and capped: the tiles are packed into one texture with a full mip chain, and
+    // an author asking for 64 tiles at 1024 would be asking for a quarter of a gigabyte without
+    // knowing it.
+    const int size = as_int(yyjson_obj_get(fill, "size"), layer.fill.size);
+    layer.fill.size = std::clamp(size, 32, 512);
+
+    if(layer.fill.size != size) {
+        out.diagnostics.emplace_back(
+            "layer '" + layer.id + "': fill size " + std::to_string(size) + " was clamped to " + std::to_string(layer.fill.size));
+    }
+}
+
+// `"textures": [ { "path": "...", "slot": 0, "address": "wrap", "filter": "linear" } ]`
+//
+// The slot is required and unguessable: ps_3_0 bytecode carries no sampler names, so nothing can
+// check that the number matches the `register(s0)` the shader declares. Two textures on one slot is
+// therefore the mistake worth catching here - it is silent otherwise, and shows up as one of them
+// simply not being there.
+void read_textures(yyjson_val* element, tw::skybox::package::layer& layer, tw::skybox::package::manifest& out)
+{
+    yyjson_val* textures = yyjson_obj_get(element, "textures");
+    if(textures == nullptr) {
+        return;
+    }
+
+    if(!yyjson_is_arr(textures)) {
+        out.diagnostics.emplace_back("layer '" + layer.id + "': 'textures' must be an array");
+        return;
+    }
+
+    std::size_t index = 0;
+    std::size_t max = 0;
+    yyjson_val* entry = nullptr;
+    yyjson_arr_foreach(textures, index, max, entry) {
+        if(!yyjson_is_obj(entry)) {
+            out.diagnostics.emplace_back("layer '" + layer.id + "': every entry of 'textures' must be an object");
+            continue;
+        }
+
+        tw::skybox::package::texture_ref texture;
+        texture.path.assign(member_string(entry, "path"));
+        texture.name.assign(member_string(entry, "name"));
+
+        if(texture.path.empty()) {
+            out.diagnostics.emplace_back("layer '" + layer.id + "': a texture with no 'path' was ignored");
+            continue;
+        }
+
+        // Clamped to what ps_3_0 has. Sixteen samplers is the shader model's number, not the card's.
+        const int slot = as_int(yyjson_obj_get(entry, "slot"), 0);
+        if(slot < 0 || slot > 15) {
+            out.diagnostics.emplace_back(
+                "layer '" + layer.id + "': texture '" + texture.path + "' asks for sampler " + std::to_string(slot) + " - ps_3_0 has s0..s15");
+            continue;
+        }
+        texture.slot = slot;
+
+        const std::string_view address = member_string(entry, "address", "wrap");
+        if(address == "clamp") {
+            texture.address = tw::skybox::package::texture_address::clamp;
+        }
+        else if(address == "mirror") {
+            texture.address = tw::skybox::package::texture_address::mirror;
+        }
+        else if(address != "wrap") {
+            out.diagnostics.emplace_back("layer '" + layer.id + "': texture '" + texture.path + "': unknown address mode '"
+                + std::string(address) + "' - this build understands wrap, clamp and mirror");
+        }
+
+        const std::string_view filter = member_string(entry, "filter", "linear");
+        if(filter == "point") {
+            texture.filter = tw::skybox::package::texture_filter::point;
+        }
+        else if(filter != "linear") {
+            out.diagnostics.emplace_back("layer '" + layer.id + "': texture '" + texture.path + "': unknown filter '"
+                + std::string(filter) + "' - this build understands linear and point");
+        }
+
+        const auto clash = std::find_if(layer.textures.begin(), layer.textures.end(), [slot](const auto& other) {
+            return other.slot == slot;
+        });
+
+        if(clash != layer.textures.end()) {
+            out.diagnostics.emplace_back("layer '" + layer.id + "': '" + texture.path + "' and '" + clash->path
+                + "' both ask for sampler " + std::to_string(slot) + " - the second one would never be sampled");
+            continue;
+        }
+
+        layer.textures.push_back(std::move(texture));
+    }
+}
+
 void read_layers(yyjson_val* root, tw::skybox::package::manifest& out)
 {
     yyjson_val* layers = yyjson_obj_get(root, "layers");
@@ -365,6 +571,23 @@ void read_layers(yyjson_val* root, tw::skybox::package::manifest& out)
         tw::skybox::package::layer layer;
         layer.id.assign(member_string(element, "id"));
         layer.shader.assign(member_string(element, "shader"));
+        layer.generator.assign(member_string(element, "generator"));
+
+        read_fill(element, layer, out);
+
+        // "seed": 12345 pins it; "seed": "random" asks for a fresh one per rebuild. Anything else is
+        // a typo rather than a third policy, and saying so beats silently picking one.
+        if(yyjson_val* seed = yyjson_obj_get(element, "seed"); seed != nullptr) {
+            if(yyjson_is_int(seed)) {
+                layer.seed = static_cast<unsigned int>(yyjson_get_sint(seed));
+            }
+            else if(as_string(seed) == "random") {
+                layer.seed_per_build = true;
+            }
+            else {
+                out.diagnostics.emplace_back("layer '" + layer.id + "': 'seed' must be a number or \"random\"");
+            }
+        }
         layer.enabled = as_bool(yyjson_obj_get(element, "enabled"), true);
 
         const std::string_view kind_text = member_string(element, "kind");
@@ -382,6 +605,7 @@ void read_layers(yyjson_val* root, tw::skybox::package::manifest& out)
         }
 
         read_bindings(element, layer);
+        read_textures(element, layer, out);
         read_params(element, layer, out);
 
         out.layers.push_back(std::move(layer));
@@ -392,62 +616,121 @@ void read_layers(yyjson_val* root, tw::skybox::package::manifest& out)
 // always in the list; the shaders are what actually get edited.
 void collect_watched(tw::skybox::package::manifest& out)
 {
-    out.watched.push_back(out.root / k_manifest_name);
+    // An archive is one file and is edited by being rewritten, so it is the only thing to watch -
+    // and locate() answers nothing for what is inside it, which would otherwise leave the list empty
+    // and an archived sky never reloading at all.
+    if(out.files.is_archive()) {
+        out.watched.push_back(out.files.root());
+        return;
+    }
+
+    out.watched.push_back(out.files.locate(k_manifest_name));
 
     for(const tw::skybox::package::layer& layer : out.layers) {
+        // The generator is watched for the same reason the shaders are: saving it is the edit loop.
+        //
+        // All three names, and separately, because they need not be the same file: a layer may place
+        // its sprites with one script and bake its tiles with another, or bake them from an image
+        // that is not a script at all. Watching only the placement script left an author repainting a
+        // .png and seeing nothing happen.
+        std::vector<std::string> referenced_names { layer.generator, layer.fill.generator, layer.fill.path };
+
+        // Textures too: re-baking a noise volume and seeing the sky ignore it would be the same
+        // surprise as repainting a fill and seeing nothing happen, which is what taught this loop to
+        // look at more than the placement script.
+        for(const tw::skybox::package::texture_ref& texture : layer.textures) {
+            referenced_names.push_back(texture.path);
+        }
+
+        for(const std::string& name : referenced_names) {
+            if(name.empty()) {
+                continue;
+            }
+
+            std::filesystem::path referenced = out.files.locate(name);
+            if(!referenced.empty() && std::filesystem::is_regular_file(referenced)) {
+                out.watched.push_back(std::move(referenced));
+            }
+        }
+
         if(layer.shader.empty()) {
             continue;
         }
-
-        std::error_code ec;
 
         // A `sprites` layer names the stem of a .vs/.ps pair, and a `fullsky` layer names a file.
         // Both are covered by trying the plain path first and the two suffixes after, which also
         // means a package that ships only one half of a pair still watches the half it has.
         for(const std::string_view suffix : { std::string_view {}, std::string_view { ".vs.hlsl" }, std::string_view { ".ps.hlsl" } }) {
-            std::filesystem::path candidate = out.root / (layer.shader + std::string(suffix));
-            if(std::filesystem::is_regular_file(candidate, ec)) {
+            // Through the package file system, so a manifest naming "../../somebody_elses.hlsl" watches
+            // nothing rather than reaching outside the package - the same rule the reads obey.
+            std::filesystem::path candidate = out.files.locate(layer.shader + std::string(suffix));
+            if(!candidate.empty() && std::filesystem::is_regular_file(candidate)) {
                 out.watched.push_back(std::move(candidate));
             }
         }
     }
 }
 
-bool read_file(const std::filesystem::path& path, std::string& out)
-{
-    std::ifstream file { path, std::ios::binary };
-    if(!file.is_open()) {
-        return false;
-    }
-
-    file.seekg(0, std::ios::end);
-    const std::streamoff size = file.tellg();
-    if(size < 0) {
-        return false;
-    }
-    file.seekg(0, std::ios::beg);
-
-    out.resize(static_cast<std::size_t>(size));
-    if(!out.empty()) {
-        file.read(out.data(), size);
-    }
-
-    return true;
-}
 } // namespace
 
 namespace tw::skybox::package
 {
+// Reads Config.json out of a package whose file system is already open, whichever form it is.
+//
+// Everything past "where do the bytes come from" is shared by the two forms, and this is where they
+// stop differing - which is the point of sky_vfs existing at all.
+manifest read_manifest(manifest out);
+
 manifest load_directory(const std::filesystem::path& root)
 {
     manifest out;
-    out.root = root;
+    out.files = file_system::open_directory(root);
 
-    const std::filesystem::path manifest_path = root / k_manifest_name;
+    if(!out.files.is_open()) {
+        out.diagnostics.emplace_back("not a readable package directory: " + root.string());
+        return out;
+    }
+
+    return read_manifest(std::move(out));
+}
+
+manifest load_archive(const std::filesystem::path& file)
+{
+    manifest out;
+    out.files = file_system::open_archive(file);
+
+    if(!out.files.is_open()) {
+        out.diagnostics.emplace_back("not a readable .sky archive: " + file.string());
+        return out;
+    }
+
+    return read_manifest(std::move(out));
+}
+
+manifest load(const std::filesystem::path& path)
+{
+    std::error_code ec;
+
+    // A directory first, because that is what a package is while it is being written and what the
+    // catalog lists most of. Anything else that exists is tried as an archive - by being opened, not
+    // by its extension: a `.sky` that is a folder and a `.sky` that is a zip are the same format in
+    // two forms, and the name cannot tell them apart.
+    if(std::filesystem::is_directory(path, ec)) {
+        return load_directory(path);
+    }
+
+    return load_archive(path);
+}
+
+manifest read_manifest(manifest out)
+{
+    // What the package is on disk - the folder or the archive file. Canonical, so the settings stem
+    // is stable however the user spelled it.
+    out.root = out.files.root();
 
     std::string text;
-    if(!read_file(manifest_path, text)) {
-        out.diagnostics.emplace_back("could not read " + manifest_path.filename().string());
+    if(!out.files.read_text(k_manifest_name, text)) {
+        out.diagnostics.emplace_back(std::string { "could not read " } + std::string { k_manifest_name });
         return out;
     }
 
@@ -491,7 +774,7 @@ manifest load_directory(const std::filesystem::path& root)
     collect_watched(out);
 
     if(out.name.empty()) {
-        out.name = root.stem().string();
+        out.name = out.root.stem().string();
     }
 
     TW_LOG_INFO("sky_package: '{}' - {} layer(s), {} light(s), {} shared value(s), {} diagnostic(s)",

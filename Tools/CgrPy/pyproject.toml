@@ -1,0 +1,15 @@
+[project]
+name = "cgrpy"
+version = "0.2.0"
+description = "Quest3D .cgr channel-graph and PE toolkit for reverse-engineering Audiosurf"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    # Mesh export writes preview images; the graph and PE tools do not need it.
+    "pillow>=12.3.0",
+    # x86 disassembly for the PE tools.
+    "capstone>=5.0.0",
+]
+
+[tool.setuptools]
+packages = ["cgr"]

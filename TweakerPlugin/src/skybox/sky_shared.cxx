@@ -124,6 +124,13 @@ void state::adopt(std::shared_ptr<const package::manifest> sky)
         add(light_key(light.id, "elevation"), light.elevation, "Elevation (deg)");
         add(light_key(light.id, "color"), light.color, "Colour");
         add(light_key(light.id, "intensity"), light.intensity, "Intensity");
+
+        // The author's own fields, on the same footing as the four above - same key shape, same
+        // resolver, same panel row. A light is a bundle of named numbers of which four are
+        // well-known, not a fixed record with four slots.
+        for(const package::param& field : light.extra) {
+            add(light_key(light.id, field.id), field, field.id);
+        }
     }
 
     for(const package::param& entry : m_sky->values) {

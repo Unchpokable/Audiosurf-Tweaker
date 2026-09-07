@@ -57,9 +57,10 @@ void detach_device_bind_listener(device_bind_fn on_bind, device_unbind_fn on_unb
 // Re-entrancy is handled here, not by the interceptor: a draw issued from inside the interceptor
 // lands right back in these hooks, and is passed straight through to the original.
 //
-// The interceptor must leave the device exactly as it found it - a D3DSBT_ALL state block is the
-// intended way. Stage-0 tracking is suspended for the duration of the call precisely because a
-// state block restores bindings behind D3D's back, without passing through hk_set_texture.
+// The interceptor must leave the device exactly as it found it - d3d9_state.hxx's state_scope is
+// the intended way, and on a path that runs per draw call rather than once a frame it is the only
+// affordable one. Stage-0 tracking is suspended for the duration of the call because whatever the
+// interceptor binds and unbinds is its own business, not a change of what the game has bound.
 using draw_intercept_fn = bool (*)(IDirect3DDevice9* device, IDirect3DBaseTexture9* stage0_texture);
 
 void attach_draw_interceptor(draw_intercept_fn fn);

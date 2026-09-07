@@ -2,6 +2,7 @@
 
 // sky_program owns an in-flight bg_work::task<compile::result>, so the result type has to be complete
 // here. The only project header this one needs.
+#include "skybox/sky_abi.hxx"
 #include "skybox/sky_compile.hxx"
 #include "skybox/sky_package.hxx"
 #include "skybox/sky_params.hxx"
@@ -24,10 +25,7 @@
 // cache and the overlay all hold pointers to them. Reloading a file program rewrites it in place.
 namespace tw::skybox
 {
-// The one register whose contents this frame decides rather than the palette: x = seconds, y =
-// program-specific. Fixed by assets/shaders/sky_common.hlsli, and named here so the draw path does
-// not have to spell 5 out again.
-inline constexpr int k_runtime_register = 5;
+// The registers the engine writes live in sky_abi.hxx - see the include above.
 
 struct sky_program {
     std::string id;           // config value and catalog id: a built-in name, or a path
@@ -162,6 +160,10 @@ struct sky_program {
     bool markers_in_runtime_y {};
 
     // Empty for a built-in. Set for a file program, and what the reload poll stats.
+    //
+    // Also empty for a layer of an *archived* package: there is no such path, and the compile reads
+    // its source through `sky->sky->files` by the name below. Anything here that treats an empty
+    // path as "not a real program" is a bug waiting for the first zipped sky.
     std::filesystem::path source_path;
     std::filesystem::file_time_type source_time {};
 
@@ -170,6 +172,15 @@ struct sky_program {
     // reload without touching its shading.
     std::filesystem::path vertex_source_path;
     std::filesystem::file_time_type vertex_source_time {};
+
+    // For a package layer, the names its shaders are read by - relative to the package, `/`
+    // separated, exactly as the manifest spells them.
+    //
+    // Set for both forms of package, not only the archive: reading a folder package through the same
+    // names is what keeps one code path for both, and it puts the manifest's `shader` value inside
+    // the package's confinement rule instead of concatenating it onto a root.
+    std::string source_name;
+    std::string vertex_source_name;
 
     // The compiler's last word on this program: empty when it compiled cleanly, otherwise the error
     // (or the warnings). A file program that fails to recompile keeps the bytecode it had, so an
@@ -180,9 +191,16 @@ struct sky_program {
     tw::plugin::bg_work::task<compile::result> pending;
     tw::plugin::bg_work::task<compile::result> pending_vertex;
 
+    // Whether this program was built from source rather than from bytecode packed into the DLL -
+    // which is what decides whether there is a compile to collect and whether the reload poll has
+    // anything to do with it.
+    //
+    // Not "does it have a path": a layer read out of a zip has a compile to collect and no file to
+    // stat, and conflating the two left every archived sky permanently reporting itself as still
+    // compiling.
     [[nodiscard]] bool from_file() const noexcept
     {
-        return !source_path.empty();
+        return !source_path.empty() || !source_name.empty();
     }
 
     [[nodiscard]] bool usable() const noexcept
@@ -195,12 +213,28 @@ struct sky_program {
         return pending.valid() || pending_vertex.valid();
     }
 
+    // Whether this program declared a given register, read out of its own constant table. The whole
+    // per-frame upload rests on this: a register the shader did not declare belongs to its literals,
+    // and writing one corrupts the program rather than configuring it (see sky_bytecode).
+    [[nodiscard]] bool declares(int register_index) const noexcept
+    {
+        return bytecode::declares(constant_runs, register_index);
+    }
+
     // Whether g_runtime is one of the registers this program reads - the register carrying the
     // per-frame values, as opposed to the palette, which is fixed.
     [[nodiscard]] bool has_runtime() const noexcept
     {
-        for(const bytecode::register_run& run : constant_runs) {
-            if(k_runtime_register >= run.first && k_runtime_register < run.first + run.count) {
+        return declares(k_runtime_register);
+    }
+
+    // Whether this program reads the music block. Asked per register rather than for the block as a
+    // whole: a shader is free to declare only `g_music` and never the other two, and fxc hands the
+    // registers it did not declare to the program's own literals.
+    [[nodiscard]] bool has_music() const noexcept
+    {
+        for(int i = 0; i < k_music_registers; ++i) {
+            if(declares(k_music_register + i)) {
                 return true;
             }
         }

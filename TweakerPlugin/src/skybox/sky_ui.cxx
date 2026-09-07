@@ -113,7 +113,8 @@ void apply_entry(const tw::skybox::catalog_entry& entry)
         case tw::skybox::entry_kind::shader_file:
         case tw::skybox::entry_kind::package:
             // All three are "a shader paints the sky", and the config stores the same thing for each:
-            // a built-in id, a path to a .hlsl, or a path to a package directory.
+            // a built-in id, a path to a .hlsl, or a path to a package - which is a folder or the
+            // zip of one, and is opened as whichever it turns out to be.
             tw::skybox::select_program(entry.id);
             break;
         case tw::skybox::entry_kind::packed:
@@ -254,15 +255,25 @@ void draw_frame_facts()
 // tab while they are happening, so they get a colour and the full text, wrapped.
 void draw_diagnostics(const tw::skybox::status& status)
 {
-    if(status.program_diagnostics.empty()) {
-        return;
+    if(!status.program_diagnostics.empty()) {
+        const bool broken = status.program != nullptr && !status.program->usable();
+
+        ImGui::PushStyleColor(ImGuiCol_Text, broken ? tw::ui::theme::text_error : tw::ui::theme::text_warning);
+        ImGui::TextWrapped("%.*s", static_cast<int>(status.program_diagnostics.size()), status.program_diagnostics.data());
+        ImGui::PopStyleColor();
     }
 
-    const bool broken = status.program != nullptr && !status.program->usable();
-
-    ImGui::PushStyleColor(ImGuiCol_Text, broken ? tw::ui::theme::text_error : tw::ui::theme::text_warning);
-    ImGui::TextWrapped("%.*s", static_cast<int>(status.program_diagnostics.size()), status.program_diagnostics.data());
-    ImGui::PopStyleColor();
+    // The generator script, on the same footing as the shader compiler above.
+    //
+    // A failed generator is quieter than a failed shader and therefore needs this more: the layer
+    // keeps the sprites it already had, so without a message here the only symptom is clouds that
+    // have quietly stopped responding to their own knobs.
+    const std::string_view generator = tw::skybox::sprites::generator_error();
+    if(!generator.empty()) {
+        ImGui::PushStyleColor(ImGuiCol_Text, tw::ui::theme::text_error);
+        ImGui::TextWrapped("%.*s", static_cast<int>(generator.size()), generator.data());
+        ImGui::PopStyleColor();
+    }
 }
 
 void draw_status_line(const tw::skybox::status& status)

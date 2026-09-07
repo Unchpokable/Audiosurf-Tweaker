@@ -140,7 +140,7 @@ void adopt_bytecode(tw::skybox::sky_program& program, std::string_view source)
         program.display_name = std::move(block.display_name);
     }
 
-    // Before restore_saved_value below, which reads through it.
+    // Before restore_saved_values below, which folds it into the settings key.
     program.param_version = block.version;
 
     program.params = std::move(shared.params);
@@ -384,6 +384,72 @@ bool apply_compile(tw::skybox::sky_program& program, tw::skybox::compile::result
 
     return true;
 }
+
+// Resolves a shader's #include inside the package it came from: beside the shader first, then at the
+// package root.
+//
+// Both, and in that order, because a package keeps its shaders in one folder and whatever they share
+// wherever its author put it - and because "beside it" is what a shader on disk already means by an
+// include, so a sky moved into a package keeps working.
+//
+// The file system is captured by value. It is copyable precisely for this: the compile runs on a
+// worker thread and may outlive the manifest the reader was built from.
+tw::skybox::compile::include_reader package_includes(tw::skybox::package::file_system files, std::string_view shader_name)
+{
+    std::string directory;
+
+    if(const std::size_t slash = shader_name.find_last_of('/'); slash != std::string_view::npos) {
+        directory.assign(shader_name.substr(0, slash + 1));
+    }
+
+    return [files = std::move(files), directory = std::move(directory)](std::string_view name, std::string& out) {
+        if(!directory.empty() && files.read_text(directory + std::string { name }, out)) {
+            return true;
+        }
+
+        return files.read_text(name, out);
+    };
+}
+
+// Starts a compile of one stage of `program`, by whichever route it has: read out of its package, or
+// read from a file on disk.
+//
+// One function rather than a call at each site, because the first compile and every hot reload after
+// it must resolve #include the same way. Two routes that agree today are two routes that disagree
+// after the next change, and the symptom - a header that worked until you saved the file - reads as
+// a compiler bug rather than as an inconsistency here.
+tw::plugin::bg_work::task<tw::skybox::compile::result> start_compile(tw::skybox::sky_program& program, tw::skybox::compile::stage target)
+{
+    namespace compile = tw::skybox::compile;
+
+    const bool vertex = target == compile::stage::vertex;
+
+    const std::string& name = vertex ? program.vertex_source_name : program.source_name;
+    const std::filesystem::path& path = vertex ? program.vertex_source_path : program.source_path;
+
+    if(name.empty()) {
+        return compile::shader_file_async(path, target);
+    }
+
+    const tw::skybox::package::manifest* manifest
+        = program.sky != nullptr && program.sky->sky != nullptr ? program.sky->sky.get() : nullptr;
+
+    std::string source;
+
+    if(manifest == nullptr || !manifest->files.read_text(name, source)) {
+        // Reported through the same channel a compile failure is, rather than by returning an empty
+        // handle: a program with nothing pending and no bytecode looks like one nobody started, and
+        // the overlay would show a layer that is silently absent instead of one that said why.
+        return tw::plugin::bg_work::run<compile::result>([name] {
+            compile::result out;
+            out.diagnostics = "could not read " + name + " from its package";
+
+            return out;
+        });
+    }
+
+    return compile::shader_source_async(std::move(source), name, package_includes(manifest->files, name), target);
+}
 } // namespace
 
 namespace tw::skybox
@@ -517,30 +583,36 @@ sky_program* load_package_layer(const std::shared_ptr<shared::loaded_sky>& sky, 
     // built-in skies have always worked.
     const bool builtin_shader = pair && layer->shader.empty();
 
-    std::filesystem::path source;
-    std::filesystem::path vertex_source;
-    std::error_code ec;
+    // Names, not paths. Everything below goes through manifest.files, which is what makes a folder
+    // package and a zipped one the same code - and what puts "shader": "../../elsewhere" inside the
+    // package's own confinement rule rather than concatenating it onto a root and hoping.
+    std::string source_name;
+    std::string vertex_source_name;
 
     if(!builtin_shader) {
-        source = manifest.root / (pair ? layer->shader + ".ps.hlsl" : layer->shader);
+        source_name = pair ? layer->shader + ".ps.hlsl" : layer->shader;
 
-        if(!std::filesystem::is_regular_file(source, ec)) {
-            TW_LOG_ERROR("sky_program: '{}' layer '{}': no shader at '{}'", manifest.name, layer->id, source.string());
+        if(!manifest.files.exists(source_name)) {
+            TW_LOG_ERROR("sky_program: '{}' layer '{}': no shader '{}' in the package", manifest.name, layer->id, source_name);
             return nullptr;
         }
 
         if(pair) {
-            vertex_source = manifest.root / (layer->shader + ".vs.hlsl");
+            vertex_source_name = layer->shader + ".vs.hlsl";
 
-            if(!std::filesystem::is_regular_file(vertex_source, ec)) {
-                TW_LOG_ERROR("sky_program: '{}' layer '{}': no vertex shader at '{}' - a sprites layer needs both halves",
+            if(!manifest.files.exists(vertex_source_name)) {
+                TW_LOG_ERROR("sky_program: '{}' layer '{}': no vertex shader '{}' in the package - a sprites layer needs both halves",
                     manifest.name,
                     layer->id,
-                    vertex_source.string());
+                    vertex_source_name);
                 return nullptr;
             }
         }
     }
+
+    // Empty for an archive, and every use of them below has to survive that.
+    const std::filesystem::path source = manifest.files.locate(source_name);
+    const std::filesystem::path vertex_source = manifest.files.locate(vertex_source_name);
 
     // Keyed by the package and the layer rather than by the shader's path, because two packages may
     // perfectly well ship the same shader file name, and because this is the id the catalog and the
@@ -575,6 +647,8 @@ sky_program* load_package_layer(const std::shared_ptr<shared::loaded_sky>& sky, 
     program->display_name = manifest.name;
     program->source_path = source;
     program->vertex_source_path = vertex_source;
+    program->source_name = source_name;
+    program->vertex_source_name = vertex_source_name;
 
     if(builtin_shader) {
         program->owned_bytecode.clear();
@@ -589,15 +663,15 @@ sky_program* load_package_layer(const std::shared_ptr<shared::loaded_sky>& sky, 
         return program;
     }
 
-    program->source_time = std::filesystem::last_write_time(source, ec);
+    program->source_time = manifest.files.write_time(source_name);
 
     // Started, not waited on - the game keeps its own sky for the few seconds a heavy shader takes,
     // and the overlay says what is happening. Same contract as the lone-file path.
-    program->pending = compile::shader_file_async(source, compile::stage::pixel);
+    program->pending = start_compile(*program, compile::stage::pixel);
 
-    if(!vertex_source.empty()) {
-        program->vertex_source_time = std::filesystem::last_write_time(vertex_source, ec);
-        program->pending_vertex = compile::shader_file_async(vertex_source, compile::stage::vertex);
+    if(!vertex_source_name.empty()) {
+        program->vertex_source_time = manifest.files.write_time(vertex_source_name);
+        program->pending_vertex = start_compile(*program, compile::stage::vertex);
     }
 
     return program;
@@ -646,6 +720,13 @@ program_event poll_program(sky_program& program, bool watch)
         return program_event::none;
     }
 
+    // Nothing to stat. A layer of an archived package is edited by rewriting the archive, and that
+    // is watched a level up - sky_package::newest_write_time has the archive file in its list, and a
+    // change there reloads the whole sky rather than one shader of it.
+    if(program.source_path.empty()) {
+        return program_event::none;
+    }
+
     std::error_code ec;
 
     // The vertex source is watched on its own: a cloud whose shape is being reworked has to reload
@@ -654,12 +735,12 @@ program_event poll_program(sky_program& program, bool watch)
         const std::filesystem::file_time_type stamp = std::filesystem::last_write_time(program.vertex_source_path, ec);
         if(!ec && stamp != program.vertex_source_time) {
             program.vertex_source_time = stamp;
-            program.pending_vertex = compile::shader_file_async(program.vertex_source_path, compile::stage::vertex);
+            program.pending_vertex = start_compile(program, compile::stage::vertex);
 
             // The pixel half too, because installing new vertex bytecode goes through apply_compile
             // - it is what rebuilds the parameters and invalidates the device shaders, and there is
             // no half of it worth splitting out to save one compile of a file that has not changed.
-            program.pending = compile::shader_file_async(program.source_path, compile::stage::pixel);
+            program.pending = start_compile(program, compile::stage::pixel);
 
             return program_event::compile_started;
         }
@@ -673,7 +754,7 @@ program_event poll_program(sky_program& program, bool watch)
     // Stamped before the compile rather than after it: a file that does not compile must not be
     // retried on every poll, and the next edit moves the timestamp again anyway.
     program.source_time = now;
-    program.pending = compile::shader_file_async(program.source_path, compile::stage::pixel);
+    program.pending = start_compile(program, compile::stage::pixel);
 
     return program_event::compile_started;
 }

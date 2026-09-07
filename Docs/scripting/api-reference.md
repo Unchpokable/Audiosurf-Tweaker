@@ -48,10 +48,18 @@ Resolution happens on first use and is retried until it succeeds.
 `nil` means "not available" — the group is not loaded, the engine is not reachable yet, or the
 channel does not exist. Always handle it.
 
-### `handle:set(value)` → boolean *(float handles only)*
+### `handle:set(value)` → boolean *(float handles)*
 
 Writes a number. Returns `false` if the channel could not be resolved. See
 [Limits](limits.md#writing-to-the-game) before using this.
+
+### `handle:set(x, y, z)` → boolean *(vector handles)*
+
+Writes a vector channel. Returns `false` if it could not be resolved.
+
+Wider effect than the numeric setter: the engine also writes each component into the numeric channel
+wired to that component, where one is wired. See
+[Reading and writing the game § Writing a vector](channels.md#writing-a-vector).
 
 ### `handle:valid()` → boolean
 
@@ -70,6 +78,23 @@ An `Array Vector` column plus its cursor. The column is a vector channel, the cu
 The value at row `index`. Number for `tw.array`, three numbers for `tw.array_vec`, `nil` if either
 channel is unresolved. The game's cursor is saved and restored around the read.
 
+### `array:set(index, value)` → boolean *(`tw.array`)*
+### `array:set(index, x, y, z)` → boolean *(`tw.array_vec`)*
+
+Writes one row. Same cursor handling as `get`.
+
+`false` means the write did not happen, and **"there is no such row" is one of the reasons** — unlike
+every other write in this API, an out-of-range index is refused rather than attempted. It has to be:
+the engine's write path creates a missing row instead of rejecting it, which would lengthen a table
+the rest of the game reads. See [Writing a table row](channels.md#writing-a-table-row).
+
+Subject to the same rules as any other write — see [Limits](limits.md#writing-to-the-game).
+
+### `array:rows()` → number *or* `nil`
+
+How many rows the underlying table has; valid indices are `0 .. rows()-1`. `nil` when the column
+cannot be resolved or its table is not connected.
+
 ---
 
 ## Hooks
@@ -84,9 +109,21 @@ any other return proceeds. Returning `false` from `"after"` does nothing.
 
 Registration is retried until the group is loaded.
 
+**`name` may be a channel index instead of a string**, and for hooks this matters more than it does
+for reading. The handlers worth hooking are often generic-named — a group can contain dozens of
+channels called `Set Vector` or `Do` — and a lookup by name finds whichever comes first, which is
+almost never the one you meant. When you have identified a specific channel by index, pass the
+number:
+
+```lua
+tw.on_call("Debris.cgr", 48, "after", function() ... end)
+```
+
 ### `tw.mute(group, name)` → mute handle
 
 Suppresses a channel: the game keeps calling it and it does nothing. Starts active.
+
+Takes an index in place of a name for the same reason as `tw.on_call`.
 
 ### `mute:on()` / `mute:off()` / `mute:set(bool)`
 
@@ -190,6 +227,12 @@ Writes to the plugin log. **Stripped from release builds**, so it is a developme
 
 Both of the above: logged *and* shown as a toast. Use this when a script author needs to see
 something in a normal install.
+
+### `tw.can_write()` → boolean
+
+Whether writes to the graph are currently accepted. False while the game is still loading, when a
+write silently corrupts it rather than failing. A refused write returns `false` like any other failed
+write; this exists so a script can wait deliberately.
 
 ### `tw.engine_ready()` → boolean
 

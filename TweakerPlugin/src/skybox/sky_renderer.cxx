@@ -2,6 +2,8 @@
 
 #include "skybox/sky_renderer.hxx"
 
+#include "framework/d3d9_state.hxx"
+
 #include "plugin/diagnostics.hxx"
 
 #include "skybox/sky_math.hxx"
@@ -10,6 +12,8 @@
 
 namespace
 {
+using state_scope = tw::framework::d3d9::state_scope;
+
 // Position doubles as the cube map lookup vector: for a point on a cube face, the direction and the
 // position differ only by a positive scale, which a cube map sampler divides out anyway. That is
 // also why eight vertices are enough where a 2D-textured cube would need twenty-four - there are no
@@ -62,7 +66,6 @@ tw::skybox::renderer::extra_pass_fn g_extra_pass = nullptr;
 IDirect3DDevice9* g_device = nullptr;
 IDirect3DVertexBuffer9* g_vertex_buffer = nullptr;
 IDirect3DIndexBuffer9* g_index_buffer = nullptr;
-IDirect3DStateBlock9* g_state_block = nullptr;
 
 // One-shot diagnostics: the first sky draw logs the matrices it derived everything from. Whether
 // the game hands the fixed-function pipeline a usable view/projection pair is the single assumption
@@ -70,6 +73,7 @@ IDirect3DStateBlock9* g_state_block = nullptr;
 // whoever runs the game can read it.
 bool g_logged_first_draw = false;
 bool g_logged_first_shaded_draw = false;
+bool g_logged_projection = false;
 
 template<typename T>
 void release_and_clear(T*& resource) noexcept
@@ -123,7 +127,6 @@ bool ensure_resources(IDirect3DDevice9* device)
         // path rather than the normal one.
         g_vertex_buffer = nullptr;
         g_index_buffer = nullptr;
-        g_state_block = nullptr;
         g_device = device;
     }
 
@@ -138,15 +141,67 @@ bool ensure_resources(IDirect3DDevice9* device)
         }
     }
 
-    if(g_state_block == nullptr) {
-        if(FAILED(device->CreateStateBlock(D3DSBT_ALL, &g_state_block)) || g_state_block == nullptr) {
-            TW_LOG_ERROR("sky_renderer: CreateStateBlock(D3DSBT_ALL) failed");
-            g_state_block = nullptr;
-            return false;
-        }
+    return true;
+}
+
+// Rebuilds the projection's horizontal scale from the viewport it is actually being drawn into.
+//
+// The game leaves a **4:3** projection in the fixed-function transform whatever the display is.
+// Measured: `fov 56.6 x 43.9 deg, aspect 1.3373` against a 2560x1440 viewport whose aspect is
+// 1.7778, and the same 1.3373 at 800x600 - where it happens to be right, which is why the game never
+// had to fix it. Everything drawn through it at any widescreen resolution is stretched horizontally
+// by the ratio: 1.33 at 16:9.
+//
+// The game's own sky has been drawn that way since 2008 and nobody could tell, because a cloud
+// texture has no circles in it. This sky has a sun, and a sun is where an aspect error stops being
+// invisible.
+//
+// The vertical scale is kept and the horizontal derived from it, not the other way round. At the
+// game's native 4:3 the two agree, so 43.9 degrees is the *authored* vertical field of view; keeping
+// it and widening horizontally is what every engine does for a wider display, and the alternative -
+// keeping the horizontal and cropping vertically - would show a widescreen player less of the sky
+// than a 4:3 player sees.
+//
+// If this is ever wrong, the symptom is unmistakable: the sky would slide against the world as the
+// camera turns, rather than merely being the wrong shape.
+void correct_projection_aspect(IDirect3DDevice9* device, D3DMATRIX& projection) noexcept
+{
+    D3DVIEWPORT9 viewport {};
+    if(FAILED(device->GetViewport(&viewport)) || viewport.Width == 0 || viewport.Height == 0) {
+        return;
     }
 
-    return true;
+    const float y_scale = projection._22;
+    if(!std::isfinite(y_scale) || y_scale <= 0.f || !std::isfinite(projection._11) || projection._11 <= 0.f) {
+        return;
+    }
+
+    const float viewport_aspect = static_cast<float>(viewport.Width) / static_cast<float>(viewport.Height);
+    const float given_aspect = y_scale / projection._11;
+
+    projection._11 = y_scale / viewport_aspect;
+
+    // Once, and from here rather than from the draw, because this is the only place that holds both
+    // the matrix the game handed over and the one it was replaced with.
+    if(!g_logged_projection) {
+        g_logged_projection = true;
+
+        constexpr float k_rad_to_deg = 57.29578f;
+
+        TW_LOG_INFO("sky_renderer: the game's projection is {:.1f} x {:.1f} deg, aspect {:.4f}; the viewport is {}x{}, aspect {:.4f}",
+            2.f * std::atan(1.f / (y_scale / given_aspect)) * k_rad_to_deg,
+            2.f * std::atan(1.f / y_scale) * k_rad_to_deg,
+            given_aspect,
+            viewport.Width,
+            viewport.Height,
+            viewport_aspect);
+
+        if(std::fabs(viewport_aspect / given_aspect - 1.f) > 0.01f) {
+            TW_LOG_INFO("sky_renderer: it disagrees with the viewport by {:.4f}, so the horizontal field of view was rebuilt from the "
+                        "viewport - anything round in the sky would otherwise be drawn that much wider than tall",
+                viewport_aspect / given_aspect);
+        }
+    }
 }
 
 // Half-extent for the cube, in view-space units, chosen so the whole thing sits inside the game's
@@ -253,78 +308,81 @@ void log_resolution_budget(IDirect3DDevice9* device, IDirect3DCubeTexture9* cube
 // Everything both draw paths need: the geometry bindings and the render states that make a cube
 // drawn from the inside read as a sky. Neither path touches the shader bindings here - that is the
 // one thing they disagree about, and each sets its own immediately after.
-void apply_common_state(IDirect3DDevice9* device)
+//
+// Every write goes through `scope` rather than the device, which is what puts each of these back
+// when the draw is over - see framework/d3d9_state.hxx. A device->Set* on this path would be a state
+// the game never gets back.
+void apply_common_state(state_scope& scope)
 {
-    device->SetFVF(k_sky_fvf);
-    device->SetStreamSource(0, g_vertex_buffer, 0, sizeof(sky_vertex));
-    device->SetIndices(g_index_buffer);
+    scope.fvf(k_sky_fvf);
+    scope.stream_source(0, g_vertex_buffer, 0, sizeof(sky_vertex));
+    scope.indices(g_index_buffer);
 
-    device->SetRenderState(D3DRS_ZENABLE, D3DZB_FALSE);
-    device->SetRenderState(D3DRS_ZWRITEENABLE, FALSE);
-    device->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
-    device->SetRenderState(D3DRS_LIGHTING, FALSE);
-    device->SetRenderState(D3DRS_ALPHABLENDENABLE, FALSE);
-    device->SetRenderState(D3DRS_ALPHATESTENABLE, FALSE);
-    device->SetRenderState(D3DRS_FOGENABLE, FALSE);
-    device->SetRenderState(D3DRS_STENCILENABLE, FALSE);
-    device->SetRenderState(D3DRS_SCISSORTESTENABLE, FALSE);
-    device->SetRenderState(D3DRS_CLIPPING, TRUE);
-    device->SetRenderState(D3DRS_CLIPPLANEENABLE, 0);
-    device->SetRenderState(D3DRS_VERTEXBLEND, D3DVBF_DISABLE);
-    device->SetRenderState(D3DRS_INDEXEDVERTEXBLENDENABLE, FALSE);
-    device->SetRenderState(D3DRS_SRGBWRITEENABLE, FALSE);
-    device->SetRenderState(D3DRS_SHADEMODE, D3DSHADE_GOURAUD);
-    device->SetRenderState(
+    scope.render_state(D3DRS_ZENABLE, D3DZB_FALSE);
+    scope.render_state(D3DRS_ZWRITEENABLE, FALSE);
+    scope.render_state(D3DRS_CULLMODE, D3DCULL_NONE);
+    scope.render_state(D3DRS_LIGHTING, FALSE);
+    scope.render_state(D3DRS_ALPHABLENDENABLE, FALSE);
+    scope.render_state(D3DRS_ALPHATESTENABLE, FALSE);
+    scope.render_state(D3DRS_FOGENABLE, FALSE);
+    scope.render_state(D3DRS_STENCILENABLE, FALSE);
+    scope.render_state(D3DRS_SCISSORTESTENABLE, FALSE);
+    scope.render_state(D3DRS_CLIPPING, TRUE);
+    scope.render_state(D3DRS_CLIPPLANEENABLE, 0);
+    scope.render_state(D3DRS_VERTEXBLEND, D3DVBF_DISABLE);
+    scope.render_state(D3DRS_INDEXEDVERTEXBLENDENABLE, FALSE);
+    scope.render_state(D3DRS_SRGBWRITEENABLE, FALSE);
+    scope.render_state(D3DRS_SHADEMODE, D3DSHADE_GOURAUD);
+    scope.render_state(
         D3DRS_COLORWRITEENABLE, D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_ALPHA);
 }
 
-void apply_sky_state(IDirect3DDevice9* device, IDirect3DCubeTexture9* cube)
+void apply_sky_state(state_scope& scope, IDirect3DCubeTexture9* cube)
 {
-    device->SetVertexShader(nullptr);
-    device->SetPixelShader(nullptr);
+    scope.vertex_shader(nullptr);
+    scope.pixel_shader(nullptr);
 
-    apply_common_state(device);
+    apply_common_state(scope);
 
     // Straight texture read, no vertex colour and no lighting term - the game's own sky surface
     // modulates by a faded vertex colour, and inheriting that would tint the replacement in ways
     // the art was not authored for.
-    device->SetTexture(0, cube);
-    device->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
-    device->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
-    device->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
-    device->SetTextureStageState(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
-    device->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 0);
-    device->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
+    scope.texture(0, cube);
+    scope.stage_state(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+    scope.stage_state(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+    scope.stage_state(0, D3DTSS_ALPHAOP, D3DTOP_SELECTARG1);
+    scope.stage_state(0, D3DTSS_ALPHAARG1, D3DTA_TEXTURE);
+    scope.stage_state(0, D3DTSS_TEXCOORDINDEX, 0);
+    scope.stage_state(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
 
-    device->SetTexture(1, nullptr);
-    device->SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
-    device->SetTextureStageState(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+    scope.texture(1, nullptr);
+    scope.stage_state(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
+    scope.stage_state(1, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
 
-    device->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
-    device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
-    device->SetSamplerState(0, D3DSAMP_ADDRESSW, D3DTADDRESS_CLAMP);
-    device->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
-    device->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
-    device->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
-    device->SetSamplerState(0, D3DSAMP_SRGBTEXTURE, FALSE);
+    scope.sampler_state(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+    scope.sampler_state(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+    scope.sampler_state(0, D3DSAMP_ADDRESSW, D3DTADDRESS_CLAMP);
+    scope.sampler_state(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
+    scope.sampler_state(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+    scope.sampler_state(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
+    scope.sampler_state(0, D3DSAMP_SRGBTEXTURE, FALSE);
 }
 
-void apply_shader_state(IDirect3DDevice9* device,
+void apply_shader_state(state_scope& scope,
     IDirect3DVertexShader9* vertex_shader,
     IDirect3DPixelShader9* pixel_shader,
     const D3DMATRIX& wvp,
     std::span<const float> pixel_constants,
     std::span<const tw::skybox::bytecode::register_run> runs,
-    std::span<const float> runtime,
-    int runtime_register)
+    std::span<const tw::skybox::renderer::frame_block> frame_constants)
 {
-    device->SetVertexShader(vertex_shader);
-    device->SetPixelShader(pixel_shader);
+    scope.vertex_shader(vertex_shader);
+    scope.pixel_shader(pixel_shader);
 
-    apply_common_state(device);
+    apply_common_state(scope);
 
     const D3DMATRIX wvp_transposed = tw::skybox::math::transpose(wvp);
-    device->SetVertexShaderConstantF(0, &wvp_transposed.m[0][0], 4);
+    scope.vertex_constants(0, std::span<const float>(&wvp_transposed.m[0][0], 16));
 
     // One call per run. Batching is not about the call count - there are at most a handful - but
     // about not writing the gaps between them, which belong to the shader's own literals.
@@ -339,19 +397,57 @@ void apply_shader_state(IDirect3DDevice9* device,
             continue;
         }
 
-        device->SetPixelShaderConstantF(
-            static_cast<UINT>(run.first), pixel_constants.data() + static_cast<std::size_t>(run.first) * 4, static_cast<UINT>(count));
+        scope.pixel_constants(static_cast<UINT>(run.first),
+            pixel_constants.subspan(static_cast<std::size_t>(run.first) * 4, static_cast<std::size_t>(count) * 4));
     }
 
-    // Last, and on its own, because it is the one register whose value this frame decides. Written
-    // over whatever the runs just put there, which is the program's stored copy of the same
-    // register - correct either way, and one call rather than a copy of the whole file.
-    if(!runtime.empty()) {
-        device->SetPixelShaderConstantF(static_cast<UINT>(runtime_register), runtime.data(), 1);
+    // Last, and on their own, because these are the registers whose values this frame decides.
+    // Written over whatever the runs just put there, which is the program's stored copy of the same
+    // registers - correct either way, and one call each rather than a copy of the whole file.
+    for(const tw::skybox::renderer::frame_block& block : frame_constants) {
+        const auto count = static_cast<int>(block.values.size() / 4);
+        if(block.first < 0 || count <= 0 || block.first + count > registers) {
+            continue;
+        }
+
+        scope.pixel_constants(static_cast<UINT>(block.first), block.values.first(static_cast<std::size_t>(count) * 4));
     }
 
-    // No texture is bound and no texture stage state is set: with a pixel shader bound, the
-    // fixed-function stage cascade is ignored entirely, and these programs sample nothing.
+    // No texture stage *state* is set: with a pixel shader bound the fixed-function stage cascade is
+    // ignored entirely. Textures themselves are bound separately - see apply_samplers - because a
+    // program may declare some and most declare none.
+}
+
+// Binds a layer's textures to the sampler registers its shader declares.
+//
+// Sampler state and not stage state: `D3DSAMP_*` is what a programmable shader's `tex2D`/`tex3D`
+// obeys, while `D3DTSS_*` configures the fixed-function cascade that a bound pixel shader ignores.
+// The two are easy to confuse because the cube map path above legitimately uses the latter.
+//
+// The W address mode is set alongside U and V unconditionally. It means nothing to a 2D texture and
+// everything to a volume: a noise field tiled in x and y but clamped in z would repeat correctly
+// across the sky and smear along the depth axis, which reads as directional streaking rather than as
+// a wrapping mistake.
+void apply_samplers(state_scope& scope, std::span<const tw::skybox::shader::sampler> samplers)
+{
+    for(const tw::skybox::shader::sampler& one : samplers) {
+        const auto stage = static_cast<DWORD>(one.slot);
+
+        scope.texture(stage, one.texture);
+
+        scope.sampler_state(stage, D3DSAMP_ADDRESSU, one.address);
+        scope.sampler_state(stage, D3DSAMP_ADDRESSV, one.address);
+        scope.sampler_state(stage, D3DSAMP_ADDRESSW, one.address);
+
+        scope.sampler_state(stage, D3DSAMP_MINFILTER, one.filter);
+        scope.sampler_state(stage, D3DSAMP_MAGFILTER, one.filter);
+
+        // Only when the file actually brought levels. Asking for a mip filter otherwise tells the
+        // driver to interpolate between levels that do not exist.
+        scope.sampler_state(stage, D3DSAMP_MIPFILTER, one.mipped ? one.filter : D3DTEXF_NONE);
+
+        scope.sampler_state(stage, D3DSAMP_SRGBTEXTURE, FALSE);
+    }
 }
 
 struct frame_setup {
@@ -365,20 +461,23 @@ struct frame_setup {
 };
 
 // The half of a sky draw that is identical whether a cube map or a shader ends up painting the
-// cube: read what the game left set, make sure our own resources exist, save the device state, and
-// build the matrices. Returns false having changed nothing, which every caller treats as "let the
-// game draw its own sky this frame".
+// cube: read what the game left set, make sure our own resources exist, and build the matrices.
+// Returns false having changed nothing, which every caller treats as "let the game draw its own sky
+// this frame".
+//
+// Nothing is saved here any more. Saving is no longer a step at all - it happens one state at a
+// time, as each one is set, inside the caller's state_scope.
 bool prepare(IDirect3DDevice9* device, const D3DMATRIX& orientation, frame_setup& out)
 {
     if(FAILED(device->GetTransform(D3DTS_VIEW, &out.view)) || FAILED(device->GetTransform(D3DTS_PROJECTION, &out.projection))) {
         return false;
     }
 
-    if(!ensure_resources(device)) {
-        return false;
-    }
+    // Before anything derives from it - the cube extent reads the depth row, which this does not
+    // touch, but a later reader of the horizontal scale would get the game's wrong one.
+    correct_projection_aspect(device, out.projection);
 
-    if(FAILED(g_state_block->Capture())) {
+    if(!ensure_resources(device)) {
         return false;
     }
 
@@ -425,10 +524,14 @@ bool draw(IDirect3DDevice9* device, IDirect3DCubeTexture9* cube, const D3DMATRIX
         log_resolution_budget(device, cube, setup.projection);
     }
 
-    device->SetTransform(D3DTS_WORLD, &setup.world);
-    device->SetTransform(D3DTS_VIEW, &setup.view);
+    // From here to the end of the function everything written to the device is written through the
+    // scope, and comes back off it when the scope goes out of scope below.
+    state_scope scope(device);
 
-    apply_sky_state(device, cube);
+    scope.transform(D3DTS_WORLD, setup.world);
+    scope.transform(D3DTS_VIEW, setup.view);
+
+    apply_sky_state(scope, cube);
 
     timer::begin(device);
     device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, static_cast<UINT>(k_cube_vertices.size()), 0, k_cube_primitive_count);
@@ -442,8 +545,6 @@ bool draw(IDirect3DDevice9* device, IDirect3DCubeTexture9* cube, const D3DMATRIX
 
     timer::end();
 
-    g_state_block->Apply();
-
     return true;
 }
 
@@ -452,8 +553,8 @@ bool draw_program(IDirect3DDevice9* device,
     IDirect3DPixelShader9* pixel_shader,
     std::span<const float> pixel_constants,
     std::span<const tw::skybox::bytecode::register_run> runs,
-    std::span<const float> runtime,
-    int runtime_register,
+    std::span<const frame_block> frame_constants,
+    std::span<const tw::skybox::shader::sampler> samplers,
     int scale_percent,
     const D3DMATRIX& orientation) noexcept
 {
@@ -483,7 +584,16 @@ bool draw_program(IDirect3DDevice9* device,
 
     const bool scaled = target::begin(device, scale_percent);
 
-    apply_shader_state(device, vertex_shader, pixel_shader, wvp, pixel_constants, runs, runtime, runtime_register);
+    // Opened after target::begin, which saves and puts back the render target, the depth surface and
+    // the viewport itself - it has to, because they have to go back before the blit rather than at
+    // the end of the draw.
+    state_scope scope(device);
+
+    apply_shader_state(scope, vertex_shader, pixel_shader, wvp, pixel_constants, runs, frame_constants);
+
+    // After the shader state, because apply_common_state resets stage 0 for the fixed-function path
+    // the cube map uses - and a texture bound before that would be the one it clears.
+    apply_samplers(scope, samplers);
 
     device->DrawIndexedPrimitive(D3DPT_TRIANGLELIST, 0, 0, static_cast<UINT>(k_cube_vertices.size()), 0, k_cube_primitive_count);
 
@@ -499,8 +609,6 @@ bool draw_program(IDirect3DDevice9* device,
 
     timer::end();
 
-    g_state_block->Apply();
-
     return true;
 }
 
@@ -511,14 +619,15 @@ void attach_extra_pass(extra_pass_fn fn) noexcept
 
 void on_device_lost() noexcept
 {
-    release_and_clear(g_state_block);
+    // Nothing of this module's own is left to drop: the state block that used to be released here
+    // was the one D3DPOOL_DEFAULT-like object it held, and a state_scope is a stack object that
+    // exists only for the duration of a draw. The buffers are D3DPOOL_MANAGED and survive a Reset.
     timer::on_device_lost();
     target::on_device_lost();
 }
 
 void release_device_resources() noexcept
 {
-    release_and_clear(g_state_block);
     release_and_clear(g_index_buffer);
     release_and_clear(g_vertex_buffer);
     timer::release_device_resources();

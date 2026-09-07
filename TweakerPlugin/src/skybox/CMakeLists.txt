@@ -6,10 +6,14 @@ target_sources(TweakerPlugin PRIVATE
     sky_caps.cxx
     sky_catalog.cxx
     sky_compile.cxx
+    sky_image.cxx
+    sky_lua.cxx
     sky_package.cxx
     sky_params.cxx
     sky_probe.cxx
     sky_target.cxx
+    sky_texture.cxx
+    sky_vfs.cxx
     sky_timer.cxx
     sky_paths.cxx
     sky_program.cxx
@@ -29,7 +33,7 @@ target_sources(TweakerPlugin PRIVATE
 #
 # Nothing here links a D3DX9 import library, and skybox/sky_math.hxx exists precisely so it never
 # has to - see the note at the top of that header, and cmake/DirectXSDK.cmake.
-target_link_libraries(TweakerPlugin PRIVATE libstb libyyjson tweaker_resource)
+target_link_libraries(TweakerPlugin PRIVATE libstb libyyjson libminiz tweaker_resource)
 
 # sky_ui and sky_panel are the adapters that draw the overlay tab and its parameter window; they are
 # the only files here that touch tweaker_ui.

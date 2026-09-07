@@ -40,6 +40,46 @@ float4 g_light : register(c3);       // xyz = direction in sky space, w = cos(an
 float4 g_light_color : register(c4); // rgb = colour, w = glow exponent
 float4 g_runtime : register(c5);     // x = seconds since the shader path started, y = program-specific
 
+// What the playing song is doing, updated every frame. Declare only what you read: a program that
+// mentions none of these gets none of them uploaded and pays nothing, and the plugin does not even
+// read the game's channels for a sky that does not ask.
+//
+// These are engine-written, not parameters. Do not put an `@sky` annotation on them - an annotation
+// would make the overlay write the register too, and whichever wrote last would win.
+//
+// c208 and up because the low registers are handed out by hand and collide; c208..c223 is reserved
+// for blocks like this one.
+//
+// **Always multiply by g_music.w.** It is 0 whenever the values are not real - in a menu, between
+// songs, before the graph is reachable - and a sky that ignores it freezes on whatever it last saw
+// instead of settling.
+// x is the game's own total and is **weighted towards the top end**: it sums twelve linear bands and
+// nine of them sit above 5.4 kHz, so a cymbal out-totals a bass line. Drive things from y.
+float4 g_music : register(c208);      // x = raw total, y = body (0..3.6 kHz, smoothed - USE THIS),
+                                      // z = onset pulse, w = valid
+float4 g_music_time : register(c209); // x = seconds into the song, y = its length, z = 0..1 through it,
+                                      // w = seconds since the last onset
+// The spectrum, in the only four groups the game's FFT can actually distinguish. Its twelve bands are
+// linear - 1808.7 Hz each, measured - so band 0 alone holds every fundamental in the music and nine
+// of the twelve sit above 5.4 kHz. Do not expect a kick drum here: it shares `x` with the vocals.
+//
+// Smoothed, like everything else here: a pixel shader has no state and cannot filter a value itself,
+// so a raw per-frame number would be noise with no way to remove it.
+float4 g_music_eq : register(c210);   // x = 0..1.8 kHz, y = 1.8..3.6, z = 3.6..5.4, w = 5.4 kHz and up
+
+// The same body held over four increasing windows: half a second, a second and a half, four seconds,
+// ten. One-pole time constants, so read them as "the last second or so", not as a boxcar.
+//
+// What g_music.y cannot do. On dense, many-voiced music the fast body changes every note, and an
+// effect driven by it reads as flicker even though it is following the audio exactly. These follow
+// the piece instead of the notes: they swell through a chorus and subside through a verse. Symmetric,
+// so they rise and fall at the same rate.
+//
+// Pick a rung by what the effect is *for*, not by taste. Something that should hit on the beat wants
+// g_music.y; something that should breathe with the music wants y or z here. Interpolating between
+// two rungs is fine and is how to land between them.
+float4 g_music_slow : register(c211); // x = 0.5 s, y = 1.5 s, z = 4 s, w = 10 s
+
 struct sky_in {
     float3 dir : TEXCOORD0;
 };

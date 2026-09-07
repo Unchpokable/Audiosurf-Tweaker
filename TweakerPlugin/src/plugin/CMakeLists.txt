@@ -3,5 +3,6 @@ target_sources(TweakerPlugin PRIVATE
     diagnostics.cxx
     globals.cxx
     load.cxx
+    music.cxx
     quest3d_state.cxx
 )
