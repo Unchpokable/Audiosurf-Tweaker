@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- A blade: Stealth is the Ninja feat, and the ninja car is the Sword model. -->
+  <g fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M20.5 3.5 11 13" />
+    <path d="M11 13 8 16l-2.2-.8L5 18l1 1 2.8-.8L8 21" />
+    <path d="M14.2 9.8 17.4 13" />
+  </g>
+</svg>

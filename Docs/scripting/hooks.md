@@ -139,7 +139,9 @@ see when it is happening.
 
 | | |
 |---|---|
-| `StatCollector` · `Do_ResetStats` | A new run is starting. The reliable place to zero your counters — better than watching the song timer jump backwards, which is a guess about this. |
+| `StatCollector` · `Do_ResetStats` | The **track** is being generated. Fires when a song is loaded — *not* when the player restarts it. |
+| `StatCollector` · `Do_ResetSimpleStats` | The **run** is starting: score, timer and every per-run counter zeroed. Fires on every entry into gameplay, restart included. This is the one to zero your counters on. |
+| `StatCollector` · `Do_ReseteWhiteWildBlocks` | White and wild blocks and power-ups are being placed over the generated track (the typo is the game's). If you care what is actually on the track, this is when it becomes true — and it happens again on every restart, because white placement is re-randomised each time. |
 | `StatCollector` · `Do_CalculateFinalStats` | The run ended and scoring is happening. After this, the final score and `Feat String` are readable. |
 | `TrafficCommander` · `Do_CollectCar` | Your car took a block off the road — through the board, Pointman's buffer, or an Eraser shatter. |
 | `Puzzle` · `Do_ResovleLaneCrash` | A block landed in the grid. (The misspelling is the game's.) |
@@ -170,8 +172,13 @@ end
 
 Two reads a frame, correct on the first frame, and nothing to desync.
 
-Hooks remain the right tool for moments — `Do_ResetStats` is an *event*, and there is no state to
-read that means "a run just began".
+Hooks remain the right tool for moments — `Do_ResetSimpleStats` is an *event*, and there is no state
+to read that means "a run just began".
+
+> Be careful which reset you pick. `Do_ResetStats` sounds like "a run started" and is not: it fires
+> when the **track** is generated, which happens once per song, not once per run. Restarting from
+> the pause menu goes through `Do_ResetSimpleStats` alone, and a counter zeroed only on
+> `Do_ResetStats` carries the previous attempt's numbers into the new one.
 
 ## Cleanup
 

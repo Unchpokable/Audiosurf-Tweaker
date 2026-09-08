@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- 95% of one colour taken: a nearly-closed ring around a filled block. Butter Ninja is the
+       yellow one, Seeing Red the red one - they are the same shape because they are the same feat,
+       and the colour comes from the caller's tint, not from the asset. -->
+  <g fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round">
+    <path d="M12 3.2a8.8 8.8 0 1 1-4.4 1.18" />
+  </g>
+  <rect x="8.6" y="8.6" width="6.8" height="6.8" rx="1.5" fill="#ffffff" />
+</svg>

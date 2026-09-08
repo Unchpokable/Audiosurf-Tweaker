@@ -4,6 +4,7 @@
 # modules with plausible data (see Docs/Internal/tweaker-plugin-widgets.md).
 add_library(tweaker_ui STATIC
     theme.cxx
+    fonts.cxx
     overlay_state.cxx
     overlay_config.cxx
     pending_actions.cxx

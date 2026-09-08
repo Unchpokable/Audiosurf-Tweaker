@@ -196,9 +196,30 @@ inline ImVec2 resolve_size(ImVec2 size, float default_w, float default_h) noexce
 }
 
 // Soft glow via offset AddText copies (no shaders). strength in [0, 1].
-inline void add_text_glow(ImDrawList* draw, const ImVec2& pos, const char* text, ImU32 text_col, ImVec4 glow_col, float strength) noexcept
+//
+// `font`/`font_size` pick the face and pixel size, exactly as the AddText overload they are handed
+// to does. Passing null/<=0 means "whatever the current window is using", which is what every
+// widget in the overlay wants; the explicit form exists for the script HUD, which chooses both.
+inline void add_text_glow(ImDrawList* draw,
+    const ImVec2& pos,
+    const char* text,
+    ImU32 text_col,
+    ImVec4 glow_col,
+    float strength,
+    ImFont* font = nullptr,
+    float font_size = 0.f) noexcept
 {
     if(draw == nullptr || text == nullptr || text[0] == '\0') {
+        return;
+    }
+
+    if(font == nullptr) {
+        font = ImGui::GetFont();
+    }
+    if(font_size <= 0.f) {
+        font_size = ImGui::GetFontSize();
+    }
+    if(font == nullptr) {
         return;
     }
 
@@ -206,7 +227,9 @@ inline void add_text_glow(ImDrawList* draw, const ImVec2& pos, const char* text,
     if(strength > 0.01f) {
         const float glow_a = glow_col.w * strength * 0.15f;
         const ImU32 glow_u32 = to_u32(ImVec4 { glow_col.x, glow_col.y, glow_col.z, glow_a });
-        constexpr float k_off = 1.f;
+        // Scaled with the text: a one-pixel spread around 13px type is a halo, around 40px type it
+        // is a slightly thicker outline and reads as an accident.
+        const float k_off = std::max(1.f, font_size * 0.06f);
         const ImVec2 offsets[] = {
             { -k_off, 0.f },
             { k_off, 0.f },
@@ -218,11 +241,11 @@ inline void add_text_glow(ImDrawList* draw, const ImVec2& pos, const char* text,
             { k_off, k_off },
         };
         for(const ImVec2& o : offsets) {
-            draw->AddText(ImVec2 { pos.x + o.x, pos.y + o.y }, glow_u32, text);
+            draw->AddText(font, font_size, ImVec2 { pos.x + o.x, pos.y + o.y }, glow_u32, text);
         }
     }
 
-    draw->AddText(pos, text_col, text);
+    draw->AddText(font, font_size, pos, text_col, text);
 }
 
 // Soft glow around a rounded rect border via several expanding, fading outline copies (no

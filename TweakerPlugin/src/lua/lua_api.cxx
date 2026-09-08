@@ -4,11 +4,15 @@
 
 #include "framework/channel_shim.hxx"
 
+#include "libtweeny/tweeny.hxx"
+
 #include "lua/lua_channels.hxx"
 #include "lua/lua_host.hxx"
 
 #include "plugin/diagnostics.hxx"
 
+#include "ui/fonts.hxx"
+#include "ui/image/svg.hxx"
 #include "ui/plugins/interactive/menu.hxx"
 #include "ui/plugins/static/notefeed.hxx"
 #include "ui/plugins/static/pins.hxx"
@@ -41,6 +45,63 @@ struct subscription {
 
 std::vector<subscription*> g_subscriptions;
 int g_next_subscription_id = 0;
+
+// Script corner mask -> ImDrawFlags. Not a cast: ImGui's "no corners" is 1<<8 and its zero means
+// "all corners", so a script that passed 0 meaning none would get all of them, silently. See the
+// note on hud_corner in lua_api.hxx.
+ImDrawFlags to_draw_flags(int corners) noexcept
+{
+    if((corners & tw::lua::api::hud_corner_all) == 0) {
+        return ImDrawFlags_RoundCornersNone;
+    }
+
+    ImDrawFlags flags = 0;
+    if((corners & tw::lua::api::hud_corner_top_left) != 0) {
+        flags |= ImDrawFlags_RoundCornersTopLeft;
+    }
+    if((corners & tw::lua::api::hud_corner_top_right) != 0) {
+        flags |= ImDrawFlags_RoundCornersTopRight;
+    }
+    if((corners & tw::lua::api::hud_corner_bottom_left) != 0) {
+        flags |= ImDrawFlags_RoundCornersBottomLeft;
+    }
+    if((corners & tw::lua::api::hud_corner_bottom_right) != 0) {
+        flags |= ImDrawFlags_RoundCornersBottomRight;
+    }
+
+    return flags;
+}
+
+// The easing curves offered to scripts, by index. Appended to, never reordered - an index is part
+// of the script-facing ABI, exactly like a font index.
+//
+// A subset of tweeny's set rather than all 33: these are the ones an overlay animation actually
+// reaches for, and a name a script has to guess at is worse than one that is not there.
+struct ease_curve {
+    const char* name;
+    float (*run)(float t);
+};
+
+const ease_curve g_ease_curves[] = {
+    { "linear", [](float t) { return tweeny::easing::linear.run(t, 0.f, 1.f); } },
+    { "quadIn", [](float t) { return tweeny::easing::quadraticIn.run(t, 0.f, 1.f); } },
+    { "quadOut", [](float t) { return tweeny::easing::quadraticOut.run(t, 0.f, 1.f); } },
+    { "quadInOut", [](float t) { return tweeny::easing::quadraticInOut.run(t, 0.f, 1.f); } },
+    { "cubicIn", [](float t) { return tweeny::easing::cubicIn.run(t, 0.f, 1.f); } },
+    { "cubicOut", [](float t) { return tweeny::easing::cubicOut.run(t, 0.f, 1.f); } },
+    { "cubicInOut", [](float t) { return tweeny::easing::cubicInOut.run(t, 0.f, 1.f); } },
+    { "sineIn", [](float t) { return tweeny::easing::sinusoidalIn.run(t, 0.f, 1.f); } },
+    { "sineOut", [](float t) { return tweeny::easing::sinusoidalOut.run(t, 0.f, 1.f); } },
+    { "sineInOut", [](float t) { return tweeny::easing::sinusoidalInOut.run(t, 0.f, 1.f); } },
+    { "expoIn", [](float t) { return tweeny::easing::exponentialIn.run(t, 0.f, 1.f); } },
+    { "expoOut", [](float t) { return tweeny::easing::exponentialOut.run(t, 0.f, 1.f); } },
+    { "expoInOut", [](float t) { return tweeny::easing::exponentialInOut.run(t, 0.f, 1.f); } },
+    { "backIn", [](float t) { return tweeny::easing::backIn.run(t, 0.f, 1.f); } },
+    { "backOut", [](float t) { return tweeny::easing::backOut.run(t, 0.f, 1.f); } },
+    { "backInOut", [](float t) { return tweeny::easing::backInOut.run(t, 0.f, 1.f); } },
+    { "elasticOut", [](float t) { return tweeny::easing::elasticOut.run(t, 0.f, 1.f); } },
+    { "bounceOut", [](float t) { return tweeny::easing::bounceOut.run(t, 0.f, 1.f); } },
+};
 
 subscription* find_subscription(int id) noexcept
 {
@@ -305,6 +366,18 @@ void* g_entry_points[] = {
     reinterpret_cast<void*>(&tw::lua::api::tw_array_write),
     reinterpret_cast<void*>(&tw::lua::api::tw_array_write_vector),
     reinterpret_cast<void*>(&tw::lua::api::tw_array_rows),
+    reinterpret_cast<void*>(&tw::lua::api::tw_font_count),
+    reinterpret_cast<void*>(&tw::lua::api::tw_font_name),
+    reinterpret_cast<void*>(&tw::lua::api::tw_hud_text_font),
+    reinterpret_cast<void*>(&tw::lua::api::tw_hud_measure_font),
+    reinterpret_cast<void*>(&tw::lua::api::tw_hud_rect_corners),
+    reinterpret_cast<void*>(&tw::lua::api::tw_hud_rect_glow),
+    reinterpret_cast<void*>(&tw::lua::api::tw_hud_text_glow),
+    reinterpret_cast<void*>(&tw::lua::api::tw_hud_icon),
+    reinterpret_cast<void*>(&tw::lua::api::tw_dt),
+    reinterpret_cast<void*>(&tw::lua::api::tw_ease),
+    reinterpret_cast<void*>(&tw::lua::api::tw_ease_count),
+    reinterpret_cast<void*>(&tw::lua::api::tw_ease_name),
 };
 } // namespace
 
@@ -653,6 +726,43 @@ int tw_engine_ready() noexcept
     return (tw::lua::channels::is_ready() && tw::lua::channels::has_engine()) ? 1 : 0;
 }
 
+float tw_dt() noexcept
+{
+    if(!imgui_ready()) {
+        return 0.f;
+    }
+
+    // Milliseconds from the overlay's own frame clock rather than ImGui::GetIO().DeltaTime, so a
+    // script's animation and an overlay widget's animation cannot disagree about how long a frame
+    // was. dt_ms carries the sub-millisecond remainder forward, which is the whole reason it exists.
+    return static_cast<float>(tw::ui::widgets::detail::dt_ms()) * 0.001f;
+}
+
+float tw_ease(int curve, float t) noexcept
+{
+    t = std::clamp(t, 0.f, 1.f);
+
+    if(curve < 0 || curve >= static_cast<int>(std::size(g_ease_curves))) {
+        return t;
+    }
+
+    return g_ease_curves[curve].run(t);
+}
+
+int tw_ease_count() noexcept
+{
+    return static_cast<int>(std::size(g_ease_curves));
+}
+
+const char* tw_ease_name(int index) noexcept
+{
+    if(index < 0 || index >= tw_ease_count()) {
+        return nullptr;
+    }
+
+    return g_ease_curves[index].name;
+}
+
 void tw_log(const char* message) noexcept
 {
     if(message == nullptr) {
@@ -732,18 +842,137 @@ void tw_hud_measure(const char* text, float size, float* out) noexcept
 
 void tw_hud_rect(float x0, float y0, float x1, float y1, unsigned int color, float rounding, float thickness) noexcept
 {
+    tw_hud_rect_corners(x0, y0, x1, y1, color, rounding, thickness, hud_corner_all);
+}
+
+void tw_hud_rect_corners(
+    float x0, float y0, float x1, float y1, unsigned int color, float rounding, float thickness, int corners) noexcept
+{
     if(!inside_frame()) {
         return;
     }
 
     ImDrawList* draw = ImGui::GetBackgroundDrawList();
+    const ImDrawFlags flags = to_draw_flags(corners);
 
     if(thickness <= 0.f) {
-        draw->AddRectFilled(ImVec2(x0, y0), ImVec2(x1, y1), color, rounding);
+        draw->AddRectFilled(ImVec2(x0, y0), ImVec2(x1, y1), color, rounding, flags);
     }
     else {
-        draw->AddRect(ImVec2(x0, y0), ImVec2(x1, y1), color, rounding, 0, thickness);
+        draw->AddRect(ImVec2(x0, y0), ImVec2(x1, y1), color, rounding, flags, thickness);
     }
+}
+
+void tw_hud_rect_glow(float x0, float y0, float x1, float y1, unsigned int color, float rounding, float strength) noexcept
+{
+    if(!inside_frame()) {
+        return;
+    }
+
+    tw::ui::widgets::detail::add_rect_glow(
+        ImGui::GetBackgroundDrawList(), ImVec2(x0, y0), ImVec2(x1, y1), rounding, ImGui::ColorConvertU32ToFloat4(color), strength);
+}
+
+void tw_hud_text_glow(float x,
+    float y,
+    unsigned int text_color,
+    unsigned int glow_color,
+    const char* text,
+    float size,
+    int font,
+    float strength) noexcept
+{
+    if(text == nullptr || !inside_frame()) {
+        return;
+    }
+
+    ImFont* face = tw::ui::fonts::at(font);
+    if(face == nullptr) [[unlikely]] {
+        return;
+    }
+
+    tw::ui::widgets::detail::add_text_glow(ImGui::GetBackgroundDrawList(),
+        ImVec2(x, y),
+        text,
+        text_color,
+        ImGui::ColorConvertU32ToFloat4(glow_color),
+        strength,
+        face,
+        size > 0.f ? size : ImGui::GetFontSize());
+}
+
+int tw_font_count() noexcept
+{
+    return tw::ui::fonts::count();
+}
+
+const char* tw_font_name(int index) noexcept
+{
+    return tw::ui::fonts::name(index);
+}
+
+void tw_hud_text_font(float x, float y, unsigned int color, const char* text, float size, int font) noexcept
+{
+    if(text == nullptr || !inside_frame()) {
+        return;
+    }
+
+    ImFont* face = tw::ui::fonts::at(font);
+    if(face == nullptr) [[unlikely]] {
+        return;
+    }
+
+    ImGui::GetBackgroundDrawList()->AddText(face, size > 0.f ? size : ImGui::GetFontSize(), ImVec2(x, y), color, text);
+}
+
+void tw_hud_measure_font(const char* text, float size, int font, float* out) noexcept
+{
+    if(out == nullptr) {
+        return;
+    }
+
+    out[0] = 0.f;
+    out[1] = 0.f;
+
+    if(text == nullptr || !imgui_ready()) {
+        return;
+    }
+
+    ImFont* face = tw::ui::fonts::at(font);
+    if(face == nullptr) {
+        return;
+    }
+
+    if(size <= 0.f) {
+        size = ImGui::GetFontSize();
+    }
+
+    const ImVec2 measured = face->CalcTextSizeA(size, std::numeric_limits<float>::max(), 0.f, text);
+    out[0] = measured.x;
+    out[1] = measured.y;
+}
+
+void tw_hud_icon(const char* name, float x, float y, float size, unsigned int tint) noexcept
+{
+    if(name == nullptr || size <= 0.f || !inside_frame()) {
+        return;
+    }
+
+    // Built here, not taken from the script: this is the only thing keeping "icons/*.svg" the only
+    // resource class a script can address.
+    char key[128];
+    if(std::snprintf(key, sizeof(key), "icons/%s.svg", name) < 0) {
+        return;
+    }
+
+    const tw::ui::image::svg::image icon = tw::ui::image::svg::get_resource(key);
+    const ImTextureID texture = icon.at(static_cast<int>(std::lround(size)));
+    if(texture == ImTextureID_Invalid) {
+        return;
+    }
+
+    ImGui::GetBackgroundDrawList()->AddImage(
+        ImTextureRef { texture }, ImVec2(x, y), ImVec2(x + size, y + size), ImVec2(0.f, 0.f), ImVec2(1.f, 1.f), tint);
 }
 
 void tw_hud_line(float x0, float y0, float x1, float y1, unsigned int color, float thickness) noexcept

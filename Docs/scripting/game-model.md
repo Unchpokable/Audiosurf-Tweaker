@@ -192,8 +192,13 @@ that is the part that bites.
 | `PointsWithGridBonus` | number | Final score including bonuses. Only meaningful after the run. |
 | `HighestMedalEarned` | number | 0 none, 1 bronze, 2 silver, 3 gold. After the run. |
 | `Feat String` | **text** | Bonuses earned, comma-separated. After the run. |
-| `Do_ResetStats` | action | Fires when a new run starts. The reliable "run began" event. |
+| `Do_ResetStats` | action | The **track** is generated. Once per song — *not* on a restart. |
+| `Do_ResetSimpleStats` | action | The **run** starts. Every entry into gameplay, restart included. The "run began" event. |
+| `Do_ReseteWhiteWildBlocks` | action | Whites, wilds and power-ups are placed over the generated track. Re-randomised on every run. (The typo is the game's.) |
 | `Do_CalculateFinalStats` | action | Fires when a run ends and scoring happens. |
+
+The first three are three different moments and picking the wrong one is a classic mistake — see
+[Reacting and intercepting § Events worth knowing about](hooks.md#events-worth-knowing-about).
 
 ### `StartGroup` — the game as a whole
 
@@ -217,6 +222,11 @@ that is legitimately absent.
 `Ninja?`, `Freeride?`, `DumptyScoopDown?` (Pointman's buffer is down), `ShatterStorming?` (Eraser is
 shattering). These are how you tell *which* ability just consumed a block.
 
+`MatchCollectionTicks` is here too — how long the board waits between match-collection passes. It is
+per character *and* per league (10/10/20 by league, overridden to 15 for Easy Ninja, 50 for Freeride,
+and a dozen others besides), and a song tag can set it outright, so read the channel rather than
+assuming a number.
+
 ### `Achievements` — per-colour hit counters
 
 `PurplesHit`, `BluesHit`, `GreensHit`, `YellowsHit`, `RedsHit`, `WhitesHit`, `TotalBlocksHit`. Live
@@ -231,6 +241,24 @@ event. The colour is in channel index `900` (the name `TrafficType` is ambiguous
 ### `Puzzle` — the board
 
 `LaneCrashColor`, `Fetch_NumberBlocksInPlay`, and the grid machinery. See the internal notes.
+
+The chain — the multiplier the game shows as a growing bar — lives here too, and it is worth knowing
+that none of it is what its names suggest:
+
+| Channel | Kind | Notes |
+|---|---|---|
+| `ChainCount` | number | Consecutive collections, capped at 100. **Not** the multiplier. |
+| *(index 643)* | number | The `Envelope` that turns `ChainCount` into the bonus. Six keys, 0/1/4/10/20/100 → 0/0.5/1.5/2/2.5/3, so the multiplier runs 1.0 to 4.0. It has no name; read it by index and cross-check it against those keys. |
+| `MatchTimer` | number | Ticks since the last match-collection pass. Frozen while blocks are sliding. |
+
+There is no "chain hold" timer. What exists is the collection pass, which runs every
+`SpecialPurpose::MatchCollectionTicks` ticks — and the chain is whatever survives it: a pass that
+finds no match drops the chain, to zero or to half depending on the league. So the time left before
+the chain is judged is `MatchCollectionTicks - MatchTimer`, and both ends of that need clamping: the
+counter can sit a frame past the window, and can be pushed below zero while collection is suppressed.
+
+**Ticks are 25ths of a second.** Every second-valued counter in the game divides by 25 —
+`StatCollector::Timer` is `Timer + StartGroup::PausableTickCount/25`.
 
 ## Next
 

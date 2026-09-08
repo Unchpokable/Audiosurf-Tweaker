@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- Mono: every block the same. Three identical blocks in a row, no colour variation implied. -->
+  <g fill="#ffffff">
+    <rect x="2" y="9" width="6" height="6" rx="1.4" />
+    <rect x="9" y="9" width="6" height="6" rx="1.4" />
+    <rect x="16" y="9" width="6" height="6" rx="1.4" />
+  </g>
+</svg>

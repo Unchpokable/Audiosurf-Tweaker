@@ -11,7 +11,7 @@ TweakerUI/
   TweakerPlugin.dll
   scripts/
     hello.lua
-    traffic.lua
+    puzzlepro_hud.lua
     particles.lua
     arrayprobe.lua
     my-script.lua        <- yours

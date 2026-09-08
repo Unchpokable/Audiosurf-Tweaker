@@ -178,8 +178,15 @@ does not — see [Writing a table row](channels.md#writing-a-table-row). The eng
 management (add, insert, remove) sits one vtable slot away from the cell write and is deliberately
 not exposed: a row of a game table is an object in the game's model, not a slot in an array.
 
-**No images or arbitrary shapes.** Text, rectangles and lines. The drawing surface grew from what
-scripts actually needed.
+**No images of your own.** `tw.hud.icon` draws icons **packed into the plugin**, addressed by a bare
+stem that can only reach `icons/*.svg`. A script cannot load a file — not an image, not anything else
+— and the icon set is what ships with the Tweaker.
+
+That is a smaller restriction than "no images" and a deliberate one: reaching the filesystem needs a
+name restriction, a per-script texture lifetime and an invalidation path for when the render device
+is replaced, none of which exist yet. If you want to ship art with a script, say so.
+
+**No arbitrary shapes.** Rectangles and lines, with glow. No circle, no polygon, no path.
 
 **No script-defined menu tabs or settings UI.** A script's only surface is what it draws and the row
 it occupies in the Scripts tab.

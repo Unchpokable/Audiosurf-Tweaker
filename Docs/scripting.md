@@ -66,9 +66,10 @@ affects online leaderboards — the game reports its own score, not yours.
 
 ## Getting help
 
-- The example scripts that ship with the Tweaker are meant to be read. `traffic.lua` in particular is
-  heavily commented and demonstrates most of the API; `particles.lua` is the short one, and shows how
-  a hook plus a single table write can take a piece of the game's own rendering behaviour away.
+- The example scripts that ship with the Tweaker are meant to be read. `puzzlepro_hud.lua` in
+  particular is heavily commented and demonstrates most of the API; `particles.lua` is the short one,
+  and shows how a hook plus a single table write can take a piece of the game's own rendering
+  behaviour away.
 - If a script cannot find something, it says so in the notification feed. Read
   [Getting started § When something goes wrong](scripting/getting-started.md#when-something-goes-wrong).
 - The deep reverse-engineering notes live in `Docs/Internal/` — they are working notes rather than

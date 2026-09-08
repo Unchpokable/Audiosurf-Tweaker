@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- The biggest match: a filled board with a starburst, so it does not merely read as "more
+       blocks than the last one" at 16px, where counting stops working. -->
+  <g fill="#ffffff">
+    <rect x="1.5" y="1.5" width="4.7" height="4.7" rx="1" />
+    <rect x="7.1" y="1.5" width="4.7" height="4.7" rx="1" />
+    <rect x="12.7" y="1.5" width="4.7" height="4.7" rx="1" />
+    <rect x="18.3" y="1.5" width="4.7" height="4.7" rx="1" />
+    <rect x="1.5" y="7.1" width="4.7" height="4.7" rx="1" />
+    <rect x="18.3" y="7.1" width="4.7" height="4.7" rx="1" />
+    <rect x="1.5" y="12.7" width="4.7" height="4.7" rx="1" />
+    <rect x="18.3" y="12.7" width="4.7" height="4.7" rx="1" />
+    <rect x="1.5" y="18.3" width="4.7" height="4.7" rx="1" />
+    <rect x="7.1" y="18.3" width="4.7" height="4.7" rx="1" />
+    <rect x="12.7" y="18.3" width="4.7" height="4.7" rx="1" />
+    <rect x="18.3" y="18.3" width="4.7" height="4.7" rx="1" />
+    <path d="M12 6.6 13.6 10.4 17.4 12 13.6 13.6 12 17.4 10.4 13.6 6.6 12 10.4 10.4z" />
+  </g>
+</svg>

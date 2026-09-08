@@ -58,16 +58,26 @@ is your script's job.
 ## Text
 
 ```lua
-tw.hud.text(x, y, text, colour, size)
+tw.hud.text(x, y, text, colour, size, font)
 ```
 
-`colour` and `size` are optional — omitted, you get opaque white at the overlay's own text size.
-`(x, y)` is the top-left corner of the text.
+`colour`, `size` and `font` are optional — omitted, you get opaque white at the overlay's own text
+size in its default face. `(x, y)` is the top-left corner of the text.
 
 ```lua
-local w, h = tw.hud.measure(text, size)     -- what it will occupy
-local base = tw.hud.font_size()             -- the overlay's default text height
+local w, h = tw.hud.measure(text, size, font)   -- what it will occupy
+local base = tw.hud.font_size()                 -- the overlay's default text height
+local faces = tw.hud.fonts()                    -- { "regular", "semibold" }
 ```
+
+Faces are **weights, not sizes**: `size` and `font` are independent axes, and any face draws crisply
+at any size. Use `semibold` for numbers a player reads at a glance and `regular` for labels — that is
+what the built-in tracker does.
+
+> **Measure with the face you draw with.** `tw.hud.measure(text, size)` and
+> `tw.hud.measure(text, size, "semibold")` give different answers, and using one to position the
+> other is a few pixels of drift that looks like nothing in a screenshot and like a misaligned
+> column on screen.
 
 `tw.hud.measure` measures with the same engine that draws, so alignment is exact rather than
 approximate. This is what makes centring and right-alignment possible at all:
@@ -99,8 +109,54 @@ tw.hud.rect(x0, y0, x1, y1, panel_colour, 8)        -- fill
 tw.hud.rect(x0, y0, x1, y1, border_colour, 8, 1)    -- outline
 ```
 
-There is no circle, no polygon and no image drawing. If you need those, say so — the surface is
-small because it grew from what scripts actually asked for.
+### Choosing which corners round
+
+`tw.hud.rect` takes an eighth argument selecting which corners the radius applies to:
+
+```lua
+local C = tw.hud.corners
+tw.hud.rect(x0, y0, mid, y1, colour, 4, 0, C.left)      -- rounded left end, square right
+tw.hud.rect(mid, y0, x1, y1, other, 4, 0, C.right)
+```
+
+Masks are plain bits and add: `C.top_left + C.bottom_right`. `C.none` really means none.
+
+This exists for bars built out of several abutting rectangles, and it matters more than it sounds.
+Round all four corners of each segment and the joins between them show a notch of whatever is
+behind; leave them all square and the last segment's corner escapes from under the rounded outline
+drawn over it. Both look like rendering glitches and neither is.
+
+### Glow
+
+```lua
+tw.hud.glow_rect(x0, y0, x1, y1, colour, rounding, strength)
+tw.hud.glow_text(x, y, text, colour, glow, size, font, strength)
+```
+
+The overlay's own glow, so a script's highlights look like the overlay's rather than like a script's.
+`strength` is `0..1`.
+
+`glow_rect` draws only the glow — fill first, then glow, which is also how you get a shape that
+glows in a different colour than it is filled with. `glow_text` draws the text too, because the glow
+is offset copies of the same glyphs and doing it in two calls would rasterize them twice.
+
+```lua
+tw.hud.rect(x0, y0, x1, y1, colour, 3)
+tw.hud.glow_rect(x0, y0, x1, y1, colour, 3, 0.6)
+```
+
+### Icons
+
+```lua
+tw.hud.icon("feat_stealth", x, y, size, colour)
+```
+
+One of the icons packed into the plugin, in a square box, tinted. `name` is a bare stem; it reaches
+`icons/<name>.svg` inside the plugin and nothing else. They are monochrome by design — the colour is
+yours.
+
+A script cannot supply images of its own. There is no circle and no polygon either. If you need one,
+say so — the surface is small because it grew from what scripts actually asked for.
 
 ## Colours
 
@@ -163,15 +219,21 @@ weight, which does not happen if you force them all to the same absolute alpha.
 
 ```lua
 local shown = 0
+local FADE_SECONDS = 0.18
 
 tw.on_frame(function()
     local target = should_be_visible() and 1 or 0
-    shown = shown + math.max(-0.12, math.min(0.12, target - shown))
+    local step = tw.dt() / FADE_SECONDS
+    shown = shown + math.max(-step, math.min(step, target - shown))
     if shown <= 0 then return end        -- nothing to draw, and nothing below costs anything
 
-    tw.hud.rect(x0, y0, x1, y1, tw.fade(tw.theme("surface"), shown), 8)
+    tw.hud.rect(x0, y0, x1, y1, tw.fade(tw.theme("surface"), tw.ease("cubicOut", shown)), 8)
 end)
 ```
+
+Note `tw.dt()` rather than a fixed step per frame. The game's frame rate is not fixed and can be very
+high, so a constant per-frame step is a fade whose duration depends on the machine. `tw.ease` then
+shapes the result — see [the API reference](api-reference.md#tweasecurve-t--number).
 
 ## A worked layout
 

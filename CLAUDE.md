@@ -211,7 +211,10 @@ src/ipc/          — overlay_ipc: разбор/сборка L3-протокол
                     операции с префиксом QP_ он не разбирает, а форвардит в src/ui/qp/
 src/ui/           — overlay_state (кэш состояния, generation-counter, lock-free read по try_lock),
                     pending_actions (optimistic UI + таймаут-подтверждение для reverse-sync),
-                    wire_text (общий percent-кодек L3), ui_main/theme, gpu_texture (единственная
+                    wire_text (общий percent-кодек L3), ui_main/theme, fonts (реестр запечённых
+                    начертаний; в ui/, а не в imgui_backend, потому что smoke_test строит свой
+                    контекст и обязан получить те же фейсы в том же порядке — индекс фейса часть
+                    скриптового ABI), gpu_texture (единственная
                     точка подключения рендер-бэкенда для текстур), texture_cache (растр, лениво),
                     ui/image/ (SVG-иконки через LunaSVG, запекаются заранее — см.
                     tweaker-plugin-widgets.md), ui/plugins/, ui/widgets/

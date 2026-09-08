@@ -31,6 +31,7 @@
 // TweakerPlugin PCH in DLL consumers) - explicit here, same convention as ui/texture_cache.cxx.
 #include "resource/resource.hxx"
 
+#include "ui/fonts.hxx"
 #include "ui/gpu_texture.hxx"
 #include "ui/image/svg.hxx"
 #include "ui/overlay_config.hxx"
@@ -824,12 +825,6 @@ int main(int, char**)
         return 1;
     }
 
-    const auto font = tw::resource::get_resource(tw::resource::type::font, "fonts/Roboto-Regular.ttf");
-    if(!font || font->bytes.empty()) {
-        std::fprintf(stderr, "smoke_test: missing embedded font fonts/Roboto-Regular.ttf\n");
-        return 1;
-    }
-
     tw::ui::gpu_texture::set_backend(&gl_upload_texture, &gl_release_texture);
     // Indexes the packed SVGs. The bake itself needs a GL context, so it waits for svg::update() in
     // the frame loop below - same two-step the DLL goes through.
@@ -903,24 +898,18 @@ int main(int, char**)
     ImGuiIO& io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-    {
-        ImFontConfig font_cfg;
-        font_cfg.FontDataOwnedByAtlas = false; // bytes live in PE LockResource memory
-        ImFont* loaded = io.Fonts->AddFontFromMemoryTTF(const_cast<void*>(static_cast<const void*>(font->bytes.data())),
-            static_cast<int>(font->bytes.size()),
-            18.0f * main_scale,
-            &font_cfg);
-        if(loaded == nullptr) {
-            std::fprintf(stderr, "smoke_test: AddFontFromMemoryTTF failed\n");
-            ImGui::DestroyContext();
-            cleanup_device_wgl(hwnd, &g_main_window);
-            wglDeleteContext(g_hRC);
-            ::DestroyWindow(hwnd);
-            ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
-            return 1;
-        }
-        std::fprintf(stderr, "smoke_test: Roboto-Regular registered with ImGui\n");
+    // Same faces in the same order as the DLL bakes them: a script that asks for font index 1 has to
+    // get the same weight here as in the game, or the harness stops being a preview of it.
+    if(!tw::ui::fonts::load(io.Fonts, 18.0f * main_scale)) {
+        std::fprintf(stderr, "smoke_test: tw::ui::fonts::load failed\n");
+        ImGui::DestroyContext();
+        cleanup_device_wgl(hwnd, &g_main_window);
+        wglDeleteContext(g_hRC);
+        ::DestroyWindow(hwnd);
+        ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
+        return 1;
     }
+    std::fprintf(stderr, "smoke_test: %d font face(s) registered with ImGui\n", tw::ui::fonts::count());
 
     ImGui::StyleColorsDark();
     ImGuiStyle& style = ImGui::GetStyle();

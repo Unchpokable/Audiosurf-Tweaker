@@ -26,6 +26,33 @@ Number of frames dispatched since the VM started. Read-only in practice. Useful 
 if tw.frame % 30 == 0 then refresh_something_expensive() end
 ```
 
+### `tw.dt()` → number
+
+Seconds since the previous frame. Anything that moves over time should be driven by this rather than
+by a fixed step per frame — the game does not run at a fixed frame rate, and a constant per-frame
+step animates at whatever speed the machine happens to reach.
+
+### `tw.ease(curve, t)` → number
+
+One of the bundled easing curves evaluated at `t`. `t` is clamped to `0..1` and the result is in
+`0..1`. A pure function: your script keeps the progress, this shapes it.
+
+```lua
+local t = 0
+tw.on_frame(function()
+    t = math.min(1, t + tw.dt() / 0.25)      -- 250 ms
+    local k = tw.ease("cubicOut", t)
+end)
+```
+
+There is deliberately no tween object to create or destroy. An unknown curve name raises an error.
+
+### `tw.ease_names()` → table
+
+Every valid name for `tw.ease`, sorted. Currently: `linear`, `quadIn/Out/InOut`,
+`cubicIn/Out/InOut`, `sineIn/Out/InOut`, `expoIn/Out/InOut`, `backIn/Out/InOut`, `elasticOut`,
+`bounceOut`.
+
 ---
 
 ## Channels
@@ -137,30 +164,69 @@ Whether it is registered *and* currently suppressing.
 
 ## Drawing
 
-**All four of these are ignored outside an `on_frame` handler** — silently, so that drawing from a
+**All of these are ignored outside an `on_frame` handler** — silently, so that drawing from a
 channel hook by mistake does not disable the script.
 
-### `tw.hud.text(x, y, text, colour, size)`
+### `tw.hud.text(x, y, text, colour, size, font)`
 
 Draws text with its top-left corner at `(x, y)`. `colour` defaults to opaque white, `size` to the
-overlay's own text height.
+overlay's own text height, `font` to the default face.
 
-### `tw.hud.measure(text, size)` → width, height
+### `tw.hud.measure(text, size, font)` → width, height
 
-What that text would occupy. Measured by the same engine that draws it.
+What that text would occupy. Measured by the same engine that draws it. **Pass the same `font` you
+will draw with** — measuring one face and drawing another is off by enough to be visible in anything
+centred or right-aligned, and nothing can catch that for you.
 
 ### `tw.hud.font_size()` → number
 
 The overlay's default text height, in pixels. Scale layouts off this.
 
-### `tw.hud.rect(x0, y0, x1, y1, colour, rounding, thickness)`
+### `tw.hud.fonts()` → table
+
+Every face name `tw.hud.text` accepts, sorted. Currently `regular` and `semibold`. Faces are weights,
+not sizes — `size` and `font` are independent. An unknown name raises an error.
+
+### `tw.hud.rect(x0, y0, x1, y1, colour, rounding, thickness, corners)`
 
 `rounding` is the corner radius (default 0). `thickness` ≤ 0 (the default) fills; positive strokes an
-outline of that width.
+outline of that width. `corners` selects which corners the radius applies to and defaults to all of
+them; see [`tw.hud.corners`](#twhudcorners).
+
+### `tw.hud.corners`
+
+A table of corner masks for `tw.hud.rect`: `none`, `top_left`, `top_right`, `bottom_left`,
+`bottom_right`, `top`, `bottom`, `left`, `right`, `all`. They are plain bits, so they add:
+`tw.hud.corners.top_left + tw.hud.corners.bottom_right`.
+
+This is what a bar built from several abutting rectangles needs — round the outer ends, leave the
+internal joins square.
 
 ### `tw.hud.line(x0, y0, x1, y1, colour, thickness)`
 
 `thickness` defaults to 1.
+
+### `tw.hud.glow_rect(x0, y0, x1, y1, colour, rounding, strength)`
+
+A soft glow around a rounded rectangle, in the overlay's own style. `strength` is `0..1` and defaults
+to 1.
+
+Draws **only** the glow — fill first with `tw.hud.rect`, then glow. That order is also what lets a
+shape glow in a different colour than it is filled with.
+
+### `tw.hud.glow_text(x, y, text, colour, glow, size, font, strength)`
+
+Text with a glow behind it. Draws the text as well, unlike the rect version — the glow is offset
+copies of the same glyphs, so splitting it in two would rasterize them twice. `glow` defaults to the
+text colour.
+
+### `tw.hud.icon(name, x, y, size, colour)`
+
+One of the plugin's built-in SVG icons, in a square box of `size` pixels. `name` is a bare stem —
+`"feat_stealth"` — and reaches `icons/feat_stealth.svg` inside the plugin. Icons are monochrome and
+take their colour from `colour`.
+
+Scripts cannot load images of their own; see [Limits](limits.md#what-is-deliberately-absent).
 
 ---
 

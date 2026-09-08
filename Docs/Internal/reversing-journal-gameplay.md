@@ -359,6 +359,36 @@ EarnedRawGold? = (Points >= GoldRequirement)      # без бонусов
 `OnlyAll_RedYellow_Earned?`, `Overfill4_no_Points_Earned?`, `Chain5_Whites_Earned?`), затем
 `LocalScores::Do_RecordCurrentRide` и два вызова в `Achievements`.
 
+Полный разбор `Do_FindAddBonusPoints` (#797) — в его собственном порядке, включая то, что в сводке
+выше свёрнуто:
+
+```
+if Puzzle::Fetch_NumberBlocksInPlay == 0        -> "Clean Finish"  BonusPoints_CleanFinishOnly += Points * GridBonusMultiplyer
+if Ninja? && PerfectNinjaRun? && !PreventMono   -> "Stealth"       BonusPoints += Points * PerfectNinjaMultiplier
+if LargestMatch > 20                            -> "Match21"       += Points * Match21 Bonus Scaler
+elif LargestMatch > 10                          -> "Match11"       += Points * Match11 Bonus Scaler
+elif LargestMatch > 6                           -> "Match7"        += Points * Match7 Bonus Scaler
+if !Ninja?:
+    CollectedColorCounts[3] >= 0.95             -> "Butter Ninja"  += Points * YellowNinjaBonusPoints
+    CollectedColorCounts[4] >= 0.95             -> "Seeing Red"    += Points * RedNinja Bonus Scaler
+if PreventMono                                  -> "Mono Special"  (строка в Feat String, очков не даёт)
+```
+
+Каналы Mono-половины (имена уникальны в своих группах):
+
+| что | канал | # | значение |
+|---|---|---|---|
+| ниндзя-режим | `SpecialPurpose::Ninja?` | 269 | |
+| чистота прогона | `StatCollector::PerfectNinjaRun?` | 727 | |
+| множитель Stealth | `StatCollector::PerfectNinjaMultiplier` | 747 | 0.33 |
+| запрет | `SpecialPurpose::PreventMonoStealthAndCumulativePoints?` | 1194 | |
+
+`PerfectNinjaRun?` **живой по ходу заезда**, а не итоговый: взводится в `ResetNinjaRunStats` (#1476,
+дёргается и из `Do_ResetStats`, и из `Do_ResetSimpleStats`) в значение `Ninja?`, и гасится в
+`Do_ReportCarCollected` (#95) ровно тогда, когда собранный цвет равен `Puzzle::StoneColorID` (#537).
+То есть Stealth предсказуем на лету, без эвристик. `PreventMono` ставится тегами в названии трека
+(`Do_ForceCharacterToMono` #1186) и поддерживается покадрово (`Do_MaintainStateEveryFrame` #1239).
+
 ---
 
 ### 3.5 Ловушка: `CollectedColorCounts` считает **не** собранный трафик
@@ -368,9 +398,10 @@ Eraser и Pointman при активном использовании спосо
 
 Знаменатель и числитель считаются **несимметрично**:
 
-- **`Stats.TrafficColorCounts[c]`** пишется ровно в одном месте — `Do_CountColors` внутри
-  `Do_CharacterAndLeagueTrafficMods` ← `Do_ResetStats`, то есть **один раз при генерации трассы**.
-  Это статическая величина.
+- **`Stats.TrafficColorCounts[c]`** заполняется `Do_CountColors` внутри
+  `Do_CharacterAndLeagueTrafficMods` ← `Do_ResetStats`, то есть **при генерации трассы**, и
+  перетирается в конце заезда в `Do_CalculateFinalStats`. Пользоваться первым значением **нельзя**:
+  оно посчитано до того, как поверх трассы разложили белые и вайлды. См. §3.8.
 - **`Stats.CollectedColorCounts[c]`** инкрементится в `Do_ReportCarCollected`, у которого
   **единственный** вызывающий во всём проекте — `Puzzle::Do_HittingNonFullColumn` (#395). А тот
   вызывается **безусловно, для любого блока, попадающего в сетку**, откуда бы он ни взялся:
@@ -488,7 +519,7 @@ Do_CollectCar (#763):
 #### Подтверждение на живой игре
 
 Разбор выше был чисто графовым. Перехват `Do_ReportCarCollected` из скриптового слоя
-(`lua-scripting.md`, `assets/scripts/traffic.lua`) дал возможность посмотреть, когда хендлер реально
+(`lua-scripting.md`, `assets/scripts/puzzlepro_hud.lua`) дал возможность посмотреть, когда хендлер реально
 зовётся. Наблюдения полностью совпали с предсказанием:
 
 | Режим | Действие | `Do_ReportCarCollected` |
@@ -523,6 +554,79 @@ Do_CollectCar (#763):
 `Do_CalculateFinalStats` доля используется только в порогах `>= 0.95` для бонусов Butter Ninja и
 Seeing Red, и оба они выдаются лишь при `!Ninja?`, а завышение играет в пользу игрока. То есть это
 дефект отображаемой статистики, а не эксплуатируемая дыра в подсчёте очков.
+
+#### Вторая причина расхождения: паверап рождает блок-призрак
+
+Найдено по жалобе «на жёлтых и красных счётчик собранного переходит за 100 % на 1–3 блока,
+примерно по числу паверапов на треке». Причина оказалась не в `CollectedColorCounts` вообще, и это
+отдельный дефект **самой игры**, а не только отображаемой статистики.
+
+Развилка сбора — `TrafficCommander` `IfElse` **#985**:
+
+```
+if Traffic.QuestionBoxState[CurrentTraffic] > 0 && SpecialPurpose::DumptyScoopDown? < 1
+      -> Do_CollectQuestionBox (#986)
+else  -> If #1262 (!(Ninja? && Player::isJumping?)) -> Do_CollectCar (#763)
+```
+
+Паверап-блок через `Do_CollectCar` **не проходит вовсе**. А `Do_CollectQuestionBox` заканчивается
+так:
+
+```
+TrafficType := Traffic.Type[CurrentTraffic]
+Traffic.State[CurrentTraffic] := 0
+Traffic.Type[CurrentTraffic]  := -1
+BirthID := CurrentTraffic
+call Do_BirthCar
+```
+
+Ключ в том, что `Do_BirthCar` (**#207**) — это только внутренняя часть рождения. Вся бухгалтерия
+живёт в обёртке (**#756**), которую этот путь обходит:
+
+```
+CurrentTraffic          := BirthID
+CurrentStatCollectorCar := NextStatCarToBirth
+if CurrentStatCollectorCar < StatCollector::TotalCarCount:
+    StatCollector::Index_TrafficPattern := CurrentStatCollectorCar
+    ... Do_BirthCar (#207) ...
+    Traffic.PrecalcedArrayNum[CurrentTraffic] := CurrentStatCollectorCar
+    NextStatCarToBirth := NextStatCarToBirth + 1
+else:
+    Traffic.State[CurrentTraffic] := 0
+```
+
+Следствия все четыре сразу: курсор `Index_TrafficPattern` не двигается — рождается **дубль строки,
+которую спавнер использовал последней**; `NextStatCarToBirth` не растёт — та строка позже родится
+ещё раз, уже нормально; `Traffic.PrecalcedArrayNum` у слота не переписывается — призрак сохраняет id
+строки паверапа; проверка на `TotalCarCount` не применяется.
+
+Получается настоящая собираемая машинка, у которой **нет своей строки в сгенерированной трассе**.
+
+Что это накручивает:
+
+- `Achievements::Do_ReportBlockHit` (#1088) **не дедуплицирует**: безусловные
+  `ChannelSwitch#1123(цвет) += 1` (то есть `{Purples..Whites}Hit`) и `TotalBlocksHit += 1`.
+  `ReportBlockHit_TrafficID` там используется только для `MaxConsecutiveBlocksHit` /
+  `MaxConsecutiveBlocksDodged` — а призрак со стухшим id ломает и их.
+- Именно `{цвет}Hit` уезжают в `Stats.CollectedColorCounts` в `Do_CalculateFinalStats` и
+  тестируются на `>= 0.95`. То есть §3.5 остаётся верным (завышение играет в пользу игрока), но
+  причин у него **две**, и вторая живёт вообще в другой группе.
+
+**Дискриминатор для внешнего трекера.** `Do_CollectCar` вторым же действием копирует id строки в
+обычный `Value`:
+
+```
+TrafficType := Traffic.Type[CurrentTraffic]                  # #900, имя НЕ уникально
+TrafficID   := Traffic.PrecalcedArrayNum[CurrentTraffic]     # #1312, имя уникально
+```
+
+У законно рождённой машинки `TrafficID` уникален; у призрака это id уже потраченной строки. Значит
+правильный учёт — **по строке трассы, а не по событию**: считать каждую строку один раз, и призраки
+отсеются сами. Второй хендлер, `Do_CollectQuestionBox` (#986), при этом обязателен, иначе теряется
+сам паверап-блок; id строки там берётся из `Traffic: PrecalcedArrayNum` (#888) по курсору
+`CurrentTraffic` (#33) — `Set Value` #1201 возвращает курсор на слот паверапа до рождения призрака,
+а внутренняя `Do_BirthCar` `PrecalcedArrayNum` не трогает. Так это и сделано в
+`assets/scripts/puzzlepro_hud.lua`.
 
 ### 3.6 Медали заезда: пороги, лига и HUD
 
@@ -574,7 +678,7 @@ EarnedGold?   = StatCollector::Points >= StartGroup::GoldRequirement
 более точную картину, чем то, что он заменил.
 
 Поэтому `Do_LadderMedalRequirements` — **чистая ветка отрисовки**, и подавление её `CallChannel`
-убирает медали с экрана, не задевая ничего больше. Это и делает `assets/scripts/traffic.lua` через
+убирает медали с экрана, не задевая ничего больше. Это и делает `assets/scripts/puzzlepro_hud.lua` через
 `tw.mute` (см. `lua-scripting.md` §8.5). Замечу, что «чистота» тут — свойство именно этого узла, а
 не общее правило: соседний `Do_MedalMarkers` (#1225/#1707/#1883, метки порогов на шкале очков)
 подавлять так же безопасно, а вот `Do_CalcMedalRequirements` — уже нет, он пишет пороги.
@@ -651,6 +755,23 @@ StartGroup #1526 (запасная)          XX_gui::Color1 (рабочая)
 | 9 | #2574 | `Black` |
 | 10 | #878 | `white` |
 
+Раскладка **рабочей** ветки #440 (та, что действует в обычной игре) — не та же самая, и разница не
+только в каналах:
+
+| ColorID | источник | # |
+|---|---|---|
+| 0 фиолетовый | `XX_gui::Color5` | 9733 |
+| 1 синий | `XX_gui::Color4` | 9459 |
+| 2 зелёный | `#3602`: `(Ninja? \|\| Freeride?)` ? `StartGroup::GlobalMonoColor` (#862) : `XX_gui::Color3` (#7469) | |
+| 3 жёлтый | `#4350`: `(Ninja? \|\| Freeride?)` ? `GlobalMonoColor` : `XX_gui::Color2` (#7186) | |
+| 4, 5 красный | `XX_gui::Color1` | 8060 |
+| 6…10 | `Wild`/`Stone`/`Bomb`/`Black`/`white`, те же каналы `StartGroup`, что и в запасной | |
+
+То есть **нумерация обратная** (`ColorID` 0 → `Color5`), а у случаев 2 и 3 есть собственная развилка
+на моно-цвет, которой в запасной ветке нет. Имена `Color1`…`Color5` внутри `XX_gui` уникальны, так
+что читаются по имени. Ветка мех-режима (#7159) берёт `Highway::MechColor4..0` в том же обратном
+порядке, портальная (#7074) — `PlayerCar_Sword::PortalColor5..1`.
+
 Все они — `Value Vector`, читаются `GetVector` (слот 17, см. `reversing-journal-engine.md` §2.2.2).
 Статических значений в `.cgr` у них нет: компоненты — отдельные `Value`-каналы с именем `default`,
 которые наполняются в рантайме из настроек цвета, поэтому единственный способ узнать реальный цвет —
@@ -686,7 +807,7 @@ for StatCollector::Index_TrafficPattern in 0..StatCollector::TotalCarCount:
 
 То есть игра просто **пересчитывает сгенерированную трассу**: `Stats: TrafficPattern` (#57,
 `Array Vector`, курсор `Index_TrafficPattern` #58) — по строке на блок, `ColorID` в компоненте `x`.
-Раскладка `ChannelSwitch #1248`:
+Раскладка `ChannelSwitch #1248` — **снята по кейсам с графа, а не по памяти**:
 
 | ColorID | Куда |
 |---|---|
@@ -695,18 +816,93 @@ for StatCollector::Index_TrafficPattern in 0..StatCollector::TotalCarCount:
 | 2 | `GreenTotal` |
 | 3 | `YellowTotal` |
 | 4, 5 | `RedTotal` |
-| 6 | *(никуда)* |
-| 7, 8 | `WhiteTotal` |
-| 9, 10+ | *(никуда)* |
+| **6, 7** | **`WhiteTotal`** |
+| 8 и выше | *(кейса нет вообще)* |
 
-Отсюда всё, что нужно знать про белые: **`ColorID` 7 и 8 — белые**, а 6 не считает никто, ни игра,
-ни кто-либо другой.
+> **Исправление.** Здесь раньше стояло «6 — никуда, 7 и 8 — белые». Это неверно на обоих концах:
+> **Wild (6) считается белым**, а **Bomb (8) не считает никто**. Ошибка переехала в
+> `assets/scripts/puzzlepro_hud.lua` и проявилась как расходящиеся предсказания Butter Ninja / Seeing Red.
+> Проверять такие таблицы дампом кейсов свитча, а не пересказом.
 
-Практический вывод: трассу можно пересчитать самому, тем же обходом, и получить корректные
-знаменатели **с первого кадра заезда** — таблица заполнена в момент генерации трассы, задолго до
-того, как игра до неё доберётся. Цена — `TotalCarCount` чтений через курсор (пара тысяч), поэтому
-обход стоит размазать по кадрам. Имя `Stats: TrafficPattern` в группе не уникально (их четыре), так
-что адресоваться нужно по индексу.
+Отдельная и важная деталь: **свитч «попаданий» с этим не согласован.** `ChannelSwitch #1123` в
+`Achievements::Do_ReportBlockHit` раскладывает `FLOOR(ReportBlockHit_Color)` так:
+
+| ColorID | Куда |
+|---|---|
+| 0…4 | `PurplesHit` … `RedsHit` |
+| **5** | **`WildsUsed`** |
+| **6** | **`WhitesHit`** |
+| 7 и выше | *(кейса нет)* |
+
+То есть id 5 у **тотала** — красный, а у **попадания** — вайлд; id 7 (`StoneColorID`) попадает в
+`WhiteTotal`, но в `WhitesHit` не попадает никогда. Практическое следствие: на трассе с блоками id 5
+отношение `RedsHit / RedTotal` физически не может дойти до 0.95, и Seeing Red там не выдаётся. Это
+дефект игры; внешний предсказатель должен читать те же два канала и наследовать его, а не «чинить».
+
+#### `Stats: TrafficColorCounts` — почему им **нельзя** пользоваться
+
+У колонки **два** писателя:
+
+| # | Кто | Когда |
+|---|---|---|
+| #64 | `Do_CountColors` (#940), инкремент | при генерации трассы, внутри `Do_CharacterAndLeagueTrafficMods` ← `Do_ResetStats` |
+| #1917 | присваивание из `Achievements::{...}Total` | в конце заезда, внутри `Do_CalculateFinalStats` |
+
+```
+Do_CountColors (#940):
+    for CurrentCar in 0..TotalCarCount:
+        Index_TrafficPattern := CurrentCar
+        if Get vector y (Stats.TrafficPattern[...]) > 0:                 # фильтр по кольцу
+            Stats.TrafficColorCounts[Get vector x (...)] += 1            # индекс СЫРОЙ, без бакетов
+```
+
+Выглядит как готовый знаменатель, читаемый с первого кадра заезда. **Это ловушка**, и она стоила
+отдельного захода: на момент `Do_CountColors` **белых и вайлдов на трассе ещё нет**. Их кладут
+позже — см. следующий подраздел. То есть колонка завышена по каждому цветному ряду и **ровно нулевая
+по белому** (это видно в UI как «--» в белой колонке), а к концу заезда её перетирают правильными
+числами — те самые пара кадров, за которые цифры на экране заметно исправляются перед экраном
+результатов.
+
+Плюс два отличия помельче: индексация сырая (цвет 5 в ячейке 5, складывать 4+5 и 6+7 приходится
+читателю) и фильтр `y > 0`, которого у `Do_GetTrafficCounts` нет.
+
+#### Белые, вайлды и паверапы кладут **поверх уже раскрашенных** блоков
+
+`StatCollector::Do_ReseteWhiteWildBlocks` (#1156, опечатка авторская) — экспортируемый хендлер,
+который зовёт `XX_StartHere::Do_ReturnToStart` (#20) из своего `OneTime`, то есть **один раз на
+каждый вход в заезд, включая рестарт из паузы**. Порядок внутри `Do_ReturnToStart`: сначала он,
+потом `Do_ResetSimpleStats`.
+
+```
+Do_RestoreToOriginalState : каждая строка обратно из Stats: Old Color / Stats: Old Lane
+                            + Stats: QuestionBoxState := 0
+если !Ninja? && !DoInitialRun? && !isTutorial? && !Freeride?:
+    Do_GetArrayOfJustChainmaxes -> statsTrafficBuilder: подмассив «настоящих» машинок
+    NumWhites := ROUND(NumRealCars * Chance_SpawnOnyxIvory [* PortalMode_WhiteCountMultiplier])
+    Do_PlaceWhites (#1170) : NumWhites случайных строк с x < 6  ->  x := 7      (RAND, НЕ сид!)
+    NumWilds  := ROUND(NumRealCars * StartGroup::WildChance)
+    Do_PlaceWilds  (#1171) : NumWilds  случайных строк с x < 6  ->  x := 6.1
+    Do_GeneratePowerups (#1528) : Stats: QuestionBoxState, сид от названия трека
+```
+
+Три вывода, каждый практический:
+
+- **Белый/вайлд — это перекрашенный цветной блок, а не добавленный.** Поэтому `x < 6` в условии:
+  красный, ставший белым, из красного знаменателя уходит. На трассе с малым числом красных потеря
+  одного — это и есть разница между «Seeing Red выдан» и «не выдан».
+- **Позиции белых меняются каждый запуск** (`Do_PlaceWhites` берёт голый `RAND`, а не Mersenne
+  twister), а паверапы — нет (сид от названия трека). Отсюда наблюдение игрока, что паттерн блоков
+  учится наизусть, а белые «шевелятся».
+- **Число блоков при этом не меняется вообще.** Ни здесь, ни в `Do_CharacterAndLeagueTrafficMods`
+  (`Do_NinjaMagic`, `Do_TurnYellowRed`, `Do_TurnPurplesBlue`, `Do_LimitTo4ColorsForProMode` — Mono,
+  Casual, Pro просто ужимают палитру). Значит **триггер «`TotalCarCount` изменился» не сработает ни
+  разу**, и любой внешний пересчёт, повешенный на него, работает на протухших цветах.
+
+Практический вывод для внешнего трекера: знаменатели считать **обходом живого
+`Stats: TrafficPattern`** — это ровно то, что делает `Do_GetTrafficCounts`, поэтому числа сходятся с
+игрой по определению, — а перезапускать обход **по событиям**: `Do_ResetStats` (перегенерация),
+`Do_ReseteWhiteWildBlocks` (расстановка белых/вайлдов/паверапов) и `Do_ResetSimpleStats` (старт
+заезда, он же страховка). Именно так это сделано в `assets/scripts/puzzlepro_hud.lua`.
 
 ---
 
@@ -748,11 +944,137 @@ InGameplay? = (StartGroup::StartupState == StartGroup::State_Gameplay)
 после чего трасса генерируется заново. Это настоящая точка старта прогона; отслеживать её по откату
 таймера назад — догадка о том же самом.
 
+**Ловушка: рестарт песни из паузы — это НЕ `Do_ResetStats`.** `XX_PauseScreen::Do_Restart` (#570)
+делает
+
+```
+ProgramFlow_RestartPoint := State_Gameplay
+StartupState             := State_Resetter        # 7
+call XX_gui::Do_RestartGame (#62)
+```
+
+а состояние 7 обрабатывает `XX_StartHere::Do_ReturnToStart` (#20), который в конце вызывает
+**`StatCollector::Do_ResetSimpleStats` (#345)**, и только его. У `Do_ResetStats` (#1) во всём проекте
+ровно два вызывающих — `XX_StartHere::Do_GenerateSongStats` (#2775) и
+`Highway::Do_GenerateSongStats` (#980), то есть он про **генерацию трассы**, а не про начало заезда.
+
+`Do_ResetSimpleStats` при этом обнуляет ровно то, что нужно: `Points`, `Timer`, `LargestMatch`, весь
+вектор счётчиков заезда (§3.1), `Stats.CollectedColorCounts`, `Overfills`, `TotalCollisions`, и
+заново взводит `PerfectNinjaRun?`.
+
+Практически: внешний трекер должен хукать **оба**. `Do_ResetStats` — «трасса перегенерирована,
+знаменатели устарели»; `Do_ResetSimpleStats` — «заезд начался заново». Трекер, слушающий только
+первый, после рестарта продолжает считать в старый счёт и быстро уезжает за 100 %.
+
 Отсюда практическое правило для внешних инструментов: **состояние читать, переходы — хукать**.
 Флаг, собранный из хуков на `Do_StartSong` / `Do_Pause` / `Do_Unpause`, верен только если наблюдал
 все рёбра — инструмент, подключившийся посреди заезда, стартует с неверным значением, а один
 непойманный путь в меню оставляет его неверным до следующего. Чтение состояния верно с первого
 кадра. Хуки при этом незаменимы там, где нужен именно момент (`Do_ResetStats`).
+
+---
+
+### 3.10 Каскадный (chain) бонус: множитель за серию
+
+То, что игрок видит растущей полосой внизу экрана, — `Environment/Puzzle.cgr::ChainCount` (#468,
+имя уникально):
+
+```
+Do_IncrementChainCount (#1437):  if ChainCount < 1 -> Achievements::Do_ReportChainStart
+                                 ChainCount := MIN(100, ChainCount + 1)
+Do_ResetChain          (#1433):  ChainCount := 0
+Do_GraduallyResetChain (#1500):  ChainCount := ChannelSwitch#1467(LeagueID)
+                                 case 0 -> 0;  case 1 -> FLOOR(ChainCount*0.5);  case 2 -> 0
+```
+
+Во что он превращается — `Do_SetMoneyMultiplier` (#94):
+
+```
+ScoreBonus (#92) := 1
+if MultipleColorsMatched? :  ScoreBonus += 0.3                        + Do_AddCombo
+if ChainCount > 0         :  ScoreBonus += Envelope#643(ChainCount)   + Do_AddChainReaction
+```
+
+**`Envelope` #643 — та самая «логарифмическая шкала».** Ключи вынуты из чанка `ENV1` (6 ключей,
+`TCBS` целиком нулевой, код интерполяции 2 у всех):
+
+| `ChainCount` | 0 | 1 | 4 | 10 | 20 | 100 |
+|---|---|---|---|---|---|---|
+| бонус | 0.0 | 0.5 | 1.5 | 2.0 | 2.5 | 3.0 |
+
+То есть множитель за матч ходит в диапазоне **1.0 … 4.0**, а сам бонус — **0.0 … 3.0**.
+
+`Envelope` — потомок `Aco_FloatChannel` (base-guid в `channels.lst` совпадает с `Value`), у него
+есть `GetFloat`, так что #643 читается обычным числовым акцессором и сам применяет кривую к текущему
+`ChainCount`. Единственное «но» — адресация по индексу, поэтому в `puzzlepro_hud.lua` это чтение
+подстраховано теми же шестью ключами и сверяется с ними покадрово.
+
+**Индикатор игры** — `gui/XX_gui.cgr::Do_ShowChainBar` (#398) → `Do_ShrinkingBars` (#3936). Под ним
+**два** объекта, и это важно при любой попытке его убрать:
+
+| | канал | что это |
+|---|---|---|
+| `Timer1` | **#3938** | ширина = `Inertia( (15.1041/3) * Envelope#12477(ChainCount) )`, `Damping 0.4`; материал #3963 переключается по `ChainCount>=100` → белый / `StartGroup::GlobalMonoColor` | **полоса каскада** |
+| `Timer2` | #3970 | ширина = `15.1041 * VisMusic::SongPlayRemaining / VisMusic::SongLength` | **полоса прогресса песни** |
+
+`XX_gui` #12477 — та же кривая, что `Puzzle` #643, ключ в ключ. Подавлять надо **`Timer1` (#3938)**,
+а не `Do_ShowChainBar`: последнее унесёт и полосу прогресса песни.
+
+Обратите внимание: **длина полосы линейна по бонусу, а не по `ChainCount`** — `(15.1041/3) *
+Envelope(ChainCount)`, то есть полная полоса = бонус 3.0. Кто рисует свой индикатор и хочет, чтобы
+игрок читал его прежним глазомером, должен масштабировать так же.
+
+---
+
+### 3.11 Таймер сброса каскада
+
+Отдельного «таймера удержания каскада» в игре нет. Есть **проход сбора матчей**, и каскад — это то,
+что этот проход переживает. `Environment/Puzzle.cgr`:
+
+```
+Do_CollectMatchesOnTimer (#113) -> Do_ManageCollectionTimer (#455)
+
+    MatchTimer := (SpecialPurpose::HintmanEliteFreezingMatchCollection? || BlocksSlidThisFrame?)
+                      ? MatchTimer
+                      : MatchTimer + StartGroup::PausableTickCount
+
+    if MatchTimer > SpecialPurpose::MatchCollectionTicks:
+        if TutorialPreventMatchCollection? || PreventMatchCollection?:
+            Do_ResetMatchingTimer (#534):  MatchTimer := MAX(0, MatchTimer - MatchCollectionTicks)
+        else:
+            Do_CollectMatches (#112):  MatchTimer := 0
+                                      ...Lua Script_FindMatches...
+                                      IfElse #469 по числу найденных матчей:
+                                          есть  -> начисление + Do_IncrementChainCount (#1437)
+                                          нет   -> Do_GraduallyResetChain (#1500)
+```
+
+| канал | # | что это |
+|---|---|---|
+| `Puzzle::MatchTimer` | 251 | сколько тиков накоплено с прошлого прохода; имя уникально |
+| `Puzzle::BlocksSlidThisFrame?` | 441 | пока блоки едут — таймер **стоит** |
+| `SpecialPurpose::MatchCollectionTicks` | 710 | длина окна; имя уникально |
+
+**Осталось до проверки = `MatchCollectionTicks - MatchTimer`.** Значение может уйти в минус на кадр
+(проход срабатывает по превышению) и выше окна (`Do_ResetMatchingTimer` вычитает целое окно, а не
+клампит) — оба края надо зажимать.
+
+**Тик — 1/25 секунды.** `StartGroup::PausableTickCount` (#71) пишет `Stage/XX_Timer.cgr::Do` (#0):
+`GamePaused? ? 0 : TickCount#4`. Все секундные счётчики игры делят его на 25 — `StatCollector::Timer`
+это `Timer + PausableTickCount/25`, а `FirstPersonGracePeriod`, с которым он сравнивается, равен 5.
+То есть `MatchCollectionTicks` в 10…50 — это 0.4…2.0 секунды.
+
+**Окно не константа**, оно зависит от лиги и персонажа (`Set Value` в `SpecialPurpose`):
+`ChannelSwitch #964(LeagueID)` → 10 / 10 / 20, дальше перекрывается персонажем — `Do_EasyNinja` 15,
+`Do_NinjaPro` 17, `EraserElite` 25, `Do_NinjaMono` 28, `Do_Berserker` 35, `Do_Freeride` 50 — и тегом
+в названии трека (#1378, `MIN(400, MAX(5, ...))`). Читать канал, а не подставлять число.
+
+**Цена проигранного прохода — дело лиги, а не таймера.** `Do_GraduallyResetChain` кладёт в
+`ChainCount` результат `ChannelSwitch #1467(LeagueID)`: case 0 → `0`, case 1 → `FLOOR(ChainCount*0.5)`,
+case 2 → `0`. Половинит только Pro; Casual и Elite обнуляют.
+
+Полностью каскад сбрасывают ещё двое, и это не таймер: `Do_ResetChain` (#1433) из `Do_OverfillPunish`
+(#1148) и из `Do_ResetPuzzleScoreElements` (#1355).
 
 ---
 

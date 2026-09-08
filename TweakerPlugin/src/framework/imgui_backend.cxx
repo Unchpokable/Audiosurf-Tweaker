@@ -5,8 +5,7 @@
 #include "plugin/diagnostics.hxx"
 #include "plugin/globals.hxx"
 
-#include "resource/resource.hxx"
-
+#include "ui/fonts.hxx"
 #include "ui/gpu_texture.hxx"
 #include "ui/image/svg.hxx"
 #include "ui/overlay_config.hxx"
@@ -178,19 +177,9 @@ void d3d9_release_texture(ImTextureID tex)
 
 bool load_font()
 {
-    const auto font = tw::resource::get_resource(tw::resource::type::font, "fonts/Roboto-Regular.ttf");
-    if(!font || font->bytes.empty()) {
-        return false;
-    }
-
-    const auto& bytes = font->bytes;
-
-    ImGuiIO& io = ImGui::GetIO();
-    ImFontConfig font_cfg;
-    font_cfg.FontDataOwnedByAtlas = false; // bytes live in PE LockResource memory - never freed by ImGui
-    return io.Fonts->AddFontFromMemoryTTF(
-               const_cast<void*>(static_cast<const void*>(bytes.data())), static_cast<int>(bytes.size()), 18.0f, &font_cfg)
-           != nullptr;
+    // The face list, and the index each face answers to, live in ui/fonts - shared with smoke_test
+    // so both contexts end up with the same weights in the same order.
+    return tw::ui::fonts::load(ImGui::GetIO().Fonts, 18.0f);
 }
 } // namespace
 
@@ -235,7 +224,7 @@ bool initialize(IDirect3DDevice9* device, HWND hwnd)
         io.IniFilename = nullptr; // no imgui.ini next to the game exe - geometry persists via overlay_config
 
         if(!load_font()) {
-            TW_LOG_ERROR("imgui_backend: embedded font fonts/Roboto-Regular.ttf missing or unusable, overlay disabled");
+            TW_LOG_ERROR("imgui_backend: default font face missing or unusable (see ui/fonts.cxx), overlay disabled");
             ImGui::DestroyContext();
             g_device = nullptr;
             return false;

@@ -77,6 +77,18 @@ local C_can_write       = ffi.cast("int (*)(void)",                             
 local C_array_write     = ffi.cast("int (*)(void*, void*, float, float)",               P[32])
 local C_array_write_vec = ffi.cast("int (*)(void*, void*, float, float, float, float)", P[33])
 local C_array_rows      = ffi.cast("int (*)(void*)",                                    P[34])
+local C_font_count      = ffi.cast("int (*)(void)",                                     P[35])
+local C_font_name       = ffi.cast("const char* (*)(int)",                              P[36])
+local C_hud_text_font   = ffi.cast("void (*)(float, float, unsigned int, const char*, float, int)", P[37])
+local C_hud_measure_fnt = ffi.cast("void (*)(const char*, float, int, float*)",         P[38])
+local C_hud_rect_corner = ffi.cast("void (*)(float, float, float, float, unsigned int, float, float, int)", P[39])
+local C_hud_rect_glow   = ffi.cast("void (*)(float, float, float, float, unsigned int, float, float)", P[40])
+local C_hud_text_glow   = ffi.cast("void (*)(float, float, unsigned int, unsigned int, const char*, float, int, float)", P[41])
+local C_hud_icon        = ffi.cast("void (*)(const char*, float, float, float, unsigned int)", P[42])
+local C_dt              = ffi.cast("float (*)(void)",                                   P[43])
+local C_ease            = ffi.cast("float (*)(int, float)",                             P[44])
+local C_ease_count      = ffi.cast("int (*)(void)",                                     P[45])
+local C_ease_name       = ffi.cast("const char* (*)(int)",                              P[46])
 
 -- One reusable out-buffer for resolve results: [0] = status, [1] = the kind the channel actually is.
 -- Allocated once here rather than per call, so a resolve costs no garbage.
@@ -117,6 +129,38 @@ function tw.groups()
     return out
 end
 function tw.engine_ready() return C_engine_ready() ~= 0 end
+
+-- Seconds since the previous frame, from the overlay's own frame clock. Use this rather than a
+-- fixed per-frame step: the game does not run at a fixed frame rate, and a widget that fades by a
+-- constant amount each frame fades at whatever speed the machine happens to run at.
+function tw.dt() return C_dt() end
+
+-- An easing curve evaluated at t (clamped to 0..1, mapped to 0..1). Pure - a script keeps its own
+-- progress and asks this to shape it:
+--
+--     t = math.min(1, t + tw.dt() / 0.25)          -- 250 ms
+--     local k = tw.ease("cubicOut", t)
+--
+-- There is deliberately no tween object. One would have to own state and be torn down with the
+-- script; a curve you sample owns nothing and disappears on its own.
+local EASE = {}
+for i = 0, C_ease_count() - 1 do
+    EASE[ffi.string(C_ease_name(i))] = i
+end
+
+function tw.ease(curve, t)
+    local i = EASE[curve]
+    if i == nil then error("unknown easing curve: " .. tostring(curve), 2) end
+    return C_ease(i, t)
+end
+
+-- Every curve name tw.ease accepts, sorted.
+function tw.ease_names()
+    local out = {}
+    for name in pairs(EASE) do out[#out + 1] = name end
+    table.sort(out)
+    return out
+end
 
 -- Whether writes to the graph are being accepted yet.
 --
@@ -325,11 +369,39 @@ end
 
 tw.hud = {}
 
+-- The baked font faces, name -> index, built once here so the per-frame path is an array index
+-- rather than a string compare. Same shape as the theme table below, for the same reason.
+--
+-- Faces are weights, not sizes: ImGui rasterizes at whatever size it is drawn, so `size` and `font`
+-- are independent. nil means the default face, which is what every existing script gets.
+local FONT = {}
+for i = 0, C_font_count() - 1 do
+    FONT[ffi.string(C_font_name(i))] = i
+end
+
+local function font_index(name)
+    if name == nil then return 0 end
+    local i = FONT[name]
+    if i == nil then error("unknown font: " .. tostring(name), 3) end
+    return i
+end
+
+-- Every face name tw.hud.text accepts.
+function tw.hud.fonts()
+    local out = {}
+    for name in pairs(FONT) do out[#out + 1] = name end
+    table.sort(out)
+    return out
+end
+
 -- Colour is ImGui's packed IM_COL32 (0xAABBGGRR). Default is opaque white.
 --
--- `size` is optional and in pixels; omitted means the overlay's own text size.
-function tw.hud.text(x, y, text, color, size)
-    if size then
+-- `size` is optional and in pixels; omitted means the overlay's own text size. `font` is optional
+-- and names a face from tw.hud.fonts(); omitted means the default one.
+function tw.hud.text(x, y, text, color, size, font)
+    if font then
+        C_hud_text_font(x, y, color or 0xFFFFFFFF, tostring(text), size or 0, font_index(font))
+    elseif size then
         C_hud_text_sized(x, y, color or 0xFFFFFFFF, tostring(text), size)
     else
         C_hud_text(x, y, color or 0xFFFFFFFF, tostring(text))
@@ -339,9 +411,25 @@ end
 -- Width and height the same text would occupy. The measurement comes from ImGui, so it matches what
 -- tw.hud.text actually draws - which is what makes centering and right-alignment exact rather than
 -- approximate.
-function tw.hud.measure(text, size)
-    C_hud_measure(tostring(text), size or 0, size_out)
+--
+-- Pass the same `font` you will draw with. Measuring one face and drawing another is off by enough
+-- to be visible in anything right-aligned, and nothing can catch that for you.
+function tw.hud.measure(text, size, font)
+    if font then
+        C_hud_measure_fnt(tostring(text), size or 0, font_index(font), size_out)
+    else
+        C_hud_measure(tostring(text), size or 0, size_out)
+    end
     return size_out[0], size_out[1]
+end
+
+-- Text with a soft glow behind it, in the overlay's own glow style. Draws the text as well - the
+-- glow is offset copies of the same glyphs, so splitting it in two would rasterize them twice.
+--
+-- `glow` defaults to the text colour, which is the common case: a colour that glows in its own hue.
+function tw.hud.glow_text(x, y, text, color, glow, size, font, strength)
+    color = color or 0xFFFFFFFF
+    C_hud_text_glow(x, y, color, glow or color, tostring(text), size or 0, font_index(font), strength or 1)
 end
 
 -- The overlay's default text height. Layouts should scale off this instead of assuming a pixel size.
@@ -349,14 +437,45 @@ function tw.hud.font_size()
     return C_hud_metric(6)
 end
 
+-- Which corners tw.hud.rect rounds. A plain bitmask, so `0` honestly means "none" - unlike ImGui's
+-- own flags, where zero means "all" and "none" is a set bit.
+tw.hud.corners = {
+    none = 0,
+    top_left = 1, top_right = 2, bottom_left = 4, bottom_right = 8,
+    top = 3, bottom = 12, left = 5, right = 10,
+    all = 15,
+}
+
 -- A rectangle. `rounding` is the corner radius; `thickness` <= 0 (the default) fills it, anything
--- else strokes an outline.
-function tw.hud.rect(x0, y0, x1, y1, color, rounding, thickness)
-    C_hud_rect(x0, y0, x1, y1, color or 0xFFFFFFFF, rounding or 0, thickness or 0)
+-- else strokes an outline. `corners` selects which corners the radius applies to and defaults to
+-- all of them - it is what a bar built out of several abutting rectangles needs, so the outer ends
+-- round and the internal joins stay square.
+function tw.hud.rect(x0, y0, x1, y1, color, rounding, thickness, corners)
+    if corners then
+        C_hud_rect_corner(x0, y0, x1, y1, color or 0xFFFFFFFF, rounding or 0, thickness or 0, corners)
+    else
+        C_hud_rect(x0, y0, x1, y1, color or 0xFFFFFFFF, rounding or 0, thickness or 0)
+    end
+end
+
+-- A soft glow around a rounded rect, in the overlay's own style. Draws only the glow - fill first,
+-- then glow, which is also what lets a shape glow in a different colour than it is filled with.
+function tw.hud.glow_rect(x0, y0, x1, y1, color, rounding, strength)
+    C_hud_rect_glow(x0, y0, x1, y1, color or 0xFFFFFFFF, rounding or 0, strength or 1)
 end
 
 function tw.hud.line(x0, y0, x1, y1, color, thickness)
     C_hud_line(x0, y0, x1, y1, color or 0xFFFFFFFF, thickness or 1)
+end
+
+-- One of the plugin's packed SVG icons, in a square box of `size` pixels at (x, y).
+--
+-- `name` is a bare stem ("feat_stealth"); the icons/ prefix and .svg extension are attached on the
+-- other side of the boundary, so this reaches the icon set and nothing else. Icons are monochrome
+-- and take their colour from `colour`. An unknown name draws nothing rather than raising - an icon
+-- is decoration, and a script should not die because a build dropped one.
+function tw.hud.icon(name, x, y, size, colour)
+    C_hud_icon(tostring(name), x, y, size, colour or 0xFFFFFFFF)
 end
 
 -- The overlay's own palette, by name: tw.theme("surface"), tw.theme("text_muted"), and so on.

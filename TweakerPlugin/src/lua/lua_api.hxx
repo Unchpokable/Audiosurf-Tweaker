@@ -188,6 +188,25 @@ void tick() noexcept;
 // EngineInterface*, which can take until the player touches a menu (see lua-scripting.md §7).
 int tw_engine_ready() noexcept;
 
+// Seconds elapsed since the previous frame, from the same source the overlay's own animations use
+// (ui/widgets/detail/draw.hxx: dt_ms, which carries the sub-millisecond remainder forward instead
+// of rounding it away - at the several thousand FPS an uncapped window reaches, rounding makes every
+// animation run at a multiple of its intended speed).
+float tw_dt() noexcept;
+
+// One of tweeny's easing curves evaluated at `t`, clamped to [0, 1] and mapped to [0, 1].
+//
+// A pure function, deliberately: the alternative was exposing tweeny's tween objects, which carry
+// state and destructors and would need a per-script handle pool with the same ownership machinery
+// the channel subscriptions already have. A script keeping its own `t` and calling this needs none
+// of that, and it disappears with the script for free. See Docs/Internal/lua-scripting.md.
+//
+// `curve` indexes tw_ease_name below; out of range is linear.
+float tw_ease(int curve, float t) noexcept;
+
+int tw_ease_count() noexcept;
+const char* tw_ease_name(int index) noexcept;
+
 // Writes to the plugin log. Stripped in release builds like every other TW_LOG_* call.
 void tw_log(const char* message) noexcept;
 
@@ -213,9 +232,76 @@ void tw_hud_text_sized(float x, float y, unsigned int color, const char* text, f
 // convention. The measurement is ImGui's own, so it agrees with what gets drawn.
 void tw_hud_measure(const char* text, float size, float* out) noexcept;
 
+// The baked font faces, by index - enumerated once at bootstrap and turned into a Lua name->index
+// table, the same shape as the theme palette above, so the per-frame path never compares strings.
+//
+// Weights rather than sizes: ImGui rasterizes a face at whatever size it is drawn at, so `size` and
+// `font` are independent axes. An out-of-range index falls back to face 0 rather than failing, so a
+// script written against a weight a future build drops still draws.
+int tw_font_count() noexcept;
+const char* tw_font_name(int index) noexcept;
+
+// tw_hud_text_sized / tw_hud_measure with an explicit face. The two must agree, which is why the
+// measuring half takes the face too - measuring semibold and drawing regular is off by enough to be
+// visible in a right-aligned column.
+void tw_hud_text_font(float x, float y, unsigned int color, const char* text, float size, int font) noexcept;
+void tw_hud_measure_font(const char* text, float size, int font, float* out) noexcept;
+
+// One packed SVG icon, drawn into a `size` x `size` box at (x, y), tinted.
+//
+// `name` is a bare stem: "feat_stealth" reaches "icons/feat_stealth.svg". The prefix and extension
+// are attached here rather than taken from the script so a script cannot address a different
+// resource class - the icons are the only asset a script is given, and this is what makes that
+// true rather than merely intended.
+//
+// Icons are authored monochrome (white plus alpha) and coloured by `tint`, like every other icon in
+// the overlay. An unknown name draws nothing.
+void tw_hud_icon(const char* name, float x, float y, float size, unsigned int tint) noexcept;
+
 // A rectangle, optionally with rounded corners. `thickness` <= 0 fills it; anything else strokes an
 // outline of that width.
 void tw_hud_rect(float x0, float y0, float x1, float y1, unsigned int color, float rounding, float thickness) noexcept;
+
+// Same, but rounding only the corners named by `corners`, as a bitmask of hud_corner below.
+//
+// This is what a segmented bar needs: a fill made of several rectangles has to round the outer ends
+// and leave the internal joins square, or the joins read as gaps and the last segment's square
+// corner escapes from under the rounded outline drawn over it.
+//
+// NOTE the translation this performs, because it is not the identity. ImGui's own
+// ImDrawFlags_RoundCornersNone is `1 << 8`, and *zero* means RoundCornersAll - so passing 0 through
+// unchanged would round everything for a caller that asked for nothing. Scripts therefore get a
+// plain four-bit mask where 0 honestly means "no rounding", and this maps it.
+enum hud_corner : int {
+    hud_corner_top_left = 1,
+    hud_corner_top_right = 2,
+    hud_corner_bottom_left = 4,
+    hud_corner_bottom_right = 8,
+
+    hud_corner_all = 15,
+};
+
+void tw_hud_rect_corners(
+    float x0, float y0, float x1, float y1, unsigned int color, float rounding, float thickness, int corners) noexcept;
+
+// A soft glow around a rounded rect, as several expanding fading outline copies - the overlay's own
+// technique (ui/widgets/detail/draw.hxx), shared rather than reimplemented so a script's glow looks
+// like the overlay's. `strength` is 0..1; <= 0.01 draws nothing.
+//
+// Draws only the glow, not the rect: a script that wants both fills first and glows after, which is
+// also the order that lets it glow in a different colour than it fills.
+void tw_hud_rect_glow(float x0, float y0, float x1, float y1, unsigned int color, float rounding, float strength) noexcept;
+
+// Text with a glow behind it. Draws the text too - unlike the rect version, because the glow is
+// offset copies of the same glyphs and doing it in two calls would rasterize them twice.
+void tw_hud_text_glow(float x,
+    float y,
+    unsigned int text_color,
+    unsigned int glow_color,
+    const char* text,
+    float size,
+    int font,
+    float strength) noexcept;
 
 // A line segment.
 void tw_hud_line(float x0, float y0, float x1, float y1, unsigned int color, float thickness) noexcept;
