@@ -1,13 +1,13 @@
 -- @name        PuzzlePRO HUD
 -- @author      Audiosurf Tweaker
--- @version     1.1
+-- @version     1.4
 -- @description HUD Replacer for real puzzle players. Real-time all-color statistics tracker, chain multiplier and chain drop timer read straight out of the game, live skill rating calculation. Get GUD, Get PuzzlePRO HUD
 --
 -- A run tracker that replaces several pieces of the game's own HUD rather than sitting next to
 -- them. Everything it draws is measured, themed and positioned against the viewport; nothing is
 -- hardcoded except padding.
 --
--- The interesting parts are documented where they happen. Six things are worth reading first,
+-- The interesting parts are documented where they happen. Seven things are worth reading first,
 -- because they are the reasons this is not the obvious script.
 --
 --
@@ -195,6 +195,41 @@
 --
 -- The drop timer is deliberately NOT tweened. It is a countdown; smoothing it would mean showing a
 -- number that is not the time left.
+--
+--
+-- 7. THE SKILL RATING IS THE GAME'S OWN NUMBER
+--
+-- The game never shows it. It computes it at the end of a run and puts it on the wire, so a HUD that
+-- gets it wrong is wrong invisibly - the player just concludes they had a bad run. Every term below
+-- is therefore taken from the graph rather than reasoned about.
+--
+--     Achievements::Do_CalcSkillRating (#1189), inside Do_FinalizeAndStringEncodeExtendedRideStats
+--     (#1118), which Do_CalculateFinalStats calls:
+--
+--         SkillRating := MAX(1, ROUND( PointsWithGridBonus / GoldRequirement * 100
+--                                                          * (LeagueID + 1) ))
+--
+--     StatCollector::Do_FindAddBonusPoints (#797):
+--
+--         BonusPoints           += Points * <scaler>   per feat earned
+--         BonusPoints_CleanOnly += Points * GridBonusMultiplyer   if NumTilesInGrid == 0
+--         PointsWithGridBonus    = ROUND(Points) + ROUND(BonusPoints) + ROUND(BonusPoints_CleanOnly)
+--
+-- Three things about that are worth stating because each was a candidate for the figure being wrong
+-- and each turned out not to be:
+--
+--   * **Every scaler is over the raw Points**, not compounded. So the whole thing is
+--     `Points * (1 + sum of scalers)` and a script may add them up.
+--   * **GoldRequirement is not a constant of the song.** XX_StartHere::Do_CalcMedalRequirements
+--     (#4267) sets it to `TotalCarCount * {10, 30, 35}[LeagueID]`. Read the channel.
+--   * **LeagueID is a property of the character**, written by XX_WindowState::Do_SetCharacter (#307)
+--     as 0, 1 or 2 - not of the difficulty, which is ChosenDifficulty and drives a different set of
+--     medal requirements entirely. `LeagueID + 1` is the 1/2/3 multiplier.
+--
+-- What WAS wrong was the last clause of the middle line. `NumTilesInGrid == 0` is tested **at the
+-- moment the game scores**, so the Clean Finish bonus belongs to the player for as long as the board
+-- is clear - it is not an optimistic extra. Showing it only as a parenthesised maybe under-reported
+-- the headline by a fifth for most of a good puzzle run.
 
 -- ---------------------------------------------------------------------------------------------
 -- Palette
@@ -256,6 +291,12 @@ local BRONZE = 0xFF4E7DCD
 local SILVER = 0xFFC8C8C8
 local GOLD = 0xFF3FD5F5
 local WHITE = 0xFFFFFFFF
+
+-- In tier order, which is also the order of the three marker dots under the medal rail.
+local MEDALS = { BRONZE, SILVER, GOLD }
+-- Built once: these are roll() keys, looked up every frame, and building them by concatenation in
+-- the draw loop would put three throwaway strings a frame on the collector for no reason.
+local DOT_KEYS = { "medal_dot_bronze", "medal_dot_silver", "medal_dot_gold" }
 
 -- ---------------------------------------------------------------------------------------------
 -- Channels
@@ -543,7 +584,37 @@ end
 -- ---------------------------------------------------------------------------------------------
 local ROWS_PER_FRAME = 128
 
-local totals = { ready = false, by_row = {}, running = false, at = 0, rows = 0, partial = {} }
+-- Which colour columns the table shows. Derived from the track rather than from a table of modes,
+-- because the game recolours the track per character and league before the run and the pattern is
+-- the result - StatCollector::Do_CharacterAndLeagueTrafficMods (#904), called from Do_ResetStats:
+--
+--     LeagueID == 1        Do_LimitTo4ColorsForProMode (#886)  green(2) -> blue(1)
+--     ThinTraffic?/Ninja?  Do_TurnPurplesBlue (#877)           purple(0) -> blue(1)
+--     Ninja?/Freeride?     Do_NinjaMagic (#403) rewrites EVERY row:
+--                              x := (x > NinjaColorCutoff) ? 3 : Puzzle::StoneColorID
+--     isMechMode           yellow -> red, blue -> green
+--     PortalMode?          purple -> blue, yellow -> green, red -> green
+--
+-- So Casual runs three colours, Pro four, Mono exactly two - the yellow slot and the stone slot -
+-- and a column for a colour the track does not carry is a column of dashes. Reading it off the
+-- pattern gets all six cases and every future one for free; a mode table would get five of them and
+-- then go quietly stale.
+local function visible_columns(counts)
+    local out = {}
+    for _, c in ipairs(COLOURS) do
+        if (counts[c.id] or 0) > 0 then
+            out[#out + 1] = c
+        end
+    end
+    -- No colours at all is a scan that went wrong, not a track without colours. Showing everything
+    -- is the honest way to say "no idea" - collapsing to nothing would hide the fault.
+    if #out == 0 then
+        return COLOURS
+    end
+    return out
+end
+
+local totals = { ready = false, by_row = {}, running = false, at = 0, rows = 0, partial = {}, columns = COLOURS }
 
 local function begin_scan()
     totals.running = true
@@ -570,16 +641,36 @@ local function step_scan()
 
     local budget = ROWS_PER_FRAME
     while totals.at < totals.rows and budget > 0 do
-        local id = traffic_pattern:get(totals.at)
+        local id, ring, lane = traffic_pattern:get(totals.at)
         -- Not resolvable yet (group still loading): stop, keep the position, try next frame.
         if id == nil then
             return
         end
 
-        -- floor, not round: Do_PlaceWilds writes 6.1, and the engine's own switch truncates.
-        local bucket = BUCKET[math.floor(id)]
-        if bucket then
-            totals.partial[bucket] = totals.partial[bucket] + 1
+        -- An all-zero row is not a block. Traffic thinning takes a car off the track by blanking its
+        -- whole row - Do_NeuterThisCar (#680) writes Value Vector#684, which is (0, 0, 0) - and it
+        -- runs for every character with SpecialPurpose::ThinTraffic? as well as for every Ninja:
+        --
+        --     Ninja?    : x > 5 && (y - LastAllowedRing) < RequiredSeparation  -> neuter
+        --     otherwise : x < 3 && (same separation test)                      -> neuter
+        --
+        -- The row stays in the array, so a walk that only looks at x counts it as colour id 0 and
+        -- reports a purple column full of blocks nobody can collect. The non-Ninja branch hides
+        -- this by accident: Do_TurnPurplesBlue (#877) runs on the same row a moment later and turns
+        -- the zero into a blue. The Ninja branch has no such step, which is why Mono was the mode it
+        -- showed up in.
+        --
+        -- Testing all three components rather than just the colour is the point: a genuine purple
+        -- block has a ring, and the game's own count (Do_GetTrafficCounts) makes exactly this
+        -- mistake - its switch files id 0 under PurpleTotal without looking any further. Dropping
+        -- these rows cannot move the bonus prediction, because neutering never touches yellow or
+        -- red in either branch.
+        if id ~= 0 or (ring or 0) ~= 0 or (lane or 0) ~= 0 then
+            -- floor, not round: Do_PlaceWilds writes 6.1, and the engine's own switch truncates.
+            local bucket = BUCKET[math.floor(id)]
+            if bucket then
+                totals.partial[bucket] = totals.partial[bucket] + 1
+            end
         end
 
         totals.at = totals.at + 1
@@ -589,6 +680,9 @@ local function step_scan()
     if totals.at >= totals.rows then
         totals.running = false
         totals.by_row = totals.partial
+        -- Settled once per scan, not per frame: the column set is layout, and layout that is
+        -- recomputed while the player is looking at it is layout that moves.
+        totals.columns = visible_columns(totals.partial)
         totals.ready = true
     end
 end
@@ -664,6 +758,9 @@ local CHAIN_KEYS = { { 0, 0.0 }, { 1, 0.5 }, { 4, 1.5 }, { 10, 2.0 }, { 20, 2.5 
 -- A full bar. The game divides by this same 3 to scale its own (header §4), so a rail drawn at
 -- bonus/3 of its maximum is the length the player already knows how to read.
 local CHAIN_MAX = CHAIN_KEYS[#CHAIN_KEYS][2]
+-- The first key worth anything: a chain of 1 is a bonus of 0.5. Below it the player has no chain,
+-- which is what the drop timer's visibility hangs on.
+local CHAIN_FIRST = CHAIN_KEYS[2][2]
 
 local function chain_bonus_from_table(chain)
     if chain <= 0 then
@@ -931,59 +1028,79 @@ local FEAT_ICON = {
 -- Drawing
 -- ---------------------------------------------------------------------------------------------
 
-local CORNERS = tw.hud.corners
+-- Which medal the score currently holds: 0 none, 1 bronze, 2 silver, 3 gold. The game's own test
+-- (Do_CalculateMedalEarned #845) is three unordered comparisons against PointsWithGridBonus, which
+-- is what the caller passes; a threshold the script could not read is skipped rather than assumed.
+local function medal_tier(score, bronze, silver, gold)
+    if gold ~= nil and gold > 0 and score >= gold then
+        return 3
+    end
+    if silver ~= nil and silver > 0 and score >= silver then
+        return 2
+    end
+    if bronze ~= nil and bronze > 0 and score >= bronze then
+        return 1
+    end
+    return 0
+end
 
--- Bar spanning 0..gold, split at the bronze and silver thresholds and tinted per zone, filled by
--- score. Overshoot is clamped: an Elite Puzzle run can beat gold by an order of magnitude, and a bar
--- that kept scaling would be a bar that never moves.
+-- Progress to gold, in the same language as the chain rails: a hairline, one colour, and light.
 --
--- Each segment rounds only the corners its position calls for. Rounding all four of them - which is
--- what a rect with no corner mask does - leaves a notch of track showing where bronze meets silver,
--- and leaving them all square lets the last segment's corner escape from under the rounded outline
--- drawn over it. The advancing edge stays square deliberately: a rounded cap there reads as the end
--- of the bar rather than as the current position.
-local function draw_medal_bar(x0, y0, x1, y1, score, bronze, silver, gold, track, edge)
-    local radius = (y1 - y0) * 0.4
-
-    tw.hud.rect(x0, y0, x1, y1, track, radius)
-
-    if gold == nil or gold <= 0 then
-        tw.hud.rect(x0, y0, x1, y1, edge, radius, 1)
-        return
-    end
-
+-- The rail carries ONE colour - the medal currently held - rather than three abutting zones. At the
+-- thickness the rest of this HUD uses, three colours in a row do not read as three zones; they read
+-- as a smear, which is exactly what the old bar had become. So the colour is the medal, the length
+-- is the progress, and the three dots underneath are the discrete state.
+--
+-- The dots are indicators, not dividers. They sit at equal spacing, centred under the rail, and
+-- deliberately say nothing about where the thresholds fall - putting them on the rail at their
+-- score positions is what made the old bar look like a chart.
+--
+-- There is deliberately no overshoot indicator either. Gold is PointsWithGridBonus ==
+-- GoldRequirement, so by Do_CalcSkillRating (header §7) gold is exactly 100 skill rating per league:
+-- 100 casual, 200 pro, 300 elite. Anyone past gold is already reading that off the number, and a
+-- second thing saying the same is a second thing to keep true.
+local function draw_medal_rail(x0, y0, x1, h, dot, gap_y, score, bronze, silver, gold, stops, track, fade)
+    local radius = h * 0.5
     local w = x1 - x0
-    local bx = x0 + w * math.min(bronze or 0, gold) / gold
-    local sx = x0 + w * math.min(silver or 0, gold) / gold
-    local fill = x0 + w * math.min(math.max(score, 0), gold) / gold
 
-    local full = fill >= x1 - 0.5
+    tw.hud.rect(x0, y0, x1, y0 + h, track, radius)
 
-    local function segment(a, b, colour, first, last)
-        if b <= a then
-            return
+    -- The tier is tweened and the colour interpolated along the stops by that rolled ordinal, so
+    -- earning a medal sweeps the rail from one metal to the next instead of switching it. Same trick
+    -- as the chain gradient: one number moving, not two colours picked per frame.
+    local tier = medal_tier(score, bronze, silver, gold)
+    local t = roll("medal_tier", tier, 0.35)
+    local lo = math.min(math.floor(t), #stops - 2)
+    local colour = mix(stops[lo + 1], stops[lo + 2], t - lo)
+
+    if gold ~= nil and gold > 0 then
+        local fill = w * math.min(math.max(score / gold, 0), 1)
+        -- Shorter than it is thick is a dot, not a bar - the same rule the chain rails use, and for
+        -- the same reason: below that the rounding eats the shape.
+        if fill > h then
+            local c = tw.fade(colour, fade)
+            tw.hud.rect(x0, y0, x0 + fill, y0 + h, c, radius)
+            -- The glow rises with the tier, so the rail gains weight as the medals do rather than
+            -- only changing hue.
+            tw.hud.glow_rect(x0, y0, x0 + fill, y0 + h, c, radius, (0.3 + 0.2 * t) * fade)
         end
-        local corners = CORNERS.none
-        if first then
-            corners = corners + CORNERS.left
-        end
-        if last and full then
-            corners = corners + CORNERS.right
-        end
-        tw.hud.rect(a, y0, b, y1, colour, radius, 0, corners)
     end
 
-    segment(x0, math.min(fill, bx), tw.fade(BRONZE, shown), true, fill <= bx)
-    segment(bx, math.min(fill, sx), tw.fade(SILVER, shown), false, fill > bx and fill <= sx)
-    segment(sx, fill, tw.fade(GOLD, shown), false, fill > sx)
-
-    -- Ticks inset from the top and bottom edges rather than cutting the whole bar: a full-height
-    -- divider reads as a gap in the bar.
-    local inset = (y1 - y0) * 0.25
-    tw.hud.line(bx, y0 + inset, bx, y1 - inset, edge, 1)
-    tw.hud.line(sx, y0 + inset, sx, y1 - inset, edge, 1)
-
-    tw.hud.rect(x0, y0, x1, y1, edge, radius, 1)
+    local spacing = math.max(dot * 2.5, w * 0.1)
+    local cy = y0 + h + gap_y
+    for i, medal in ipairs(MEDALS) do
+        -- Lit is its own roll per dot rather than a slice of the tier roll: a medal lights up on its
+        -- own clock, and sharing one would make the third dot start moving when the first was won.
+        local lit = roll(DOT_KEYS[i], tier >= i and 1 or 0, 0.35)
+        local cx = x0 + w * 0.5 + spacing * (i - 2)
+        -- Unearned is the medal's own colour held down rather than a neutral, so the row reads as
+        -- three named medals waiting rather than as three anonymous pips.
+        local c = tw.fade(tw.alpha(medal, 0.16 + 0.84 * lit), fade)
+        tw.hud.rect(cx - dot * 0.5, cy, cx + dot * 0.5, cy + dot, c, dot * 0.5)
+        if lit > 0.01 then
+            tw.hud.glow_rect(cx - dot * 0.5, cy, cx + dot * 0.5, cy + dot, c, dot * 0.5, 0.75 * lit * fade)
+        end
+    end
 end
 
 local function centered(x, width, y, text, colour, size, font)
@@ -1065,13 +1182,18 @@ tw.on_frame(function()
         return tw.fade(colour, fade)
     end
 
-    local EDGE = themed("border")
     local RULE = themed("border_subtle")
     local TEXT = themed("text_primary")
     local DIM = themed("text_muted")
     local FAINT = themed("text_faint")
-    local ACCENT = themed("accent_text")
+    local WARN = themed("text_warning")
     local TRACK = themed("control_track_off")
+
+    -- Tier -> rail colour, index 1 being "no medal yet". That one is the overlay's own neutral
+    -- rather than a fourth metal, so the rail starts grey and warms into bronze. Raw rather than
+    -- themed(): the rail mixes between two of these and fades the result once, and fading twice
+    -- would make the transition dip in the middle.
+    local MEDAL_STOPS = { tw.theme("text_muted"), BRONZE, SILVER, GOLD }
 
     local base = tw.hud.font_size()
     local screen_w = tw.hud.size()
@@ -1085,14 +1207,23 @@ tw.on_frame(function()
     local row_gap = 5
     local row_h = value_size + 6
     local cell_w = math.max(swatch + 14, base * 2.8)
-    local bar_h = math.max(12, base)
+
+    -- The medal rail is the chain rails' own thickness, on purpose: it was the one filled solid on a
+    -- screen of hairlines, and matching the thickness is most of what stops it reading as a blot.
+    local rail_h = math.max(3, base * 0.18)
+    local medal_dot = math.max(4, rail_h * 1.6)
+    local medal_gap = math.max(3, base * 0.22)
+    local medal_h = rail_h + medal_gap + medal_dot
 
     local sx0, _, sx1, sy1 = tw.hud.safe()
     local margin = 16
     local bottom = sy1 - margin
 
     -- ---- the colour table, bottom-left ------------------------------------------------------
-    local table_w = cell_w * #COLOURS
+    -- Only the colours this track actually carries (see visible_columns): a Casual run has three,
+    -- Pro four, Mono two, and a column of dashes for a colour that cannot appear is noise.
+    local columns = totals.columns
+    local table_w = cell_w * #columns
     local table_h = swatch + row_gap + row_h * 2
     local tx = sx0 + margin
     local swatch_y = bottom - table_h
@@ -1104,7 +1235,7 @@ tw.on_frame(function()
 
     local got_total, all_total = 0, 0
 
-    for i, c in ipairs(COLOURS) do
+    for i, c in ipairs(columns) do
         local cx = tx + cell_w * (i - 1)
         local total = totals.ready and totals.by_row[c.id] or nil
         local got = taken[c.id] or 0
@@ -1139,7 +1270,7 @@ tw.on_frame(function()
 
     -- ---- skill rating and the medal bar, bottom-right ---------------------------------------
     local right_w = math.max(190, base * 14)
-    local right_h = rating_size + 8 + bar_h
+    local right_h = rating_size + 8 + medal_h
     local rx1 = sx1 - margin
 
     -- Pins float mid-height on one side and are the one piece of overlay chrome the safe area
@@ -1160,8 +1291,19 @@ tw.on_frame(function()
     local clean = scaler.clean:get() or 0.25
     local grid_empty = (tiles_left:get() or -1) == 0
 
-    local now_points = score * (1 + bonus)
-    local best_points = score * (1 + bonus + clean)
+    -- What the game would put on the wire if the run ended on this frame (header §7).
+    --
+    -- The Clean Finish bonus is not a hypothetical the player might reach: the game adds it whenever
+    -- the board is empty **at the moment it scores**, so while the board is clear it is already
+    -- theirs. Leaving it out of the headline under-reported by a fifth exactly while a good player
+    -- was holding a clean board - which is most of a good run, and the whole of the end of one.
+    local live_bonus = bonus + (grid_empty and clean or 0)
+    -- The other side of that: what the rating becomes if the board fills, or what it would become if
+    -- it emptied. Whichever it is, it is the figure the player is not currently on.
+    local alt_bonus = grid_empty and bonus or (bonus + clean)
+
+    local now_points = score * (1 + live_bonus)
+    local alt_points = score * (1 + alt_bonus)
 
     local function rating(p)
         if gold == nil or gold <= 0 then
@@ -1175,11 +1317,11 @@ tw.on_frame(function()
     -- amounts, and a single tween applied to both would drag the second one around by the first.
     local label = "SKILL RATING"
     local value = string.format("%.0f", roll("rating", rating(now_points)))
-    local optimistic = string.format(" (%.0f)", roll("rating_max", rating(best_points)))
+    local alt = string.format(" (%.0f)", roll("rating_alt", rating(alt_points)))
 
     local lw = tw.hud.measure(label, label_size)
     local vw = tw.hud.measure(value, rating_size, "semibold")
-    local ow = tw.hud.measure(optimistic, label_size)
+    local ow = tw.hud.measure(alt, label_size)
 
     -- One baseline for three different sizes, so the small text sits on the big text's bottom edge.
     -- Exact rather than eyeballed, which is the whole reason a script can measure at all.
@@ -1189,15 +1331,17 @@ tw.on_frame(function()
     tw.hud.text(text_x, baseline - label_size, label, DIM, label_size)
     tw.hud.text(text_x + lw + 8, baseline - rating_size, value, TEXT, rating_size, "semibold")
 
-    -- The optimistic figure is what a Clean Finish would make it. Brightened while the grid actually
-    -- is empty, so it stops being a hypothetical and becomes "hold this".
-    tw.hud.text(text_x + lw + 8 + vw, baseline - label_size, optimistic, grid_empty and ACCENT or FAINT, label_size)
+    -- Which of the two the second figure is is never in doubt - it sits above the headline in one
+    -- case and below it in the other - so it is tinted by direction rather than labelled: an upside
+    -- still to be had is quiet, a Clean Finish already banked and now at risk is not.
+    tw.hud.text(text_x + lw + 8 + vw, baseline - label_size, alt, grid_empty and WARN or FAINT, label_size)
 
-    -- The fill is rolled on the same clock as the number above it, so the bar and the figure it is
-    -- a picture of arrive together.
+    -- The rolled score, not the raw one, so the rail and the figure it is a picture of arrive
+    -- together - and so a dot lights on the frame the *displayed* number crosses its threshold. A
+    -- dot that lit off the true score would light while the number above it still read short of it.
     local bar_y = ry + rating_size + 8
-    draw_medal_bar(rx, bar_y, rx + right_w, bar_y + bar_h, roll("medal", now_points), bronze_at:get(), silver_at:get(), gold, TRACK,
-        EDGE)
+    draw_medal_rail(rx, bar_y, rx + right_w, rail_h, medal_dot, medal_gap, roll("medal", now_points), bronze_at:get(),
+        silver_at:get(), gold, MEDAL_STOPS, TRACK, fade)
 
     -- ---- the chain, its drop timer and the feats, bottom-centre ------------------------------
     --
@@ -1226,12 +1370,18 @@ tw.on_frame(function()
         feats_w = feats_w + icon_size + icon_gap + tw.hud.measure(feat, label_size)
     end
 
-    -- The free strip between the two side blocks. Everything below is centred in it and kept inside
-    -- it; that is the only geometry the three rows have in common.
+    -- Centred on the VIEWPORT, and kept clear of the two side blocks. Those are two different
+    -- things and it used to do only the second: centring on the middle of the leftover strip put
+    -- the block off-centre by half the difference between the table's width and the rating block's,
+    -- which is visible, because the eye reads "centred" against the screen and not against whatever
+    -- space happened to be left over.
+    --
+    -- The room it gets is the NEARER of the two sides, mirrored - taking each side's own distance
+    -- would let the block grow lopsided about the centre it is supposed to be on.
     local free_l = tx + table_w + 24
     local free_r = rx - 24
-    local avail = free_r - free_l
-    local block_cx = (free_l + free_r) * 0.5
+    local block_cx = screen_w * 0.5
+    local avail = 2 * math.min(block_cx - free_l, free_r - block_cx)
 
     -- One tween behind the colour, the length and the printed number, so the three cannot arrive at
     -- different times (header §6).
@@ -1271,7 +1421,9 @@ tw.on_frame(function()
     local rail_room = (avail - gap_w - rail_gap * 2) * 0.5
     local rail_w = math.min(rail_base * (gain or 0), rail_room)
 
-    if free_r > free_l then
+    -- Negative when the viewport centre has been squeezed past one of the side blocks, which is a
+    -- window too narrow for a centre column at all.
+    if avail > 0 then
         local feats_y = bottom - label_size
         -- Centred in the strip and nothing more. Unlike the rails the feats have no length to give
         -- back - the row is as wide as its own words - so the only lever is where it starts, and
@@ -1330,15 +1482,21 @@ tw.on_frame(function()
             -- things changing colour together is one thing too many.
             tw.hud.text(block_cx - chain_w * 0.5, chain_y, chain_text, tw.fade(WHITE, fade), chain_size, "semibold")
 
-            if timer_text ~= nil then
+            -- The countdown is only shown while there is a chain to lose. The collection pass runs
+            -- either way, but with no chain the number is a countdown to nothing in particular, and
+            -- read on its own - with no rails beside it and a multiplier of x1.0 above it - it looks
+            -- like a counter of something unexplained.
+            --
+            -- Held, not switched: this rises to full over the same roll that grows the rails, so
+            -- starting a chain brings the row up with them and dropping one takes it away with them.
+            -- The first envelope key is where a chain is worth anything at all, so that is where it
+            -- reaches full weight.
+            local held = math.min(gain / CHAIN_FIRST, 1)
+            if timer_text ~= nil and held > 0.01 then
                 -- The chain's own rails scaled by the time left, so the row below is literally a
                 -- picture of how much of the row above survives if nothing matches.
                 rails(timer_y + timer_h * 0.5, rail_w * timer_frac, math.max(2, rail_h * 0.7), strength * 0.7)
-                -- Dimmed when there is no chain. The pass still runs and the countdown is still
-                -- true, but nothing is riding on it, and a bright number with no rails beside it
-                -- reads as something having gone wrong.
-                local weight = 0.4 + 0.6 * math.min(gain / CHAIN_MAX, 1)
-                tw.hud.text(block_cx - timer_w * 0.5, timer_y, timer_text, tw.fade(tw.alpha(WHITE, weight), fade), timer_size,
+                tw.hud.text(block_cx - timer_w * 0.5, timer_y, timer_text, tw.fade(tw.alpha(WHITE, held), fade), timer_size,
                     "semibold")
             end
         end

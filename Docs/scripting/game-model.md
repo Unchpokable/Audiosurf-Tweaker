@@ -227,10 +227,29 @@ per character *and* per league (10/10/20 by league, overridden to 15 for Easy Ni
 and a dozen others besides), and a song tag can set it outright, so read the channel rather than
 assuming a number.
 
-### `Achievements` — per-colour hit counters
+### `Achievements` — per-colour hit counters, and the rating
 
 `PurplesHit`, `BluesHit`, `GreensHit`, `YellowsHit`, `RedsHit`, `WhitesHit`, `TotalBlocksHit`. Live
 during a run. These are the counters the game's own 95%-of-a-colour bonuses are tested against.
+
+`SkillRating` is also here, written once at the end of a run by `Do_CalcSkillRating`:
+
+```
+MAX(1, ROUND(StatCollector::PointsWithGridBonus / StartGroup::GoldRequirement * 100
+                                                * (StartGroup::LeagueID + 1)))
+```
+
+It is sent to the server and **never displayed**, which makes it a tempting thing for a HUD to
+predict — and an unusually unforgiving one, because the player has nothing to check it against. Two
+of the three terms are not what they look like: `GoldRequirement` is not a property of the song but
+`TotalCarCount × {10, 30, 35}[LeagueID]`, recomputed per run, and `LeagueID` is a property of the
+**character** (0, 1 or 2), not of the difficulty — that is `ChosenDifficulty`, and it selects a
+different set of medal thresholds entirely.
+
+`PointsWithGridBonus` is `Points` plus one `Points × scaler` term per feat earned — all over the raw
+`Points`, never compounded. The Clean Finish term is included whenever `NumTilesInGrid == 0` **at the
+moment scoring happens**, so a live prediction should count it whenever the board is currently
+empty, not treat it as a hypothetical.
 
 ### `TrafficCommander` — the road
 

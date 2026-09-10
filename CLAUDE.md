@@ -344,7 +344,7 @@ namespace tw::framework
 
 #### Performance (hot-path)
 
-Hot-path: `EndScene`, `CallChannel`, любой код, вызываемый каждый кадр (включая `overlay_state`
+Hot-path: `EndScene`, `Present`, `CallChannel`, любой код, вызываемый каждый кадр (включая `overlay_state`
 чтение в `ui_main.cxx: draw_frame` — но **не** сам разбор `TW_OVL`-сообщений, он происходит
 синхронно на IPC-потоке и редко, см. `overlay-protocol.md`, «Многопоточность»).
 
