@@ -2,6 +2,8 @@
 
 #include "framework/imgui_backend.hxx"
 
+#include "framework/d3d9_state.hxx"
+
 #include "plugin/diagnostics.hxx"
 #include "plugin/globals.hxx"
 
@@ -327,6 +329,33 @@ void render()
     }
 
     ImGui::Render();
+
+    // The four states ImGui_ImplDX9_SetupRenderState does not write and therefore inherits from
+    // whatever the game happened to leave behind. Each one changes the *result* of an alpha blend
+    // without changing anything about an opaque write, which is the same shape as the flicker this
+    // sits next to (see draw_overlay_frame in d3d9_hooks.cxx) and the reason they are worth pinning:
+    //
+    //   SRGBWRITEENABLE / SRGBTEXTURE - gamma-encode the blend, so the same alpha lands at a
+    //   different coverage depending on a state the overlay never asked about.
+    //   COLORWRITEENABLE - a mask the game narrowed for one of its own passes silently drops
+    //   channels out of the blend.
+    //   BLENDOPALPHA - the backend enables SEPARATEALPHABLENDENABLE and sets both alpha factors, but
+    //   not the operator combining them; a game that left it on REVSUBTRACT gets a destination alpha
+    //   that is not what either side intended.
+    //
+    // Set here rather than inside the backend for a reason that is easy to get backwards: the
+    // D3DSBT_ALL block RenderDrawData captures is taken *after* this runs, so writing these from
+    // within it would make Apply() hand the game our values back as though they were its own. Our
+    // own scope closes after that Apply and puts the real ones back.
+    //
+    // Vendored ImGui stays untouched, which is project policy and also what keeps this upgradable.
+    tw::framework::d3d9::state_scope scope(g_device);
+    scope.render_state(D3DRS_SRGBWRITEENABLE, FALSE);
+    scope.render_state(D3DRS_COLORWRITEENABLE,
+        D3DCOLORWRITEENABLE_RED | D3DCOLORWRITEENABLE_GREEN | D3DCOLORWRITEENABLE_BLUE | D3DCOLORWRITEENABLE_ALPHA);
+    scope.render_state(D3DRS_BLENDOPALPHA, D3DBLENDOP_ADD);
+    scope.sampler_state(0, D3DSAMP_SRGBTEXTURE, FALSE);
+
     ImGui_ImplDX9_RenderDrawData(ImGui::GetDrawData());
 }
 

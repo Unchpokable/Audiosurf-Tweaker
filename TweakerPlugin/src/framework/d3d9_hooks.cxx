@@ -1,6 +1,7 @@
 #include "pch.hxx"
 
 #include "framework/d3d9_hooks.hxx"
+#include "framework/d3d9_state.hxx"
 #include "framework/detour_transaction.hxx"
 #include "framework/wndproc_hub.hxx"
 
@@ -12,6 +13,8 @@ namespace
 using create_device_fn = long(__stdcall*)(LPDIRECT3D9, UINT, D3DDEVTYPE, HWND, DWORD, D3DPRESENT_PARAMETERS*, LPDIRECT3DDEVICE9*);
 using reset_fn = long(__stdcall*)(LPDIRECT3DDEVICE9, D3DPRESENT_PARAMETERS*);
 using end_scene_fn = long(__stdcall*)(LPDIRECT3DDEVICE9);
+using present_fn = long(__stdcall*)(LPDIRECT3DDEVICE9, const RECT*, const RECT*, HWND, const RGNDATA*);
+using swap_chain_present_fn = long(__stdcall*)(IDirect3DSwapChain9*, const RECT*, const RECT*, HWND, const RGNDATA*, DWORD);
 using set_texture_fn = long(__stdcall*)(LPDIRECT3DDEVICE9, DWORD, IDirect3DBaseTexture9*);
 using draw_primitive_fn = long(__stdcall*)(LPDIRECT3DDEVICE9, D3DPRIMITIVETYPE, UINT, UINT);
 using draw_indexed_primitive_fn = long(__stdcall*)(LPDIRECT3DDEVICE9, D3DPRIMITIVETYPE, INT, UINT, UINT, UINT, UINT);
@@ -19,6 +22,8 @@ using draw_indexed_primitive_fn = long(__stdcall*)(LPDIRECT3DDEVICE9, D3DPRIMITI
 create_device_fn o_create_device = nullptr;
 reset_fn o_reset = nullptr;
 end_scene_fn o_end_scene = nullptr;
+present_fn o_present = nullptr;
+swap_chain_present_fn o_swap_chain_present = nullptr;
 set_texture_fn o_set_texture = nullptr;
 draw_primitive_fn o_draw_primitive = nullptr;
 draw_indexed_primitive_fn o_draw_indexed_primitive = nullptr;
@@ -45,6 +50,28 @@ std::array<IDirect3DBaseTexture9*, k_tracked_stages> g_stage_texture {};
 // Set for the duration of a draw_intercept_fn call. Anything the interceptor draws re-enters the
 // draw hooks below, and without this the very first replacement draw would recurse forever.
 bool g_in_draw_intercept = false;
+
+// Set for the duration of the overlay's own pass (see draw_overlay_frame). Everything the overlay
+// submits comes back through the hooks in this file - the EndScene that closes its scene, and the
+// SetTexture/DrawIndexedPrimitive behind every ImGui command - and none of it is the game's. Without
+// this the interceptor would be offered the font atlas as a candidate sky texture, and the stage-0
+// mirror would be left describing a binding the game never made.
+bool g_in_overlay_pass = false;
+
+// True from the first Present observed on the bound device onwards.
+//
+// The overlay is drawn from Present, and everything below assumes Present is reached. If it is not -
+// a swap-chain path neither hook covers, a present routine the runtime resolves somewhere else - the
+// overlay would silently vanish instead of merely flickering, which is the worse failure by a wide
+// margin. So hk_end_scene keeps the old draw as a fallback and this latch disarms it the moment a
+// real Present proves the primary path works. Costs one bool test per EndScene, and at most one
+// duplicated overlay pass on the very first frame after a device binds.
+bool g_present_seen = false;
+
+// Set around the original Present. The D3D9 runtime is free to implement
+// IDirect3DDevice9::Present in terms of the swap chain's, and both are detoured here - without this
+// a nested call would draw the overlay a second time, which is precisely the defect being fixed.
+bool g_in_present = false;
 
 // The two facts about the bound device that a *different* thread needs to read.
 //
@@ -158,6 +185,9 @@ void bind_device(LPDIRECT3DDEVICE9 device)
     g_bound_window.store(params.hFocusWindow, std::memory_order_relaxed);
     g_bound_windowed.store(windowed, std::memory_order_relaxed);
     g_stage_texture.fill(nullptr);
+    // A different device is a fresh question about how this one presents: re-arm the EndScene
+    // fallback until a Present on *this* device proves the primary path.
+    g_present_seen = false;
     tw::plugin::quest3d::g_game_handle = params.hFocusWindow;
 
     TW_LOG_INFO("d3d9: bind_device device={} hwnd={} windowed={}",
@@ -188,6 +218,7 @@ void unbind_device()
     g_bound_window.store(nullptr, std::memory_order_relaxed);
     g_bound_windowed.store(true, std::memory_order_relaxed);
     g_stage_texture.fill(nullptr);
+    g_present_seen = false;
 
     tw::framework::wndproc::uninstall();
 
@@ -287,19 +318,134 @@ long __stdcall hk_reset(LPDIRECT3DDEVICE9 p_device, D3DPRESENT_PARAMETERS* p_pre
     return result;
 }
 
+// The overlay's entire submission for one presented frame, from Present.
+//
+// It used to run from hk_end_scene, and that was wrong in a way only semi-transparent pixels could
+// show. EndScene is NOT a frame boundary in this game - measured, and written down twice
+// (Docs/Internal/skybox-geometry.md and skybox-replacer-roadmap.md, "EndScene fires more than once
+// per shown frame"; the sky probe's frame tick was the first thing it broke). More than one of those
+// EndScenes renders to the back buffer, so the whole ImGui frame was composited over itself N times,
+// and compositing a colour at alpha `a` N times over the same pixels yields an effective alpha of
+// 1-(1-a)^N. At a=1 that is idempotent, which is why the menu - which fills its own opaque
+// theme::surface background before drawing anything into it - never showed a thing, while every
+// background-draw-list element (watermark, pins, notefeed, and everything a script draws through
+// tw.hud.*) sits directly on the game's frame at alpha < 1 and drifted with N. N is not constant:
+// the game's post-processing passes (RadialBlur, BloomPass, CopyPasteBuffer, FullSceneRadialBlur)
+// come and go with the gameplay and read the back buffer back in between our composites, which turns
+// "slightly too opaque" into flicker that tracks the music.
+//
+// Present is the only point that is genuinely once per shown frame, and it is also strictly after
+// everything the game draws - including the HUD and the screen-space pass that a "first EndScene of
+// the frame" latch would have put the overlay underneath.
+void draw_overlay_frame(LPDIRECT3DDEVICE9 device)
+{
+    if(device != g_bound_device || g_ui_draw == nullptr) {
+        return;
+    }
+
+    if(device->TestCooperativeLevel() != D3D_OK) {
+        return;
+    }
+
+    // At Present the game has normally left the back buffer bound, but "normally" is not a contract,
+    // and a frame that ends with an offscreen target still set would put the whole overlay somewhere
+    // nobody ever sees. The scope is what makes retargeting safe to do here: a render target is one
+    // of the three states no state block carries, so the one ImGui takes around its own draw could
+    // not put this back.
+    tw::framework::d3d9::state_scope scope(device);
+
+    if(!is_rendering_to_back_buffer(device)) {
+        IDirect3DSurface9* back_buffer = nullptr;
+        if(FAILED(device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &back_buffer)) || back_buffer == nullptr) {
+            return;
+        }
+
+        // The scope does not retain `wanted`; the swap chain owns the surface either way.
+        scope.render_target(0, back_buffer);
+        back_buffer->Release();
+    }
+
+    // D3D9 rejects every draw call outside a scene, and Present must not be called inside one - so
+    // the overlay opens and closes a scene of its own rather than borrowing the game's.
+    g_in_overlay_pass = true;
+    if(SUCCEEDED(device->BeginScene())) {
+        g_ui_draw(device);
+        device->EndScene();
+    }
+    g_in_overlay_pass = false;
+}
+
 long __stdcall hk_end_scene(LPDIRECT3DDEVICE9 p_device)
 {
+    // Our own scene, closing. Nothing here is about the game's frame.
+    if(g_in_overlay_pass) [[unlikely]] {
+        return o_end_scene(p_device);
+    }
+
     if(g_bound_device == nullptr) {
         bind_device(p_device);
     }
 
-    if(p_device == g_bound_device && p_device->TestCooperativeLevel() == D3D_OK) {
+    // Fallback only, disarmed by the first Present - see g_present_seen. While it is armed this is
+    // the old behaviour verbatim, drawing inside the game's scene because there already is one.
+    if(!g_present_seen && p_device == g_bound_device && p_device->TestCooperativeLevel() == D3D_OK) {
         if(g_ui_draw != nullptr && is_rendering_to_back_buffer(p_device)) {
+            g_in_overlay_pass = true;
             g_ui_draw(p_device);
+            g_in_overlay_pass = false;
         }
     }
 
     return o_end_scene(p_device);
+}
+
+// Shared by both present hooks: the first one to fire on the bound device disarms the EndScene
+// fallback, and only then is the overlay drawn - so the pass below can never be the thing that
+// re-triggers the fallback through its own EndScene.
+void on_present(LPDIRECT3DDEVICE9 p_device)
+{
+    if(p_device != g_bound_device) {
+        return;
+    }
+
+    if(!g_present_seen) [[unlikely]] {
+        g_present_seen = true;
+        TW_LOG_INFO("d3d9: first Present on the bound device - overlay now draws once per frame from Present");
+    }
+
+    draw_overlay_frame(p_device);
+}
+
+long __stdcall hk_present(LPDIRECT3DDEVICE9 p_device, const RECT* source, const RECT* dest, HWND dest_window, const RGNDATA* dirty)
+{
+    on_present(p_device);
+
+    g_in_present = true;
+    const long result = o_present(p_device, source, dest, dest_window, dirty);
+    g_in_present = false;
+
+    return result;
+}
+
+long __stdcall hk_swap_chain_present(IDirect3DSwapChain9* p_swap_chain,
+    const RECT* source,
+    const RECT* dest,
+    HWND dest_window,
+    const RGNDATA* dirty,
+    DWORD flags)
+{
+    // Skipped when this is the runtime's own implementation of the device Present we already handled
+    // - see g_in_present. GetDevice costs an AddRef/Release pair once per frame, which is why the
+    // device hook above does not go through here.
+    if(!g_in_present) {
+        LPDIRECT3DDEVICE9 device = nullptr;
+        if(SUCCEEDED(p_swap_chain->GetDevice(&device)) && device != nullptr) {
+            on_present(device);
+            device->Release();
+        }
+    }
+
+    return o_swap_chain_present(p_swap_chain, source, dest, dest_window, dirty, flags);
 }
 
 // Hot path, three of them. Everything below runs per SetTexture / per draw call, i.e. hundreds to
@@ -308,12 +454,14 @@ long __stdcall hk_end_scene(LPDIRECT3DDEVICE9 p_device)
 
 long __stdcall hk_set_texture(LPDIRECT3DDEVICE9 p_device, DWORD stage, IDirect3DBaseTexture9* p_texture)
 {
-    // Deliberately blind while an interceptor is running. The mirror describes what *the game* has
-    // bound, and an interceptor is contractually required to put the device back the way it found
-    // it - which it does with a state block, and a state block's Apply() does not come through
-    // here. Recording the interceptor's own binds would therefore leave the mirror stuck on a
-    // texture that is no longer bound, and the next draw of the same object would go unrecognised.
-    if(stage < k_tracked_stages && p_device == g_bound_device && !g_in_draw_intercept) [[likely]] {
+    // Deliberately blind while an interceptor is running, and equally so while the overlay is
+    // drawing. The mirror describes what *the game* has bound, and an interceptor is contractually
+    // required to put the device back the way it found it - which it does with a state block, and a
+    // state block's Apply() does not come through here. Recording the interceptor's own binds would
+    // therefore leave the mirror stuck on a texture that is no longer bound, and the next draw of
+    // the same object would go unrecognised. The overlay is the same story with a different owner:
+    // ImGui binds a font atlas per command and restores nothing through this path either.
+    if(stage < k_tracked_stages && p_device == g_bound_device && !g_in_draw_intercept && !g_in_overlay_pass) [[likely]] {
         g_stage_texture[stage] = p_texture;
     }
 
@@ -324,7 +472,11 @@ long __stdcall hk_set_texture(LPDIRECT3DDEVICE9 p_device, DWORD stage, IDirect3D
 // draw hooks so the guard/ordering rules live in exactly one place.
 bool intercept_draw(LPDIRECT3DDEVICE9 p_device)
 {
-    if(g_draw_intercept == nullptr || g_in_draw_intercept || p_device != g_bound_device) [[likely]] {
+    // g_in_overlay_pass alongside the re-entrancy guard: every ImGui command is a
+    // DrawIndexedPrimitive, and offering those to an interceptor that matches on a raw stage-0
+    // texture pointer is how a released sky texture's recycled address turns one of the overlay's
+    // own draws into a suppressed draw plus a stray sky pass.
+    if(g_draw_intercept == nullptr || g_in_draw_intercept || g_in_overlay_pass || p_device != g_bound_device) [[likely]] {
         return false;
     }
 
@@ -384,6 +536,11 @@ struct resolved_entries {
     void* create_device;
     void* reset;
     void* end_scene;
+    void* present;
+    // Off the device's implicit swap chain rather than the device itself, and the only entry here
+    // allowed to stay null: a device that will not hand out a swap chain still gives us every other
+    // hook, and the device-level Present covers the case the game actually uses.
+    void* swap_chain_present;
     void* set_texture;
     void* draw_primitive;
     void* draw_indexed_primitive;
@@ -449,10 +606,26 @@ bool resolve_d3d9_functions(resolved_entries& out)
 
             out.create_device = d3d9_vtable[16];
             out.reset = device_vtable[16];
+            out.present = device_vtable[17];
             out.end_scene = device_vtable[42];
             out.set_texture = device_vtable[65];
             out.draw_primitive = device_vtable[81];
             out.draw_indexed_primitive = device_vtable[82];
+
+            // IDirect3DSwapChain9: QueryInterface/AddRef/Release, then Present. Hooked as well as
+            // the device entry above because the two are alternatives from the game's side and only
+            // one of them fires - and a Present nobody sees means an overlay nobody sees, which is a
+            // far worse outcome than the double-draw all of this exists to remove. hk_present guards
+            // the case where the runtime implements one in terms of the other.
+            IDirect3DSwapChain9* swap_chain = nullptr;
+            if(SUCCEEDED(device->GetSwapChain(0, &swap_chain)) && swap_chain != nullptr) {
+                void** swap_chain_vtable = *reinterpret_cast<void***>(swap_chain);
+                out.swap_chain_present = swap_chain_vtable[3];
+                swap_chain->Release();
+            }
+            else {
+                TW_LOG_WARNING("d3d9: bootstrap device has no swap chain - IDirect3DSwapChain9::Present will not be hooked");
+            }
 
             resolved = true;
 
@@ -525,6 +698,7 @@ bool install_d3d9_hooks()
     o_create_device = reinterpret_cast<create_device_fn>(entries.create_device);
     o_reset = reinterpret_cast<reset_fn>(entries.reset);
     o_end_scene = reinterpret_cast<end_scene_fn>(entries.end_scene);
+    o_present = reinterpret_cast<present_fn>(entries.present);
     o_set_texture = reinterpret_cast<set_texture_fn>(entries.set_texture);
     o_draw_primitive = reinterpret_cast<draw_primitive_fn>(entries.draw_primitive);
     o_draw_indexed_primitive = reinterpret_cast<draw_indexed_primitive_fn>(entries.draw_indexed_primitive);
@@ -545,6 +719,7 @@ bool install_d3d9_hooks()
         { reinterpret_cast<void**>(&o_create_device), reinterpret_cast<void*>(hk_create_device) },
         { reinterpret_cast<void**>(&o_reset), reinterpret_cast<void*>(hk_reset) },
         { reinterpret_cast<void**>(&o_end_scene), reinterpret_cast<void*>(hk_end_scene) },
+        { reinterpret_cast<void**>(&o_present), reinterpret_cast<void*>(hk_present) },
         { reinterpret_cast<void**>(&o_set_texture), reinterpret_cast<void*>(hk_set_texture) },
         { reinterpret_cast<void**>(&o_draw_primitive), reinterpret_cast<void*>(hk_draw_primitive) },
         { reinterpret_cast<void**>(&o_draw_indexed_primitive), reinterpret_cast<void*>(hk_draw_indexed_primitive) },
@@ -555,15 +730,35 @@ bool install_d3d9_hooks()
         o_create_device = nullptr;
         o_reset = nullptr;
         o_end_scene = nullptr;
+        o_present = nullptr;
         o_set_texture = nullptr;
         o_draw_primitive = nullptr;
         o_draw_indexed_primitive = nullptr;
-    }
-    else {
-        TW_LOG_INFO("d3d9: hooks installed (CreateDevice/Reset/EndScene/SetTexture/DrawPrimitive/DrawIndexedPrimitive)");
+
+        return false;
     }
 
-    return ok;
+    TW_LOG_INFO("d3d9: hooks installed (CreateDevice/Reset/EndScene/Present/SetTexture/DrawPrimitive/DrawIndexedPrimitive)");
+
+    // Its own transaction, and its own failure handling: the swap chain's Present is a belt to the
+    // device Present's braces (see resolved_entries), so losing it costs nothing as long as the game
+    // presents through the device - which is the ordinary case. Failing the whole install over it
+    // would trade a working overlay for a hypothetical one.
+    if(entries.swap_chain_present != nullptr) {
+        o_swap_chain_present = reinterpret_cast<swap_chain_present_fn>(entries.swap_chain_present);
+
+        if(!tw::framework::detour::attach({
+               { reinterpret_cast<void**>(&o_swap_chain_present), reinterpret_cast<void*>(hk_swap_chain_present) },
+           })) {
+            TW_LOG_WARNING("d3d9: DetourAttach on IDirect3DSwapChain9::Present failed - relying on the device Present alone");
+            o_swap_chain_present = nullptr;
+        }
+        else {
+            TW_LOG_INFO("d3d9: IDirect3DSwapChain9::Present hooked as well");
+        }
+    }
+
+    return true;
 }
 
 } // namespace tw::framework::d3d9
