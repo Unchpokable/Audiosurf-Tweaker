@@ -378,6 +378,7 @@ void* g_entry_points[] = {
     reinterpret_cast<void*>(&tw::lua::api::tw_ease),
     reinterpret_cast<void*>(&tw::lua::api::tw_ease_count),
     reinterpret_cast<void*>(&tw::lua::api::tw_ease_name),
+    reinterpret_cast<void*>(&tw::lua::api::tw_hud_rect_gradient),
 };
 } // namespace
 
@@ -871,6 +872,23 @@ void tw_hud_rect_glow(float x0, float y0, float x1, float y1, unsigned int color
 
     tw::ui::widgets::detail::add_rect_glow(
         ImGui::GetBackgroundDrawList(), ImVec2(x0, y0), ImVec2(x1, y1), rounding, ImGui::ColorConvertU32ToFloat4(color), strength);
+}
+
+void tw_hud_rect_gradient(
+    float x0, float y0, float x1, float y1, unsigned int from, unsigned int to, int vertical) noexcept
+{
+    if(!inside_frame()) {
+        return;
+    }
+
+    // Corner order is upper-left, upper-right, lower-right, lower-left. Horizontal puts `from` on
+    // the two left corners; vertical puts it on the two top ones.
+    const unsigned int tl = from;
+    const unsigned int tr = (vertical != 0) ? from : to;
+    const unsigned int br = to;
+    const unsigned int bl = (vertical != 0) ? to : from;
+
+    ImGui::GetBackgroundDrawList()->AddRectFilledMultiColor(ImVec2(x0, y0), ImVec2(x1, y1), tl, tr, br, bl);
 }
 
 void tw_hud_text_glow(float x,

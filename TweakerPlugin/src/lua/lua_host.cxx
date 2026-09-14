@@ -89,6 +89,7 @@ local C_dt              = ffi.cast("float (*)(void)",                           
 local C_ease            = ffi.cast("float (*)(int, float)",                             P[44])
 local C_ease_count      = ffi.cast("int (*)(void)",                                     P[45])
 local C_ease_name       = ffi.cast("const char* (*)(int)",                              P[46])
+local C_hud_rect_grad   = ffi.cast("void (*)(float, float, float, float, unsigned int, unsigned int, int)", P[47])
 
 -- One reusable out-buffer for resolve results: [0] = status, [1] = the kind the channel actually is.
 -- Allocated once here rather than per call, so a resolve costs no garbage.
@@ -462,6 +463,16 @@ end
 -- then glow, which is also what lets a shape glow in a different colour than it is filled with.
 function tw.hud.glow_rect(x0, y0, x1, y1, color, rounding, strength)
     C_hud_rect_glow(x0, y0, x1, y1, color or 0xFFFFFFFF, rounding or 0, strength or 1)
+end
+
+-- A rectangle filled with a two-stop linear gradient: `from` at the left edge and `to` at the right,
+-- or top and bottom when `vertical` is true. Both colours carry their own alpha, so a backdrop that
+-- fades out to nothing is the same call as one colour fading into another.
+--
+-- No rounding: the primitive underneath is one quad with per-corner colours and has no rounded form.
+-- A gradient that wants a soft end gets it from the gradient.
+function tw.hud.gradient_rect(x0, y0, x1, y1, from, to, vertical)
+    C_hud_rect_grad(x0, y0, x1, y1, from or 0xFFFFFFFF, to or 0, vertical and 1 or 0)
 end
 
 function tw.hud.line(x0, y0, x1, y1, color, thickness)

@@ -292,6 +292,15 @@ void tw_hud_rect_corners(
 // also the order that lets it glow in a different colour than it fills.
 void tw_hud_rect_glow(float x0, float y0, float x1, float y1, unsigned int color, float rounding, float strength) noexcept;
 
+// A rectangle filled with a two-stop linear gradient, `from` at the low edge and `to` at the high
+// one, horizontal unless `vertical` is non-zero. Both colours carry their own alpha, so fading a
+// backdrop out to nothing is the same call as fading one colour into another.
+//
+// No rounding: the underlying primitive is a single quad with per-corner colours, and ImGui has no
+// rounded form of it. A gradient that needs a soft end gets it from the gradient, not from a radius.
+void tw_hud_rect_gradient(
+    float x0, float y0, float x1, float y1, unsigned int from, unsigned int to, int vertical) noexcept;
+
 // Text with a glow behind it. Draws the text too - unlike the rect version, because the glow is
 // offset copies of the same glyphs and doing it in two calls would rasterize them twice.
 void tw_hud_text_glow(float x,
