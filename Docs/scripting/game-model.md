@@ -196,6 +196,9 @@ that is the part that bites.
 | `Do_ResetSimpleStats` | action | The **run** starts. Every entry into gameplay, restart included. The "run began" event. |
 | `Do_ReseteWhiteWildBlocks` | action | Whites, wilds and power-ups are placed over the generated track. Re-randomised on every run. (The typo is the game's.) |
 | `Do_CalculateFinalStats` | action | Fires when a run ends and scoring happens. |
+| `Do_UpdatePoints` | action | **Every** change to the score goes through here — ten call sites across eight groups. Hook it and you have seen them all. |
+| `Points_L`, `Points_R` | number | The two halves of a Double Vision score. Meaningless otherwise. |
+| *(index 155)* | number | `UpdatePoints_Color` — the colour the points being awarded belong to. By index: the group has two channels of that name. |
 
 The first three are three different moments and picking the wrong one is a classic mistake — see
 [Reacting and intercepting § Events worth knowing about](hooks.md#events-worth-knowing-about).
@@ -220,7 +223,8 @@ that is legitimately absent.
 ### `SpecialPurpose` — the character you picked
 
 `Ninja?`, `Freeride?`, `DumptyScoopDown?` (Pointman's buffer is down), `ShatterStorming?` (Eraser is
-shattering). These are how you tell *which* ability just consumed a block.
+shattering). These are how you tell *which* ability just consumed a block. `useClone?` is on for the
+Double Vision characters, the ones with two scores.
 
 `MatchCollectionTicks` is here too — how long the board waits between match-collection passes. It is
 per character *and* per league (10/10/20 by league, overridden to 15 for Easy Ninja, 50 for Freeride,
@@ -256,6 +260,64 @@ empty, not treat it as a hypothetical.
 `Do_CollectCar` fires whenever your car takes a block off the road — through the grid, through
 Pointman's buffer, or through an Eraser shatter. It is the single honest "I collected something"
 event. The colour is in channel index `900` (the name `TrafficType` is ambiguous; see the traps).
+
+### `MoneyFloaterCommander` — points on their way to the score
+
+When a match is collected the game does not award the points. It launches a particle that flies to
+the score box, and awards them when the particle lands. So there is a window — the length of the
+flight — in which the match has happened and the score has not moved, and a HUD that wants to show
+the points arriving rather than reporting them afterwards can use it.
+
+| Channel | Kind | Notes |
+|---|---|---|
+| *(index 27)* | action | `Do_LaunchParticle`. Fires at the match, before any points are awarded. |
+| *(index 198)* | action | `Do_EndLifeApplyScore`. The landing; calls `StatCollector::Do_UpdatePoints` immediately after. |
+| `inDisplayedMoney` | number | How many points this particle carries. |
+| `inLaunchColor` | number | Which colour they came from. |
+| `Index_Particles` | number | Cursor of the particle table, and already on the row that matters in both places above: a launch has just filled it, a landing is the loop iteration for it. |
+| `MoneyParticles: SpentLifePercentage` | table | 0 to 1. This particle's own progress. |
+| `MoneyParticles: State` | table | 1 while in flight, 0 once landed. |
+| `MoneyParticles: MoneyValue` | table | The amount it carries. |
+
+Three traps.
+
+**`Launch_DisplayedMoney` and `Launch_Color` are not these channels.** They are the group's declared
+parameters and every caller binds them, but the body reads the `in*` pair instead; the parameters are
+never wired to anything and hold whatever they were born with.
+
+**A particle is launched per matched TILE, not per match.** `Puzzle::Do_LaunchMoneyParticles` loops
+over every block in the collection, so a seven-block match is seven launches carrying the same colour
+and the same amount. The game's own "+N" text never shows seven, because it is built from a
+once-a-frame diff of `PointsByColor` and so merges per colour — anything hooking the launch has to
+merge them itself.
+
+**Each particle has its own random speed**, so tiles collected on the same frame land on different
+frames. `Index_Particles` at the landing is what tells you *which* one, and it is the cheap way to
+know when a colour's points have all arrived.
+
+Do not try to hide the particles by suppressing `XX_gui`'s `Do_RenderMoneyParticles`. That node is
+the loop that ages them and awards the score; suppressing it stops the game scoring at all.
+
+### `XX_gui` — the HUD
+
+Mostly things to take over rather than to read, but one channel is worth knowing: **`PB`** is the
+personal best for this song, already reduced by the game from the local and server records. It is
+written every frame by the same handler that draws the "Best Score" popup, above the branch that
+does the drawing — so it stays current whether or not that popup is on screen.
+
+**It is not a raw score.** `LocalScores::Do_WriteScore` stores `StatCollector::PointsWithGridBonus`,
+the final figure with every bonus applied, and the server copy is the same number uploaded. Comparing
+it against `Points` compares two different quantities and comes out 20-50% short for a whole good
+run. What it compares against is the projection: `Points × (1 + sum of the scalers earned so far)`,
+which is the same thing `Achievements::SkillRating` is built from.
+
+That projection is exactly linear in `Points` — `Do_FindAddBonusPoints` applies each scaler to the
+raw score and never compounds them — so the factor is common to every point in the run and
+distributes. If you want "what is this match worth towards the final score", multiply its raw delta
+by the same factor; the parts still sum to the whole.
+
+`Color1`…`Color5` are the block palette, in reverse order (`ColorID` 0 is `Color5`). They are only
+the palette that is actually in use in a normal run; see the internal notes for the other three.
 
 ### `Puzzle` — the board
 

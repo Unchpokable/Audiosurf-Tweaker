@@ -208,6 +208,7 @@ button g_feed_right { "menu_feed_right", { 90.f, 28.f } };
 button g_pins_left { "menu_pins_left", { 90.f, 28.f } };
 button g_pins_right { "menu_pins_right", { 90.f, 28.f } };
 button g_theme_reset_btn { "menu_theme_reset", { 100.f, 28.f } };
+toggle g_offline_pin_toggle { "menu_offline_pin" };
 
 void ensure_widgets_ready()
 {
@@ -244,6 +245,23 @@ void ensure_widgets_ready()
     g_size = tw::ui::overlay_config::menu_size();
 
     g_widgets_ready = true;
+}
+
+// What the host-backed tabs (Skins, Tweaks, Player) show while Audiosurf Tweaker is not connected. The tabs
+// stay where they are - indices are positional, and a tab strip that reshuffles itself on every
+// connect/disconnect is worse than a page that explains itself (Docs/Internal/plugin-offline-mode.md, Р-4).
+// With nothing to click, no pending request can be started against a host that is not there.
+void draw_offline_stub()
+{
+    ImGui::Spacing();
+    ImGui::PushStyleColor(ImGuiCol_Text, theme::text_primary);
+    ImGui::TextWrapped("Audiosurf Tweaker is not connected.");
+    ImGui::PopStyleColor();
+
+    ImGui::Spacing();
+    ImGui::PushStyleColor(ImGuiCol_Text, theme::text_muted);
+    ImGui::TextWrapped("Skins, tweaks and Quick Player need Audiosurf Tweaker running. Skyboxes and scripts work without it.");
+    ImGui::PopStyleColor();
 }
 
 void draw_skins_tab(const tw::ui::overlay_state::cache& snapshot)
@@ -506,6 +524,17 @@ void draw_settings_tab()
         &tw::ui::overlay_config::set_feed_side);
     ImGui::Spacing();
     draw_side_row("Pins side", tw::ui::overlay_config::pins_side(), g_pins_left, g_pins_right, &tw::ui::overlay_config::set_pins_side);
+    ImGui::Spacing();
+
+    g_offline_pin_toggle.set_checked(tw::ui::overlay_config::offline_pin()); // no-op if unchanged
+    ImGui::AlignTextToFramePadding();
+    ImGui::TextUnformatted("Show \"Offline\" pin");
+    ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetCursorPosX() - 44.f);
+    g_offline_pin_toggle.update();
+    if(g_offline_pin_toggle.changed()) {
+        tw::ui::overlay_config::set_offline_pin(g_offline_pin_toggle.checked());
+        tw::ui::overlay_config::request_save();
+    }
 
     ImGui::Spacing();
     ImGui::Separator();
@@ -722,18 +751,35 @@ void update(const tw::ui::overlay_state::cache& snapshot, const tw::ui::qp::stat
     const float content_w = win_size.x - k_padding * 2.f;
     const float content_h = win_size.y - k_title_h - k_padding * 2.f;
 
+    const bool online = snapshot.host_connected;
+
     g_tabs.set_size(ImVec2 { content_w, content_h });
     g_tabs.begin();
     if(g_tabs.begin_view(0)) {
-        draw_skins_tab(snapshot);
+        if(online) {
+            draw_skins_tab(snapshot);
+        }
+        else {
+            draw_offline_stub();
+        }
         g_tabs.end_view();
     }
     if(g_tabs.begin_view(1)) {
-        draw_tweaks_tab(snapshot);
+        if(online) {
+            draw_tweaks_tab(snapshot);
+        }
+        else {
+            draw_offline_stub();
+        }
         g_tabs.end_view();
     }
     if(g_tabs.begin_view(k_player_tab)) {
-        tw::ui::plugins::interactive::player::draw(qp_snapshot);
+        if(online) {
+            tw::ui::plugins::interactive::player::draw(qp_snapshot);
+        }
+        else {
+            draw_offline_stub();
+        }
         g_tabs.end_view();
     }
     if(g_tabs.begin_view(3)) {
@@ -754,7 +800,8 @@ void update(const tw::ui::overlay_state::cache& snapshot, const tw::ui::qp::stat
     // asking for the size it wants requires ImGui's font metrics, which are only valid inside a
     // frame. One-shot on entering the tab, and only ever upward - the user's saved size is theirs,
     // and silently shrinking the window back on leaving would fight every resize they make.
-    if(g_tabs.selected_tab() == k_player_tab) {
+    // The stub fits any size the menu can have, so an offline Player tab asks for nothing.
+    if(g_tabs.selected_tab() == k_player_tab && online) {
         const ImVec2 wanted = window_size_for(player::desired_content_size(qp_snapshot));
         g_active_min_size = ImVec2 { (std::max)(k_min_size.x, wanted.x), (std::max)(k_min_size.y, wanted.y) };
 

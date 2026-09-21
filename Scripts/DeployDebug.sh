@@ -70,17 +70,22 @@ fi
 cp -f "$INJECT_HELPER_EXE" "$TWEAKER_OUT/"
 echo "    $INJECT_HELPER_EXE -> $TWEAKER_OUT"
 
-# TweakerPlugin.dll is optional - its CMake build needs the DirectX/Quest3D SDKs and a vendored
-# ImGui tree (none guaranteed present, see TweakerUI.csproj's BuildTweakerPlugin target), and the
-# overlay itself is an opt-in [Experimental] Settings toggle - a bundle without it is still a
-# complete, working Tweaker.
-echo "==> Locating TweakerPlugin.dll from the CMake pre-build hook (optional - in-game overlay)"
-TWEAKER_PLUGIN_DLL="$(find "$REPO_ROOT/TweakerUI/bin" -iname "TweakerPlugin.dll" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)"
-if [ -n "$TWEAKER_PLUGIN_DLL" ]; then
-    cp -f "$TWEAKER_PLUGIN_DLL" "$TWEAKER_OUT/"
-    echo "    $TWEAKER_PLUGIN_DLL -> $TWEAKER_OUT"
+# The plugin ships as PluginPayload/ - a mirror of the layout its files take inside the game, so
+# installing it is a plain copy of the tree (Docs/Internal/plugin-offline-mode.md §6.1, §6.3). The
+# whole folder goes across rather than being reassembled here: PluginInstallation keys every file
+# by its path relative to the payload root, so a DLL anywhere but channels/ installs to a folder
+# the game never scans. Same block as Deploy.sh - see the longer comment there.
+#
+# Optional, exactly as in Deploy.sh: no plugin build means a bundle without the in-game plugin,
+# which is still a complete Tweaker.
+echo "==> Locating PluginPayload/ from the CMake pre-build hook (optional - in-game plugin)"
+PLUGIN_PAYLOAD_DLL="$(find "$REPO_ROOT/TweakerUI/bin" -type f -ipath "*/PluginPayload/channels/TweakerPlugin.dll" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)"
+if [ -n "$PLUGIN_PAYLOAD_DLL" ]; then
+    PLUGIN_PAYLOAD="$(dirname "$(dirname "$PLUGIN_PAYLOAD_DLL")")"
+    cp -rf "$PLUGIN_PAYLOAD" "$TWEAKER_OUT/"
+    echo "    $PLUGIN_PAYLOAD -> $TWEAKER_OUT/PluginPayload"
 else
-    echo "    TweakerPlugin.dll not found - in-game overlay will be unavailable in this bundle (see TweakerPlugin/cmake/*.cmake)."
+    echo "    PluginPayload/channels/TweakerPlugin.dll not found - the in-game plugin will be unavailable in this bundle (see TweakerPlugin/cmake/*.cmake)."
 fi
 
 # --- 2. LegacyDataConverter: old-style net481 csproj, needs full MSBuild, not dotnet CLI ---------

@@ -5,7 +5,20 @@ namespace tw::framework::d3d9
 using ui_plugin_draw_fn = void (*)(IDirect3DDevice9* device);
 using device_reset_listener_fn = void (*)();
 
+// This module's own subscriptions. Startup thread, before framework::ready is published, in both load
+// modes.
+void initialize() noexcept;
+
+// Late load (injected into a running game): resolves every entry off a throwaway device and detours them
+// all at once, suspending the other threads.
 bool install_d3d9_hooks();
+
+// Early load (engine\channels\), from d3d9.dll's own loader notification - under the loader lock, before
+// anyone can have called the export, so no threads are suspended. The rest installs itself as the game
+// creates its objects: IDirect3D9::CreateDevice off the first IDirect3D9 the game gets, every device
+// method off its first device. No throwaway device. The caller pins the module first (Р-25). See
+// Docs/Internal/plugin-offline-mode.md §4.2.
+bool hook_direct3d_create9_from_loader(HMODULE d3d9) noexcept;
 
 void attach_ui_plugin(ui_plugin_draw_fn fn);
 void detach_ui_plugin();

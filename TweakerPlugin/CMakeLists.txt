@@ -61,6 +61,7 @@ include(cmake/LuaJIT.cmake)
 add_library(TweakerPlugin SHARED)
 add_subdirectory(src)
 add_subdirectory(smoke)
+add_subdirectory(probe)
 
 target_include_directories(TweakerPlugin PRIVATE src)
 
@@ -75,6 +76,25 @@ target_link_libraries(TweakerPlugin PRIVATE
 target_precompile_headers(TweakerPlugin PRIVATE src/pch.hxx)
 
 target_link_options(TweakerPlugin PRIVATE /STACK:4194304)
+
+# The plugin's version: the VERSIONINFO resource the host reads off the DLL on disk, and the same string
+# in the lifecycle log and, later, in HANDSHAKE_ACK (Docs/Internal/plugin-offline-mode.md, Р-13). The
+# build number is for whoever builds a release to set; a developer build is .0.
+set(TWEAKER_PLUGIN_VERSION "0.1.0" CACHE STRING "TweakerPlugin version, major.minor.patch")
+set(TWEAKER_PLUGIN_BUILD "0" CACHE STRING "TweakerPlugin build number, the fourth VERSIONINFO field")
+
+string(REPLACE "." ";" _tweaker_version_parts "${TWEAKER_PLUGIN_VERSION}")
+list(LENGTH _tweaker_version_parts _tweaker_version_count)
+if(NOT _tweaker_version_count EQUAL 3)
+    message(FATAL_ERROR "TWEAKER_PLUGIN_VERSION must be major.minor.patch, got '${TWEAKER_PLUGIN_VERSION}'")
+endif()
+list(GET _tweaker_version_parts 0 TWEAKER_PLUGIN_VERSION_MAJOR)
+list(GET _tweaker_version_parts 1 TWEAKER_PLUGIN_VERSION_MINOR)
+list(GET _tweaker_version_parts 2 TWEAKER_PLUGIN_VERSION_PATCH)
+
+configure_file("${CMAKE_SOURCE_DIR}/src/version.rc.in" "${CMAKE_BINARY_DIR}/generated/version.rc" @ONLY)
+target_sources(TweakerPlugin PRIVATE "${CMAKE_BINARY_DIR}/generated/version.rc")
+target_compile_definitions(TweakerPlugin PRIVATE TW_PLUGIN_VERSION="${TWEAKER_PLUGIN_VERSION}.${TWEAKER_PLUGIN_BUILD}")
 
 set_target_properties(TweakerPlugin PROPERTIES
     OUTPUT_NAME "TweakerPlugin"

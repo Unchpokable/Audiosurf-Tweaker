@@ -3,8 +3,7 @@
 #include "skybox/sky_settings.hxx"
 
 #include "plugin/diagnostics.hxx"
-
-#include "skybox/sky_paths.hxx"
+#include "plugin/paths.hxx"
 
 #include <libyyjson/yyjson.h>
 
@@ -403,7 +402,7 @@ void store::save(const package::manifest& sky) const
 
 std::filesystem::path path_for(std::string_view package_stem)
 {
-    const std::filesystem::path root = tw::skybox::dll_directory();
+    const std::filesystem::path& root = tw::plugin::paths::sky_configs_dir();
     if(root.empty()) {
         return {};
     }
@@ -430,6 +429,7 @@ std::filesystem::path path_for(std::string_view package_stem)
         safe = "sky";
     }
 
-    return root / "Skies" / (safe + ".json");
+    // ASCII by construction after the pass above, so the narrow conversion below cannot fail.
+    return root / (safe + ".json");
 }
 } // namespace tw::skybox::settings

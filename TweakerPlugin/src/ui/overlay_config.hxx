@@ -2,8 +2,8 @@
 
 #include <imgui.h>
 
+#include <filesystem>
 #include <string>
-#include <string_view>
 
 // Local, cosmetic overlay settings - corner placement of notefeed/pins/watermark, menu
 // geometry, theme overrides. Deliberately NOT part of TW_OVL: none of this is host state:
@@ -21,7 +21,10 @@ enum class side {
 // need to check for a first-run/missing-file case themselves. Remembers `path` for save() below,
 // so callers that just mutate settings (e.g. the menu's Settings tab) don't need to plumb the
 // path through themselves - only the one site that calls load() needs to know it.
-void load(std::string_view path);
+//
+// A filesystem path rather than a string: the file lives under the game's folder, which can sit on a
+// path the ANSI code page cannot spell.
+void load(const std::filesystem::path& path);
 
 // Writes the file immediately. Only for teardown paths that have no next frame (plugin shutdown,
 // smoke exit) - interactive call sites want request_save()/flush() below instead.
@@ -43,6 +46,11 @@ void set_feed_side(side value);
 
 [[nodiscard]] side pins_side() noexcept;
 void set_pins_side(side value);
+
+// Whether pins show an "Offline" row while Audiosurf Tweaker is not connected. On by default
+// (Docs/Internal/plugin-offline-mode.md, Р-7); the connect/disconnect toasts do not depend on it.
+[[nodiscard]] bool offline_pin() noexcept;
+void set_offline_pin(bool value);
 
 [[nodiscard]] const std::string& theme_overrides() noexcept;
 void set_theme_overrides(std::string text);

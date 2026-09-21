@@ -2,7 +2,8 @@
 
 #include "ui/overlay_state.hxx"
 
-// Vertically-centered constants (active tweaks + current skin), left/right side per
+// Vertically-centered constants (active tweaks + current skin, or an "Offline" row while Audiosurf
+// Tweaker is not connected and overlay_config::offline_pin() is on), left/right side per
 // overlay_config::pins_side(). Always-on, non-interactive - no push API, derives its content
 // straight from the latest overlay_state snapshot every frame.
 namespace tw::ui::plugins::statics::pins

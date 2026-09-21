@@ -214,6 +214,18 @@ to 1.
 Draws **only** the glow — fill first with `tw.hud.rect`, then glow. That order is also what lets a
 shape glow in a different colour than it is filled with.
 
+### `tw.hud.gradient_rect(x0, y0, x1, y1, from, to, vertical)`
+
+A rectangle filled with a two-stop linear gradient: `from` at the left edge and `to` at the right,
+or top and bottom when `vertical` is true. Both colours carry their own alpha, so a backdrop that
+fades out to nothing is the same call as one colour fading into another.
+
+No rounding — the primitive underneath is one quad with per-corner colours and has no rounded form.
+A gradient that wants a soft end gets it from the gradient.
+
+Three of these make the usual shape: a plain `rect` for the part that has to be solid, and one
+gradient either side of it fading to `tw.alpha(colour, 0)`.
+
 ### `tw.hud.glow_text(x, y, text, colour, glow, size, font, strength)`
 
 Text with a glow behind it. Draws the text as well, unlike the rect version — the glow is offset

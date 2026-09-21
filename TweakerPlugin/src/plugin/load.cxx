@@ -1,13 +1,21 @@
 #include "pch.hxx"
 
+#include "plugin/load.hxx"
+
 #include "framework/channel_hook.hxx"
 #include "framework/d3d9_hooks.hxx"
 #include "framework/dinput8_hooks.hxx"
+#include "framework/loader_watch.hxx"
+#include "framework/ready.hxx"
 #include "framework/texture_hook.hxx"
 
+#include "plugin/boot_log.hxx"
 #include "plugin/diagnostics.hxx"
 #include "plugin/globals.hxx"
-#include "plugin/load.hxx"
+#include "plugin/paths.hxx"
+#include "plugin/presence.hxx"
+
+#include "ipc/overlay_ipc.hxx"
 
 #include "resource/resource.hxx"
 
@@ -21,88 +29,118 @@
 
 namespace
 {
-// Overlay single-instance guard, the in-process half of the host's inject guard (see
-// TweakerUI/Core/OverlayHelper.cs and Docs/Internal/overlay-protocol.md). The name is deliberately
-// free of any version or path component: a newer host must be able to detect an older plugin
-// sitting in the game, and the file may well have been renamed. Scoped by the host process id so
-// the answer is about *this* game process specifically.
-//
-// The handle is never released - it dies with the game process, which is exactly the lifetime being
-// guarded, and is the same self-cleaning property the host-side guards rely on.
-HANDLE g_instance_mutex = nullptr;
+enum class startup : std::uint8_t {
+    early,
+    late,
+};
 
-bool claim_single_instance()
+constexpr std::wstring_view k_game_executable = L"QuestViewer.exe";
+constexpr std::wstring_view k_d3d9_module = L"d3d9.dll";
+
+// Quest3D's Texture channel, Aco_DX8_Texture - see framework/texture_hook.cxx.
+constexpr std::wstring_view k_texture_channel_module = L"BC052C38-2D5D-4F0C-A0CA-654D0AFC584A.dll";
+
+// Past this, stage 2 writes down what it is still waiting for. Nothing times out: an offline plugin has
+// nowhere to be, and a game sitting in a long load is not a failure.
+constexpr auto k_slow_stage = std::chrono::seconds { 30 };
+
+startup g_startup = startup::late;
+
+std::atomic<bool> g_d3d9_hooked { false };
+
+// Up from the first device bind onwards - stage 2.
+std::atomic<bool> g_device_bound { false };
+
+bool equals_ignore_case(std::wstring_view a, std::wstring_view b) noexcept
 {
-    std::wstring name = L"Local\\AudiosurfTweaker.Overlay.";
-    name += std::to_wstring(::GetCurrentProcessId());
-
-    g_instance_mutex = ::CreateMutexW(nullptr, FALSE, name.c_str());
-    if(g_instance_mutex == nullptr) {
-        // Cannot prove presence either way. Carrying on is the lesser evil: the host only ever
-        // reaches an injection after its own handshake probe went unanswered, so a live first copy
-        // would already have stopped it from getting here.
-        TW_LOG_WARNING("load: CreateMutexW failed ({}) - proceeding without the single-instance guard", ::GetLastError());
-        return true;
-    }
-
-    if(::GetLastError() == ERROR_ALREADY_EXISTS) {
-        ::CloseHandle(g_instance_mutex);
-        g_instance_mutex = nullptr;
-        return false;
-    }
-
-    return true;
+    return ::CompareStringOrdinal(a.data(), static_cast<int>(a.size()), b.data(), static_cast<int>(b.size()), TRUE) == CSTR_EQUAL;
 }
-} // namespace
 
-namespace tw::plugin
+std::string module_path(HMODULE module) noexcept
 {
-void load_thread(void* module_handle)
+    std::array<wchar_t, MAX_PATH> buffer {};
+    const DWORD length = ::GetModuleFileNameW(module, buffer.data(), static_cast<DWORD>(buffer.size()));
+    return tw::plugin::paths::to_utf8(std::filesystem::path { std::wstring_view { buffer.data(), length } });
+}
+
+// --- loader notifications (early load) -------------------------------------------------------------------
+//
+// Under the loader lock, on whichever thread loads the module. Only what §4.2 allows: pin, one detour
+// transaction without suspending anyone, the lifecycle log.
+
+void on_d3d9_loaded(HMODULE module)
 {
-    globals::module_handle = static_cast<HMODULE>(module_handle);
-
-    // First thing on the thread: everything below is worth a log line, and none of it can be
-    // logged before the sinks exist.
-    diagnostics::initialize();
-    TW_LOG_INFO("load: bootstrap thread started, module={}", module_handle);
-
-    // Before anything at all is wired up: a second copy in the same process would install a second
-    // set of Detours over EndScene/CallChannel and a second WndProc subscription, which is a crash,
-    // not a degraded overlay. Bailing out here leaves this copy mapped but completely inert - no
-    // hooks, no threads, no state - rather than risking FreeLibraryAndExitThread from the very
-    // thread the injector is waiting on.
-    if(!claim_single_instance()) {
-        TW_LOG_WARNING("load: another TweakerPlugin instance is already live in this process - this copy stays inert");
+    // HighPoly maps d3d9.dll as a dependency of a channel it is only probing, frees it, and maps it again.
+    // The pin is what keeps that from unmapping the image the hook is about to go into (Р-25).
+    if(!tw::framework::loader_watch::pin(module)) {
+        TW_BOOT_LOG("module: d3d9.dll loaded at {} but cannot be pinned (error {}) - not hooked, waiting for the next load",
+            static_cast<void*>(module),
+            ::GetLastError());
         return;
     }
 
-    if(!tw::resource::initialize(globals::module_handle)) {
-        TW_LOG_ERROR("load: resource::initialize failed - fonts and icons will be missing");
+    if(g_d3d9_hooked.exchange(true)) {
+        TW_BOOT_LOG("module: d3d9.dll loaded again at {} although pinned - anomaly, hooks left alone", static_cast<void*>(module));
+        return;
     }
 
-    // Wire up every listener/subscriber and bring the UI + IPC subsystems online BEFORE any hook
-    // goes live. install_d3d9_hooks() makes hk_end_scene/hk_create_device callable immediately on
-    // the game's render thread; if that thread reached bind_device() -> on_device_bound while these
-    // listeners were still null, the device would bind with no ImGui init and never retry (the bind
-    // is one-shot per device/window pair). Ordering the hooks last also publishes these writes to
-    // the render thread safely: DetourTransactionCommit() inside the install calls suspends and
-    // resumes every other thread, which is a full barrier on the pointers written above.
-    tw::ui::initialize();
+    const bool ok = tw::framework::d3d9::hook_direct3d_create9_from_loader(module);
+    TW_BOOT_LOG("module: d3d9.dll loaded at {}, pinned, Direct3DCreate9 {}",
+        static_cast<void*>(module),
+        ok ? "hooked" : "hook FAILED - no overlay and no sky this session");
+}
 
-    // Same "subscribe before the hooks go live" rule as tw::ui::initialize() above: this registers
-    // a device bind/unbind listener, a device reset listener and the draw interceptor, all of which
-    // the render thread starts calling the instant install_d3d9_hooks() commits.
-    tw::skybox::initialize();
+void on_d3d9_unloaded(HMODULE module)
+{
+    TW_BOOT_LOG("module: d3d9.dll UNLOADED at {} despite the pin - anomaly", static_cast<void*>(module));
+}
 
-    // After tw::ui::initialize() (which builds the menu) and before the first frame (which builds
-    // the tab strip) - see menu::add_extra_tab.
-    tw::skybox::ui::initialize();
+void on_texture_channel_loaded(HMODULE module)
+{
+    if(!tw::framework::loader_watch::pin(module)) {
+        TW_BOOT_LOG("module: Texture channel loaded at {} but cannot be pinned (error {}) - not hooked, waiting for the next load",
+            static_cast<void*>(module),
+            ::GetLastError());
+        return;
+    }
 
-    // Same ordering rule, and before lua_host::initialize() below only for tidiness - the tab reads the
-    // script registry every frame rather than at registration time.
-    tw::lua::ui::initialize();
+    TW_BOOT_LOG("module: Texture channel loaded at {}, pinned", static_cast<void*>(module));
+    tw::framework::texture::install_texture_hook_from_loader(module);
+}
 
-    if(!tw::framework::install_channel_hook()) {
+void on_texture_channel_unloaded(HMODULE module)
+{
+    TW_BOOT_LOG("module: Texture channel UNLOADED at {} despite the pin - anomaly", static_cast<void*>(module));
+}
+
+constexpr std::array<tw::framework::loader_watch::watch, 2> k_watches { {
+    { k_d3d9_module, &on_d3d9_loaded, &on_d3d9_unloaded },
+    { k_texture_channel_module, &on_texture_channel_loaded, &on_texture_channel_unloaded },
+} };
+
+// --- stage 2 ----------------------------------------------------------------------------------------------
+
+// Registered last, so it runs after every other bind listener - the ImGui backend included. On the render
+// thread, inside bind_device: initialisation, where SetEvent and the lifecycle log are allowed (§4.5).
+void on_device_bound(IDirect3DDevice9* device, HWND hwnd)
+{
+    if(g_device_bound.exchange(true, std::memory_order_relaxed)) {
+        return;
+    }
+
+    // bind_device has hooked the game window's WndProc just before calling its listeners, so TW_OVL can be
+    // received from here on.
+    tw::plugin::presence::signal_ready();
+    TW_BOOT_LOG("stage 2: first device bound (device {}, hwnd {}) - Ready signalled", static_cast<void*>(device), static_cast<void*>(hwnd));
+}
+
+// --- stage 1 and 3 ----------------------------------------------------------------------------------------
+
+void install_late_hooks()
+{
+    const bool channel_ok = tw::framework::install_channel_hook();
+    TW_BOOT_LOG("late: CallChannel {}", channel_ok ? "hooked" : "hook FAILED - scripts will not see the engine");
+    if(!channel_ok) {
         TW_LOG_WARNING("load: channel hook not installed - Quest3D engine pointer will stay null");
     }
 
@@ -111,14 +149,173 @@ void load_thread(void* module_handle)
     // process. By the time there is a D3D9 device, it is certainly mapped.
     tw::framework::texture::install_texture_hook();
 
-    // After the channel hook: lua_channels resolves HighPoly.dll entry points here, and the VM has to
-    // exist before the first frame calls into it. Script handles resolve lazily anyway, because the
-    // EngineInterface pointer the hook above captures arrives late (see lua-scripting.md §7).
-    tw::lua::host::initialize();
-
     tw::framework::d3d9::install_d3d9_hooks();
     tw::framework::dinput::install_hooks();
+}
 
-    TW_LOG_INFO("load: bootstrap complete");
+void run_startup(HMODULE module)
+{
+    const auto started = std::chrono::steady_clock::now();
+    const auto elapsed_ms = [&started] {
+        return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
+    };
+
+    tw::plugin::globals::module_handle = module;
+
+    tw::plugin::diagnostics::initialize();
+    TW_LOG_INFO("load: startup thread running, module={}", static_cast<void*>(module));
+    TW_BOOT_LOG("stage 1: startup thread running");
+
+    tw::plugin::paths::create_directories();
+
+    if(!tw::resource::initialize(module)) {
+        TW_LOG_ERROR("load: resource::initialize failed - fonts and icons will be missing");
+        TW_BOOT_LOG("stage 1: embedded resources unavailable - fonts and icons will be missing");
+    }
+
+    // Every registration below lands in a vector or a pointer the game's threads will read. None of it is
+    // visible to them before framework::ready is published at the end of this stage - until then every
+    // hook only forwards - which is what makes the order here free of races in both modes.
+    tw::framework::d3d9::initialize();
+    tw::ui::initialize();
+    tw::skybox::initialize();
+
+    // After tw::ui::initialize() (which builds the menu) and before the first frame (which builds
+    // the tab strip) - see menu::add_extra_tab.
+    tw::skybox::ui::initialize();
+    tw::lua::ui::initialize();
+
+    // lua_channels resolves HighPoly.dll entry points here, and the VM has to exist before the first frame
+    // calls into it. Script handles resolve lazily anyway, because the EngineInterface pointer the channel
+    // hook captures arrives late (see lua-scripting.md §7).
+    tw::lua::host::initialize();
+
+    tw::framework::d3d9::attach_device_bind_listener(&on_device_bound, nullptr);
+
+    tw::framework::ready::publish();
+    TW_BOOT_LOG("stage 1: ready after {:.1f} ms", elapsed_ms());
+
+    if(g_startup == startup::late) {
+        install_late_hooks();
+    }
+
+    auto next_report = std::chrono::steady_clock::now() + k_slow_stage;
+    while(!g_device_bound.load(std::memory_order_relaxed)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds { 50 });
+
+        if(std::chrono::steady_clock::now() >= next_report) {
+            next_report += k_slow_stage;
+            TW_BOOT_LOG("stage 2: still no device bound after {:.0f} s (d3d9.dll {}, Direct3DCreate9 hook {})",
+                elapsed_ms() / 1000.0,
+                ::GetModuleHandleW(k_d3d9_module.data()) != nullptr ? "mapped" : "not mapped",
+                g_startup == startup::early ? (g_d3d9_hooked.load() ? "installed" : "not installed") : "not used (late)");
+        }
+    }
+
+    tw::ipc::start_host_watchdog();
+
+    TW_LOG_INFO("load: startup complete");
+    TW_BOOT_LOG("stage 3: startup complete after {:.1f} ms", elapsed_ms());
+}
+
+unsigned __stdcall startup_thread_entry(void* parameter)
+{
+    run_startup(static_cast<HMODULE>(parameter));
+    return 0;
+}
+
+void write_session_header(HMODULE module)
+{
+    SYSTEMTIME local {};
+    ::GetLocalTime(&local);
+
+    TW_BOOT_LOG("attach: ===== {:04}-{:02}-{:02} {:02}:{:02}:{:02} TweakerPlugin {} in pid {} =====",
+        local.wYear,
+        local.wMonth,
+        local.wDay,
+        local.wHour,
+        local.wMinute,
+        local.wSecond,
+        TW_PLUGIN_VERSION,
+        ::GetCurrentProcessId());
+    TW_BOOT_LOG("attach: module '{}'", module_path(module));
+}
+} // namespace
+
+namespace tw::plugin
+{
+void on_process_attach(HMODULE module) noexcept
+{
+    // A DLL in engine\channels\ is loaded by anything built on the engine, not only by the game - and before
+    // the DISABLE check nothing may be touched on disk.
+    if(!paths::resolve()) {
+        return;
+    }
+
+    const std::filesystem::path executable_name = paths::executable_file().filename();
+    if(!equals_ignore_case(executable_name.native(), k_game_executable)) {
+        return;
+    }
+
+    if(paths::is_disabled()) {
+        return;
+    }
+
+    const presence::claim_result claim = presence::claim();
+    if(claim == presence::claim_result::already_loaded) {
+        // "Load now" into a game that already has the channels\ copy, or the same DLL under two names.
+        boot_log::open(paths::logs_dir(), boot_log::open_mode::guest);
+        TW_BOOT_LOG("attach: another TweakerPlugin is already loaded in this process - '{}' stays inert", module_path(module));
+        return;
+    }
+
+    boot_log::open(paths::logs_dir(), boot_log::open_mode::owner);
+    write_session_header(module);
+
+    if(claim == presence::claim_result::unavailable) {
+        TW_BOOT_LOG("attach: presence mutex not created (error {}) - the host will not see this plugin", ::GetLastError());
+    }
+
+    // Pinned before anything that outlives DllMain goes in: the engine's channel scan frees every DLL it
+    // probes right after loading it, and hooks, a loader callback or a thread left in an unmapped image
+    // are a crash on the next call (§2.1, Р-10).
+    if(!framework::loader_watch::pin(module)) {
+        TW_BOOT_LOG("attach: cannot pin the plugin (error {}) - staying inert", ::GetLastError());
+        return;
+    }
+
+    g_startup = ::GetModuleHandleW(k_d3d9_module.data()) == nullptr ? startup::early : startup::late;
+    TW_BOOT_LOG("stage 0: {} load (d3d9.dll {})",
+        g_startup == startup::early ? "early" : "late",
+        g_startup == startup::early ? "not mapped yet" : "already mapped");
+
+    if(g_startup == startup::early) {
+        // Before returning: d3d9.dll maps ~35 ms from now, and a notification registered later would miss it.
+        const bool watching = framework::loader_watch::start(k_watches);
+        TW_BOOT_LOG("stage 0: loader notifications {}", watching ? "registered" : "FAILED - no overlay and no sky this session");
+
+        // Nobody runs a channel while the engine is still scanning for them, and this DllMain is part of
+        // that scan - so the patch goes in without suspending anyone.
+        const bool channel_ok = framework::install_channel_hook(framework::detour::suspend::none);
+        TW_BOOT_LOG("stage 0: CallChannel {}", channel_ok ? "hooked" : "hook FAILED - scripts will not see the engine");
+
+        const bool dinput_ok = framework::dinput::install_create_hook_from_loader();
+        TW_BOOT_LOG("stage 0: DirectInput8Create {}", dinput_ok ? "hooked" : "hook FAILED - the game will see input the menu eats");
+
+        // Not expected: the channel is loaded after the scan. Its notification will never come, so the hook
+        // is left to the skybox's retry on the first device bind.
+        if(::GetModuleHandleW(k_texture_channel_module.data()) != nullptr) {
+            TW_BOOT_LOG("stage 0: the Texture channel is already mapped - its hook waits for the first device bind");
+        }
+    }
+
+    const std::uintptr_t thread = ::_beginthreadex(nullptr, 0, &startup_thread_entry, module, 0, nullptr);
+    if(thread == 0) {
+        // The early hooks stay in and stay pass-through: framework::ready is never published.
+        TW_BOOT_LOG("attach: cannot start the startup thread (errno {}) - the plugin stays pass-through", errno);
+        return;
+    }
+
+    ::CloseHandle(reinterpret_cast<HANDLE>(thread));
 }
 } // namespace tw::plugin

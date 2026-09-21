@@ -70,6 +70,13 @@ void set_skin_list(std::vector<std::string> names);
 void set_current_skin(std::string name);
 void reset();
 
+// Whether Audiosurf Tweaker is connected (Docs/Internal/plugin-offline-mode.md §4.5). Lives next to the
+// state the host owns so that "the host left" and "its tweaks and skin are gone" land in the same
+// generation: `false` also clears everything reset() clears, and the render thread can never draw a
+// snapshot that is offline yet still shows the host's tweaks. Called by tw::ipc on handshake and on every
+// way the host can disappear; smoke_test calls it directly.
+void set_host_connected(bool connected);
+
 // Reader side - a UI-owned snapshot, refreshed opportunistically once per frame via refresh().
 // Never blocks the render thread: on lock contention (the writer is mid-update) refresh() just
 // leaves the previous frame's snapshot untouched and returns false.
@@ -78,6 +85,7 @@ struct cache {
     std::array<std::uint8_t, k_tweak_count> tweak_quick_player {};
     std::vector<std::string> skin_names;
     std::string current_skin_name;
+    bool host_connected = false;
     std::uint32_t seen_generation = 0;
 };
 

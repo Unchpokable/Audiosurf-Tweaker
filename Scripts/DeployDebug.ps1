@@ -79,18 +79,24 @@ if (-not $injectHelperExe) { throw "InjectHelper.exe not found under TweakerUI\b
 Copy-Item $injectHelperExe.FullName -Destination $tweakerOut -Force
 Write-Host "    $($injectHelperExe.FullName) -> $tweakerOut"
 
-# TweakerPlugin.dll is optional - its CMake build needs the DirectX/Quest3D SDKs and a vendored
-# ImGui tree (none guaranteed present, see TweakerUI.csproj's BuildTweakerPlugin target), and the
-# overlay itself is an opt-in [Experimental] Settings toggle - a bundle without it is still a
-# complete, working Tweaker.
-Write-Host "==> Locating TweakerPlugin.dll from the CMake pre-build hook (optional - in-game overlay)"
-$tweakerPluginDll = Get-ChildItem -Path (Join-Path $repoRoot "TweakerUI\bin") -Recurse -Filter "TweakerPlugin.dll" -ErrorAction SilentlyContinue |
-    Sort-Object LastWriteTime -Descending | Select-Object -First 1
-if ($tweakerPluginDll) {
-    Copy-Item $tweakerPluginDll.FullName -Destination $tweakerOut -Force
-    Write-Host "    $($tweakerPluginDll.FullName) -> $tweakerOut"
+# The plugin ships as PluginPayload\ - a mirror of the layout its files take inside the game, so
+# installing it is a plain copy of the tree (Docs/Internal/plugin-offline-mode.md §6.1, §6.3). The
+# whole folder goes across rather than being reassembled here: PluginInstallation keys every file
+# by its path relative to the payload root, so a DLL anywhere but channels\ installs to a folder
+# the game never scans. Same block as Deploy.ps1 - see the longer comment there.
+#
+# Optional, exactly as in Deploy.ps1: no plugin build means a bundle without the in-game plugin,
+# which is still a complete Tweaker.
+Write-Host "==> Locating PluginPayload\ from the CMake pre-build hook (optional - in-game plugin)"
+$pluginPayload = Get-ChildItem -Path (Join-Path $repoRoot "TweakerUI\bin") -Recurse -Directory -Filter "PluginPayload" -ErrorAction SilentlyContinue |
+    Where-Object { Test-Path (Join-Path $_.FullName "channels\TweakerPlugin.dll") } |
+    Sort-Object { (Get-Item (Join-Path $_.FullName "channels\TweakerPlugin.dll")).LastWriteTime } -Descending |
+    Select-Object -First 1
+if ($pluginPayload) {
+    Copy-Item $pluginPayload.FullName -Destination $tweakerOut -Recurse -Force
+    Write-Host "    $($pluginPayload.FullName) -> $(Join-Path $tweakerOut 'PluginPayload')"
 } else {
-    Write-Host "    TweakerPlugin.dll not found - in-game overlay will be unavailable in this bundle (see TweakerPlugin/cmake/*.cmake)." -ForegroundColor Yellow
+    Write-Host "    PluginPayload\channels\TweakerPlugin.dll not found - the in-game plugin will be unavailable in this bundle (see TweakerPlugin/cmake/*.cmake)." -ForegroundColor Yellow
 }
 
 # --- 2. LegacyDataConverter: old-style net481 csproj, needs full MSBuild, not dotnet CLI -------

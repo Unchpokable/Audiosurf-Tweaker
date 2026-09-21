@@ -97,29 +97,37 @@ if (-not $injectHelperExe) { throw "InjectHelper.exe not found under TweakerUI\b
 Copy-Item $injectHelperExe.FullName -Destination $tweakerOut -Force
 Write-Host "    $($injectHelperExe.FullName) -> $tweakerOut"
 
-# TweakerPlugin.dll is optional - its CMake build needs the DirectX/Quest3D SDKs and a vendored
-# ImGui tree (none guaranteed present, see TweakerUI.csproj's BuildTweakerPlugin target), and the
-# overlay itself is an opt-in [Experimental] Settings toggle - a bundle without it is still a
-# complete, working Tweaker.
-Write-Host "==> Locating TweakerPlugin.dll from the CMake pre-build hook (optional - in-game overlay)"
-$tweakerPluginDll = Get-ChildItem -Path (Join-Path $repoRoot "TweakerUI\bin") -Recurse -Filter "TweakerPlugin.dll" -ErrorAction SilentlyContinue |
-    Sort-Object LastWriteTime -Descending | Select-Object -First 1
-if ($tweakerPluginDll) {
-    Copy-Item $tweakerPluginDll.FullName -Destination $tweakerOut -Force
-    Write-Host "    $($tweakerPluginDll.FullName) -> $tweakerOut"
-
-    # The plugin loads Lua scripts as loose files from scripts/ beside itself, so that they can be
-    # edited without a rebuild (TweakerPlugin/src/lua/lua_host.cxx). They are payload, not build
-    # output - shipping the dll alone would ship a scripting layer with nothing to run.
-    $pluginScripts = Join-Path $repoRoot "TweakerPlugin\assets\scripts"
-    if (Test-Path $pluginScripts) {
-        $scriptsOut = Join-Path $tweakerOut "scripts"
-        New-Item -ItemType Directory -Force -Path $scriptsOut | Out-Null
-        Copy-Item (Join-Path $pluginScripts "*") -Destination $scriptsOut -Recurse -Force
-        Write-Host "    $pluginScripts -> $scriptsOut"
-    }
+# The plugin ships as PluginPayload\ - a mirror of the layout its files take inside the game, so
+# installing it is a plain copy of the tree (Docs/Internal/plugin-offline-mode.md §6.1, §6.3):
+#
+#     PluginPayload\channels\TweakerPlugin.dll      the game loads this by itself at startup
+#     PluginPayload\TweakerStuff\Scripts\*.lua      loose Lua files, edited without a rebuild
+#     PluginPayload\TweakerStuff\SkyboxReplacer\Skyboxes\*.sky    shipped sky packages
+#
+# What belongs in there is decided by CopyTweakerPlugin, not here - including which scripts and sky
+# packages ship at all (a dev\ subfolder in either source folder never does).
+#
+# The whole folder is copied rather than reassembled here on purpose: those paths are not
+# cosmetic - PluginInstallation keys every file by its path relative to the payload root, and a
+# DLL placed anywhere but channels\ installs to a folder the game never scans for channels. One
+# place defines that layout (TweakerUI.csproj's CopyTweakerPlugin), and this copies what it made.
+#
+# Optional: the plugin's CMake build needs the DirectX/Quest3D SDKs and a vendored ImGui tree
+# (none guaranteed present, see TweakerUI.csproj's BuildTweakerPlugin target), and installing it
+# is an opt-in [Experimental] Settings toggle - a bundle without it is still a complete Tweaker.
+Write-Host "==> Locating PluginPayload\ from the CMake pre-build hook (optional - in-game plugin)"
+$pluginPayload = Get-ChildItem -Path (Join-Path $repoRoot "TweakerUI\bin") -Recurse -Directory -Filter "PluginPayload" -ErrorAction SilentlyContinue |
+    Where-Object { Test-Path (Join-Path $_.FullName "channels\TweakerPlugin.dll") } |
+    Sort-Object { (Get-Item (Join-Path $_.FullName "channels\TweakerPlugin.dll")).LastWriteTime } -Descending |
+    Select-Object -First 1
+if ($pluginPayload) {
+    # By the dll's own timestamp, not the folder's: several build trees live under bin\ (x64\Debug,
+    # the publish one, the msbuild hook's), and a directory's timestamp says when an entry was last
+    # added to it, which is not the same as "this is the freshest plugin".
+    Copy-Item $pluginPayload.FullName -Destination $tweakerOut -Recurse -Force
+    Write-Host "    $($pluginPayload.FullName) -> $(Join-Path $tweakerOut 'PluginPayload')"
 } else {
-    Write-Host "    TweakerPlugin.dll not found - in-game overlay will be unavailable in this bundle (see TweakerPlugin/cmake/*.cmake)." -ForegroundColor Yellow
+    Write-Host "    PluginPayload\channels\TweakerPlugin.dll not found - the in-game plugin will be unavailable in this bundle (see TweakerPlugin/cmake/*.cmake)." -ForegroundColor Yellow
 }
 
 # --- 2. LegacyDataConverter: old-style net481 csproj, needs full MSBuild, not dotnet CLI -------

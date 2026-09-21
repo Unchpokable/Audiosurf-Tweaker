@@ -60,7 +60,15 @@ namespace TweakerUI.Core
             Bind("UWPNotificationsAllowed", false, () => Settings.IsUWPNotificationsAllowed, v => Settings.IsUWPNotificationsAllowed = v),
             Bind("UWPNotificationSilent", true, () => Settings.IsUWPNotificationSilent, v => Settings.IsUWPNotificationSilent = v),
             Bind("DarkTheme", false, () => Settings.IsDarkTheme, v => Settings.IsDarkTheme = v),
-            Bind("EnableInGameOverlay", false, () => Settings.EnableInGameOverlay, v => Settings.EnableInGameOverlay = v),
+            Bind("SyncOverlayWithTweaker", true, () => Settings.SyncOverlayWithTweaker, v => Settings.SyncOverlayWithTweaker = v),
+        };
+
+        // Keys that used to be written here and no longer are. Their values are not carried anywhere - the
+        // settings they stood for were replaced outright, not renamed - they are only swept out so a config
+        // file does not keep accumulating rows nothing reads. Safe to empty once no user config still has them.
+        private static readonly string[] ObsoleteKeys =
+        {
+            "EnableInGameOverlay", // -> SyncOverlayWithTweaker (plugin-offline-mode.md §6.5)
         };
 
         private sealed record SettingBinding(string Key, string Default, Func<string> Read, Action<string> Write);
@@ -127,6 +135,15 @@ namespace TweakerUI.Core
             EnsureKey(FirstRunKey, "true");
             foreach (var binding in Bindings)
                 EnsureKey(binding.Key, binding.Default);
+
+            foreach (var key in ObsoleteKeys)
+            {
+                if (cfg.AppSettings.Settings[key] == null)
+                    continue;
+
+                cfg.AppSettings.Settings.Remove(key);
+                addedAnyKey = true;
+            }
 
             if (addedAnyKey)
                 cfg.Save();

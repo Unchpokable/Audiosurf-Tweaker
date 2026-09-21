@@ -6,7 +6,7 @@
 #include "framework/texture_hook.hxx"
 
 #include "plugin/diagnostics.hxx"
-#include "plugin/globals.hxx"
+#include "plugin/paths.hxx"
 #include "plugin/music.hxx"
 
 #include "skybox/sky_caps.hxx"
@@ -70,7 +70,6 @@ std::atomic<tw::skybox::sky_program*> g_program { nullptr };
 // draw them (see publish_layer) rather than walked per frame, so this list is only ever touched
 // from the overlay tick.
 std::vector<tw::skybox::sky_program*> g_layers;
-std::atomic<bool> g_probe_markers { true };
 std::atomic<int> g_shader_quality { 100 };
 
 // Set once a cube map load has failed for the current device, so a bad or missing asset costs one
@@ -164,7 +163,7 @@ tw::skybox::sky_program* load_package_from(const std::filesystem::path& root)
     // The stem, so `Foo.sky` the folder and `Foo.sky` the archive keep the same settings file. Which
     // form a sky is in is packaging, not identity, and somebody who zips the folder they have been
     // tuning should not lose the tuning.
-    sky->stem = root.stem().string();
+    sky->stem = tw::plugin::paths::to_utf8(root.stem());
 
     // Before any layer is loaded: a layer's bindings are resolved against this, and the layer that
     // lists the shared knobs in the panel reads them straight out of it.
@@ -203,13 +202,23 @@ tw::skybox::sky_program* load_package_from(const std::filesystem::path& root)
     return primary;
 }
 
-// Resolves config::sky_program() into the pointer the draw path reads. An id nothing answers to -
-// a typo, or a program that existed in an older build - falls back to the cube map path rather than
-// to no sky at all, and says so once.
-void apply_program_from_config()
+// Whether the selection is painted by a shader rather than sampled from an image.
+bool selection_is_program(tw::skybox::entry_kind kind) noexcept
 {
-    const std::string& id = tw::skybox::config::sky_program();
-    tw::skybox::sky_program* program = tw::skybox::find_program(id);
+    return kind == tw::skybox::entry_kind::program || kind == tw::skybox::entry_kind::shader_file
+           || kind == tw::skybox::entry_kind::package;
+}
+
+// Resolves the config's selection into the pointer the draw path reads. A shader sky that cannot be
+// loaded - a built-in id this build does not have, a package or .hlsl that is no longer on disk - falls
+// back to the default cube map rather than to no sky at all, and says so.
+//
+// The kind is taken from the selection, not guessed from the file. The catalog decided it when the sky
+// was listed, and a folder can be both a package and a folder of faces - the manifest winning is a rule
+// the scan applied once, not something to re-derive here.
+void apply_selection()
+{
+    const tw::skybox::config::selection& selected = tw::skybox::config::sky();
 
     // Whatever the last sky brought with it stops here. A geometry layer belongs to the sky that
     // declared it, so switching skies has to take it away - clouds that outlive the sky they were
@@ -217,31 +226,41 @@ void apply_program_from_config()
     g_layers.clear();
     tw::skybox::sprites::set_layer(nullptr);
 
-    // Not a built-in and not something already compiled: the id may be a path - to a `.sky` package,
-    // or to a lone .hlsl the user dropped in skybox_dir. Resolved through the same three roots as
-    // skybox_file, so a relative path in the config works the way it does everywhere else here.
-    if(program == nullptr && !id.empty()) {
-        std::error_code ec;
-        const std::filesystem::path path = tw::skybox::resolve_source_path(id);
+    tw::skybox::sky_program* program = nullptr;
 
-        if(!path.empty() && std::filesystem::is_directory(path, ec)) {
-            program = load_package_from(path);
-        }
-        else if(!path.empty() && std::filesystem::is_regular_file(path, ec)) {
-            // A file is either a packaged sky or a lone shader, and the extension is what says which.
-            // By name rather than by trying the archive first, because "not a zip" is a perfectly
-            // ordinary thing for an .hlsl to be and a warning about it every time would be noise.
-            std::string extension = path.extension().string();
-            std::transform(extension.begin(), extension.end(), extension.begin(), [](unsigned char c) {
-                return static_cast<char>(std::tolower(c));
-            });
+    switch(selected.kind) {
+        case tw::skybox::entry_kind::program:
+            program = tw::skybox::find_program(selected.id);
+            break;
 
-            program = extension == ".sky" ? load_package_from(path) : tw::skybox::load_file_program(path);
+        case tw::skybox::entry_kind::shader_file: {
+            const std::filesystem::path path = tw::skybox::skybox_path(selected.id);
+            std::error_code ec;
+            if(!path.empty() && std::filesystem::is_regular_file(path, ec)) {
+                program = tw::skybox::load_file_program(path);
+            }
+            break;
         }
+
+        case tw::skybox::entry_kind::package: {
+            // A folder holding Config.json, or the zip of one - package::load opens either.
+            const std::filesystem::path path = tw::skybox::skybox_path(selected.id);
+            std::error_code ec;
+            if(!path.empty() && std::filesystem::exists(path, ec)) {
+                program = load_package_from(path);
+            }
+            break;
+        }
+
+        default:
+            // An image sky: no program, the draw path builds the cube map from the selection.
+            break;
     }
 
-    if(program == nullptr && !id.empty()) {
-        TW_LOG_WARNING("skybox: no sky program called '{}', and no such file - falling back to the cube map path", id);
+    if(program == nullptr && selection_is_program(selected.kind)) {
+        TW_LOG_WARNING("skybox: {} '{}' could not be loaded - falling back to the default cube map",
+            tw::skybox::config::kind_key(selected.kind),
+            selected.id);
     }
 
     // A built-in or a lone .hlsl is a sky of one layer that happens not to say so. Recorded as one
@@ -348,9 +367,29 @@ IDirect3DCubeTexture9* ensure_cubemap(IDirect3DDevice9* device)
         return nullptr;
     }
 
+    // The selected image, or the default cube map when the selection is a shader sky that did not load
+    // (the draw path only gets here with no program).
+    const tw::skybox::config::selection& selected = tw::skybox::config::sky();
+    const bool from_disk = selected.kind == tw::skybox::entry_kind::file || selected.kind == tw::skybox::entry_kind::face_dir;
+
+    std::filesystem::path file_path;
+    std::string_view resource_key = tw::skybox::config::k_default_packed;
+
+    if(from_disk) {
+        file_path = tw::skybox::skybox_path(selected.id);
+    }
+    else if(selected.kind == tw::skybox::entry_kind::packed) {
+        resource_key = selected.id;
+    }
+
+    if(from_disk && file_path.empty()) {
+        g_cubemap_failed = true;
+        return nullptr;
+    }
+
     const tw::skybox::cubemap_source source {
-        .resource_key = tw::skybox::config::skybox_key(),
-        .file_path = tw::skybox::config::skybox_file(),
+        .resource_key = resource_key,
+        .file_path = std::move(file_path),
         .hdr_exposure = tw::skybox::config::hdr_exposure(),
         .min_face_size = tw::skybox::config::min_face_size(),
     };
@@ -363,8 +402,9 @@ IDirect3DCubeTexture9* ensure_cubemap(IDirect3DDevice9* device)
 
     if(g_cubemap == nullptr) {
         g_cubemap_failed = true;
-        TW_LOG_ERROR("skybox: '{}' could not be turned into a cube map - the game keeps its own sky this session",
-            source.file_path.empty() ? source.resource_key : source.file_path);
+        TW_LOG_ERROR("skybox: {} '{}' could not be turned into a cube map - the game keeps its own sky this session",
+            from_disk ? tw::skybox::config::kind_key(selected.kind) : std::string_view { "packed" },
+            from_disk ? std::string_view { selected.id } : resource_key);
         return nullptr;
     }
 
@@ -377,8 +417,7 @@ IDirect3DCubeTexture9* ensure_cubemap(IDirect3DDevice9* device)
     return g_cubemap;
 }
 
-// Seconds since the first shaded draw. Uploaded to the probe as a constant it currently ignores -
-// the plumbing is what is being proven, not the animation.
+// Seconds since the first shaded draw. Uploaded as g_runtime.x to every program that declares it.
 float elapsed_seconds() noexcept
 {
     static const std::chrono::steady_clock::time_point start = std::chrono::steady_clock::now();
@@ -445,9 +484,6 @@ bool draw_sky_program(IDirect3DDevice9* device, const tw::skybox::sky_program& p
 
     if(program.has_runtime()) {
         runtime[0] = elapsed_seconds();
-        if(program.markers_in_runtime_y) {
-            runtime[1] = g_probe_markers.load(std::memory_order_relaxed) ? 1.f : 0.f;
-        }
 
         blocks[block_count++] = { tw::skybox::k_runtime_register, std::span<const float> { runtime } };
     }
@@ -625,53 +661,26 @@ void persist_param(const tw::skybox::sky_program& program, const tw::skybox::sky
     }
 }
 
-// TweakerPlugin.dll -> .../TweakerPlugin.skybox.cfg, next to the DLL itself. Same shape as
-// imgui_backend's compute_config_path (and resource/self_extract's path handling) - duplicated
-// rather than shared because the two modules have no other reason to know about each other.
-std::string compute_config_path()
-{
-    wchar_t wide_path[MAX_PATH] {};
-    const DWORD len = ::GetModuleFileNameW(tw::plugin::globals::module_handle, wide_path, MAX_PATH);
-    if(len == 0 || len >= MAX_PATH) {
-        return {};
-    }
-
-    const int bytes = ::WideCharToMultiByte(CP_UTF8, 0, wide_path, -1, nullptr, 0, nullptr, nullptr);
-    if(bytes <= 1) {
-        return {};
-    }
-
-    std::string path(static_cast<std::size_t>(bytes - 1), '\0');
-    ::WideCharToMultiByte(CP_UTF8, 0, wide_path, -1, path.data(), bytes, nullptr, nullptr);
-
-    const auto dot = path.find_last_of('.');
-    if(dot != std::string::npos) {
-        path.resize(dot);
-    }
-    path += ".skybox.cfg";
-
-    return path;
-}
 } // namespace
 
 namespace tw::skybox
 {
 void initialize() noexcept
 {
-    const std::string config_path = compute_config_path();
+    // engine\TweakerStuff\SkyboxReplacer\module.json - see plugin/paths.
+    const std::filesystem::path config_path = tw::plugin::paths::skybox_module_config();
     if(!config_path.empty()) {
         config::load(config_path);
     }
 
     rebuild_orientation();
 
-    // Before apply_program_from_config, which resolves the configured id against this list.
+    // Before apply_selection, which resolves a built-in id against this list.
     initialize_programs();
 
     g_enabled.store(config::enabled(), std::memory_order_relaxed);
-    g_probe_markers.store(config::probe_markers(), std::memory_order_relaxed);
     g_shader_quality.store(config::shader_quality(), std::memory_order_relaxed);
-    apply_program_from_config();
+    apply_selection();
 
     // Registers the geometry layer's pass with the renderer. Before any device exists, which is what
     // makes the pass pointer safe to read from the render thread without a lock.
@@ -688,7 +697,7 @@ void initialize() noexcept
     tw::framework::d3d9::attach_device_reset_listener(&on_device_lost, nullptr);
     tw::framework::d3d9::attach_draw_interceptor(&intercept_draw);
 
-    TW_LOG_INFO("skybox: initialized (enabled={}, skybox='{}')", config::enabled(), config::skybox_key());
+    TW_LOG_INFO("skybox: initialized (enabled={}, sky={}:'{}')", config::enabled(), config::kind_key(config::sky().kind), config::sky().id);
 }
 
 void shutdown() noexcept
@@ -698,7 +707,9 @@ void shutdown() noexcept
     tw::framework::d3d9::detach_device_bind_listener(&on_device_bound, &on_device_unbound);
 
     on_device_unbound();
-    config::save();
+
+    // No save here: every setting is written the moment it changes (see skybox_config), because the
+    // plugin has no unload path in practice and a shutdown save would never run.
 }
 
 void retry_texture_hook() noexcept
@@ -720,9 +731,9 @@ bool is_enabled() noexcept
 
 void set_enabled(bool value) noexcept
 {
+    // Writes module.json itself.
     config::set_enabled(value);
     g_enabled.store(value, std::memory_order_relaxed);
-    config::save();
 }
 
 reload_outcome poll_reload(bool watch) noexcept
@@ -811,8 +822,6 @@ status current_status() noexcept
         .program_name = program != nullptr ? std::string_view { program->display_name } : std::string_view {},
         .program_diagnostics = program != nullptr ? std::string_view { program->diagnostics } : std::string_view {},
         .program_compiling = program != nullptr && program->compiling(),
-        .probe_markers = g_probe_markers.load(std::memory_order_relaxed),
-        .program_has_markers = program != nullptr && program->markers_in_runtime_y,
         .shader_quality = g_shader_quality.load(std::memory_order_relaxed),
         .draw_microseconds = timer::average_microseconds(),
     };
@@ -894,23 +903,20 @@ void reset_sky_params()
     std::filesystem::remove(path, ec);
 }
 
-void select_program(std::string_view id)
+void select(entry_kind kind, std::string_view id)
 {
-    config::select_program(id);
-    apply_program_from_config();
+    config::select(kind, id);
 
-    // The cube map is dropped rather than kept warm: a program selection can outlive many songs,
-    // and holding on to 96 MB of managed texture that nothing samples is the exact memory problem
-    // the procedural path exists to avoid.
+    // The mirror the draw path reads follows the config: picking an image has to stop a shader that
+    // was painting over it, and picking a shader has to start one.
+    apply_selection();
+
+    // The cube map is dropped whichever way the choice went. For an image it is the wrong image now;
+    // for a shader, holding on to 96 MB of managed texture that nothing samples is the exact memory
+    // problem the procedural path exists to avoid.
     request_reload();
 
-    TW_LOG_INFO("skybox: switched to program '{}'", id);
-}
-
-void set_probe_markers(bool value) noexcept
-{
-    config::set_probe_markers(value);
-    g_probe_markers.store(value, std::memory_order_relaxed);
+    TW_LOG_INFO("skybox: switched to {} '{}'", config::kind_key(kind), id);
 }
 
 void request_reload() noexcept
@@ -927,26 +933,6 @@ void request_reload() noexcept
     g_cubemap_failed = false;
     g_face_size = 0;
     g_requested_face_size = 0;
-}
-
-void select_packed(std::string_view resource_key)
-{
-    config::select_packed(resource_key);
-
-    // config cleared sky_program as part of that, so the mirror the draw path reads has to follow -
-    // otherwise picking an image would leave the shader still painting over it.
-    apply_program_from_config();
-
-    request_reload();
-    TW_LOG_INFO("skybox: switched to packed '{}'", resource_key);
-}
-
-void select_file(std::string_view path)
-{
-    config::select_file(path);
-    apply_program_from_config();
-    request_reload();
-    TW_LOG_INFO("skybox: switched to file '{}'", path);
 }
 
 bool consume_downscale_notice(int& from, int& to) noexcept

@@ -9,8 +9,9 @@ namespace
 {
 tw::ui::overlay_config::side g_feed_side = tw::ui::overlay_config::side::left;
 tw::ui::overlay_config::side g_pins_side = tw::ui::overlay_config::side::right;
+bool g_offline_pin = true;
 std::string g_theme_overrides;
-std::string g_loaded_path;        // remembered by load(), used by the no-arg save()
+std::filesystem::path g_loaded_path; // remembered by load(), used by the no-arg save()
 bool g_dirty = false;             // set by request_save(), cleared by flush()/save()
 ImVec2 g_menu_pos { -1.f, -1.f }; // sentinel: never persisted / first run - caller picks a default
 ImVec2 g_menu_size { 420.f, 520.f };
@@ -52,9 +53,9 @@ const char* side_to_string(tw::ui::overlay_config::side s) noexcept
 
 namespace tw::ui::overlay_config
 {
-void load(std::string_view path)
+void load(const std::filesystem::path& path)
 {
-    g_loaded_path.assign(path);
+    g_loaded_path = path;
 
     std::ifstream file { g_loaded_path };
     if(!file.is_open()) {
@@ -97,6 +98,14 @@ void load(std::string_view path)
         }
         else if(key == "pins_side") {
             g_pins_side = parse_side(value, g_pins_side);
+        }
+        else if(key == "offline_pin") {
+            if(value == "true") {
+                g_offline_pin = true;
+            }
+            else if(value == "false") {
+                g_offline_pin = false;
+            }
         }
         else if(key == "menu_pos_x") {
             g_menu_pos.x = parse_float(value, g_menu_pos.x);
@@ -147,6 +156,7 @@ void save()
 
     file << "feed_side=" << side_to_string(g_feed_side) << '\n';
     file << "pins_side=" << side_to_string(g_pins_side) << '\n';
+    file << "offline_pin=" << (g_offline_pin ? "true" : "false") << '\n';
     file << "menu_pos_x=" << g_menu_pos.x << '\n';
     file << "menu_pos_y=" << g_menu_pos.y << '\n';
     file << "menu_size_x=" << g_menu_size.x << '\n';
@@ -177,6 +187,16 @@ side pins_side() noexcept
 void set_pins_side(side value)
 {
     g_pins_side = value;
+}
+
+bool offline_pin() noexcept
+{
+    return g_offline_pin;
+}
+
+void set_offline_pin(bool value)
+{
+    g_offline_pin = value;
 }
 
 const std::string& theme_overrides() noexcept

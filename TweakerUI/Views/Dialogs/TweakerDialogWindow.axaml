@@ -22,10 +22,10 @@
                 BoxShadow="0 4 24 0 #40000000">
             <StackPanel Spacing="20">
                 <TextBlock Text="{Binding Message}" Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" FontSize="15" HorizontalAlignment="Center" TextAlignment="Center"/>
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12">
-                    <Button Content="OK" Click="OnOkClick" IsVisible="{Binding ShowOk}" MinWidth="80"/>
-                    <Button Content="Cancel" Click="OnCancelClick" IsVisible="{Binding ShowCancel}" MinWidth="80"/>
-                </StackPanel>
+                <!-- Populated from code-behind: the choice list is per-dialog (two buttons for the
+                     OK/Cancel pair, three for the plugin flows), and building it here would mean an
+                     ItemsControl reaching back out to the Window for its click command. -->
+                <WrapPanel x:Name="ButtonsPanel" Orientation="Horizontal" HorizontalAlignment="Center" ItemSpacing="12" LineSpacing="8"/>
             </StackPanel>
         </Border>
     </Grid>

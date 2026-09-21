@@ -9,6 +9,7 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <cstdint>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -29,10 +30,17 @@ constexpr float k_rounding = 6.f;
 constexpr float k_icon_size = 16.f;
 constexpr float k_icon_gap = 7.f;
 
+enum class pin_style : std::uint8_t {
+    normal,
+    quick_player,
+    // A status rather than something the user switched on: drawn quieter than the pins around it.
+    muted,
+};
+
 struct pin_label {
     std::string text;
     std::string_view icon_key;
-    bool quick_player = false;
+    pin_style style = pin_style::normal;
 };
 
 // The bounding box of whatever the last update() drew, for last_rect(). Recorded rather than
@@ -60,17 +68,25 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
     // here too while its NOTIFY_TWEAK/NOTIFY_SKIN confirmation is still in flight (see
     // ui/pending_actions.hxx).
     std::vector<pin_label> labels;
+
+    // Offline, there are no tweaks or skin to list - set_host_connected(false) cleared them - so this row
+    // is the whole block. See Docs/Internal/plugin-offline-mode.md, Р-7.
+    if(!snapshot.host_connected && overlay_config::offline_pin()) {
+        labels.emplace_back("Offline", std::string_view {}, pin_style::muted);
+    }
+
     for(const auto id : tw::ui::overlay_state::all_tweak_ids()) {
         if(tw::ui::pending_actions::tweak_display_enabled(snapshot, id)) {
             const bool quick_player = tw::ui::overlay_state::is_tweak_quick_player(snapshot, id);
             std::string label = quick_player ? "QP: " : "";
             label += tw::ui::overlay_state::tweak_display_name(id);
-            labels.emplace_back(std::move(label), tw::ui::overlay_state::tweak_icon_key(id), quick_player);
+            labels.emplace_back(
+                std::move(label), tw::ui::overlay_state::tweak_icon_key(id), quick_player ? pin_style::quick_player : pin_style::normal);
         }
     }
     const std::string_view skin_name = tw::ui::pending_actions::skin_display_name(snapshot);
     if(!skin_name.empty()) {
-        labels.emplace_back("Skin: " + std::string(skin_name), tw::ui::overlay_state::skin_icon_key(), false);
+        labels.emplace_back("Skin: " + std::string(skin_name), tw::ui::overlay_state::skin_icon_key(), pin_style::normal);
     }
 
     g_rect_valid = false;
@@ -115,8 +131,22 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
         const ImVec4 bg { theme::surface.x, theme::surface.y, theme::surface.z, theme::surface.w * 0.55f };
         draw->AddRectFilled(p_min, p_max, detail::to_u32(bg), k_rounding);
 
-        const ImVec4 accent = label.quick_player ? theme::accent_secondary : theme::accent_primary;
-        const ImU32 text_color = label.quick_player ? detail::to_u32(theme::accent_secondary) : IM_COL32_WHITE;
+        ImVec4 accent = theme::accent_primary;
+        ImU32 text_color = IM_COL32_WHITE;
+        float glow = 1.f;
+
+        switch(label.style) {
+            case pin_style::normal:
+                break;
+            case pin_style::quick_player:
+                accent = theme::accent_secondary;
+                text_color = detail::to_u32(theme::accent_secondary);
+                break;
+            case pin_style::muted:
+                text_color = detail::to_u32(theme::text_muted);
+                glow = 0.35f;
+                break;
+        }
 
         if(icon != ImTextureID_Invalid) {
             // Assets are monochrome white, so tinting with the label's own colour is what keeps the
@@ -127,7 +157,7 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
         }
 
         const ImVec2 text_pos { p_min.x + k_pad_x + icon_advance, p_min.y + (k_row_h - text_size.y) * 0.5f };
-        detail::add_text_glow(draw, text_pos, label.text.c_str(), text_color, accent, 1.f);
+        detail::add_text_glow(draw, text_pos, label.text.c_str(), text_color, accent, glow);
 
         y += k_row_h + k_row_gap;
     }

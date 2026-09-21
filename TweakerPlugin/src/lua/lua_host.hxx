@@ -10,9 +10,9 @@
 // Everything here runs on the engine/render thread and only there (lua-scripting.md §7).
 namespace tw::lua::host
 {
-// Creates the VM, builds the sandboxed script environment, and loads every .lua found next to the
-// DLL under scripts/. Safe to call when there is nothing to load - that is the normal case, and it
-// leaves the module inert rather than failing.
+// Creates the VM, builds the sandboxed script environment, and loads every .lua found in
+// engine\TweakerStuff\Scripts (plugin/paths). Safe to call when there is nothing to load - that is the
+// normal case, and it leaves the module inert rather than failing.
 void initialize() noexcept;
 
 void shutdown() noexcept;
@@ -42,7 +42,7 @@ void draw_frame() noexcept;
 // How many script files loaded without error.
 [[nodiscard]] int loaded_script_count() noexcept;
 
-// What one script file is and what it is currently doing. Every .lua found in scripts/ gets an entry,
+// What one script file is and what it is currently doing. Every .lua found in Scripts\ gets an entry,
 // whether or not it is running - the overlay's Scripts tab has to be able to list something the user
 // turned off, which means the descriptive fields must be knowable **without executing the file**.
 //

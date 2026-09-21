@@ -52,6 +52,16 @@ std::array<std::uint8_t, tw::ui::overlay_state::k_tweak_count> g_tweak_enabled {
 std::array<std::uint8_t, tw::ui::overlay_state::k_tweak_count> g_tweak_quick_player {};
 std::vector<std::string> g_skin_names;
 std::string g_current_skin_name;
+bool g_host_connected = false;
+
+// Caller holds g_state_mutex.
+void clear_host_state_locked()
+{
+    g_tweak_enabled = {};
+    g_tweak_quick_player = {};
+    g_skin_names.clear();
+    g_current_skin_name.clear();
+}
 } // namespace
 
 namespace tw::ui::overlay_state
@@ -129,10 +139,17 @@ void set_current_skin(std::string name)
 void reset()
 {
     std::lock_guard lock(g_state_mutex);
-    g_tweak_enabled = {};
-    g_tweak_quick_player = {};
-    g_skin_names.clear();
-    g_current_skin_name.clear();
+    clear_host_state_locked();
+    ++g_generation;
+}
+
+void set_host_connected(bool connected)
+{
+    std::lock_guard lock(g_state_mutex);
+    if(!connected) {
+        clear_host_state_locked();
+    }
+    g_host_connected = connected;
     ++g_generation;
 }
 
@@ -149,6 +166,7 @@ bool refresh(cache& out)
         out.tweak_quick_player = g_tweak_quick_player;
         out.skin_names = g_skin_names;
         out.current_skin_name = g_current_skin_name;
+        out.host_connected = g_host_connected;
         out.seen_generation = g_generation;
     }
 

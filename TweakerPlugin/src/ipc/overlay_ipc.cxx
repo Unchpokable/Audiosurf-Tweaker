@@ -4,7 +4,10 @@
 
 #include "framework/wndproc_hub.hxx"
 
+#include "plugin/boot_log.hxx"
 #include "plugin/diagnostics.hxx"
+#include "plugin/globals.hxx"
+#include "plugin/paths.hxx"
 
 #include "ui/overlay_state.hxx"
 #include "ui/pending_actions.hxx"
@@ -23,12 +26,106 @@ constexpr std::string_view k_tw_ovl_prefix = "TW_OVL ";
 // never through this fixed-size splitter, so it isn't bounded by this constant.
 constexpr std::size_t k_max_fixed_op_tokens = 3;
 
-// Both only ever written from the IPC thread today, but reads may come from the UI/render thread
-// once future outbound ops (NOTIFY_TWEAK etc., see plugin-state-ops) can be triggered from there -
-// atomic keeps that cross-thread read well-defined without needing a full mutex for two small
-// values.
+// Bumped on every incompatible change to the L3 grammar. Travels in HANDSHAKE_ACK, and a host expecting a
+// different number treats the handshake as failed (Docs/Internal/plugin-offline-mode.md §5.2).
+constexpr int k_protocol_version = 1;
+
+// Whether Audiosurf Tweaker is connected, and the bridge window it talks through
+// (Docs/Internal/plugin-offline-mode.md §4.5).
+//
+// Read lock-free by anyone: the send path, tw::ipc::host_present(). Written only under g_link_mutex, which
+// makes a connect and a disconnect racing each other - a new host's HANDSHAKE_BEGIN on the game's window
+// thread against the watchdog noticing the previous bridge window died - land in one order or the other
+// rather than half of each. None of the writers is per-frame code.
 std::atomic<HWND> g_bridge_hwnd { nullptr };
-std::atomic<bool> g_handshake_complete { false };
+std::atomic<bool> g_host_present { false };
+std::mutex g_link_mutex;
+
+enum class drop_reason : std::uint8_t {
+    host_disconnect,
+    watchdog,
+    send_failed,
+};
+
+std::string_view reason_text(drop_reason reason) noexcept
+{
+    switch(reason) {
+        case drop_reason::host_disconnect:
+            return "HOST_DISCONNECT";
+        case drop_reason::watchdog:
+            return "watchdog: bridge window gone";
+        case drop_reason::send_failed:
+            return "send failed and bridge window gone";
+    }
+
+    return "unknown";
+}
+
+// Goes offline if `expected_bridge` is still the bridge in use - or unconditionally when it is null. The
+// check is what keeps a stale observation (the watchdog looked at the previous host's window) from
+// disconnecting the host that replaced it in the meantime.
+void drop_host(drop_reason reason, HWND expected_bridge) noexcept
+{
+    {
+        std::lock_guard lock(g_link_mutex);
+
+        const HWND current = g_bridge_hwnd.load(std::memory_order_relaxed);
+        if(!g_host_present.load(std::memory_order_relaxed) || (expected_bridge != nullptr && current != expected_bridge)) {
+            return;
+        }
+
+        g_host_present.store(false, std::memory_order_relaxed);
+        g_bridge_hwnd.store(nullptr, std::memory_order_relaxed);
+
+        // The state the host owns goes with it, in the same generation the offline flag lands in.
+        // pending_actions and qp::pending belong to the render thread, which resets them itself when this
+        // reaches its snapshot (ui/host_link).
+        tw::ui::overlay_state::set_host_connected(false);
+        tw::ui::qp::state::reset();
+    }
+
+    TW_LOG_INFO("ipc: host gone ({})", reason_text(reason));
+    TW_BOOT_LOG("ipc: host gone ({}) - offline", reason_text(reason));
+}
+
+// "channels" when this module was loaded out of engine\channels\, "injected" for anything else - including
+// "Load now" injecting the very same file, which is still an injection as far as the host is concerned.
+std::string_view load_mode() noexcept
+{
+    std::array<wchar_t, MAX_PATH> buffer {};
+    const DWORD length = ::GetModuleFileNameW(tw::plugin::globals::module_handle, buffer.data(), static_cast<DWORD>(buffer.size()));
+    if(length == 0 || length >= buffer.size()) {
+        return "injected";
+    }
+
+    const std::filesystem::path module_dir = std::filesystem::path { std::wstring_view { buffer.data(), length } }.parent_path();
+    const std::filesystem::path channels_dir = tw::plugin::paths::engine_root() / L"channels";
+
+    const std::wstring_view a = module_dir.native();
+    const std::wstring_view b = channels_dir.native();
+    const bool same =
+        ::CompareStringOrdinal(a.data(), static_cast<int>(a.size()), b.data(), static_cast<int>(b.size()), TRUE) == CSTR_EQUAL;
+
+    return same ? "channels" : "injected";
+}
+
+void run_watchdog(std::stop_token stop) noexcept
+{
+    // Most of its life asleep. One IsWindow per second while connected, nothing at all otherwise - and
+    // never on the render thread, which is the point of it being a thread (§4.5).
+    while(!stop.stop_requested()) {
+        std::this_thread::sleep_for(std::chrono::seconds { 1 });
+
+        if(!g_host_present.load(std::memory_order_relaxed)) {
+            continue;
+        }
+
+        const HWND bridge = g_bridge_hwnd.load(std::memory_order_relaxed);
+        if(bridge != nullptr && ::IsWindow(bridge) == FALSE) {
+            drop_host(drop_reason::watchdog, bridge);
+        }
+    }
+}
 
 using tw::ui::wire::percent_decode;
 
@@ -131,7 +228,18 @@ bool send_payload_to_bridge(std::string_view inner_payload)
     cds.cbData = static_cast<DWORD>(envelope.size() + 1);
     cds.lpData = const_cast<char*>(envelope.c_str());
 
-    return ::SendMessageW(target, WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&cds)) != 0;
+    if(::SendMessageW(target, WM_COPYDATA, 0, reinterpret_cast<LPARAM>(&cds)) != 0) {
+        return true;
+    }
+
+    // A zero result alone proves nothing - it is whatever the bridge's handler returned. A window that no
+    // longer exists does: the host is gone, and there is no reason to wait a second for the watchdog to
+    // agree. Only reached on the failure path, never per frame.
+    if(::IsWindow(target) == FALSE) {
+        drop_host(drop_reason::send_failed, target);
+    }
+
+    return false;
 }
 
 // Parses and applies a single TW_OVL op synchronously, right where it's received - see
@@ -164,25 +272,44 @@ void handle_tw_ovl_op(std::string_view payload)
         const std::string caption { tokens[0] };
 
         const HWND bridge = ::FindWindowA(nullptr, caption.c_str());
-        g_bridge_hwnd.store(bridge, std::memory_order_relaxed);
-        g_handshake_complete.store(true, std::memory_order_relaxed);
+
+        // Once per host connection - not per-frame work, so the lifecycle log is affordable here even though
+        // WM_COPYDATA arrives on the game's window thread.
+        TW_BOOT_LOG("ipc: HANDSHAKE_BEGIN, bridge window {}", bridge != nullptr ? "found" : "NOT found - staying offline");
 
         if(bridge == nullptr) {
             // Most likely cause is a caption containing a space: L3 tokens are split on spaces and
             // the caption, unlike skin names, is not percent-encoded, so tokens[0] holds only the
             // first word. See Docs/Internal/overlay-protocol.md, HANDSHAKE_BEGIN.
-            TW_LOG_ERROR("ipc: HANDSHAKE_BEGIN caption '{}' resolved to no window - outbound channel stays closed", caption);
-        }
-        else {
-            TW_LOG_INFO("ipc: handshake complete, bridge window={} (caption '{}')", static_cast<const void*>(bridge), caption);
+            TW_LOG_ERROR("ipc: HANDSHAKE_BEGIN caption '{}' resolved to no window - staying offline", caption);
+            return;
         }
 
-        send_payload_to_bridge("HANDSHAKE_ACK");
+        {
+            std::lock_guard lock(g_link_mutex);
+
+            // A handshake from a new host while the old one still counts as connected replaces it outright:
+            // whatever the old host pushed is stale, and the new one pushes its own state after the ACK.
+            if(g_host_present.load(std::memory_order_relaxed)) {
+                tw::ui::overlay_state::set_host_connected(false);
+                tw::ui::qp::state::reset();
+            }
+
+            g_bridge_hwnd.store(bridge, std::memory_order_relaxed);
+            g_host_present.store(true, std::memory_order_relaxed);
+            tw::ui::overlay_state::set_host_connected(true);
+        }
+
+        TW_LOG_INFO("ipc: handshake complete, bridge window={} (caption '{}')", static_cast<const void*>(bridge), caption);
+
+        std::array<char, 96> ack;
+        const auto written = std::format_to_n(ack.data(), ack.size(), "HANDSHAKE_ACK {} {} {}", TW_PLUGIN_VERSION, k_protocol_version, load_mode());
+        send_payload_to_bridge(std::string_view { ack.data(), static_cast<std::size_t>(written.out - ack.data()) });
         return;
     }
 
-    if(op == "HANDSHAKE_PING") {
-        // v1: no-op; reserved for future keepalive / reconnect.
+    if(op == "HOST_DISCONNECT") {
+        drop_host(drop_reason::host_disconnect, nullptr);
         return;
     }
 
@@ -272,12 +399,35 @@ void initialize() noexcept
     tw::framework::wndproc::subscribe(WM_COPYDATA, &handle_copydata);
 }
 
+void start_host_watchdog() noexcept
+{
+    // Allocated and never freed, deliberately. A static std::jthread would request a stop and join from
+    // the CRT's DLL teardown, under the loader lock - and the plugin has no unload path for it to be
+    // tidy on behalf of anyway. The process exiting ends the thread.
+    static std::atomic<bool> started { false };
+    if(started.exchange(true)) {
+        return;
+    }
+
+    new std::jthread(&run_watchdog);
+    TW_BOOT_LOG("ipc: host watchdog started");
+}
+
+bool host_present() noexcept
+{
+    return g_host_present.load(std::memory_order_relaxed);
+}
+
 void shutdown() noexcept
 {
-    g_bridge_hwnd.store(nullptr, std::memory_order_relaxed);
-    g_handshake_complete.store(false, std::memory_order_relaxed);
-    tw::ui::overlay_state::reset();
-    tw::ui::qp::state::reset();
+    {
+        std::lock_guard lock(g_link_mutex);
+        g_bridge_hwnd.store(nullptr, std::memory_order_relaxed);
+        g_host_present.store(false, std::memory_order_relaxed);
+        tw::ui::overlay_state::set_host_connected(false);
+        tw::ui::qp::state::reset();
+    }
+
     tw::ui::pending_actions::reset();
     tw::ui::qp::pending::reset();
 }

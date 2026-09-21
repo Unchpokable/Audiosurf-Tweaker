@@ -85,18 +85,30 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Overlay -->
+                <!-- In-game plugin -->
                 <Border Classes="STCard">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Overlay" Classes="STCardTitle" Margin="0,0,0,8"/>
+                        <TextBlock Text="In-game plugin" Classes="STCardTitle" Margin="0,0,0,2"/>
+                        <TextBlock Classes="STToggleHint" Margin="2,0,0,8"
+                                   Text="Puts TweakerPlugin into the game, where it draws the overlay, replaces the skybox and runs scripts. The game loads it by itself at startup - Tweaker does not have to be running."/>
 
                         <Border Classes="STToggleRow"
-                                ToolTip.Tip="Injects TweakerPlugin.dll into the game once connected, for Skin Changer / Tweaker controls in-game. Experimental - requires TweakerPlugin.dll and InjectHelper.exe next to TweakerUI.exe">
+                                ToolTip.Tip="Copies the plugin into the game's engine\channels folder, or takes it back out. Your skyboxes, scripts and configs are never removed">
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Text="[Experimental] Enable in-game overlay" Classes="STToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsInGameOverlayEnabled, Mode=TwoWay}"/>
+                                <TextBlock Text="[Experimental] Install the plugin into Audiosurf" Classes="STToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsPluginInstalled, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
+
+                        <Border Classes="STToggleRow STNested" IsEnabled="{Binding IsPluginInstalled}"
+                                ToolTip.Tip="Off disconnects the overlay from Tweaker right away: skyboxes and scripts keep running in the game, but the overlay's Skins, Tweaks and Player tabs go offline">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="Connect the in-game overlay to Tweaker" Classes="STToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsOverlaySyncEnabled, Mode=TwoWay}"/>
+                            </Grid>
+                        </Border>
+
+                        <TextBlock Classes="STToggleHint" Margin="2,8,0,0" TextWrapping="Wrap" Text="{Binding PluginStatus}"/>
                     </StackPanel>
                 </Border>
 

@@ -1,12 +1,15 @@
 # Skyboxes
 
-Небесные пакеты `.sky`, которые ведутся вместе с плагином. Не бандл и не ассеты для раздачи —
-рабочие копии, на которых Skybox Replacer разрабатывается и проверяется.
+Небесные пакеты `.sky`, которые ведутся вместе с плагином, и одновременно — **источник тех пакетов,
+что уезжают в бандл**. Всё, что лежит здесь на верхнем уровне, сборка `TweakerUI` копирует в
+`PluginPayload\TweakerStuff\SkyboxReplacer\Skyboxes\`, откуда оно попадает в игру пользователя.
+Исключение одно и общее с `TweakerPlugin\assets\scripts`: **`dev\` не уезжает никуда**.
 
 | | |
 |---|---|
-| `OurDraftsCollides.sky/` | рабочая копия. Здесь правят манифест, шейдеры и `scripts/clouds.lua`; сюда же смотрят харнессы `skylua/realtest`, `skyfill/realfill`, `place` и `skyload/pkg` |
-| `OurDraftsZipped.sky` | **тот же пакет, зазипованный** — вторая форма формата |
+| `OurDraftsCollides.sky/` | рабочая копия, она же поставляемая. Здесь правят манифест, шейдеры и `scripts/clouds.lua`; сюда же смотрят харнессы `skylua/realtest`, `skyfill/realfill`, `place` и `skyload/pkg` |
+| `ODC_VolTex.sky/` | поставляемая: та же сцена на запечённом объёмном шуме |
+| `dev/OurDraftsZipped.sky` | **тот же пакет, что `OurDraftsCollides`, зазипованный** — вторая форма формата. В бандл не едет: пользователю это было бы одно и то же небо под двумя именами |
 
 ## Зачем архив лежит рядом с папкой
 
@@ -22,8 +25,8 @@
 Чтобы пересобрать после правок в папке:
 
 ```powershell
-Compress-Archive -Force -Path Skyboxes\OurDraftsCollides.sky -DestinationPath Skyboxes\OurDraftsZipped.zip
-Move-Item -Force Skyboxes\OurDraftsZipped.zip Skyboxes\OurDraftsZipped.sky
+Compress-Archive -Force -Path Skyboxes\OurDraftsCollides.sky -DestinationPath Skyboxes\dev\OurDraftsZipped.zip
+Move-Item -Force Skyboxes\dev\OurDraftsZipped.zip Skyboxes\dev\OurDraftsZipped.sky
 ```
 
 Переименование обязательно: `Compress-Archive` отказывается писать что-либо кроме `.zip`. Плагин

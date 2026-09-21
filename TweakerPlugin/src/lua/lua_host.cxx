@@ -7,7 +7,7 @@
 #include "lua/lua_config.hxx"
 
 #include "plugin/diagnostics.hxx"
-#include "plugin/globals.hxx"
+#include "plugin/paths.hxx"
 
 #include "ui/plugins/static/notefeed.hxx"
 
@@ -811,21 +811,42 @@ void strip_sandbox(lua_State* lua) noexcept
     lua_pop(lua, 1);
 }
 
+// engine\TweakerStuff\Scripts - see plugin/paths, which also creates it.
 std::filesystem::path script_directory() noexcept
 {
-    wchar_t buffer[MAX_PATH] {};
-    const DWORD length = ::GetModuleFileNameW(tw::plugin::globals::module_handle, buffer, MAX_PATH);
-    if(length == 0 || length >= MAX_PATH) {
-        return {};
-    }
+    const std::filesystem::path& directory = tw::plugin::paths::scripts_dir();
 
     std::error_code ec;
-    std::filesystem::path directory = std::filesystem::path(buffer).parent_path() / L"scripts";
-    if(!std::filesystem::is_directory(directory, ec)) {
+    if(directory.empty() || !std::filesystem::is_directory(directory, ec)) {
         return {};
     }
 
     return directory;
+}
+
+// The whole file, read through the wide path. luaL_loadfile would have been one call, but it opens the
+// file with fopen and a narrow name - which cannot spell a path the ANSI code page does not cover, and
+// the scripts folder now sits under the game's install, wherever that is.
+bool read_script(const std::filesystem::path& path, std::string& out)
+{
+    std::ifstream file { path, std::ios::binary };
+    if(!file.is_open()) {
+        return false;
+    }
+
+    file.seekg(0, std::ios::end);
+    const std::streamoff size = file.tellg();
+    if(size < 0) {
+        return false;
+    }
+    file.seekg(0, std::ios::beg);
+
+    out.resize(static_cast<std::size_t>(size));
+    if(!out.empty()) {
+        file.read(out.data(), size);
+    }
+
+    return static_cast<bool>(file) || file.eof();
 }
 
 // One entry per .lua file found, running or not.
@@ -856,7 +877,7 @@ script_entry* find_script(int id) noexcept
 // a stray `@author` in a comment three hundred lines down is not metadata.
 void read_header(script_entry& entry) noexcept
 {
-    entry.info.name = entry.path.stem().string();
+    entry.info.name = tw::plugin::paths::to_utf8(entry.path.stem());
     entry.info.author.clear();
     entry.info.version.clear();
     entry.info.description.clear();
@@ -955,12 +976,20 @@ void unload_script(int owner) noexcept
 // prelude.
 bool run_script_file(lua_State* lua, const std::filesystem::path& path, int owner) noexcept
 {
-    const std::string narrow_path = path.string();
+    std::string source;
+    if(!read_script(path, source)) {
+        set_error("load", ("cannot read " + tw::plugin::paths::to_utf8(path.filename())).c_str());
+        return false;
+    }
+
+    // "@name" is what luaL_loadfile would have used, minus the directory: every script lives in the same
+    // folder, and an error line that repeats the whole install path in the Scripts tab is noise.
+    const std::string chunk_name = "@" + tw::plugin::paths::to_utf8(path.filename());
 
     // Handler first so its stack index stays valid for the whole sequence below.
     const int handler = push_traceback_handler(lua);
 
-    if(luaL_loadfile(lua, narrow_path.c_str()) != 0) {
+    if(luaL_loadbuffer(lua, source.data(), source.size(), chunk_name.c_str()) != 0) {
         set_error("load", lua_tostring(lua, -1));
         lua_pop(lua, handler == 0 ? 1 : 2);
         return false;
@@ -1004,7 +1033,7 @@ void initialize() noexcept
 
     const std::filesystem::path directory = script_directory();
     if(directory.empty()) {
-        TW_LOG_INFO("lua_host: no scripts/ directory next to the DLL - scripting stays idle");
+        TW_LOG_INFO("lua_host: no TweakerStuff\\Scripts directory - scripting stays idle");
         return;
     }
 
@@ -1076,7 +1105,7 @@ void initialize() noexcept
 
     g_lua = lua;
 
-    tw::lua::config::load((directory.parent_path() / L"TweakerScripts.cfg").string());
+    tw::lua::config::load(tw::plugin::paths::config_file(L"scripts.cfg"));
 
     // Catalogue everything first, then run what is enabled. Two passes because the tab has to be
     // able to list a script the user turned off, and that listing comes from the file's header
@@ -1095,7 +1124,7 @@ void initialize() noexcept
         script_entry entry;
         entry.path = path;
         entry.info.id = next_id++;
-        entry.info.file = path.filename().string();
+        entry.info.file = tw::plugin::paths::to_utf8(path.filename());
         read_header(entry);
         entry.info.enabled = tw::lua::config::enabled(entry.info.file);
         g_scripts.push_back(std::move(entry));

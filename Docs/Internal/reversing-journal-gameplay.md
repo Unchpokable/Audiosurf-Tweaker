@@ -1706,3 +1706,197 @@ local spectrum = tw.array("VisMusic", "New Table: SpectrumHit", "SpectrumIndex")
 верх, воздух), а не «полосу k». Тогда источник можно улучшить — если 256 бинов однажды оживут, или
 если дело дойдёт до собственного FFT через `bass.dll`, которая лежит рядом и экспортирует
 `BASS_ChannelGetData`, — не сломав ни одного существующего неба.
+
+---
+
+## 11. Внутризаездный HUD и конвейер очков
+
+Разбор `gui/XX_gui.cgr::Do_GUI` (#384) — единственного корня всего, что игрок видит поверх трассы, —
+и того, как очки доезжают от собранного совпадения до числа на экране.
+
+Добыто `Tools/CgrPy`: обход дерева от #384 до листьев отрисовки, `up.py`-обход вверх для проверки
+достижимости, `xrefs.py` по именам импортов.
+
+### 11.1 Опись: что рисуется в заезде
+
+У группы два корня, и оба сходятся в `Do_GUI` (#0): кроме #384 там живут только `Do_ResetGUI` (#1) и
+`Do_FPS` (#6). То есть таблица ниже — **весь** внутризаездный HUD, без остатка.
+
+| Узел | Что рисует |
+|---|---|
+| `Do_ShowPersonalBest` #5348 | popup «Best Score», первые 10 секунд песни |
+| `Do_ShowScore` #2351 | `GUIbar_Top` #454 (верхняя рамка), `TotalResourcesText` #2480 (счёт), текстовые «+N» |
+| `Do_BottomFrame` #389 | `GUIbar_Bottom` #394 |
+| `Do_ShowChainBar` #398 → `Do_ShrinkingBars` #3936 | `Timer1` #3938 — полоса каскада, `Timer2` #3970 — **полоса прогресса песни** |
+| `Do_ShowSongName` #2955 | название и исполнитель |
+| `Do_OverheadMap` #4147 → `Do_RenderTrackSideView` #4808 | миникарта: `MinimapSide` #4810 (или `_Whiteskin` #5073) и `MinimapPlayer` #4857 |
+| `Do_CooperativeModeSeparateScores` #3707 | два `CloneScoreText` под `SpecialPurpose::useClone?` |
+| `Do_LadderMedalRequirements` #3464 | панель медалей (§3.6) |
+| `Do_RenderMoneyParticles` #3980 | летящие «монетки» — **и не только**, см. 11.3 |
+| `Do_DashboardFire` #4312, `Do_ShowHitBars` #3023, `Do_RenderHintBrackets` #4185, `Do_RenderPerfectStealthMarker` #3786, `Do_Level1_DangerWarning` #3845, `Do_BossDamageBar` #599, `Do_RenderEquippedGrenade` #4594, `Do_ShowShuffleAndOtherPowerRechargeBars` #4330, `Do_FreeridePercentage` #5586 | режимное |
+
+Имя `Timer2` стоит запомнить отдельно: полоса прогресса песни лежит **внутри** обработчика полосы
+каскада и называется никак. Её ширина —
+
+```
+Timer2.Size.x = Val X * (VisMusic::SongPlayRemaining / VisMusic::SongLength)
+```
+
+то есть она **убывает**. Соседний `Timer1` — каскад, `(15.1041/3) * Envelope#12477(ChainCount)`
+(§3.10).
+
+### 11.2 Мёртвые ветки, на которые легко потратить вечер
+
+- **`Do_TripDisplay` (#248)** — `StartCity` (#250), `EndCity` (#281), `TripLine` (#279). Длина
+  `TripLine` считается как `(SongLength - SongPlayRemaining) / SongLength`, то есть это выглядит
+  ровно как искомая полоса прогресса песни. Не она: единственный родитель — `ChannelCaller` #350, у
+  которого родителей нет, и ни одна группа проекта не импортирует ни его, ни `Do_TripDisplay`.
+  Остаток прототипа-автопробега; в той же компании `DoGasGuage` (#400), `GasNeedle` (#446),
+  `Speedometer` (#184), `SteeringWheel` (#557).
+- **`Do_LevelDisplay` (#4316)** — `ChannelCaller` вообще без детей, как `Do_TurnBluesPurple` (#781).
+
+Обе достижимы из `Do_GUI`, обе ничего не делают. Мораль та же, что и у палитры (§3.7): «канал
+существует и выглядит правдоподобно» — не доказательство, что игра им пользуется.
+
+### 11.3 `Do_RenderMoneyParticles` — не ветка отрисовки
+
+Узел, который обязан попасть в любую инструкцию по этой группе. С виду — такой же render-узел, как
+соседи; на деле он зовёт `MoneyFloaterCommander::Do` (#1), а это **один цикл**, который и рисует
+частицу, и стареет её, и в конце жизни начисляет очки:
+
+```
+for CurrentParticle in 0..MaxNumParticles:
+    Index_Particles := CurrentParticle
+    if MoneyParticles.State[i] == 1:
+        PointsByColor.NumActiveMoneyParticles[Color[i]] += 1
+        MoneyFloater_GiveAlpha                                    <- ОТРИСОВКА
+        SpentLifePercentage[i] += PausableTickCount * SpeedModifier[i]
+        if SpentLifePercentage[i] >= 1:
+            Do_EndLifeApplyScore (#198):
+                State[i] := 0
+                StatCollector::UpdatePoints_Color := Color[i]
+                call StatCollector::Do_UpdatePoints(Delta = MoneyValue[i])
+                call XX_Sounds::Do_PlayScoreFloaterReachedScoreGUI
+        AreActiveMoneyParticles? := 1
+```
+
+Подавление #3980 не убирает летящие очки — оно **останавливает начисление очков до конца заезда**.
+Единственный безопасный узел, если монетки надо спрятать, — `MoneyFloater_GiveAlpha` (**#4**),
+внутри цикла.
+
+### 11.4 Конвейер очков
+
+```
+совпадение собрано
+  └─ Puzzle::Do_LaunchMoneyParticles (#95) — цикл ПО КАЖДОМУ СОБРАННОМУ ТАЙЛУ:
+       #1336 : MoneyFloaterCommander::inDisplayedMoney := PointsThisTile
+               MoneyFloaterCommander::inLaunchColor    := Puzzle_State.MatchedColors[i]
+               MoneyFloaterCommander::inLaunchTileID   := Puzzle_State.MatchID[i]
+               call Do_LaunchParticle (#27)
+                    строка в MoneyParticles, MatchBlurs, XX_Sounds::Do_PlayCashRegister
+  ~~~ полёт, SpeedModifier = MinSpeedModifier + RAND*MaxSpeedModiefiel — СВОЙ у каждой частицы ~~~
+  └─ Do_EndLifeApplyScore (#198) -> StatCollector::Do_UpdatePoints (#153)
+                    Points := MAX(0, Points + Delt)
+                    PointsByColor.Points[UpdatePoints_Color] += Delt
+                    Points_L / Points_R по IncomingPointsAreSharedMatch? / IncomingPointsAreRight?
+  └─ следующий кадр: XX_gui::Do_LaunchScoreFloaters (#3086)
+                    для каждого цвета: если Points[i] != LastKnownPoints[i] и
+                    NumActiveMoneyParticles[i] == 0 -> Do_CreateFloater (#5640), текст «+N»
+  └─ каждый кадр:   TotalResourcesText (#2480) = ROUND(Inertia(StatCollector::Points))
+```
+
+Четыре вещи стоит выделить.
+
+**Частица запускается на каждый собранный ТАЙЛ, а не на совпадение.** `Do_LaunchMoneyParticles`
+(#95) — цикл по всем блокам коллекции, так что матч из семи блоков это семь запусков с одинаковым
+цветом и одинаковым `PointsThisTile`. Именно поэтому текстовые «+N» у игры строятся не по событию
+запуска, а разностью `PointsByColor` раз в кадр: это сводит их к одному числу на цвет. Любой сторонний
+перехват `Do_LaunchParticle` обязан свести их сам, иначе на экране окажется семь одинаковых чисел в
+одной точке.
+
+**Текстовое «+N» игра рисует после того, как счёт вырос.** Оно рождается из сравнения
+`PointsByColor.Points` с `LastKnownPoints`, то есть по факту изменения, а не по событию. Зато сам
+счёт **уже задержан** на время полёта частицы — начисление происходит в `Do_EndLifeApplyScore`, а не
+в момент матча.
+
+**`Do_UpdatePoints` (#153) — единственная воронка счёта.** Её зовут десять мест из восьми групп:
+`Puzzle` (матчи, штрафы, таран, ironmode, репопуляция сетки), `MoneyFloaterCommander`,
+`ScoreFloaterCommander`, `Boss_TrafficRunner`, `BusyBee`, `QuestionBoxOverlord`, `SpecialPurpose`,
+`PlayerLevel`. Хук на неё видит любое изменение счёта.
+
+**`UpdatePoints_Color` (#155) протухает.** Пишут его только `Puzzle` (#1293/#1295),
+`SpecialPurpose` (#1146) и `MoneyFloaterCommander` (#130) — то есть у части событий цвет остаётся от
+предыдущего. Игра страдает тем же: её `PointsByColor` индексируется этим же каналом. Плюс в
+употреблении встречаются id вне палитры — 11 (ниндзя-бонус за таран) и 14 (special purpose).
+
+Про `Points := MAX(0, ...)`: при штрафе фактически применённая дельта может быть меньше запрошенной,
+так что «насколько сдвинулся счёт» и «что просил вызывающий» — разные числа.
+
+### 11.5 Параметры группы `MoneyFloaterCommander` — рудименты
+
+`group_params` отдаёт у группы четыре параметра:
+
+```
+param0: #7   Launch_DisplayedMoney
+param1: #58  Launch_Color
+param2: #81  Launch_PosOffset  (Value Vector)
+param3: #164 Launch_TileID
+```
+
+Все вызывающие их связывают, и декомпилятор честно печатает
+`call Do_LaunchParticle(Launch_DisplayedMoney = PointsThisTile, ...)`. **Тело при этом читает другие
+каналы** — `inDisplayedMoney` (#205), `inLaunchColor` (#252), `inLaunchTileID` (#254), — которые
+вызывающий выставляет обычным `Set Value` прямо перед вызовом. У #7 и #58 в графе нет ни родителей,
+ни детей: это пустые сокеты.
+
+Практический вывод для любого перехвата: читать `in*`, а не `Launch_*`.
+
+### 11.6 Личный рекорд
+
+`Do_ShowPersonalBest` (#5348) первым делом считает
+
+```
+PB (#731) := StartGroup::Online? ? MAX(StartGroup::PB_FromServer, StartGroup::PersonalBestScore)
+                                 : StartGroup::PersonalBestScore
+```
+
+и дальше рисует popup под `If` #5412 при `(PB > 0 || Freeride?) && (SongLength - SongPlayRemaining) < 10`.
+
+**#5348 — не чистая отрисовка.** Третьим ребёнком там висит `If` #6720 на `SpecialPurpose::Freeride?`
+с `Trigger` #6721 на `SPACE`, который переключает `Player::AutopilotOn?`. Подавлять надо #5412: и
+триггер остаётся жив, и `PB` продолжает обновляться — то есть канал #731 остаётся готовым к чтению
+источником личного рекорда.
+
+**И что это за число.** `StartGroup::PersonalBestScore` (#5478) — сирота в своей группе: ни детей,
+ни родителей, ни одного `Set Value` внутри `XX_StartHere`. Пишет его **другая** группа через
+импорт-стаб — `Scores/LocalScores.cgr` #63: `PersonalBestScore := out_BestScore`, а `out_BestScore`
+берётся из таблицы `PersonalBest` в `Do_FindPersonalBest` (#2). Строку в эту таблицу кладёт
+`Do_WriteScore` (#110):
+
+```
+PersonalBest.score[index] := StatCollector::PointsWithGridBonus
+```
+
+То есть **личный рекорд — это финальный счёт со всеми бонусами**, а не `Points`. Серверная половина
+(`PB_FromServer`, #6785 в `XX_StartHere`) — то же число, приехавшее из XML ответа. Сравнивать `PB` с
+сырым `Points` бессмысленно: по §3.4 разрыв это `1 + сумма скейлеров`, а это от 20 до 50 % в
+нормальном заезде (один Clean Finish — уже 25 %).
+
+Полезное следствие для любого, кто это считает: все скейлеры в `Do_FindAddBonusPoints` (#797)
+берутся **от сырых `Points`** и не компаундятся, так что `PointsWithGridBonus = Points * (1 + ΣB)` —
+линейно по `Points`. Общий множитель распределяется по слагаемым, то есть посчитать «сколько стоит
+вот этот матч в финальных очках» можно домножением его сырой дельты на тот же `1 + ΣB`, и сумма
+сойдётся точно, а не приблизительно.
+
+### 11.7 Миникарта
+
+`Do_OverheadMap` (#4147) под `If !StartGroup::isTutorial?`. Внутри — `OneTime` → `Do_CreateWhiteTrackTexture`
+(#4844), которая печёт `CustomTexture` #4851 (профиль трассы) через `CustomTexture_Update`; дальше
+`MinimapSide` / `MinimapSide_Whiteskin` по `StartGroup::WhiteBackground?`, маркер `MinimapPlayer`, и
+`Do_RefreshTextureAsNeeded` (#2370), которая перепекает текстуру при потере устройства.
+
+Узел **пишет** `Highway::RingIndex := Player::OffsetCurrentRing`. Подавлять его при этом можно, но
+довод не «это отрисовка», а другой: `RingIndex` — параметр-скрэтч, который перед каждым обращением к
+`Highway` ставят заново семь групп (`Player`, `Debris`, `TrafficCommander`, `SpecialPurpose`,
+`Player_Pullers`, `SprayerStraight` и сама `XX_gui`). Значение, оставленное миникартой, не читает
+никто.

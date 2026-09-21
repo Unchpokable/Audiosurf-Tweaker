@@ -3,7 +3,9 @@
 #include "framework/texture_hook.hxx"
 
 #include "framework/detour_transaction.hxx"
+#include "framework/ready.hxx"
 
+#include "plugin/boot_log.hxx"
 #include "plugin/diagnostics.hxx"
 
 namespace
@@ -34,7 +36,7 @@ load_from_memory_fn true_load_texture_from_memory = nullptr;
 get_texture_fn g_get_texture = nullptr;
 get_channel_name_fn g_get_channel_name = nullptr;
 
-bool g_installed = false;
+std::atomic<bool> g_installed { false };
 
 std::vector<std::pair<tw::framework::texture::texture_about_to_load_fn, tw::framework::texture::texture_loaded_fn>> g_subscribers;
 
@@ -43,6 +45,14 @@ std::vector<std::pair<tw::framework::texture::texture_about_to_load_fn, tw::fram
 bool __fastcall load_texture_from_memory_hook(Aco_DX8_Texture* self, void* edx, char* buffer, int buffer_size)
 {
     const char* name = tw::framework::texture::channel_name(reinterpret_cast<A3d_Channel*>(self));
+
+    // Early load: the hook can be live before the subscribers are. A texture that goes by here is one the
+    // sky will not recognise until it loads again, so each is written down - this is how the lifecycle log
+    // answers whether startup was fast enough (plugin-offline-mode.md, Ф2).
+    if(!tw::framework::ready::published()) [[unlikely]] {
+        TW_BOOT_LOG("texture: '{}' loaded before the plugin was ready - passed through", name != nullptr ? name : "<unnamed>");
+        return true_load_texture_from_memory(self, edx, buffer, buffer_size);
+    }
 
     for(const auto& [about_to_load, loaded] : g_subscribers) {
         if(about_to_load != nullptr) {
@@ -66,18 +76,58 @@ bool __fastcall load_texture_from_memory_hook(Aco_DX8_Texture* self, void* edx, 
     return ok;
 }
 
-// GetModuleHandleA rather than DetourFindFunction: the latter falls back to LoadLibrary when the
-// module is not mapped, and a bare "<guid>.dll" resolved against the process search path could map
-// a second copy of a channel DLL from somewhere other than engine/channels. Not being mapped is a
-// legitimate answer here ("too early, try again"), not something to force.
-void* resolve(const char* module_name, const char* symbol) noexcept
+void* resolve(HMODULE module_handle, const char* symbol) noexcept
 {
-    HMODULE module_handle = ::GetModuleHandleA(module_name);
     if(module_handle == nullptr) {
         return nullptr;
     }
 
     return reinterpret_cast<void*>(::GetProcAddress(module_handle, symbol));
+}
+
+enum class install_result : std::uint8_t {
+    installed,
+    already_installed,
+    unresolved,
+    attach_failed,
+};
+
+// Shared by both load modes, and silent: the early caller runs under the loader lock and may only write
+// the lifecycle log, so reporting is each caller's own business.
+install_result install(HMODULE texture_module, tw::framework::detour::suspend threads) noexcept
+{
+    if(g_installed.load(std::memory_order_relaxed)) {
+        return install_result::already_installed;
+    }
+
+    void* p_load_from_memory = resolve(texture_module, k_load_from_memory_symbol);
+    void* p_get_texture = resolve(texture_module, k_get_texture_symbol);
+    void* p_get_channel_name = resolve(::GetModuleHandleA(k_highpoly_module), k_get_channel_name_symbol);
+
+    if(p_load_from_memory == nullptr || p_get_texture == nullptr || p_get_channel_name == nullptr) {
+        return install_result::unresolved;
+    }
+
+    // The two plain thunks are usable the moment they are set, and stay usable even if the detour
+    // below fails - a consumer that already knows a channel can still read its texture.
+    g_get_texture = reinterpret_cast<get_texture_fn>(p_get_texture);
+    g_get_channel_name = reinterpret_cast<get_channel_name_fn>(p_get_channel_name);
+
+    true_load_texture_from_memory = reinterpret_cast<load_from_memory_fn>(p_load_from_memory);
+
+    const bool ok = tw::framework::detour::attach(
+        {
+            { reinterpret_cast<void**>(&true_load_texture_from_memory), reinterpret_cast<void*>(load_texture_from_memory_hook) },
+        },
+        threads);
+
+    if(!ok) {
+        true_load_texture_from_memory = nullptr;
+        return install_result::attach_failed;
+    }
+
+    g_installed.store(true, std::memory_order_relaxed);
+    return install_result::installed;
 }
 } // namespace
 
@@ -90,7 +140,7 @@ void subscribe(texture_about_to_load_fn about_to_load, texture_loaded_fn loaded)
 
 bool is_installed() noexcept
 {
-    return g_installed;
+    return g_installed.load(std::memory_order_relaxed);
 }
 
 const char* channel_name(A3d_Channel* channel) noexcept
@@ -113,42 +163,46 @@ IDirect3DTexture9* channel_texture(Aco_DX8_Texture* channel) noexcept
 
 bool install_texture_hook() noexcept
 {
-    if(g_installed) {
-        return true;
+    // GetModuleHandleA rather than DetourFindFunction: the latter falls back to LoadLibrary when the
+    // module is not mapped, and a bare "<guid>.dll" resolved against the process search path could map
+    // a second copy of a channel DLL from somewhere other than engine/channels. Not being mapped is a
+    // legitimate answer here ("too early, try again"), not something to force.
+    switch(install(::GetModuleHandleA(k_texture_channel_module), tw::framework::detour::suspend::others)) {
+        case install_result::already_installed:
+            return true;
+        case install_result::installed:
+            TW_LOG_INFO("texture_hook: installed on Aco_DX8_Texture::LoadTextureFromMemory");
+            TW_BOOT_LOG("texture: LoadTextureFromMemory hooked (late)");
+            return true;
+        case install_result::unresolved:
+            TW_LOG_WARNING("texture_hook: entry points not resolvable yet - not installed");
+            return false;
+        case install_result::attach_failed:
+            TW_LOG_ERROR("texture_hook: DetourAttach on Aco_DX8_Texture::LoadTextureFromMemory failed");
+            TW_BOOT_LOG("texture: DetourAttach on LoadTextureFromMemory FAILED (late)");
+            return false;
     }
 
-    void* p_load_from_memory = resolve(k_texture_channel_module, k_load_from_memory_symbol);
-    void* p_get_texture = resolve(k_texture_channel_module, k_get_texture_symbol);
-    void* p_get_channel_name = resolve(k_highpoly_module, k_get_channel_name_symbol);
+    return false;
+}
 
-    if(p_load_from_memory == nullptr || p_get_texture == nullptr || p_get_channel_name == nullptr) {
-        TW_LOG_WARNING("texture_hook: entry points not resolvable yet (load={} get_texture={} channel_name={}) - not installed",
-            p_load_from_memory,
-            p_get_texture,
-            p_get_channel_name);
-        return false;
+bool install_texture_hook_from_loader(HMODULE texture_module) noexcept
+{
+    switch(install(texture_module, tw::framework::detour::suspend::none)) {
+        case install_result::already_installed:
+            TW_BOOT_LOG("texture: hook already installed - a second image of the channel? ignored");
+            return true;
+        case install_result::installed:
+            TW_BOOT_LOG("texture: LoadTextureFromMemory hooked (early, module {})", static_cast<void*>(texture_module));
+            return true;
+        case install_result::unresolved:
+            TW_BOOT_LOG("texture: entry points not found in the channel or HighPoly.dll - sky textures will not be recognised");
+            return false;
+        case install_result::attach_failed:
+            TW_BOOT_LOG("texture: DetourAttach on LoadTextureFromMemory FAILED (early)");
+            return false;
     }
 
-    // The two plain thunks are usable the moment they are set, and stay usable even if the detour
-    // below fails - a consumer that already knows a channel can still read its texture.
-    g_get_texture = reinterpret_cast<get_texture_fn>(p_get_texture);
-    g_get_channel_name = reinterpret_cast<get_channel_name_fn>(p_get_channel_name);
-
-    true_load_texture_from_memory = reinterpret_cast<load_from_memory_fn>(p_load_from_memory);
-
-    const bool ok = tw::framework::detour::attach({
-        { reinterpret_cast<void**>(&true_load_texture_from_memory), reinterpret_cast<void*>(load_texture_from_memory_hook) },
-    });
-
-    if(!ok) {
-        TW_LOG_ERROR("texture_hook: DetourAttach on Aco_DX8_Texture::LoadTextureFromMemory failed");
-        true_load_texture_from_memory = nullptr;
-        return false;
-    }
-
-    g_installed = true;
-    TW_LOG_INFO("texture_hook: installed on Aco_DX8_Texture::LoadTextureFromMemory");
-
-    return true;
+    return false;
 }
 } // namespace tw::framework::texture

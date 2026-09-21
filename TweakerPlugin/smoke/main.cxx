@@ -33,6 +33,7 @@
 
 #include "ui/fonts.hxx"
 #include "ui/gpu_texture.hxx"
+#include "ui/host_link.hxx"
 #include "ui/image/svg.hxx"
 #include "ui/overlay_config.hxx"
 #include "ui/overlay_state.hxx"
@@ -484,6 +485,10 @@ void seed_fake_overlay_state()
 {
     using tw::ui::overlay_state::tweak_id;
 
+    // First: going online is what the real plugin does on HANDSHAKE_BEGIN, before the host pushes anything,
+    // and going offline would clear everything seeded below.
+    tw::ui::overlay_state::set_host_connected(true);
+
     std::vector<std::string> skins = {
         "Neon Pulse",
         "Mono Track",
@@ -574,6 +579,18 @@ void draw_smoke_controls()
     }
     ImGui::Checkbox("Auto-confirm NOTIFY_TWEAK/NOTIFY_SKIN (simulate host online)", &g_smoke_auto_confirm);
     ImGui::TextUnformatted("Off = requests time out after ~5s and show a notefeed failure toast.");
+
+    // The same two edges tw::ipc drives in the game: off is HOST_DISCONNECT/watchdog (state cleared, stubs,
+    // "Offline" pin, toast), on is a fresh handshake followed by the host pushing its state again.
+    static bool host_connected = true;
+    if(ImGui::Checkbox("Audiosurf Tweaker connected", &host_connected)) {
+        if(host_connected) {
+            seed_fake_overlay_state();
+        }
+        else {
+            tw::ui::overlay_state::set_host_connected(false);
+        }
+    }
     actions.end();
 
     // The bench for the widgets Quick Player's tab is built from: the mode strip, a parameterized
@@ -955,6 +972,7 @@ int main(int, char**)
 
         static tw::ui::overlay_state::cache cache;
         tw::ui::overlay_state::refresh(cache);
+        (void)tw::ui::host_link::update(cache);
         tw::ui::pending_actions::update(cache);
 
         static tw::ui::qp::state::cache qp_cache;

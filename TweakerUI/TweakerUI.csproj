@@ -154,6 +154,12 @@
 	<PropertyGroup>
 		<TweakerPluginSourceDir>$(MSBuildThisFileDirectory)..\TweakerPlugin</TweakerPluginSourceDir>
 		<TweakerPluginBuildDir>$(TweakerPluginSourceDir)\build\msbuild</TweakerPluginBuildDir>
+		<!--
+		    Sky packages shipped with the bundle. Outside TweakerPlugin\assets on purpose: those are
+		    compiled into the DLL as resources, while these are loose .sky packages the user can open,
+		    copy and edit - the same thing they would download from someone else.
+		-->
+		<SkyboxSourceDir>$(MSBuildThisFileDirectory)..\Skyboxes</SkyboxSourceDir>
 	</PropertyGroup>
 
 	<Target Name="BuildTweakerPlugin" BeforeTargets="Build" Condition="$([MSBuild]::IsOSPlatform('Windows'))">
@@ -178,18 +184,38 @@
 			<TweakerPluginDll>$(TweakerPluginBuildDir)\bin\Release\TweakerPlugin.dll</TweakerPluginDll>
 		</PropertyGroup>
 		<!--
-		    The plugin's Lua scripts are loose files it loads from a scripts/ directory beside itself
-		    at runtime (see TweakerPlugin/src/lua/lua_host.cxx), deliberately - they are meant to be
-		    edited without a rebuild. That makes them part of the payload, not build intermediates:
-		    copying only the dll here would ship a scripting layer with nothing to run.
+		    The plugin's Lua scripts are loose files it loads from TweakerStuff\Scripts\ at runtime (see
+		    TweakerPlugin/src/lua/lua_host.cxx), deliberately - they are meant to be edited without a
+		    rebuild. That makes them part of the payload, not build intermediates: copying only the dll
+		    here would ship a scripting layer with nothing to run.
+
+		    One rule decides what ships, here and for the skyboxes below: a dev\ subfolder never does.
+		    assets\scripts\dev\ holds probes that verify an API works (they print pass/fail verdicts) or
+		    need a fixture the user does not have - real code, still built and still run by the Lua
+		    harness, just not something to hand a player. A subfolder rather than a marker inside the
+		    files because the plugin scans the game's Scripts\ folder non-recursively: anything a
+		    developer does want loaded, they drop in flat, and it stays theirs - not in the payload
+		    means not in the manifest, so Tweaker never claims or deletes it (§6.3).
 		-->
 		<ItemGroup>
-			<TweakerPluginScripts Include="$(TweakerPluginSourceDir)\assets\scripts\**\*" />
+			<TweakerPluginScripts Include="$(TweakerPluginSourceDir)\assets\scripts\*.lua" />
+			<TweakerPluginSkyboxes Include="$(SkyboxSourceDir)\**\*"
+			                       Exclude="$(SkyboxSourceDir)\dev\**\*;$(SkyboxSourceDir)\*.md" />
 		</ItemGroup>
+		<!--
+		    PluginPayload\ mirrors the layout the files end up in inside the game, so installing is a plain
+		    copy of the tree (Docs/Internal/plugin-offline-mode.md §6.1). The DLL therefore goes under
+		    channels\ and not at the top: PluginInstallation keys every file by its path relative to this
+		    folder, and a DLL sitting loose at the top is just a file bound for engine\, where the game never
+		    looks for a channel.
+		-->
 		<!-- No <Error> here - a missing dll just means the overlay wasn't built this time (see above). -->
-		<Copy SourceFiles="$(TweakerPluginDll)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true"
+		<Copy SourceFiles="$(TweakerPluginDll)" DestinationFolder="$(OutDir)PluginPayload\channels\" SkipUnchangedFiles="true"
 		      Condition="Exists('$(TweakerPluginDll)')" />
-		<Copy SourceFiles="@(TweakerPluginScripts)" DestinationFolder="$(OutDir)scripts\%(RecursiveDir)" SkipUnchangedFiles="true"
+		<Copy SourceFiles="@(TweakerPluginScripts)" DestinationFolder="$(OutDir)PluginPayload\TweakerStuff\Scripts\" SkipUnchangedFiles="true"
+		      Condition="Exists('$(TweakerPluginDll)')" />
+		<!-- Р-22's layout: packages live under SkyboxReplacer\Skyboxes\, beside SkyConfigs\ and module.json. -->
+		<Copy SourceFiles="@(TweakerPluginSkyboxes)" DestinationFolder="$(OutDir)PluginPayload\TweakerStuff\SkyboxReplacer\Skyboxes\%(RecursiveDir)" SkipUnchangedFiles="true"
 		      Condition="Exists('$(TweakerPluginDll)')" />
 	</Target>
 </Project>

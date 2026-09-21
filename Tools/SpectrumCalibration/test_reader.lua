@@ -14,7 +14,7 @@
 -- No game and no plugin build: the script under test only ever touches `tw`, and `tw` is stubbed
 -- below. It is the same file the plugin loads, read off disk, not a copy.
 
-local SCRIPT = "../../TweakerPlugin/assets/scripts/spectrum_calibration.lua"
+local SCRIPT = "../../TweakerPlugin/assets/scripts/dev/spectrum_calibration.lua"
 
 -- Has to match the schedule inside the script under test and inside make_calibration.py.
 local LEAD_IN, STEP, FIRST_HZ, PER_OCTAVE, STEPS = 3.0, 0.9, 20.0, 6, 61

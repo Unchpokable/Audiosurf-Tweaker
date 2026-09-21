@@ -1,6 +1,5 @@
 using System;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -238,20 +237,24 @@ namespace TweakerUI.ViewModels
             }
 
             var isGameKilled = false;
-            var gameProcesses = Process.GetProcessesByName("QuestViewer");
-            if (gameProcesses.Length > 0)
+            if (GameProcessService.IsRunning)
             {
-                if (await ApplicationNotificationManager.Manager.AskForAction("Game is running",
+                if (!await ApplicationNotificationManager.Manager.AskForAction("Game is running",
                         "Audiosurf Tweaker detected a running game instance. Color settings can't be overwritten while the game is running. Shut down the game to rewrite settings? This will start the game back up when the operation completes."))
-                {
-                    Utils.Cmd($"taskkill /f /pid {gameProcesses[0].Id}");
-                    isGameKilled = true;
-                    await WaitForGameStopWorking("QuestViewer");
-                }
-                else
                 {
                     return;
                 }
+
+                // Through GameProcessService rather than the "taskkill /f" this used to run: the game writes
+                // options.ini on the way out, and this method is about to rewrite that very file - killing it
+                // outright meant racing the game's own save of the file being edited (Р-21).
+                if (!await GameProcessService.CloseAsync())
+                {
+                    ApplicationNotificationManager.Manager.ShowError("Error", "Audiosurf could not be closed - the palette was not applied");
+                    return;
+                }
+
+                isGameKilled = true;
             }
 
             var pathToIni = Directory.GetParent(SettingsProvider.GameTexturesPath)?.FullName + "\\options.ini";
@@ -270,9 +273,7 @@ namespace TweakerUI.ViewModels
             }
 
             if (isGameKilled)
-            {
-                await Task.Run(() => Utils.Cmd($"cd /d \"{Directory.GetParent(SettingsProvider.GameTexturesPath)?.Parent?.FullName}\" && timeout /t 1 && Audiosurf.exe"));
-            }
+                GameProcessService.Start(Directory.GetParent(SettingsProvider.GameTexturesPath)?.Parent?.FullName);
 
             ApplicationNotificationManager.Manager.ShowSuccess("Done!", "Operation completed!");
         }
@@ -303,12 +304,6 @@ namespace TweakerUI.ViewModels
             Palettes.Add(palette);
             PaletteDynamicLoadContainer.Add(palette, PaletteContainerFilename);
             SelectPalette(palette);
-        }
-
-        private static async Task WaitForGameStopWorking(string procName)
-        {
-            while (Process.GetProcessesByName(procName).Length != 0)
-                await Task.Delay(100);
         }
 
         [RelayCommand]

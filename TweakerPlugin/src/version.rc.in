@@ -1,0 +1,29 @@
+// Generated from src/version.rc.in by the root CMakeLists.txt - edit the template, not the copy.
+#include <winver.h>
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION @TWEAKER_PLUGIN_VERSION_MAJOR@,@TWEAKER_PLUGIN_VERSION_MINOR@,@TWEAKER_PLUGIN_VERSION_PATCH@,@TWEAKER_PLUGIN_BUILD@
+PRODUCTVERSION @TWEAKER_PLUGIN_VERSION_MAJOR@,@TWEAKER_PLUGIN_VERSION_MINOR@,@TWEAKER_PLUGIN_VERSION_PATCH@,@TWEAKER_PLUGIN_BUILD@
+FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+FILEFLAGS 0x0L
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_DLL
+FILESUBTYPE VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "FileDescription", "Audiosurf Tweaker in-game overlay"
+            VALUE "FileVersion", "@TWEAKER_PLUGIN_VERSION@.@TWEAKER_PLUGIN_BUILD@"
+            VALUE "InternalName", "TweakerPlugin"
+            VALUE "OriginalFilename", "TweakerPlugin.dll"
+            VALUE "ProductName", "Audiosurf Tweaker"
+            VALUE "ProductVersion", "@TWEAKER_PLUGIN_VERSION@.@TWEAKER_PLUGIN_BUILD@"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x409, 1200
+    END
+END

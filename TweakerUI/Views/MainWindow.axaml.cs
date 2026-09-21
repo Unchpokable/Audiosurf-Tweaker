@@ -20,6 +20,10 @@ namespace TweakerUI.Views
         private void OnOpened(object sender, System.EventArgs e)
         {
             ApplicationNotificationManager.Manager.Attach(this);
+
+            // From here rather than from MainWindowViewModel's constructor: an update may have to ask the user
+            // to close the game (plugin-offline-mode.md §6.4), and that dialog needs a window to own.
+            _ = PluginService.SyncOnStartupAsync();
         }
 
         private void OnTitleBarPointerPressed(object sender, PointerPressedEventArgs e)

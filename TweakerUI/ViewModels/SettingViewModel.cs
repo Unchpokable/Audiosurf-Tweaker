@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using AudiosurfInterface;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using TweakerUI.Core;
@@ -31,7 +32,13 @@ namespace TweakerUI.ViewModels
             // time this VM is constructed (App.axaml.cs applies it before the window is shown), so
             // there's no need to call ThemeService.Apply a second time for the value it started at.
             isDarkTheme = SettingsProvider.IsDarkTheme;
-            isInGameOverlayEnabled = SettingsProvider.EnableInGameOverlay;
+            isOverlaySyncEnabled = SettingsProvider.SyncOverlayWithTweaker;
+            isPluginInstalled = PluginService.IsInstalled;
+
+            // Both halves of the status line move on their own: the disk (an install run from somewhere else,
+            // the startup update) and the link (the plugin connecting or dropping while this tab is open).
+            PluginService.Changed += OnPluginStateChanged;
+            OverlayHelper.LinkStateChanged += OnPluginStateChanged;
 
             // Assigned directly (not through the property setters below) so StartWatcher can read the
             // persisted temp-file preferences without re-triggering their side effects twice.
@@ -57,12 +64,67 @@ namespace TweakerUI.ViewModels
         }
 
         [ObservableProperty]
-        private bool isInGameOverlayEnabled;
+        private bool isOverlaySyncEnabled;
 
-        partial void OnIsInGameOverlayEnabledChanged(bool value)
+        partial void OnIsOverlaySyncEnabledChanged(bool value)
         {
-            SettingsProvider.EnableInGameOverlay = value;
+            SettingsProvider.SyncOverlayWithTweaker = value;
             ApplySettings();
+
+            // Acted on now, not at the next game launch. Off has to reach the plugin - otherwise the overlay
+            // keeps the link it already has and the tabs this setting is supposed to govern go on working,
+            // which reads as the toggle doing nothing.
+            if (value)
+                OverlayHelper.Reevaluate();
+            else
+                OverlayHelper.Disconnect();
+
+            OnPropertyChanged(nameof(PluginStatus));
+        }
+
+        /// <summary>
+        /// Not a stored setting but the disk itself (Р-6): the plugin is installed exactly when its DLL sits in
+        /// engine\channels\. The toggle is therefore an action, and the property is re-read from disk after it
+        /// rather than left at whatever the user clicked - an install the user cancelled has to flip back.
+        /// </summary>
+        public bool IsPluginInstalled
+        {
+            get => isPluginInstalled;
+            set
+            {
+                if (!SetProperty(ref isPluginInstalled, value))
+                    return;
+
+                _ = ApplyPluginInstallationAsync(value);
+            }
+        }
+        private bool isPluginInstalled;
+
+        /// <summary>One line describing where the plugin is and whether it is talking to us (§6.6).</summary>
+        public string PluginStatus => PluginService.StatusText;
+
+        private async Task ApplyPluginInstallationAsync(bool shouldBeInstalled)
+        {
+            if (shouldBeInstalled)
+                await PluginService.InstallAsync();
+            else
+                await PluginService.UninstallAsync();
+
+            RefreshPluginState();
+        }
+
+        private void RefreshPluginState()
+        {
+            // Through the field, not the property: the property setter is the "the user asked for this" path,
+            // and going through it here would start a second install on top of the one that just finished.
+            var installed = PluginService.IsInstalled;
+            if (installed != isPluginInstalled)
+            {
+                isPluginInstalled = installed;
+                OnPropertyChanged(nameof(IsPluginInstalled));
+            }
+
+            OnPropertyChanged(nameof(PluginStatus));
         }
 
         [ObservableProperty]
@@ -74,6 +136,9 @@ namespace TweakerUI.ViewModels
             ApplySettings();
             if (Watcher != null && Directory.Exists(value))
                 Watcher.TargetPath = value;
+
+            // A different game folder is a different answer to "is the plugin installed" (§6.5).
+            RefreshPluginState();
         }
 
         [ObservableProperty]
@@ -294,6 +359,10 @@ namespace TweakerUI.ViewModels
             if (IsShouldStoreTextures)
                 await (Watcher?.OverwriteTempFile() ?? Task.CompletedTask);
         }
+
+        // Both sources fire from background threads (the IPC pump, a Task.Run install), and every consumer of
+        // these properties is a binding.
+        private void OnPluginStateChanged(object sender, EventArgs e) => Dispatcher.UIThread.Post(RefreshPluginState);
 
         private static void ApplySettings() => ConfigurationManager.RewriteSettings();
     }

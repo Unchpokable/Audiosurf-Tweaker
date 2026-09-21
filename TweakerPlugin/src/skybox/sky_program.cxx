@@ -3,6 +3,7 @@
 #include "skybox/sky_program.hxx"
 
 #include "plugin/diagnostics.hxx"
+#include "plugin/paths.hxx"
 
 #include "resource/resource.hxx"
 
@@ -10,7 +11,6 @@
 #include "skybox/sky_compile.hxx"
 #include "skybox/sky_settings.hxx"
 #include "skybox/sky_sprites.hxx"
-#include "skybox/skybox_config.hxx"
 
 namespace
 {
@@ -58,16 +58,12 @@ struct builtin_def {
     std::string_view pixel_key;
     std::string_view source_key;
     std::span<const float> constants;
-    bool markers_in_runtime_y;
 };
 
-// Order is the order the overlay lists them in, so the two that are meant to be looked at come
-// before the diagnostic. The probe shares the day palette so that what stands out about it is the
-// markers rather than a change of colour.
-constexpr std::array<builtin_def, 3> k_builtins { {
-    { "gradient", "Gradient Day", "shaders/sky_gradient.ps.fxo", "shaders/sky_gradient.ps.hlsl", k_day_constants, false },
-    { "night", "Starry Night", "shaders/sky_night.ps.fxo", "shaders/sky_night.ps.hlsl", k_night_constants, false },
-    { "probe", "Axis Probe (diagnostic)", "shaders/sky_probe.ps.fxo", "shaders/sky_probe.ps.hlsl", k_day_constants, true },
+// Order is the order the overlay lists them in.
+constexpr std::array<builtin_def, 2> k_builtins { {
+    { "gradient", "Gradient Day", "shaders/sky_gradient.ps.fxo", "shaders/sky_gradient.ps.hlsl", k_day_constants },
+    { "night", "Starry Night", "shaders/sky_night.ps.fxo", "shaders/sky_night.ps.hlsl", k_night_constants },
 } };
 
 // unique_ptr rather than the objects themselves: the draw path, the shader cache and the overlay
@@ -340,12 +336,13 @@ tw::skybox::sky_program& add(std::unique_ptr<tw::skybox::sky_program> program)
 }
 
 // Normalised so the same file reached by two different spellings is one program rather than two.
+// Internal only - the config never stores it (see skybox_config: a file sky is stored by its name).
 std::string path_id(const std::filesystem::path& path)
 {
     std::error_code ec;
     const std::filesystem::path canonical = std::filesystem::weakly_canonical(path, ec);
 
-    return (ec ? path : canonical).string();
+    return tw::plugin::paths::to_utf8(ec ? path : canonical);
 }
 
 // Applies a compile result to a program, and says whether new bytecode was installed. Kept in one
@@ -454,6 +451,15 @@ tw::plugin::bg_work::task<tw::skybox::compile::result> start_compile(tw::skybox:
 
 namespace tw::skybox
 {
+std::string sky_program::settings_stem() const
+{
+    if(sky != nullptr) {
+        return sky->stem;
+    }
+
+    return source_path.empty() ? id : tw::plugin::paths::to_utf8(source_path.stem());
+}
+
 void initialize_programs()
 {
     if(g_initialized) {
@@ -469,7 +475,6 @@ void initialize_programs()
         program->id.assign(def.id);
         program->display_name.assign(def.display_name);
         program->pixel_bytecode = packed_bytecode(def.pixel_key);
-        program->markers_in_runtime_y = def.markers_in_runtime_y;
 
         std::copy(def.constants.begin(), def.constants.end(), program->constants.begin());
 
@@ -539,7 +544,7 @@ sky_program* load_file_program(const std::filesystem::path& path)
     auto program = std::make_unique<sky_program>();
 
     program->id = id;
-    program->display_name = path.stem().string();
+    program->display_name = tw::plugin::paths::to_utf8(path.stem());
     std::copy(k_day_constants.begin(), k_day_constants.end(), program->constants.begin());
     program->source_path = path;
 

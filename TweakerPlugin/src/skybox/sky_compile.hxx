@@ -69,8 +69,8 @@ using include_reader = std::function<bool(std::string_view name, std::string& ou
 // shipping a copy of it.
 [[nodiscard]] result shader(std::string_view source, std::string_view label, const include_reader& includes, stage target = stage::pixel);
 
-// The same, resolving #include next to the shader on disk. What a lone .hlsl the user dropped in
-// skybox_dir gets.
+// The same, resolving #include next to the shader on disk. What a lone .hlsl the user dropped in the
+// Skyboxes folder gets.
 [[nodiscard]] result shader(std::string_view source, const std::filesystem::path& source_path, stage target = stage::pixel);
 
 // Reads a file and compiles it. Separate from the above only because "could not open the file" is a

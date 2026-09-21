@@ -35,6 +35,8 @@ namespace TweakerUI.ViewModels
             _asHandle.StateChanged += OnAudiosurfStateChanged;
 
             OverlayHelper.Initialize();
+            OverlayHelper.LinkStateChanged += OnPluginStateChanged;
+            PluginService.Changed += OnPluginStateChanged;
         }
 
         public SkinChangerViewModel SkinChangerVM { get; }
@@ -85,7 +87,13 @@ namespace TweakerUI.ViewModels
         /// </summary>
         public void Dispose()
         {
+            // Before anything tears the bridge down: HOST_DISCONNECT has to travel through it, and a plugin
+            // that misses it sits in the game for another second before its own watchdog notices (§5.1).
+            OverlayHelper.Disconnect();
+
             _asHandle.StateChanged -= OnAudiosurfStateChanged;
+            OverlayHelper.LinkStateChanged -= OnPluginStateChanged;
+            PluginService.Changed -= OnPluginStateChanged;
             QuickPlayerVM.Dispose();
         }
 
@@ -94,6 +102,12 @@ namespace TweakerUI.ViewModels
             OnPropertyChanged(nameof(AudiosurfStatusMessage));
             OnPropertyChanged(nameof(AudiosurfStatusBrush));
         }
+
+        /// <summary>Where the in-game plugin stands (§6.6) - the status row's tooltip, next to the game's own state.</summary>
+        public string PluginStatusMessage => "Plugin: " + PluginService.StatusText;
+
+        private void OnPluginStateChanged(object sender, EventArgs e) =>
+            Dispatcher.UIThread.Post(() => OnPropertyChanged(nameof(PluginStatusMessage)));
 
         // Fires from ConfigurationManager's own constructor-time call above, when the window/its
         // TopLevel-attached notification host don't exist yet (AppShell.MainWindow is still null at

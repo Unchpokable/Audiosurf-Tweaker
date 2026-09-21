@@ -4,16 +4,17 @@
 
 // What the user changed about one sky, in one file per sky.
 //
-//   <plugin dir>/Skies/OurDraftsCollides.json
+//   engine\TweakerStuff\SkyboxReplacer\SkyConfigs\OurDraftsCollides.json
 //
-// Replaces the `param.*` keys in TweakerPlugin.skybox.cfg, and not only because those were
-// unreadable. That file **accumulates settings for skies that no longer exist**, permanently: it
-// keeps unrecognised `param.*` keys and writes them back untouched, which it has to, because from
-// inside there is no way to tell "a sky that is not loaded right now" from "a sky that was deleted".
-// One file per sky answers that by construction - delete the sky, delete its settings - and makes a
-// tuning something you can send somebody.
+// One file per sky rather than a section in a shared settings file: a shared file cannot tell "a sky
+// that is not loaded right now" from "a sky that was deleted", so it would accumulate settings for
+// skies that no longer exist forever. One file per sky answers that by construction - delete the sky,
+// delete its settings - and makes a tuning something you can send somebody.
 //
-// Kept beside the plugin rather than inside the package. A package may be a zip and therefore not
+// Not to be confused with SkyboxReplacer\module.json (skybox_config), which holds the module's own
+// settings. Different folders, so a sky may be called anything, "module" included.
+//
+// Kept outside the package. A package may be a zip and therefore not
 // writable at all, and more importantly it belongs to the sky's *author* while these values belong
 // to whoever is playing. Writing a player's numbers into somebody else's shipped content is wrong
 // even where it happens to be possible.
@@ -71,7 +72,7 @@ private:
     std::vector<entry> m_entries;
 };
 
-// <plugin dir>/Skies/<stem>.json.
+// SkyConfigs\<stem>.json (plugin/paths).
 //
 // Named after the package rather than after the `name` inside its manifest. The package's own file
 // name is unique in its folder by construction and is under the *user's* control; a manifest name

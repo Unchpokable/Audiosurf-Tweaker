@@ -85,17 +85,35 @@ fi
 cp -f "$INJECT_HELPER_EXE" "$TWEAKER_OUT/"
 echo "    $INJECT_HELPER_EXE -> $TWEAKER_OUT"
 
-# TweakerPlugin.dll is optional - its CMake build needs the DirectX/Quest3D SDKs and a vendored
-# ImGui tree (none guaranteed present, see TweakerUI.csproj's BuildTweakerPlugin target), and the
-# overlay itself is an opt-in [Experimental] Settings toggle - a bundle without it is still a
-# complete, working Tweaker.
-echo "==> Locating TweakerPlugin.dll from the CMake pre-build hook (optional - in-game overlay)"
-TWEAKER_PLUGIN_DLL="$(find "$REPO_ROOT/TweakerUI/bin" -iname "TweakerPlugin.dll" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)"
-if [ -n "$TWEAKER_PLUGIN_DLL" ]; then
-    cp -f "$TWEAKER_PLUGIN_DLL" "$TWEAKER_OUT/"
-    echo "    $TWEAKER_PLUGIN_DLL -> $TWEAKER_OUT"
+# The plugin ships as PluginPayload/ - a mirror of the layout its files take inside the game, so
+# installing it is a plain copy of the tree (Docs/Internal/plugin-offline-mode.md §6.1, §6.3):
+#
+#     PluginPayload/channels/TweakerPlugin.dll      the game loads this by itself at startup
+#     PluginPayload/TweakerStuff/Scripts/*.lua      loose Lua files, edited without a rebuild
+#     PluginPayload/TweakerStuff/SkyboxReplacer/Skyboxes/*.sky    shipped sky packages
+#
+# What belongs in there is decided by CopyTweakerPlugin, not here - including which scripts and sky
+# packages ship at all (a dev/ subfolder in either source folder never does).
+#
+# The whole folder is copied rather than reassembled here on purpose: those paths are not
+# cosmetic - PluginInstallation keys every file by its path relative to the payload root, and a
+# DLL placed anywhere but channels/ installs to a folder the game never scans for channels. One
+# place defines that layout (TweakerUI.csproj's CopyTweakerPlugin), and this copies what it made.
+#
+# Optional: the plugin's CMake build needs the DirectX/Quest3D SDKs and a vendored ImGui tree
+# (none guaranteed present, see TweakerUI.csproj's BuildTweakerPlugin target), and installing it
+# is an opt-in [Experimental] Settings toggle - a bundle without it is still a complete Tweaker.
+echo "==> Locating PluginPayload/ from the CMake pre-build hook (optional - in-game plugin)"
+# Searched by the dll, then walked two levels up to the payload root: several build trees live
+# under bin/ (x64/Debug, the publish one, the msbuild hook's), and a directory's own timestamp
+# says when an entry was last added to it, which is not the same as "this is the freshest plugin".
+PLUGIN_PAYLOAD_DLL="$(find "$REPO_ROOT/TweakerUI/bin" -type f -ipath "*/PluginPayload/channels/TweakerPlugin.dll" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)"
+if [ -n "$PLUGIN_PAYLOAD_DLL" ]; then
+    PLUGIN_PAYLOAD="$(dirname "$(dirname "$PLUGIN_PAYLOAD_DLL")")"
+    cp -rf "$PLUGIN_PAYLOAD" "$TWEAKER_OUT/"
+    echo "    $PLUGIN_PAYLOAD -> $TWEAKER_OUT/PluginPayload"
 else
-    echo "    TweakerPlugin.dll not found - in-game overlay will be unavailable in this bundle (see TweakerPlugin/cmake/*.cmake)."
+    echo "    PluginPayload/channels/TweakerPlugin.dll not found - the in-game plugin will be unavailable in this bundle (see TweakerPlugin/cmake/*.cmake)."
 fi
 
 # --- 2. LegacyDataConverter: old-style net481 csproj, needs full MSBuild, not dotnet CLI ---------

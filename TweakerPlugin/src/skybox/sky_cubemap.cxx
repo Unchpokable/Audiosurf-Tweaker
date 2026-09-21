@@ -7,8 +7,6 @@
 
 #include "resource/resource.hxx"
 
-#include "skybox/sky_paths.hxx"
-
 #include "libstb/stb_image.h"
 #include "libstb/stb_image_resize2.h"
 
@@ -838,12 +836,14 @@ cubemap_result create_cubemap(IDirect3DDevice9* device, const cubemap_source& so
     }
 
     if(!source.file_path.empty()) {
-        const std::filesystem::path path = resolve_source_path(source.file_path);
-        if(path.empty()) {
+        const std::filesystem::path& path = source.file_path;
+
+        std::error_code ec;
+        if(!std::filesystem::exists(path, ec)) {
+            TW_LOG_ERROR("sky_cubemap: '{}' does not exist", path.string());
             return {};
         }
 
-        std::error_code ec;
         if(std::filesystem::is_directory(path, ec)) {
             return from_directory(device, path, source.min_face_size, source.hdr_exposure);
         }

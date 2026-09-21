@@ -3,6 +3,7 @@
 #include "skybox/sky_catalog.hxx"
 
 #include "plugin/diagnostics.hxx"
+#include "plugin/paths.hxx"
 
 #include "resource/resource.hxx"
 
@@ -101,8 +102,12 @@ bool scan_face_directory(const std::filesystem::path& directory, int& out_face_s
     std::error_code ec;
     bool found = false;
 
-    for(const auto& entry : std::filesystem::directory_iterator { directory, ec }) {
-        if(!entry.is_regular_file() || !is_face_stem(entry.path().stem().string())) {
+    std::filesystem::directory_iterator it { directory, ec };
+    for(; !ec && it != std::filesystem::directory_iterator {}; it.increment(ec)) {
+        const std::filesystem::directory_entry& entry = *it;
+
+        std::error_code kind_ec;
+        if(!entry.is_regular_file(kind_ec) || !is_face_stem(tw::plugin::paths::to_utf8(entry.path().stem()))) {
             continue;
         }
 
@@ -151,31 +156,34 @@ void add_packed_entries()
 
 void add_directory_entries()
 {
-    const std::string& configured = tw::skybox::config::skybox_dir();
-    if(configured.empty()) {
-        return;
-    }
-
-    const std::filesystem::path root = tw::skybox::resolve_source_path(configured);
+    const std::filesystem::path& root = tw::plugin::paths::skyboxes_dir();
     if(root.empty()) {
         return;
     }
 
     std::error_code ec;
     if(!std::filesystem::is_directory(root, ec)) {
-        TW_LOG_WARNING("sky_catalog: skybox_dir '{}' is not a directory", root.string());
+        TW_LOG_WARNING("sky_catalog: '{}' is not a directory", tw::plugin::paths::to_utf8(root));
         return;
     }
 
     int listed = 0;
 
-    for(const auto& entry : std::filesystem::directory_iterator { root, ec }) {
-        // Stored as the absolute path rather than a name relative to skybox_dir: the entry has to
-        // survive skybox_dir being edited afterwards, and resolve_source_path returns an absolute
-        // path unchanged.
-        const std::string id = entry.path().string();
+    // Iterated by hand rather than with a range-for: the range-for increments through the throwing
+    // operator++, and one unreadable entry must not take the whole scan down with an exception.
+    std::filesystem::directory_iterator it { root, ec };
+    for(; !ec && it != std::filesystem::directory_iterator {}; it.increment(ec)) {
+        const std::filesystem::directory_entry& entry = *it;
+        const std::filesystem::path& path = entry.path();
 
-        if(entry.is_directory()) {
+        // The entry's own name, not its path: see sky_paths.
+        const std::string id = tw::skybox::skybox_id(path);
+        const std::string stem = tw::plugin::paths::to_utf8(path.stem());
+        const std::string extension = tw::plugin::paths::to_utf8(path.extension());
+
+        std::error_code kind_ec;
+
+        if(entry.is_directory(kind_ec)) {
             // A directory now means two things, so the order of these checks is the rule rather
             // than an accident: a manifest wins. Otherwise a package whose author happens to keep
             // six square images in its root would be listed as a cube map - see
@@ -185,31 +193,29 @@ void add_directory_entries()
             // found would do real work for skies nobody has picked, exactly as a scan that compiled
             // every .hlsl would.
             std::error_code exists_ec;
-            if(std::filesystem::is_regular_file(entry.path() / "Config.json", exists_ec)) {
-                g_entries.push_back(
-                    tw::skybox::catalog_entry { entry.path().stem().string(), id, tw::skybox::entry_kind::package, 0 });
+            if(std::filesystem::is_regular_file(path / L"Config.json", exists_ec)) {
+                g_entries.push_back(tw::skybox::catalog_entry { stem, id, tw::skybox::entry_kind::package, 0 });
                 ++listed;
                 continue;
             }
 
             int face_size = 0;
-            if(scan_face_directory(entry.path(), face_size)) {
-                g_entries.push_back(
-                    tw::skybox::catalog_entry { entry.path().filename().string(), id, tw::skybox::entry_kind::face_dir, face_size });
+            if(scan_face_directory(path, face_size)) {
+                g_entries.push_back(tw::skybox::catalog_entry { id, id, tw::skybox::entry_kind::face_dir, face_size });
                 ++listed;
             }
             continue;
         }
 
-        if(!entry.is_regular_file()) {
+        if(!entry.is_regular_file(kind_ec)) {
             continue;
         }
 
         // A packaged sky: the same format as the directory above, zipped. Listed without being
         // opened, for the same reason the directory form is listed without being parsed - a scan
         // that read every archive it found would decompress skies nobody has picked.
-        if(equals_ignore_case(entry.path().extension().string(), ".sky")) {
-            g_entries.push_back(tw::skybox::catalog_entry { entry.path().stem().string(), id, tw::skybox::entry_kind::package, 0 });
+        if(equals_ignore_case(extension, ".sky")) {
+            g_entries.push_back(tw::skybox::catalog_entry { stem, id, tw::skybox::entry_kind::package, 0 });
             ++listed;
             continue;
         }
@@ -217,36 +223,33 @@ void add_directory_entries()
         // Listed without compiling: a scan that compiled every .hlsl it found would turn opening the
         // tab into a stall proportional to how many shaders somebody keeps in the folder. The
         // compile happens when one is picked, and its errors show up there.
-        if(equals_ignore_case(entry.path().extension().string(), ".hlsl")) {
-            g_entries.push_back(tw::skybox::catalog_entry { entry.path().stem().string(), id, tw::skybox::entry_kind::shader_file, 0 });
+        if(equals_ignore_case(extension, ".hlsl")) {
+            g_entries.push_back(tw::skybox::catalog_entry { stem, id, tw::skybox::entry_kind::shader_file, 0 });
             ++listed;
             continue;
         }
 
         int width = 0;
         int height = 0;
-        if(!read_header(entry.path(), width, height)) {
+        if(!read_header(path, width, height)) {
             continue;
         }
 
         const int face_size = face_size_from_single_image(width, height);
         if(face_size == 0) {
-            TW_LOG_INFO("sky_catalog: skipping '{}' - {}x{} is neither a 4x3 cross nor a 2:1 panorama",
-                entry.path().filename().string(),
-                width,
-                height);
+            TW_LOG_INFO("sky_catalog: skipping '{}' - {}x{} is neither a 4x3 cross nor a 2:1 panorama", id, width, height);
             continue;
         }
 
-        g_entries.push_back(tw::skybox::catalog_entry { entry.path().stem().string(), id, tw::skybox::entry_kind::file, face_size });
+        g_entries.push_back(tw::skybox::catalog_entry { stem, id, tw::skybox::entry_kind::file, face_size });
         ++listed;
     }
 
     if(ec) {
-        TW_LOG_WARNING("sky_catalog: could not finish enumerating '{}'", root.string());
+        TW_LOG_WARNING("sky_catalog: could not finish enumerating '{}'", tw::plugin::paths::to_utf8(root));
     }
 
-    TW_LOG_INFO("sky_catalog: skybox_dir '{}' contributed {} entries", root.string(), listed);
+    TW_LOG_INFO("sky_catalog: '{}' contributed {} entries", tw::plugin::paths::to_utf8(root), listed);
 }
 } // namespace
 
@@ -264,7 +267,7 @@ void refresh_catalog()
     // Packed entries come out of the resource index in unspecified order, and a list that reshuffles
     // between refreshes is worse than useless to click on. Sorted by kind first so each group stays
     // together, then by name - except the programs, which keep the order sky_program declares them
-    // in: that table is short and deliberately ordered, with the diagnostic last.
+    // in: that table is short and deliberately ordered.
     std::stable_sort(g_entries.begin(), g_entries.end(), [](const catalog_entry& a, const catalog_entry& b) {
         if(a.kind != b.kind) {
             return a.kind < b.kind;
@@ -299,49 +302,21 @@ unsigned int catalog_generation() noexcept
 
 int selected_catalog_index() noexcept
 {
-    const std::string& program = config::sky_program();
-    const std::string& file = config::skybox_file();
-    const std::string& packed = config::skybox_key();
+    const config::selection& selected = config::sky();
+
+    // The config stores exactly what the catalog lists - a kind and an id - so this is a lookup. Disk
+    // ids are names in a case-insensitive file system, and a hand-edited "odc_voltex.sky" means the same
+    // folder as the one the scan spelled; built-in ids and resource keys are compared as written.
+    const bool on_disk = selected.kind == entry_kind::package || selected.kind == entry_kind::shader_file
+                         || selected.kind == entry_kind::file || selected.kind == entry_kind::face_dir;
 
     for(std::size_t i = 0; i < g_entries.size(); ++i) {
         const catalog_entry& entry = g_entries[i];
-
-        // A program wins over both image keys, exactly as it does in the draw path - config clears
-        // the others when one is picked, so this only has to agree about which key is authoritative.
-        if(!program.empty()) {
-            if(entry.kind == entry_kind::program && entry.id == program) {
-                return static_cast<int>(i);
-            }
-
-            // A file shader and a package are both identified by a path, and the entry holds an
-            // absolute one while the config may hold a relative one - so the two are compared
-            // through the same resolver, as the image paths below are.
-            if(entry.kind == entry_kind::shader_file || entry.kind == entry_kind::package) {
-                std::error_code ec;
-                if(std::filesystem::equivalent(entry.id, resolve_source_path(program), ec)) {
-                    return static_cast<int>(i);
-                }
-            }
+        if(entry.kind != selected.kind) {
             continue;
         }
 
-        if(entry.kind == entry_kind::program || entry.kind == entry_kind::shader_file || entry.kind == entry_kind::package) {
-            continue;
-        }
-
-        if(!file.empty()) {
-            // The config may hold a relative path while the catalog holds absolute ones, so compare
-            // through the same resolver both sides went through.
-            if(entry.kind != entry_kind::packed) {
-                std::error_code ec;
-                if(std::filesystem::equivalent(entry.id, resolve_source_path(file), ec)) {
-                    return static_cast<int>(i);
-                }
-            }
-            continue;
-        }
-
-        if(entry.kind == entry_kind::packed && entry.id == packed) {
+        if(on_disk ? equals_ignore_case(entry.id, selected.id) : entry.id == selected.id) {
             return static_cast<int>(i);
         }
     }

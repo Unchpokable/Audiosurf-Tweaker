@@ -3,6 +3,7 @@
 #include "skybox/sky_ui.hxx"
 
 #include "plugin/diagnostics.hxx"
+#include "plugin/paths.hxx"
 
 #include "skybox/sky_catalog.hxx"
 #include "skybox/sky_panel.hxx"
@@ -11,7 +12,6 @@
 #include "skybox/sky_sprites.hxx"
 #include "skybox/sky_timer.hxx"
 #include "skybox/skybox.hxx"
-#include "skybox/skybox_config.hxx"
 
 #include "ui/plugins/interactive/menu.hxx"
 #include "ui/plugins/static/notefeed.hxx"
@@ -40,7 +40,6 @@ using tw::ui::widgets::slider;
 using tw::ui::widgets::toggle;
 
 toggle g_enabled_toggle { "skybox_enabled" };
-toggle g_markers_toggle { "skybox_probe_markers" };
 list_view g_list { "skybox_list" };
 button g_refresh_btn { "skybox_refresh", { 100.f, 28.f } };
 button g_params_btn { "skybox_params_open", { 120.f, 28.f } };
@@ -108,22 +107,8 @@ void rebuild_rows()
 
 void apply_entry(const tw::skybox::catalog_entry& entry)
 {
-    switch(entry.kind) {
-        case tw::skybox::entry_kind::program:
-        case tw::skybox::entry_kind::shader_file:
-        case tw::skybox::entry_kind::package:
-            // All three are "a shader paints the sky", and the config stores the same thing for each:
-            // a built-in id, a path to a .hlsl, or a path to a package - which is a folder or the
-            // zip of one, and is opened as whichever it turns out to be.
-            tw::skybox::select_program(entry.id);
-            break;
-        case tw::skybox::entry_kind::packed:
-            tw::skybox::select_packed(entry.id);
-            break;
-        default:
-            tw::skybox::select_file(entry.id);
-            break;
-    }
+    // The entry's kind and id are exactly what the config stores, so there is nothing to translate.
+    tw::skybox::select(entry.kind, entry.id);
 
     tw::ui::plugins::statics::notefeed::push("Skybox: " + entry.display_name);
 }
@@ -332,7 +317,6 @@ void draw_tab()
     if(!g_widgets_ready) {
         const tw::skybox::status initial = tw::skybox::current_status();
         g_enabled_toggle.set_checked(tw::skybox::is_enabled());
-        g_markers_toggle.set_checked(initial.probe_markers);
 
         constexpr std::array<std::string_view, 4> k_quality_labels { "Native", "67%", "50%", "33%" };
         g_quality.set_options(k_quality_labels);
@@ -362,10 +346,6 @@ void draw_tab()
     draw_status_line(status);
     ImGui::Spacing();
 
-    // Only the probe program has anything to do with this, so it only appears when the probe is the
-    // one selected. In the tab rather than only in the .cfg because the question it answers is
-    // answered by looking at the screen and flipping it back and forth, which is a miserable loop if
-    // every flip costs a restart.
     // Shader-only: a cube map is one texture lookup per pixel, and rendering it small to stretch it
     // big would cost picture for nothing.
     if(status.program != nullptr) {
@@ -378,14 +358,6 @@ void draw_tab()
             tw::skybox::set_shader_quality(k_quality_steps[static_cast<std::size_t>(selected)]);
         }
 
-        ImGui::Spacing();
-    }
-
-    if(status.program_has_markers) {
-        if(toggle_row("Axis markers", g_markers_toggle)) {
-            tw::skybox::set_probe_markers(g_markers_toggle.checked());
-        }
-        ImGui::TextDisabled("+X red, +Y green, +Z blue, ring on the horizon.");
         ImGui::Spacing();
     }
 
@@ -440,8 +412,14 @@ void draw_tab()
     // Its own row rather than a fourth item on the SameLine chain above: this is a filesystem path,
     // and on any real installation it is longer than whatever space the buttons left over. Ellipsis
     // rather than clipping, so a path that does not fit still ends somewhere deliberate.
-    const std::string& dir = tw::skybox::config::skybox_dir();
-    const char* dir_text = dir.empty() ? "set skybox_dir= in the .cfg to add your own" : dir.c_str();
+    //
+    // Where to drop a sky, which is the one thing about the list nobody can guess. Converted once:
+    // the folder is fixed for the life of the process.
+    static const std::string k_dir_text = [] {
+        const std::filesystem::path& dir = tw::plugin::paths::skyboxes_dir();
+        return dir.empty() ? std::string { "the Skyboxes folder could not be resolved - see the log" } : tw::plugin::paths::to_utf8(dir);
+    }();
+    const char* dir_text = k_dir_text.c_str();
 
     const ImVec2 dir_pos = ImGui::GetCursorScreenPos();
     tw::ui::widgets::detail::add_text_ellipsis(ImGui::GetWindowDrawList(),

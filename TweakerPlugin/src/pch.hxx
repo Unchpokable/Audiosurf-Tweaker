@@ -9,6 +9,8 @@
 #include <windows.h>
 #include <process.h>
 #include <tlhelp32.h>
+// UNICODE_STRING, for the loader's DLL notifications (framework/loader_watch).
+#include <winternl.h>
 // clang-format on
 
 #include <dinput.h>

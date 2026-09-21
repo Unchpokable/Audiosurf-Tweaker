@@ -15,6 +15,7 @@
 
 #include "skybox/sky_ui.hxx"
 
+#include "ui/host_link.hxx"
 #include "ui/image/svg.hxx"
 #include "ui/overlay_state.hxx"
 #include "ui/pending_actions.hxx"
@@ -201,7 +202,17 @@ void draw_frame(IDirect3DDevice9* device)
 
     // Non-blocking: on contention (the IPC thread is mid-write) this just keeps last frame's
     // snapshot.
-    if(tw::ui::overlay_state::refresh(g_overlay_cache)) {
+    const bool overlay_refreshed = tw::ui::overlay_state::refresh(g_overlay_cache);
+
+    // Before pending_actions::update below: a request to a host that just left is dropped here rather
+    // than left to expire into a "failed" toast.
+    if(tw::ui::host_link::update(g_overlay_cache) != tw::ui::host_link::edge::none) {
+        // The host's whole state appeared or vanished at once. Re-seeding instead of diffing keeps that
+        // from arriving as one "... disabled" toast per tweak on top of host_link's own.
+        g_overlay_seeded = false;
+    }
+
+    if(overlay_refreshed) {
         notify_overlay_state_changes();
     }
 

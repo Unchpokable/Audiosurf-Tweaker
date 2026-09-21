@@ -18,7 +18,7 @@
 //
 //  - built-in: compiled by fxc during the build and embedded in the DLL, so they work on a machine
 //    with no shader compiler at all.
-//  - from a file: a .hlsl under config::skybox_dir(), compiled in-process by sky_compile and
+//  - from a file: a .hlsl in the Skyboxes folder (plugin/paths), compiled in-process by sky_compile and
 //    recompiled whenever it changes on disk.
 //
 // Program objects are never moved or destroyed once registered, because the draw path, the shader
@@ -114,20 +114,15 @@ struct sky_program {
     }
 
     // What this sky's settings file is named after: the package's own directory name, the .hlsl's
-    // file name, or - for one of the three built into the plugin - its id.
+    // file name, or - for one of the programs built into the plugin - its id. UTF-8.
     //
     // Every sky keeps its settings the same way, and that is the point of there being one function
     // here rather than a branch at each call site. The flat `param.*` section this replaced could
     // not distinguish a sky that was not loaded from one that no longer existed, so it hoarded the
     // settings of deleted skies forever; a file per sky answers that by construction.
-    [[nodiscard]] std::string settings_stem() const
-    {
-        if(sky != nullptr) {
-            return sky->stem;
-        }
-
-        return source_path.empty() ? id : source_path.stem().string();
-    }
+    //
+    // Out of line so this header does not need plugin/paths - offline harnesses include it.
+    [[nodiscard]] std::string settings_stem() const;
 
     // This program's layer inside its manifest, or null when it is not a package layer at all - or
     // when the manifest was reloaded and no longer has a layer by that id, which a rebuild has to
@@ -155,9 +150,6 @@ struct sky_program {
     // Genuinely a set with holes in it: a shader is free to read g_runtime at c5 and nothing else,
     // which several do.
     std::vector<bytecode::register_run> constant_runs;
-
-    // True when this program reads its marker intensity out of g_runtime.y (only the probe does).
-    bool markers_in_runtime_y {};
 
     // Empty for a built-in. Set for a file program, and what the reload poll stats.
     //

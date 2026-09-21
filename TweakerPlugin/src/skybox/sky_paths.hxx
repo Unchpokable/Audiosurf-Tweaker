@@ -1,19 +1,21 @@
 #pragma once
 
-// Where a relative skybox path is allowed to mean something.
+// Where a sky on disk is, given its id.
 //
-// Its own file because two modules need the same answer - the loader resolving skybox_file, and the
-// catalog resolving skybox_dir - and "wherever I put the folder, it did not work" is a bug that only
-// stays fixed if both agree on the roots and both say which ones they tried.
+// Every disk sky - a package, a lone .hlsl, a cross or panorama image, a folder of faces - is one entry
+// directly under engine\TweakerStuff\SkyboxReplacer\Skyboxes, and its id is that entry's name. Not a
+// path: the catalog only ever lists direct children, so there is nothing a longer id could name that
+// the overlay would show - and an id that cannot contain a separator cannot walk out of the folder.
+//
+// Its own file because the catalog (turning entries into ids), the config (storing them) and the loader
+// (turning them back into files) all need the same answer.
 namespace tw::skybox
 {
-// Absolute paths are returned as-is when they exist. Relative ones are tried against, in order:
-// the directory holding TweakerPlugin.dll (and its .cfg), the game's working directory (engine/),
-// and its parent (the game root).
-//
-// Returns an empty path when nothing matched, having logged every candidate.
-[[nodiscard]] std::filesystem::path resolve_source_path(std::string_view path);
+// The UTF-8 id for an entry of the Skyboxes folder: its file or directory name.
+[[nodiscard]] std::string skybox_id(const std::filesystem::path& entry);
 
-// The directory TweakerPlugin.dll was loaded from; empty if it cannot be determined.
-[[nodiscard]] std::filesystem::path dll_directory();
+// The absolute path an id names, or an empty path when the id is not a single plain name (empty, "."
+// or "..", or containing a separator, a drive colon or a control character) or when the folder is not
+// resolved. Existence is not checked - the caller decides what a missing sky means, and says so.
+[[nodiscard]] std::filesystem::path skybox_path(std::string_view id);
 } // namespace tw::skybox

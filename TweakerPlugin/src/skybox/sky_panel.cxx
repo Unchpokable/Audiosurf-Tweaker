@@ -427,8 +427,8 @@ void draw(const status& status) noexcept
     }
     else if(!g_pages.empty()) {
         // A single-tab strip reads as a broken control. This is the ordinary case, not an edge one:
-        // sky_gradient and sky_probe declare no annotation of their own and inherit only the shared
-        // palette, so they have exactly one group.
+        // sky_gradient declares no annotation of its own and inherits only the shared palette, so it
+        // has exactly one group.
         begin_plain_body(body_h);
         draw_param_rows(layers, g_pages.front().rows);
         end_plain_body();

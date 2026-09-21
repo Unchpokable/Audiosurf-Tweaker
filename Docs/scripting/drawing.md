@@ -145,6 +145,30 @@ tw.hud.rect(x0, y0, x1, y1, colour, 3)
 tw.hud.glow_rect(x0, y0, x1, y1, colour, 3, 0.6)
 ```
 
+### Gradients
+
+```lua
+tw.hud.gradient_rect(x0, y0, x1, y1, from, to, vertical)
+```
+
+Two stops, left to right — or top to bottom with `vertical`. Both colours carry their own alpha.
+
+The reason this exists is backdrops. A HUD drawn over gameplay needs something behind its text or a
+bright frame erases it, and a hard-edged panel is a heavy thing to put on top of a game. A band that
+is solid under the text and falls away to nothing on either side reads as the screen getting darker
+rather than as a panel:
+
+```lua
+local clear = tw.alpha(back, 0)
+tw.hud.gradient_rect(x0 - falloff, y0, x0, y1, clear, back)
+tw.hud.rect(x0, y0, x1, y1, back)
+tw.hud.gradient_rect(x1, y0, x1 + falloff, y1, back, clear)
+```
+
+Put the stops past the ends of the text, not at them: anything inside the falloff is the thing the
+backdrop was supposed to be helping. There is no rounding — the primitive is a single quad with
+per-corner colours, and a gradient that wants a soft end gets it from the gradient.
+
 ### Icons
 
 ```lua

@@ -26,8 +26,8 @@ vs_out main(vs_in input)
     // Object-space position doubles as the view direction, exactly as it does for the cube map
     // lookup in the fixed-function path: on a cube centred at the camera the two differ only by a
     // positive scale, which normalize() divides out. The orientation matrix rotates the geometry,
-    // so this direction is in *sky* space - which is what makes the axis markers in the probe
-    // shader meaningful.
+    // so this direction is in *sky* space - which is what lets a program place a sun or a horizon
+    // in sky coordinates and have yaw/pitch/z_up move it.
     output.dir = input.pos;
 
     return output;

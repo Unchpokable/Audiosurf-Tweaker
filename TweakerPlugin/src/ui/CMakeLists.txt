@@ -5,6 +5,7 @@
 add_library(tweaker_ui STATIC
     theme.cxx
     fonts.cxx
+    host_link.cxx
     overlay_state.cxx
     overlay_config.cxx
     pending_actions.cxx

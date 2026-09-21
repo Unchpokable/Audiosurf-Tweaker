@@ -60,6 +60,12 @@
             "displayName": "UI smoke_test (x86 Release)",
             "configurePreset": "x86-release",
             "targets": ["smoke_test"]
+        },
+        {
+            "name": "loadprobe",
+            "displayName": "Phase 0 load probe DLL (x86 Release)",
+            "configurePreset": "x86-release",
+            "targets": ["load_probe"]
         }
     ]
 }

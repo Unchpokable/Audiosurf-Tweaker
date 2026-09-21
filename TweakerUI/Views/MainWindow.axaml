@@ -59,7 +59,7 @@
                         </StackPanel>
 
                         <Border Grid.Row="2" BorderBrush="{DynamicResource BorderStrongBrush}" BorderThickness="0,1,0,0" Margin="16,0,16,16" Padding="0,14,0,0">
-                            <Grid ColumnDefinitions="Auto,*,Auto">
+                            <Grid ColumnDefinitions="Auto,*,Auto" ToolTip.Tip="{Binding PluginStatusMessage}">
                                 <Ellipse Grid.Column="0" Width="10" Height="10" Fill="{Binding AudiosurfStatusBrush}" Stroke="{DynamicResource BorderStrongBrush}" StrokeThickness="1" VerticalAlignment="Center"/>
                                 <TextBlock Grid.Column="1" Text="{Binding AudiosurfStatusMessage}" FontSize="13" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" Margin="8,0,0,0"/>
                                 <Button Grid.Column="2" Classes="IconResetButton" Command="{Binding ResetBridgeCommand}"

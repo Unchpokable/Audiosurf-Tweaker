@@ -1,7 +1,7 @@
 #pragma once
 
-// The list of skies the user can choose between: the shader programs, the cube maps baked into the
-// DLL, and whatever config::skybox_dir() points at.
+// The list of skies the user can choose between: the shader programs and the cube maps baked into the
+// DLL, and every entry of engine\TweakerStuff\SkyboxReplacer\Skyboxes.
 //
 // Kept separate from sky_cubemap (which turns one chosen source into a cube texture) because the
 // two answer different questions and change for different reasons - "what exists" is a directory
@@ -10,15 +10,18 @@ namespace tw::skybox
 {
 // Declaration order is list order - refresh_catalog sorts by it, so the shader programs come first,
 // then the bundled images, then whatever is on disk.
+//
+// Disk kinds are identified by the entry's name inside the Skyboxes folder, never by a path - see
+// sky_paths. The same kind and id pair is what skybox_config stores as the selection.
 enum class entry_kind {
     program,     // a built-in shader; `id` is a sky_program id
-    shader_file, // a .hlsl on disk, compiled when it is picked; `id` is a path
+    shader_file, // a .hlsl on disk, compiled when it is picked; `id` is its file name
     packed,      // a resource baked into the DLL; `id` is a tw::resource key
-    file,        // a cross or panorama image on disk; `id` is a path
-    face_dir,    // a folder of six faces; `id` is a path
+    file,        // a cross or panorama image on disk; `id` is its file name
+    face_dir,    // a folder of six faces; `id` is its folder name
 
     // A `.sky` package - the sky's layers, shaders and assets with a Config.json at the top. `id` is
-    // the path to it. See Docs/Internal/sky-package.md.
+    // its folder or archive name. See Docs/skyboxes/manifest.md.
     //
     // Either form: a directory holding Config.json, or a `.sky` file, which is that directory zipped.
     // One kind rather than two because nothing downstream cares - the loader opens whichever it was

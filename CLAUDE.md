@@ -161,7 +161,7 @@ dotnet test TweakerCore.Tests/TweakerCore.Tests.csproj --filter "FullyQualifiedN
 
 `Scripts/Deploy.ps1` — release-бандл: self-contained single-file win-x64 `dotnet publish`
 `TweakerUI` + release-сборка `LegacyDataConverter` (IL-merged через `ILRepack.Lib.MSBuild.Task`) +
-`asbridge.exe`/`InjectHelper.exe`/(опционально) `TweakerPlugin.dll`, подобранные из-под
+`asbridge.exe`/`InjectHelper.exe`/(опционально) папка `PluginPayload\` с плагином, подобранные из-под
 `TweakerUI/bin` после pre-build хуков — всё в `/distr/TweakerUI/`.
 
 `Scripts/DeployDebug.ps1` — то же самое, но multi-file publish с PDB (managed и нативные
@@ -169,7 +169,22 @@ SkiaSharp/HarfBuzzSharp), чтобы можно было приаттачить�
 `LegacyDataConverter` в обоих скриптах всегда собирается Release (коллизия сборок при Debug —
 см. комментарий в `DeployDebug.ps1`).
 
-Оба скрипта — PowerShell (`.ps1`); `.sh`-версии в `Scripts/` — заготовки, не поддерживаются активно.
+**`PluginPayload\` копируется целиком, а не пересобирается по файлу.** Раскладка внутри неё значащая:
+`PluginInstallation` (`TweakerCore/PluginInstall/`) опознаёт каждый файл по пути относительно корня
+поставки, поэтому DLL обязана лежать в `channels\`, скрипты — в `TweakerStuff\Scripts\`, а пакеты неба —
+в `TweakerStuff\SkyboxReplacer\Skyboxes\`. Раскладку и **состав** задаёт ровно одно место — target
+`CopyTweakerPlugin` в `TweakerUI.csproj`; скрипты деплоя только переносят готовое. Поставка, собранная
+руками мимо этого правила, ставится «успешно», но мимо игры — см. `Docs/Internal/plugin-offline-mode.md`,
+«Ф5: правка по итогам первой проверки».
+
+Источников у поставки два: `TweakerPlugin/assets/scripts/` (Lua) и `Skyboxes/` (пакеты `.sky`, отдельно от
+`TweakerPlugin/assets` — те вшиваются в DLL ресурсами, эти остаются файлами, которые пользователь может
+открыть и править). Правило отбора одно на оба: **подпапка `dev/` в бандл не попадает** — там пробы API и
+инструменты разработки. Игровую папку `Scripts\` плагин сканирует нерекурсивно, поэтому пробу, нужную в
+игре, кладут туда плоско руками; она остаётся файлом пользователя и в манифест не попадает.
+
+Скрипты есть в двух видах и поддерживаются оба: `.ps1` (PowerShell) и `.sh` (Git Bash). Правишь один —
+правь парный, иначе они разъезжаются молча.
 
 ## Нативные компоненты
 
@@ -263,8 +278,9 @@ src/lua/          — LuaJIT-скриптинг: lua_channels (доступ к �
                     menu::add_extra_tab, как и Skybox). Выключение скрипта = снятие его подписок
                     и возврат оригинальных vtable, а не спящий хук; включение = повторный запуск
                     файла с диска, оно же горячая перезагрузка. Скрипты — loose-файлы
-                    в scripts/ рядом с DLL, не ресурсы: их правят без пересборки; в бандл их
-                    кладут CopyTweakerPlugin (TweakerUI.csproj) и Deploy.ps1
+                    в engine\TweakerStuff\Scripts\, не ресурсы: их правят без пересборки; в бандл
+                    их кладёт CopyTweakerPlugin (TweakerUI.csproj) как PluginPayload\TweakerStuff\
+                    Scripts\, а в игру — PluginInstallation (см. раздел «Деплой»)
 src/plugin/       — lifecycle, глобальное состояние, Quest3D state, music (что играет прямо сейчас:
                     читает `VisMusic` через lua_channels, отдаёт наружу низ/середину/верх/воздух,
                     громкость, онсеты — НЕ «полосу k», см. reversing-journal-gameplay.md §10)

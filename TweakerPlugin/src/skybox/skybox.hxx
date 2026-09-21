@@ -1,5 +1,7 @@
 #pragma once
 
+#include "skybox/sky_catalog.hxx"
+
 // Skybox Replacer: draws a cube map skybox where Audiosurf would have drawn its sky sphere.
 //
 // The sphere is a 2007-era stand-in for a cube map - a single equirectangular-ish PNG smeared over
@@ -15,23 +17,22 @@
 //  3. skybox/sky_renderer then draws a unit cube around the camera with the packed cube map on it,
 //     and the game's own draw is skipped.
 //
-// Prototype scope, deliberately: settings come from a file next to the DLL (skybox/skybox_config),
-// the cube maps are the ones baked into the DLL's resources, and nothing is wired to TW_OVL or the
-// host UI yet.
+// Settings live in engine\TweakerStuff\SkyboxReplacer\module.json (skybox/skybox_config), skies on disk
+// in the Skyboxes folder next to it. Nothing here is wired to TW_OVL or the host UI: the Skybox
+// Replacer works the same with or without the Tweaker running.
 namespace tw::skybox
 {
 struct sky_program;
 
 // Loads settings, subscribes to the texture hook, and attaches the device/draw listeners. Must run
-// before framework::d3d9::install_d3d9_hooks() publishes those hooks to the render thread, for the
-// same reason ui::initialize() does - see the note in install_d3d9_hooks().
+// before framework::ready is published, like every other registration - see framework/ready.hxx.
 void initialize() noexcept;
 
 void shutdown() noexcept;
 
-// Retry hook for framework::texture::install_texture_hook(). The Texture channel DLL is normally
-// mapped long before the plugin is injected, but a very early injection can beat it, and there is
-// nothing to lose by asking again once the game has a device.
+// Retry hook for framework::texture::install_texture_hook(). The early load hooks the Texture channel
+// from its loader notification, and an injection normally finds it mapped already - but a very early
+// injection can beat it, and there is nothing to lose by asking again once the game has a device.
 void retry_texture_hook() noexcept;
 
 [[nodiscard]] bool is_enabled() noexcept;
@@ -59,9 +60,6 @@ struct status {
     std::string_view program_diagnostics;
 
     bool program_compiling {}; // a worker thread is building it; the game keeps its own sky meanwhile
-
-    bool probe_markers {};
-    bool program_has_markers {}; // whether the current program has anything to do with the flag above
 
     // Percentage of the viewport the shader path renders at, upscaled back on the way out. 100 is
     // native. Only meaningful for a program - a cube map is a texture lookup and gains nothing.
@@ -97,12 +95,10 @@ enum class reload_outcome {
 // programs and for the cube map path.
 reload_outcome poll_reload(bool watch) noexcept;
 
-// Switches to a sky program by id (see sky_program), or back to the cube map path when `id` is
-// empty. Persists to the config file, which is also where the image keys get cleared.
-void select_program(std::string_view id);
-
-// The probe program's axis markers. Persists too.
-void set_probe_markers(bool value) noexcept;
+// Switches to a catalog entry - any kind, shader or image - and persists the choice to module.json.
+// `id` is the entry's own id (see sky_catalog). An image is rebuilt on the next sky draw rather than
+// here: this is called from the overlay, drawing inside the frame, and a decode does not belong there.
+void select(entry_kind kind, std::string_view id);
 
 // Resolution the shader path renders at, as a percentage of the viewport. Persists.
 void set_shader_quality(int percent) noexcept;
@@ -135,10 +131,6 @@ void reset_sky_params();
 // The rebuild is deliberately deferred rather than done here: it decodes an image and can project a
 // panorama, and the caller is the UI, drawing inside EndScene.
 void request_reload() noexcept;
-
-// Applies a catalog entry: records it in the config and requests the reload above.
-void select_packed(std::string_view resource_key);
-void select_file(std::string_view path);
 
 // True once per downscale, filling `from`/`to` with the face sizes involved. The UI polls this so a
 // silently softer sky becomes a visible notification - there is otherwise nothing to tell the user

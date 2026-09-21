@@ -3,10 +3,11 @@
 #include "lua/lua_config.hxx"
 
 #include "plugin/diagnostics.hxx"
+#include "plugin/paths.hxx"
 
 namespace
 {
-std::string g_path;
+std::filesystem::path g_path;
 
 // Only the scripts that differ from the default. See the header: absence means enabled.
 std::vector<std::string> g_disabled;
@@ -31,9 +32,9 @@ bool listed(std::string_view file) noexcept
 
 namespace tw::lua::config
 {
-void load(std::string_view path)
+void load(const std::filesystem::path& path)
 {
-    g_path.assign(path);
+    g_path = path;
     g_disabled.clear();
 
     std::ifstream file { g_path };
@@ -72,7 +73,7 @@ void load(std::string_view path)
         }
     }
 
-    TW_LOG_INFO("lua_config: loaded '{}' ({} script(s) disabled)", g_path, g_disabled.size());
+    TW_LOG_INFO("lua_config: loaded '{}' ({} script(s) disabled)", tw::plugin::paths::to_utf8(g_path), g_disabled.size());
 }
 
 void save()
@@ -83,12 +84,12 @@ void save()
 
     std::ofstream file { g_path, std::ios::trunc };
     if(!file.is_open()) {
-        TW_LOG_WARNING("lua_config: cannot write '{}'", g_path);
+        TW_LOG_WARNING("lua_config: cannot write '{}'", tw::plugin::paths::to_utf8(g_path));
         return;
     }
 
     file << "# Scripts the overlay should not run. Anything not listed here is enabled, so a new\n";
-    file << "# .lua dropped into scripts/ starts working without editing this file.\n";
+    file << "# .lua dropped into Scripts\\ starts working without editing this file.\n";
     for(const std::string& name : g_disabled) {
         file << "script." << name << "=0\n";
     }

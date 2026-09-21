@@ -33,15 +33,22 @@ namespace tw::framework::texture
 using texture_about_to_load_fn = void (*)(Aco_DX8_Texture* channel, const char* channel_name);
 using texture_loaded_fn = void (*)(Aco_DX8_Texture* channel, const char* channel_name, IDirect3DTexture9* texture);
 
-// Registration is additive and permanent, like wndproc_hub's. Must happen before
-// install_texture_hook() publishes the hook to the game's threads.
+// Registration is additive and permanent, like wndproc_hub's. Must happen before framework::ready is
+// published: until then the hook forwards every load untouched, and from then on the subscriber list is
+// read without a lock.
 void subscribe(texture_about_to_load_fn about_to_load, texture_loaded_fn loaded) noexcept;
 
-// Resolves the exported entry points and detours LoadTextureFromMemory. Fails (and logs) when the
-// Texture channel DLL is not mapped yet - the game loads channel DLLs on demand, so a plugin
-// injected before the first group that uses textures can legitimately be too early. Safe to call
-// again in that case; a successful install is idempotent and reports true without re-detouring.
+// Late load (injected). Resolves the exported entry points and detours LoadTextureFromMemory,
+// suspending the other threads. Fails (and logs) when the Texture channel DLL is not mapped yet - the
+// game loads channel DLLs on demand, so a plugin injected before the first group that uses textures can
+// legitimately be too early. Safe to call again in that case; a successful install is idempotent and
+// reports true without re-detouring.
 bool install_texture_hook() noexcept;
+
+// Early load (engine\channels\). `texture_module` is the Texture channel DLL, from its own loader
+// notification: under the loader lock, before anyone has called into it - hence no thread suspension and
+// no logging beyond the lifecycle log. The caller pins the module first (plugin-offline-mode.md, Р-25).
+bool install_texture_hook_from_loader(HMODULE texture_module) noexcept;
 
 [[nodiscard]] bool is_installed() noexcept;
 

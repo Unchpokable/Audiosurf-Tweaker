@@ -55,6 +55,16 @@ namespace TweakerUI.Core
             return result == TweakerDialogResult.OK;
         }
 
+        /// <summary>
+        /// The same dialog with an arbitrary button list, returning the index of the one pressed. The plugin
+        /// flows need three outcomes each (plugin-offline-mode.md §6.4, §6.5), and folding a third state into
+        /// <see cref="AskForAction"/>'s bool is how "cancel" and "no" end up indistinguishable.
+        /// </summary>
+        public Task<int> AskForChoice(string title, string message, params string[] buttons)
+        {
+            return TweakerDialogWindow.ShowChoiceAsync(AppShell.MainWindow, message, title, TweakerDialogChoice.Of(buttons));
+        }
+
         public Task ShowImportantInfo(string title, string message)
         {
             return TweakerDialogWindow.ShowAsync(AppShell.MainWindow, message, title, TweakerDialogButtons.OK);

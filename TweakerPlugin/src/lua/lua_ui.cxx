@@ -143,7 +143,7 @@ void draw_tab()
 
     if(count == 0) {
         ImGui::TextColored(theme::text_muted, "No scripts found.");
-        ImGui::TextColored(theme::text_faint, "Drop .lua files into the scripts/ folder next to TweakerPlugin.dll.");
+        ImGui::TextColored(theme::text_faint, "Drop .lua files into engine\\TweakerStuff\\Scripts in the game folder.");
         return;
     }
 

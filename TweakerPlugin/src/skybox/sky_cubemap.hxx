@@ -9,13 +9,13 @@ struct cubemap_source {
     std::string_view resource_key;
 
     // Overrides `resource_key` when non-empty. Either a horizontal-cross image, or a directory
-    // holding six square face images (see the name table in the .cxx). Relative paths are resolved
-    // against the directory the DLL sits in.
+    // holding six square face images (see the name table in the .cxx). Already absolute: the caller
+    // resolved it from the selection (see sky_paths).
     //
     // This is the road to high resolution: a 2048px-per-face cross is an 8192x6144 image, and six
     // of those baked into the DLL would be the better part of a hundred megabytes. On disk they
     // cost nothing.
-    std::string_view file_path;
+    std::filesystem::path file_path;
 
     // Exposure applied when the source is a Radiance .hdr. Ignored for ordinary 8-bit images.
     //

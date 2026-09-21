@@ -1,9 +1,14 @@
 #pragma once
 
-// Detours-based hooks on IDirectInputDevice8::GetDeviceState/GetDeviceData. Both are resolved once
-// off a throwaway device instance and patched process-wide - DirectInput8 dispatches every device
-// object (mouse/keyboard/joystick) the game creates through the same vtable functions, so one
-// attach covers all of them.
+// Detours-based hooks on IDirectInputDevice8::GetDeviceState/GetDeviceData, patched process-wide -
+// DirectInput8 dispatches every device object (mouse/keyboard/joystick) the game creates through the
+// same vtable functions, so one attach covers all of them.
+//
+// Where the vtable comes from depends on how the plugin got into the process:
+//   - early (engine\channels\): off the game's OWN objects, as it creates them - DirectInput8Create is
+//     hooked from DllMain, which hooks IDirectInput8::CreateDevice on the first object of each kind (A/W),
+//     which hooks GetDeviceState/GetDeviceData on the first device. No throwaway objects at all.
+//   - late (injected): off a throwaway device, install_hooks() below.
 //
 // The gate lets a consumer (currently the ImGui menu, see menu.cxx) swallow real input while it's
 // open: the original is always still called so DirectInput's internal state/buffer keeps draining,
@@ -29,4 +34,10 @@ void detach_input_gate() noexcept;
 // implementation detail of that DLL rather than a documented contract - if a future build splits
 // them per device type, keyboard reads would stop being gated while mouse reads still are.
 bool install_hooks(bool use_unicode_interface = false);
+
+// Early load only, from DllMain: detours the DirectInput8Create export without suspending threads. Safe
+// there because the plugin imports dinput8.dll statically (so it is mapped) and the game first calls the
+// export ~0.6 s later (plugin-offline-mode.md, Р-24). The rest of the chain installs itself from the game's
+// own calls, on the game's thread, outside the loader lock.
+bool install_create_hook_from_loader() noexcept;
 } // namespace tw::framework::dinput

@@ -16,11 +16,12 @@ void update() noexcept;
 // (e.g. "icons/skin.svg", or overlay_state::tweak_icon_key(id)) - empty means text-only.
 void push(std::string_view text, std::string_view icon_resource_key = {});
 
-// The screen rectangle toasts may occupy, in pixels: the feed's column, three rows deep. Reported
-// whether or not anything is currently showing, and deliberately so - a consumer laying itself out
-// around the feed must not shift every time a toast appears and expires.
+// The screen rectangle toasts may occupy, in pixels: the feed's column, a fixed number of single-line
+// toasts deep at the current font size. Reported whether or not anything is currently showing, and
+// deliberately so - a consumer laying itself out around the feed must not shift every time a toast
+// appears and expires.
 //
-// Three rows rather than the full column height: reserving the whole side of the screen made every
+// A few rows rather than the full column height: reserving the whole side of the screen made every
 // consumer that respects this shove itself sideways for space that is almost never used.
 //
 // Exists for the scripting layer (tw.hud.safe in src/lua), which draws into the same background

@@ -3,13 +3,16 @@
 #include "framework/d3d9_hooks.hxx"
 #include "framework/d3d9_state.hxx"
 #include "framework/detour_transaction.hxx"
+#include "framework/ready.hxx"
 #include "framework/wndproc_hub.hxx"
 
+#include "plugin/boot_log.hxx"
 #include "plugin/diagnostics.hxx"
 #include "plugin/quest3d_state.hxx"
 
 namespace
 {
+using direct3d_create9_fn = IDirect3D9*(__stdcall*)(UINT);
 using create_device_fn = long(__stdcall*)(LPDIRECT3D9, UINT, D3DDEVTYPE, HWND, DWORD, D3DPRESENT_PARAMETERS*, LPDIRECT3DDEVICE9*);
 using reset_fn = long(__stdcall*)(LPDIRECT3DDEVICE9, D3DPRESENT_PARAMETERS*);
 using end_scene_fn = long(__stdcall*)(LPDIRECT3DDEVICE9);
@@ -19,6 +22,7 @@ using set_texture_fn = long(__stdcall*)(LPDIRECT3DDEVICE9, DWORD, IDirect3DBaseT
 using draw_primitive_fn = long(__stdcall*)(LPDIRECT3DDEVICE9, D3DPRIMITIVETYPE, UINT, UINT);
 using draw_indexed_primitive_fn = long(__stdcall*)(LPDIRECT3DDEVICE9, D3DPRIMITIVETYPE, INT, UINT, UINT, UINT, UINT);
 
+direct3d_create9_fn o_direct3d_create9 = nullptr;
 create_device_fn o_create_device = nullptr;
 reset_fn o_reset = nullptr;
 end_scene_fn o_end_scene = nullptr;
@@ -31,14 +35,23 @@ draw_indexed_primitive_fn o_draw_indexed_primitive = nullptr;
 tw::framework::d3d9::ui_plugin_draw_fn g_ui_draw = nullptr;
 tw::framework::d3d9::draw_intercept_fn g_draw_intercept = nullptr;
 
-// Registration happens once, at plugin load, from the single bootstrap thread; the vectors are
+// Registration happens once, at plugin load, from the single startup thread; the vectors are
 // read-only from then on. Same shape and same reasoning as wndproc_hub's subscriber vectors: a
 // handful of entries, walked linearly, and never mutated while the render thread is walking them
-// (see install_d3d9_hooks - subscribing has to be done before the detours go live).
+// (see framework/ready.hxx - subscribing has to be done before the hooks may act).
 std::vector<std::pair<tw::framework::d3d9::device_reset_listener_fn, tw::framework::d3d9::device_reset_listener_fn>> g_reset_listeners;
 std::vector<std::pair<tw::framework::d3d9::device_bind_fn, tw::framework::d3d9::device_unbind_fn>> g_bind_listeners;
 
 LPDIRECT3DDEVICE9 g_bound_device = nullptr;
+
+// Early load (engine\channels\): the chain Direct3DCreate9 -> IDirect3D9::CreateDevice -> device methods
+// installs itself off the game's own objects, one link per first object. See hook_direct3d_create9 below.
+std::atomic<bool> g_create_device_hooked { false };
+std::atomic<bool> g_device_hooks_installed { false };
+
+// Counts the game's successful CreateDevice calls, for the lifecycle log only. Written on whichever thread
+// creates a device - the game's main thread in practice.
+std::atomic<int> g_devices_created { 0 };
 
 // Stage 0..7 texture bindings, mirrored off hk_set_texture so an interceptor can ask "what is bound
 // right now" without a GetTexture()/Release() pair on every single draw call. Not owning
@@ -249,6 +262,11 @@ bool is_rendering_to_back_buffer(LPDIRECT3DDEVICE9 device)
     return matches;
 }
 
+// Defined below, with the rest of the early chain.
+void install_device_hooks_from_game(LPDIRECT3DDEVICE9 device);
+
+// Initialisation, not per-frame: a handful of calls per session (startup, each windowed<->fullscreen
+// switch), so the lifecycle log is allowed here (§4.5).
 long __stdcall hk_create_device(LPDIRECT3D9 p_d3d9,
     UINT adapter,
     D3DDEVTYPE device_type,
@@ -260,12 +278,29 @@ long __stdcall hk_create_device(LPDIRECT3D9 p_d3d9,
     const long result = o_create_device(
         p_d3d9, adapter, device_type, focus_window, behavior_flags, p_presentation_parameters, pp_returned_device_interface);
 
-    if(SUCCEEDED(result) && pp_returned_device_interface != nullptr && *pp_returned_device_interface != nullptr) {
-        TW_LOG_INFO("d3d9: hk_create_device succeeded, focus_window={}", static_cast<const void*>(focus_window));
-        bind_device(*pp_returned_device_interface);
-    }
-    else if(FAILED(result)) {
+    if(FAILED(result) || pp_returned_device_interface == nullptr || *pp_returned_device_interface == nullptr) {
         TW_LOG_WARNING("d3d9: hk_create_device failed, hr=0x{:08X}", static_cast<unsigned long>(result));
+        TW_BOOT_LOG("d3d9: game CreateDevice failed, hr=0x{:08X}", static_cast<unsigned long>(result));
+        return result;
+    }
+
+    const LPDIRECT3DDEVICE9 device = *pp_returned_device_interface;
+    const bool ready = tw::framework::ready::published();
+
+    TW_LOG_INFO("d3d9: hk_create_device succeeded, focus_window={}", static_cast<const void*>(focus_window));
+    TW_BOOT_LOG("d3d9: game CreateDevice #{} -> device {}, windowed={}, plugin {}",
+        g_devices_created.fetch_add(1, std::memory_order_relaxed) + 1,
+        static_cast<void*>(device),
+        p_presentation_parameters != nullptr ? p_presentation_parameters->Windowed != FALSE : true,
+        ready ? "ready" : "not ready yet - binding waits for the first EndScene after it is");
+
+    // Early load only - in the late one this flag was set when the throwaway device supplied the entries.
+    if(!g_device_hooks_installed.exchange(true)) {
+        install_device_hooks_from_game(device);
+    }
+
+    if(ready) {
+        bind_device(device);
     }
 
     return result;
@@ -382,7 +417,10 @@ long __stdcall hk_end_scene(LPDIRECT3DDEVICE9 p_device)
         return o_end_scene(p_device);
     }
 
-    if(g_bound_device == nullptr) {
+    // The late bind, and in the early load the first bind of all: a device the game created before the
+    // plugin was ready is picked up here once it is. Only reached while nothing is bound, so the flag is
+    // read a few times at startup rather than per frame.
+    if(g_bound_device == nullptr && tw::framework::ready::published()) [[unlikely]] {
         bind_device(p_device);
     }
 
@@ -476,7 +514,10 @@ bool intercept_draw(LPDIRECT3DDEVICE9 p_device)
     // DrawIndexedPrimitive, and offering those to an interceptor that matches on a raw stage-0
     // texture pointer is how a released sky texture's recycled address turns one of the overlay's
     // own draws into a suppressed draw plus a stray sky pass.
-    if(g_draw_intercept == nullptr || g_in_draw_intercept || g_in_overlay_pass || p_device != g_bound_device) [[likely]] {
+    //
+    // The bound device goes first: it is written on this thread only, and until the plugin is ready it is
+    // null, which keeps the interceptor pointer - written by the startup thread - unread until then.
+    if(p_device != g_bound_device || g_draw_intercept == nullptr || g_in_draw_intercept || g_in_overlay_pass) [[likely]] {
         return false;
     }
 
@@ -531,7 +572,9 @@ long __stdcall hk_draw_indexed_primitive(LPDIRECT3DDEVICE9 p_device,
 // hk_reset both run bind_device(), which unbinds the previous device before adopting a new one. The
 // only case that leaves uncovered is a game that destroys its device and never makes another, which
 // happens at process exit, where there is nothing left to tear down.
-// Every vtable entry this module detours, resolved in one pass off a single throwaway device.
+
+// Every vtable entry this module detours - off a throwaway device in the late load, off the game's own
+// first device in the early one.
 struct resolved_entries {
     void* create_device;
     void* reset;
@@ -545,6 +588,145 @@ struct resolved_entries {
     void* draw_primitive;
     void* draw_indexed_primitive;
 };
+
+// Everything but create_device, which lives on IDirect3D9 rather than on the device.
+void read_device_entries(LPDIRECT3DDEVICE9 device, resolved_entries& out)
+{
+    void** device_vtable = *reinterpret_cast<void***>(device);
+
+    out.reset = device_vtable[16];
+    out.present = device_vtable[17];
+    out.end_scene = device_vtable[42];
+    out.set_texture = device_vtable[65];
+    out.draw_primitive = device_vtable[81];
+    out.draw_indexed_primitive = device_vtable[82];
+
+    // IDirect3DSwapChain9: QueryInterface/AddRef/Release, then Present. Hooked as well as the device
+    // entry above because the two are alternatives from the game's side and only one of them fires - and
+    // a Present nobody sees means an overlay nobody sees, which is a far worse outcome than the
+    // double-draw all of this exists to remove. hk_present guards the case where the runtime implements
+    // one in terms of the other.
+    IDirect3DSwapChain9* swap_chain = nullptr;
+    if(SUCCEEDED(device->GetSwapChain(0, &swap_chain)) && swap_chain != nullptr) {
+        void** swap_chain_vtable = *reinterpret_cast<void***>(swap_chain);
+        out.swap_chain_present = swap_chain_vtable[3];
+        swap_chain->Release();
+    }
+    else {
+        TW_LOG_WARNING("d3d9: device has no swap chain - IDirect3DSwapChain9::Present will not be hooked");
+    }
+}
+
+// Detours every device entry, plus IDirect3D9::CreateDevice when `entries.create_device` is set (the late
+// load, where one throwaway device supplied both). Rolls the pointers back on failure.
+bool attach_entries(const resolved_entries& entries, tw::framework::detour::suspend threads)
+{
+    if(entries.create_device != nullptr) {
+        o_create_device = reinterpret_cast<create_device_fn>(entries.create_device);
+    }
+    o_reset = reinterpret_cast<reset_fn>(entries.reset);
+    o_end_scene = reinterpret_cast<end_scene_fn>(entries.end_scene);
+    o_present = reinterpret_cast<present_fn>(entries.present);
+    o_set_texture = reinterpret_cast<set_texture_fn>(entries.set_texture);
+    o_draw_primitive = reinterpret_cast<draw_primitive_fn>(entries.draw_primitive);
+    o_draw_indexed_primitive = reinterpret_cast<draw_indexed_primitive_fn>(entries.draw_indexed_primitive);
+
+    // CreateDevice last, so the device entries are a prefix whether or not it is part of this install.
+    const std::array<tw::framework::detour::binding, 7> bindings { {
+        { reinterpret_cast<void**>(&o_reset), reinterpret_cast<void*>(hk_reset) },
+        { reinterpret_cast<void**>(&o_end_scene), reinterpret_cast<void*>(hk_end_scene) },
+        { reinterpret_cast<void**>(&o_present), reinterpret_cast<void*>(hk_present) },
+        { reinterpret_cast<void**>(&o_set_texture), reinterpret_cast<void*>(hk_set_texture) },
+        { reinterpret_cast<void**>(&o_draw_primitive), reinterpret_cast<void*>(hk_draw_primitive) },
+        { reinterpret_cast<void**>(&o_draw_indexed_primitive), reinterpret_cast<void*>(hk_draw_indexed_primitive) },
+        { reinterpret_cast<void**>(&o_create_device), reinterpret_cast<void*>(hk_create_device) },
+    } };
+
+    const std::size_t count = entries.create_device != nullptr ? bindings.size() : bindings.size() - 1;
+    const bool ok = tw::framework::detour::attach(std::span { bindings.data(), count }, threads);
+
+    if(!ok) {
+        if(entries.create_device != nullptr) {
+            o_create_device = nullptr;
+        }
+        o_reset = nullptr;
+        o_end_scene = nullptr;
+        o_present = nullptr;
+        o_set_texture = nullptr;
+        o_draw_primitive = nullptr;
+        o_draw_indexed_primitive = nullptr;
+
+        return false;
+    }
+
+    // Its own transaction, and its own failure handling: the swap chain's Present is a belt to the
+    // device Present's braces (see resolved_entries), so losing it costs nothing as long as the game
+    // presents through the device - which is the ordinary case. Failing the whole install over it
+    // would trade a working overlay for a hypothetical one.
+    if(entries.swap_chain_present != nullptr) {
+        o_swap_chain_present = reinterpret_cast<swap_chain_present_fn>(entries.swap_chain_present);
+
+        if(!tw::framework::detour::attach(
+               {
+                   { reinterpret_cast<void**>(&o_swap_chain_present), reinterpret_cast<void*>(hk_swap_chain_present) },
+               },
+               threads)) {
+            TW_LOG_WARNING("d3d9: DetourAttach on IDirect3DSwapChain9::Present failed - relying on the device Present alone");
+            TW_BOOT_LOG("d3d9: IDirect3DSwapChain9::Present not hooked - relying on the device Present alone");
+            o_swap_chain_present = nullptr;
+        }
+    }
+
+    return true;
+}
+
+// --- early load: the chain off the game's own objects ------------------------------------------------------
+//
+// Every transaction below leaves the other threads running, deliberately. Each link patches code nobody
+// can have run yet: Direct3DCreate9 is hooked from d3d9.dll's own loader notification, so the first
+// IDirect3D9 it returns is the first in the process and its CreateDevice has never been called, and the
+// first device's methods have never been called before CreateDevice hands that device back. Suspending
+// threads, meanwhile, is a real hazard here - the startup thread and the shader compiles it queues
+// allocate constantly, and a thread frozen while holding the heap lock deadlocks the game inside Detours'
+// own allocation. Same reasoning in dinput8_hooks.cxx.
+
+// Runs inside the game's first successful CreateDevice, on its thread, before the device is returned.
+void install_device_hooks_from_game(LPDIRECT3DDEVICE9 device)
+{
+    resolved_entries entries {};
+    read_device_entries(device, entries);
+
+    const bool ok = attach_entries(entries, tw::framework::detour::suspend::none);
+    TW_BOOT_LOG("d3d9: device hooks (Reset/Present/EndScene/SetTexture/DrawPrimitive/DrawIndexedPrimitive{}) {} off the game's device",
+        o_swap_chain_present != nullptr ? "/SwapChain::Present" : "",
+        ok ? "installed" : "FAILED - no overlay and no sky this session");
+}
+
+// Initialisation: once or twice per process, from the game's Direct3DCreate9.
+IDirect3D9* __stdcall hk_direct3d_create9(UINT sdk_version)
+{
+    IDirect3D9* d3d = o_direct3d_create9(sdk_version);
+
+    if(d3d != nullptr && !g_create_device_hooked.exchange(true)) {
+        o_create_device = reinterpret_cast<create_device_fn>((*reinterpret_cast<void***>(d3d))[16]);
+
+        const bool ok = tw::framework::detour::attach(
+            {
+                { reinterpret_cast<void**>(&o_create_device), reinterpret_cast<void*>(hk_create_device) },
+            },
+            tw::framework::detour::suspend::none);
+
+        if(!ok) {
+            o_create_device = nullptr;
+        }
+
+        TW_BOOT_LOG("d3d9: game Direct3DCreate9 -> {}; IDirect3D9::CreateDevice {}",
+            static_cast<void*>(d3d),
+            ok ? "hooked" : "FAILED - no overlay and no sky this session");
+    }
+
+    return d3d;
+}
 
 bool resolve_d3d9_functions(resolved_entries& out)
 {
@@ -602,31 +784,9 @@ bool resolve_d3d9_functions(resolved_entries& out)
 
         if(device) {
             void** d3d9_vtable = *reinterpret_cast<void***>(d3d9);
-            void** device_vtable = *reinterpret_cast<void***>(device);
-
             out.create_device = d3d9_vtable[16];
-            out.reset = device_vtable[16];
-            out.present = device_vtable[17];
-            out.end_scene = device_vtable[42];
-            out.set_texture = device_vtable[65];
-            out.draw_primitive = device_vtable[81];
-            out.draw_indexed_primitive = device_vtable[82];
 
-            // IDirect3DSwapChain9: QueryInterface/AddRef/Release, then Present. Hooked as well as
-            // the device entry above because the two are alternatives from the game's side and only
-            // one of them fires - and a Present nobody sees means an overlay nobody sees, which is a
-            // far worse outcome than the double-draw all of this exists to remove. hk_present guards
-            // the case where the runtime implements one in terms of the other.
-            IDirect3DSwapChain9* swap_chain = nullptr;
-            if(SUCCEEDED(device->GetSwapChain(0, &swap_chain)) && swap_chain != nullptr) {
-                void** swap_chain_vtable = *reinterpret_cast<void***>(swap_chain);
-                out.swap_chain_present = swap_chain_vtable[3];
-                swap_chain->Release();
-            }
-            else {
-                TW_LOG_WARNING("d3d9: bootstrap device has no swap chain - IDirect3DSwapChain9::Present will not be hooked");
-            }
-
+            read_device_entries(device, out);
             resolved = true;
 
             device->Release();
@@ -686,79 +846,58 @@ void detach_draw_interceptor()
     g_draw_intercept = nullptr;
 }
 
+void initialize() noexcept
+{
+    // Before framework::ready is published, like every other subscription: from then on the render
+    // thread's first bind runs wndproc::install and hub_wndproc starts iterating the subscriber vectors,
+    // and a subscribe() landing after that pushes into a std::vector another thread is walking.
+    tw::framework::wndproc::subscribe(WM_ACTIVATEAPP, &handle_activate_app);
+}
+
 bool install_d3d9_hooks()
 {
     resolved_entries entries {};
 
     if(!resolve_d3d9_functions(entries)) {
         TW_LOG_ERROR("d3d9: could not resolve vtable entries off a bootstrap device - no overlay this session");
+        TW_BOOT_LOG("d3d9: no throwaway device - no overlay and no sky this session");
         return false;
     }
 
-    o_create_device = reinterpret_cast<create_device_fn>(entries.create_device);
-    o_reset = reinterpret_cast<reset_fn>(entries.reset);
-    o_end_scene = reinterpret_cast<end_scene_fn>(entries.end_scene);
-    o_present = reinterpret_cast<present_fn>(entries.present);
-    o_set_texture = reinterpret_cast<set_texture_fn>(entries.set_texture);
-    o_draw_primitive = reinterpret_cast<draw_primitive_fn>(entries.draw_primitive);
-    o_draw_indexed_primitive = reinterpret_cast<draw_indexed_primitive_fn>(entries.draw_indexed_primitive);
+    // The chain the early load would build is not wanted here: these entries are the whole install.
+    g_create_device_hooked.store(true, std::memory_order_relaxed);
+    g_device_hooks_installed.store(true, std::memory_order_relaxed);
 
-    // Subscribe BEFORE the detours go live, not after. attach() publishes hk_end_scene to the
-    // render thread the instant it commits, and that thread's very first frame runs bind_device ->
-    // wndproc::install, at which point hub_wndproc starts iterating the subscriber vectors. A
-    // subscribe() landing in that window pushes into a std::vector while another thread walks it -
-    // reallocation under an active iteration, i.e. undefined behavior on a code path that only
-    // misbehaves during the first few frames after injection.
-    //
-    // Subscribing early is free: subscriptions are inert until wndproc::install() runs, and if the
-    // attach below fails the handler simply never fires (its own guards return false when nothing
-    // is bound).
-    tw::framework::wndproc::subscribe(WM_ACTIVATEAPP, &handle_activate_app);
-
-    const bool ok = tw::framework::detour::attach({
-        { reinterpret_cast<void**>(&o_create_device), reinterpret_cast<void*>(hk_create_device) },
-        { reinterpret_cast<void**>(&o_reset), reinterpret_cast<void*>(hk_reset) },
-        { reinterpret_cast<void**>(&o_end_scene), reinterpret_cast<void*>(hk_end_scene) },
-        { reinterpret_cast<void**>(&o_present), reinterpret_cast<void*>(hk_present) },
-        { reinterpret_cast<void**>(&o_set_texture), reinterpret_cast<void*>(hk_set_texture) },
-        { reinterpret_cast<void**>(&o_draw_primitive), reinterpret_cast<void*>(hk_draw_primitive) },
-        { reinterpret_cast<void**>(&o_draw_indexed_primitive), reinterpret_cast<void*>(hk_draw_indexed_primitive) },
-    });
-
-    if(!ok) {
+    if(!attach_entries(entries, tw::framework::detour::suspend::others)) {
         TW_LOG_ERROR("d3d9: DetourAttach failed - no overlay this session");
-        o_create_device = nullptr;
-        o_reset = nullptr;
-        o_end_scene = nullptr;
-        o_present = nullptr;
-        o_set_texture = nullptr;
-        o_draw_primitive = nullptr;
-        o_draw_indexed_primitive = nullptr;
-
+        TW_BOOT_LOG("d3d9: DetourAttach FAILED (late) - no overlay and no sky this session");
         return false;
     }
 
     TW_LOG_INFO("d3d9: hooks installed (CreateDevice/Reset/EndScene/Present/SetTexture/DrawPrimitive/DrawIndexedPrimitive)");
-
-    // Its own transaction, and its own failure handling: the swap chain's Present is a belt to the
-    // device Present's braces (see resolved_entries), so losing it costs nothing as long as the game
-    // presents through the device - which is the ordinary case. Failing the whole install over it
-    // would trade a working overlay for a hypothetical one.
-    if(entries.swap_chain_present != nullptr) {
-        o_swap_chain_present = reinterpret_cast<swap_chain_present_fn>(entries.swap_chain_present);
-
-        if(!tw::framework::detour::attach({
-               { reinterpret_cast<void**>(&o_swap_chain_present), reinterpret_cast<void*>(hk_swap_chain_present) },
-           })) {
-            TW_LOG_WARNING("d3d9: DetourAttach on IDirect3DSwapChain9::Present failed - relying on the device Present alone");
-            o_swap_chain_present = nullptr;
-        }
-        else {
-            TW_LOG_INFO("d3d9: IDirect3DSwapChain9::Present hooked as well");
-        }
-    }
+    TW_BOOT_LOG("d3d9: hooks installed off a throwaway device (late){}", o_swap_chain_present != nullptr ? ", SwapChain::Present too" : "");
 
     return true;
+}
+
+bool hook_direct3d_create9_from_loader(HMODULE d3d9) noexcept
+{
+    o_direct3d_create9 = reinterpret_cast<direct3d_create9_fn>(::GetProcAddress(d3d9, "Direct3DCreate9"));
+    if(o_direct3d_create9 == nullptr) {
+        return false;
+    }
+
+    const bool ok = tw::framework::detour::attach(
+        {
+            { reinterpret_cast<void**>(&o_direct3d_create9), reinterpret_cast<void*>(hk_direct3d_create9) },
+        },
+        tw::framework::detour::suspend::none);
+
+    if(!ok) {
+        o_direct3d_create9 = nullptr;
+    }
+
+    return ok;
 }
 
 } // namespace tw::framework::d3d9

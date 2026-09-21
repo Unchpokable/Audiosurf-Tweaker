@@ -5,7 +5,7 @@
 #include "framework/d3d9_state.hxx"
 
 #include "plugin/diagnostics.hxx"
-#include "plugin/globals.hxx"
+#include "plugin/paths.hxx"
 
 #include "ui/fonts.hxx"
 #include "ui/gpu_texture.hxx"
@@ -31,7 +31,7 @@ bool g_context_created = false;
 bool g_initialized = false;
 IDirect3DDevice9* g_device = nullptr;
 HWND g_hwnd = nullptr;
-std::string g_config_path;
+std::filesystem::path g_config_path;
 
 // Input gate (see imgui_backend.hxx). g_input_open tracks the gate's value as of the last message
 // so the open->closed / closed->open edges can be detected and cleaned up after.
@@ -99,32 +99,6 @@ bool is_input_message(UINT msg) noexcept
         default:
             return false;
     }
-}
-
-// TweakerPlugin.dll -> .../TweakerPlugin.overlay.cfg, next to the DLL itself. Same
-// GetModuleFileNameW + WideCharToMultiByte(CP_UTF8) pattern as resource/self_extract.cxx.
-std::string compute_config_path()
-{
-    wchar_t wide_path[MAX_PATH] {};
-    const DWORD len = ::GetModuleFileNameW(tw::plugin::globals::module_handle, wide_path, MAX_PATH);
-    if(len == 0 || len >= MAX_PATH) {
-        return {};
-    }
-
-    const int bytes = ::WideCharToMultiByte(CP_UTF8, 0, wide_path, -1, nullptr, 0, nullptr, nullptr);
-    if(bytes <= 1) {
-        return {};
-    }
-
-    std::string path(static_cast<std::size_t>(bytes - 1), '\0');
-    ::WideCharToMultiByte(CP_UTF8, 0, wide_path, -1, path.data(), bytes, nullptr, nullptr);
-
-    const auto dot = path.find_last_of('.');
-    if(dot != std::string::npos) {
-        path.resize(dot);
-    }
-    path += ".overlay.cfg";
-    return path;
 }
 
 // gpu_texture's pluggable backend (see ui/gpu_texture.hxx) - D3DPOOL_MANAGED survives Reset() on
@@ -214,7 +188,8 @@ bool initialize(IDirect3DDevice9* device, HWND hwnd)
     tw::ui::image::svg::invalidate();
 
     if(!g_context_created) {
-        g_config_path = compute_config_path();
+        // engine\TweakerStuff\Config\overlay.cfg - see plugin/paths.
+        g_config_path = tw::plugin::paths::config_file(L"overlay.cfg");
         if(!g_config_path.empty()) {
             tw::ui::overlay_config::load(g_config_path);
         }
@@ -237,7 +212,7 @@ bool initialize(IDirect3DDevice9* device, HWND hwnd)
         ImGui::StyleColorsDark();
 
         g_context_created = true;
-        TW_LOG_INFO("imgui_backend: context created (config='{}')", g_config_path);
+        TW_LOG_INFO("imgui_backend: context created (config='{}')", tw::plugin::paths::to_utf8(g_config_path));
     }
 
     // Torn apart rather than short-circuited: ImGui_ImplWin32_Shutdown() asserts on a null backend,
