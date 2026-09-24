@@ -20,4 +20,15 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept;
 // a consumer laying out around it has to react to it appearing and disappearing anyway, so a
 // truthful rectangle is more useful than a conservative one.
 [[nodiscard]] bool last_rect(float& x0, float& y0, float& x1, float& y1) noexcept;
+
+// One extra muted row, above the rest, or none when empty. The single exception to "no push API",
+// and it is narrow on purpose: it carries a status the overlay state cannot know because it is not
+// about the host at all - the scripting layer waiting for the game to finish loading.
+//
+// It lives here rather than being derived like everything else because this layer is shared with
+// smoke_test, which has no engine, no channel graph and no scripts. Deriving it would mean ui/
+// including engine/, and that dependency is exactly what the shared build cannot have.
+//
+// The string is copied. Setting the same text twice is free.
+void set_status(std::string_view text) noexcept;
 } // namespace tw::ui::plugins::statics::pins

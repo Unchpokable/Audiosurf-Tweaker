@@ -3,13 +3,17 @@
 #include "lua/lua_host.hxx"
 
 #include "lua/lua_api.hxx"
-#include "lua/lua_channels.hxx"
 #include "lua/lua_config.hxx"
+
+#include "engine/engine_control.hxx"
+#include "engine/engine_groups.hxx"
+#include "engine/engine_state.hxx"
 
 #include "plugin/diagnostics.hxx"
 #include "plugin/paths.hxx"
 
 #include "ui/plugins/static/notefeed.hxx"
+#include "ui/plugins/static/pins.hxx"
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -19,12 +23,26 @@ namespace
 lua_State* g_lua = nullptr;
 int g_traceback_ref = LUA_NOREF;
 int g_dispatch_ref = LUA_NOREF;
+int g_dispatch_tick_ref = LUA_NOREF;
+int g_dispatch_post_tick_ref = LUA_NOREF;
 int g_dispatch_call_ref = LUA_NOREF;
+int g_dispatch_state_ref = LUA_NOREF;
+int g_dispatch_graph_ref = LUA_NOREF;
 int g_unload_ref = LUA_NOREF;
 int g_loaded_scripts = 0;
 bool g_frame_dispatch_disabled = false;
+bool g_tick_dispatch_disabled = false;
+bool g_post_tick_dispatch_disabled = false;
 bool g_call_dispatch_disabled = false;
+bool g_state_dispatch_disabled = false;
+bool g_graph_dispatch_disabled = false;
 std::string g_last_error;
+
+// What the lifecycle dispatchers have already told the scripts about. Both are revisions, not
+// states: comparing a counter is one load and one branch, and it cannot miss a transition that came
+// and went inside one frame.
+std::uint32_t g_seen_state_revision = 0;
+std::uint32_t g_seen_graph_revision = 0;
 
 // The prelude. Runs once, before any user script, with __tw_ptrs holding the addresses from
 // lua_api::entry_points() as lightuserdata.
@@ -90,6 +108,16 @@ local C_ease            = ffi.cast("float (*)(int, float)",                     
 local C_ease_count      = ffi.cast("int (*)(void)",                                     P[45])
 local C_ease_name       = ffi.cast("const char* (*)(int)",                              P[46])
 local C_hud_rect_grad   = ffi.cast("void (*)(float, float, float, float, unsigned int, unsigned int, int)", P[47])
+local C_frame           = ffi.cast("int (*)(void)",                                     P[48])
+local C_state           = ffi.cast("int (*)(void)",                                     P[49])
+local C_state_name      = ffi.cast("const char* (*)(void)",                              P[50])
+local C_ready           = ffi.cast("int (*)(void)",                                      P[51])
+local C_graph_revision  = ffi.cast("int (*)(void)",                                      P[52])
+local C_group_loaded    = ffi.cast("int (*)(const char*)",                               P[53])
+local C_ref_free        = ffi.cast("void (*)(void*)",                                    P[54])
+local C_channel_live    = ffi.cast("int (*)(void*)",                                     P[55])
+local C_channel_matrix  = ffi.cast("int (*)(void*, float*)",                             P[56])
+local C_channel_set_mat = ffi.cast("void (*)(void*, const float*)",                      P[57])
 
 -- One reusable out-buffer for resolve results: [0] = status, [1] = the kind the channel actually is.
 -- Allocated once here rather than per call, so a resolve costs no garbage.
@@ -101,13 +129,29 @@ local vec_out  = ffi.new("float[3]")
 local rect_out = ffi.new("float[4]")
 local size_out = ffi.new("float[2]")
 
-local KIND_NUMBER, KIND_TEXT, KIND_VECTOR = 0, 1, 2
+local KIND_NUMBER, KIND_TEXT, KIND_VECTOR, KIND_MATRIX = 0, 1, 2, 3
 
 local STATUS_OK, STATUS_PENDING = 0, 1
 local STATUS_NO_GROUP, STATUS_NO_CHANNEL, STATUS_WRONG_KIND, STATUS_UNUSABLE = 2, 3, 4, 5
 
 local tw = {}
+
+-- The frame number, and it counts **engine** frames - one per evaluation of the game's channel
+-- graph - rather than frames of the overlay.
+--
+-- The difference is not cosmetic. The overlay's counter advances in Present, which does not happen
+-- while the window is minimised, does not happen before there is a device, and advances at whatever
+-- rate the machine reaches: `tw.frame % 60` meant "once a second" on the machine it was written on
+-- and "three times a second" on a 180 Hz one. The engine's counter advances exactly when the graph
+-- is evaluated, which is what "per frame" means for anything that reads a channel.
+--
+-- Set from C at the top of every dispatcher rather than incremented here, so the three of them agree
+-- and so the value keeps moving even if the engine spine never comes up - see tw_frame().
 tw.frame = 0
+
+-- Frames of the overlay, for the rare thing that really is about drawing rate. Incremented by the
+-- draw dispatcher below and by nothing else.
+tw.draw_frame_count = 0
 
 function tw.log(msg)    C_log(tostring(msg))    end
 function tw.notify(msg) C_notify(tostring(msg)) end
@@ -171,28 +215,51 @@ end
 -- failed write; this is here so a script can wait deliberately instead of wondering.
 function tw.can_write() return C_can_write() ~= 0 end
 
--- Resolution is lazy and retried, because it has to be: the engine pointer is captured by a detour
--- that only fires once the game calls a channel which does not override CallChannel, which in
--- practice can mean "after the player clicks something". A channel handle asked for at load time
--- would simply not exist yet. Retries are throttled to once every 60 dispatches because a miss
--- costs a linear _stricmp scan over the whole group.
+-- Resolution is lazy, because it has to be: a handle is created at load time, when the group it
+-- names may not exist and in some cases (a run's groups, asked for from the menu) does not exist
+-- yet by design.
 --
--- The failure taxonomy matters more than it looks. "Not yet" and "wrong" are different things:
---   - engine not up, group not loaded, channel absent -> transient, stay quiet, keep retrying;
+-- **Retrying is driven by the graph, not by a timer.** It used to be "every 60 dispatches, forever",
+-- which cost a linear _stricmp scan over a group of several thousand channels each time and never
+-- stopped, not even for a name that could never resolve. `C_graph_revision()` changes exactly when a
+-- group appeared or went away - the only two events that can change the answer - so an unresolved
+-- handle now costs one integer comparison per frame and one scan per actual change.
+--
+-- **The same number also expires a resolved handle**, and that is not an optimisation. Groups are
+-- destroyed during play: the `Renderer` pool is dropped and rebuilt on every single run. A cached
+-- channel pointer into a destroyed group is not stale data, it is freed memory, so when the graph
+-- has moved the handle is re-resolved before it is used again.
+--
+-- The failure taxonomy matters more than it looks, and Ф2 sharpened it:
+--   - engine not up, or group not loaded -> transient, silent, waits for the graph to change;
+--   - group loaded but no such channel -> **final**, because a group's channel list is fixed once it
+--     is loaded. Said once, and the handle stops trying;
 --   - asked through the wrong accessor -> a bug in the script, and it can never fix itself, so it
 --     is raised as a Lua error rather than silently yielding nil forever.
 local Channel = {}
 Channel.__index = Channel
 
 function Channel:resolve()
-    if self.h ~= nil then return true end
-    if tw.frame < self.retry_at then return false end
-    self.retry_at = tw.frame + 60
+    local rev = C_graph_revision()
 
-    -- Cheap short-circuit before crossing into C at all. The host checks this too and is the
-    -- authority; this one only saves the boundary crossing during the startup window, which can last
-    -- until the player touches a menu.
+    if self.h ~= nil then
+        if self.rev == rev then return true end
+        -- The set of loaded groups changed. Whatever this handle points at may have been destroyed
+        -- with its group, so it goes back through the resolve rather than being trusted.
+        self.h = nil
+    end
+
+    if self.dead then return false end
+
+    -- Before the revision check, not after, and that order is the whole correctness of it: "the
+    -- engine pointer is not captured yet" is not an answer about this handle, so it must not consume
+    -- the one attempt this revision allows. Spending it here would leave the handle waiting for the
+    -- next group to load before it ever tried - which, in a session already past loading, could be
+    -- the rest of the run.
     if C_engine_ready() == 0 then return false end
+
+    if self.tried == rev then return false end
+    self.tried = rev
 
     local h
     if type(self.name) == "number" then
@@ -203,7 +270,11 @@ function Channel:resolve()
     local status = resolve_out[0]
 
     if status == STATUS_OK then
-        self.h = h
+        -- The handle is a channel_ref the host allocated for us; its lifetime is this cdata's. When
+        -- the graph moves and the handle re-resolves, the old one simply becomes garbage and the
+        -- finalizer hands it back - nothing on this side has to remember to free anything.
+        self.h = ffi.gc(h, C_ref_free)
+        self.rev = rev
         return true
     end
 
@@ -218,21 +289,37 @@ function Channel:resolve()
         error(string.format("%s.%s cannot be read: its vtable slot is not code", self.group, self.name), 3)
     end
 
-    -- Transient, so this keeps retrying - but it is also how a typo looks, and a typo that stays
-    -- silent forever is worse than a noisy one. Reported once per handle, and only after several
-    -- attempts, so a group that genuinely has not loaded yet does not raise anything.
+    -- The group is there and the channel is not. Nothing about that changes with time, so it is said
+    -- once - with the name the script used - and the handle retires instead of rescanning the group
+    -- for the rest of the session.
     --
     -- Deliberately through tw.warn (notefeed) and not tw.log: TW_LOG_* is compiled out of release
     -- builds, which is exactly where a user's script runs.
-    self.misses = (self.misses or 0) + 1
-    if not self.warned and self.misses >= 5 and (status == STATUS_NO_GROUP or status == STATUS_NO_CHANNEL) then
-        self.warned = true
-        tw.warn(string.format("%s.%s: %s", self.group, self.name,
-            status == STATUS_NO_GROUP and "no such group loaded" or "no such channel in group"))
+    if status == STATUS_NO_CHANNEL then
+        self.dead = true
+        tw.warn(string.format("%s.%s: no such channel in group", self.group, self.name))
     end
 
     return false
 end
+
+-- Whether the engine evaluated this channel in the current frame: true, false, or nil when that
+-- cannot be known (the channel never memoises, so the field that would say is never written).
+--
+-- "Current frame" is literal, and it is what makes this useful rather than confusing: read from
+-- on_post_tick it answers "did the graph run this branch just now", which is how you tell a part of
+-- the game that is active from one that is merely loaded. Read from on_tick, which runs before the
+-- graph, it is false for everything - the frame has not been evaluated yet.
+function Channel:live()
+    if not self:resolve() then return nil end
+    local v = C_channel_live(self.h)
+    if v < 0 then return nil end
+    return v ~= 0
+end
+
+-- Whether this handle has given up. False for one that is merely waiting - the distinction a script
+-- needs to tell "the run has not started" from "I typed the name wrong".
+function Channel:dead_end() return self.dead == true end
 
 function Channel:valid() return self.h ~= nil end
 
@@ -275,8 +362,41 @@ function VectorChannel:set(x, y, z)
     return true
 end
 
+-- Matrix channels: sixteen numbers, row-major (_11 _12 _13 _14 _21 ... _44), as multiple returns for
+-- the same reason vectors are - a table per read is garbage on the drawing path. For writing, a table
+-- of sixteen is accepted as well as sixteen arguments, because nobody wants to type the second form.
+local MatrixChannel = setmetatable({}, { __index = Channel })
+MatrixChannel.__index = MatrixChannel
+
+local mat_out = ffi.new("float[16]")
+local mat_in = ffi.new("float[16]")
+
+function MatrixChannel:get()
+    if not self:resolve() then return nil end
+    if C_channel_matrix(self.h, mat_out) == 0 then return nil end
+    return mat_out[0], mat_out[1], mat_out[2], mat_out[3],
+           mat_out[4], mat_out[5], mat_out[6], mat_out[7],
+           mat_out[8], mat_out[9], mat_out[10], mat_out[11],
+           mat_out[12], mat_out[13], mat_out[14], mat_out[15]
+end
+
+function MatrixChannel:set(first, ...)
+    if not self:resolve() then return false end
+    if type(first) == "table" then
+        for i = 1, 16 do mat_in[i - 1] = first[i] or 0 end
+    else
+        mat_in[0] = first or 0
+        local rest = { ... }
+        for i = 1, 15 do mat_in[i] = rest[i] or 0 end
+    end
+    C_channel_set_mat(self.h, mat_in)
+    return true
+end
+
 local function make(mt, kind, group, name)
-    return setmetatable({ h = nil, group = group, name = name, kind = kind, retry_at = 0 }, mt)
+    -- `tried` and `rev` are graph revisions, not frame numbers: -1 is "never", and C_graph_revision()
+    -- starts at 0, so a handle tries once before anything has happened and then waits for a change.
+    return setmetatable({ h = nil, group = group, name = name, kind = kind, tried = -1, rev = -1 }, mt)
 end
 
 -- One accessor per channel family. Deliberately not a single generic tw.channel(): the engine's
@@ -290,6 +410,7 @@ end
 function tw.float_ch(group, name)  return make(FloatChannel,  KIND_NUMBER, group, name) end
 function tw.string_ch(group, name) return make(TextChannel,   KIND_TEXT,   group, name) end
 function tw.vector_ch(group, name) return make(VectorChannel, KIND_VECTOR, group, name) end
+function tw.matrix_ch(group, name) return make(MatrixChannel, KIND_MATRIX, group, name) end
 
 -- Kept as an alias so scripts written against the first cut keep working. New code should say what
 -- it means.
@@ -594,13 +715,62 @@ end
 local handlers = {}
 function tw.on_frame(fn) handlers[#handlers + 1] = { fn = fn, owner = caller_owner() } end
 
+-- Per-engine-frame work, which is a different thing from per-overlay-frame drawing.
+--
+-- on_tick runs immediately before the game evaluates its channel graph, on the engine's own thread,
+-- inside its call stack; on_post_tick runs immediately after, which is where this frame's results
+-- are readable. Neither may draw: there is no ImGui frame open around them, and the tw.hud.* calls
+-- refuse outside one rather than corrupting anything.
+--
+-- The rule of thumb for authors: compute in on_tick, draw in on_frame. A script that reads channels
+-- from on_frame is reading them at the overlay's rate, which is not the rate the values change at.
+local ticks = {}
+function tw.on_tick(fn) ticks[#ticks + 1] = { fn = fn, owner = caller_owner() } end
+
+local post_ticks = {}
+function tw.on_post_tick(fn) post_ticks[#post_ticks + 1] = { fn = fn, owner = caller_owner() } end
+
+-- The lifecycle, as scripts see it.
+--
+-- `tw.state()` is one of "detached", "booting", "starting", "ready", "busy"; `tw.ready()` is the
+-- predicate that matters - the graph is up, and reading, writing and hooking all work. Everything
+-- below is held behind it, which is the whole point of Ф2: a script no longer has to guess whether
+-- the game has finished loading, and no longer runs while it has not.
+function tw.state() return ffi.string(C_state_name()) end
+function tw.ready() return C_ready() ~= 0 end
+
+-- Runs once, on the first frame where everything is allowed.
+--
+-- **Also runs for a script enabled in the middle of a session**, on its next frame, because the
+-- contract is "once, when it can" and not "once, at startup". That is what removes the pattern
+-- bundled scripts had to invent for themselves - a `tw.frame % 60 == 0` poll whose only job was to
+-- notice that the script had been switched on mid-run.
+local ready_waiting = {}
+function tw.on_ready(fn) ready_waiting[#ready_waiting + 1] = { fn = fn, owner = caller_owner() } end
+
+-- Every transition, with the new state as a string. For a script that wants to put something on
+-- screen while the game is still coming up, or to reset itself when a run starts loading.
+local state_handlers = {}
+function tw.on_state(fn) state_handlers[#state_handlers + 1] = { fn = fn, owner = caller_owner() } end
+
+-- `fn(loaded)` whenever that group appears or disappears - by pool name ("Renderer") or bare file
+-- name ("Puzzle"), the same two spellings every other call here accepts.
+--
+-- This is the event a script that lives inside a run actually wants: the `Renderer` pool is
+-- destroyed and rebuilt every single time, and until now nothing said so.
+local group_handlers = {}
+function tw.on_group(name, fn)
+    group_handlers[#group_handlers + 1] = { name = name, fn = fn, owner = caller_owner(), loaded = C_group_loaded(name) ~= 0 }
+end
+
 -- Channel-call subscriptions. The engine calls back with a numeric id, which is looked up here -
 -- C never holds a Lua value, so there is nothing on that side for the collector to trip over.
 --
--- Registration is retried the same way channel resolution is, and for the same reason: the group may
--- not be loaded yet. `pending` holds the ones still waiting.
+-- **There is no pending queue on this side any more.** A subscription is accepted immediately, id
+-- and all, and the host attaches it to a real channel whenever the group turns up - and re-attaches
+-- it when a group that had gone away comes back, which is what every run does to the `Renderer`
+-- pool. The id never changes, so this table needs no maintenance across any of that.
 local call_handlers = {}
-local pending_calls = {}
 
 -- `when` is "after" (default) or "before". After is what an event consumer wants: the Do_* handler
 -- has run, so whatever it wrote is readable.
@@ -612,8 +782,21 @@ function tw.on_call(group, name, when, fn)
     if fn == nil then
         fn, when = when, "after"
     end
-    pending_calls[#pending_calls + 1] =
-        { group = group, name = name, after = (when ~= "before"), fn = fn, retry_at = 0, owner = caller_owner() }
+
+    local owner = caller_owner()
+    local after = (when ~= "before") and 1 or 0
+    local id
+    if type(name) == "number" then
+        id = C_on_call_at(owner, group, name, after, resolve_out)
+    else
+        id = C_on_call(owner, group, name, after, resolve_out)
+    end
+
+    -- id >= 0 covers "attached" and "waiting for the group" alike; -1 is the final answer, and the
+    -- host has already said what was wrong with the name.
+    if id >= 0 then
+        call_handlers[id] = { fn = fn, owner = owner }
+    end
 end
 
 -- Takes a channel out of the graph entirely: the engine keeps calling it, and it keeps doing
@@ -640,69 +823,22 @@ function Mute:on()  return self:set(true)  end
 function Mute:off() return self:set(false) end
 function Mute:active() return self.id ~= nil and self.want end
 
-local pending_mutes = {}
-
 function tw.mute(group, name)
-    local m = setmetatable({ group = group, name = name, want = true, retry_at = 0, owner = caller_owner() }, Mute)
-    pending_mutes[#pending_mutes + 1] = m
+    local owner = caller_owner()
+    local id
+    if type(name) == "number" then
+        id = C_mute_at(owner, group, name, resolve_out)
+    else
+        id = C_mute(owner, group, name, resolve_out)
+    end
+
+    local m = setmetatable({ group = group, name = name, want = true, owner = owner }, Mute)
+    if id >= 0 then
+        m.id = id
+        C_mute_set(id, 1)
+    end
+
     return m
-end
-
-local function pump_pending_mutes()
-    if #pending_mutes == 0 then return end
-    if C_engine_ready() == 0 then return end
-
-    for i = #pending_mutes, 1, -1 do
-        local m = pending_mutes[i]
-        if tw.frame >= m.retry_at then
-            m.retry_at = tw.frame + 60
-            local id
-            if type(m.name) == "number" then
-                id = C_mute_at(m.owner, m.group, m.name, resolve_out)
-            else
-                id = C_mute(m.owner, m.group, m.name, resolve_out)
-            end
-            if id >= 0 then
-                m.id = id
-                C_mute_set(id, m.want and 1 or 0)
-                table.remove(pending_mutes, i)
-            elseif resolve_out[0] == STATUS_NO_GROUP or resolve_out[0] == STATUS_NO_CHANNEL then
-                m.misses = (m.misses or 0) + 1
-                if not m.warned and m.misses >= 5 then
-                    m.warned = true
-                    tw.warn(string.format("mute target %s.%s not found", m.group, m.name))
-                end
-            end
-        end
-    end
-end
-
-local function pump_pending_calls()
-    if #pending_calls == 0 then return end
-    if C_engine_ready() == 0 then return end
-
-    for i = #pending_calls, 1, -1 do
-        local p = pending_calls[i]
-        if tw.frame >= p.retry_at then
-            p.retry_at = tw.frame + 60
-            local id
-            if type(p.name) == "number" then
-                id = C_on_call_at(p.owner, p.group, p.name, p.after and 1 or 0, resolve_out)
-            else
-                id = C_on_call(p.owner, p.group, p.name, p.after and 1 or 0, resolve_out)
-            end
-            if id >= 0 then
-                call_handlers[id] = { fn = p.fn, owner = p.owner }
-                table.remove(pending_calls, i)
-            elseif resolve_out[0] == STATUS_NO_GROUP or resolve_out[0] == STATUS_NO_CHANNEL then
-                p.misses = (p.misses or 0) + 1
-                if not p.warned and p.misses >= 5 then
-                    p.warned = true
-                    tw.warn(string.format("on_call target %s.%s not found", p.group, p.name))
-                end
-            end
-        end
-    end
 end
 
 -- The return value travels back to framework/channel_shim: false from a "before" handler cancels the
@@ -712,8 +848,8 @@ function __tw_dispatch_call(id)
     if rec then return rec.fn() end
 end
 
--- Forgets everything one script registered: its frame handlers, its channel callbacks, and anything
--- still queued waiting for a group to load.
+-- Forgets everything one script registered: its frame handlers, its lifecycle handlers and its
+-- channel callbacks.
 --
 -- The C side does the other half - tw_unsubscribe_owner puts the hooked channels' original vtables
 -- back - and this half makes sure nothing is left pointing at a callback from a script that is no
@@ -723,11 +859,20 @@ function __tw_unload_owner(id)
     for i = #handlers, 1, -1 do
         if handlers[i].owner == id then table.remove(handlers, i) end
     end
-    for i = #pending_calls, 1, -1 do
-        if pending_calls[i].owner == id then table.remove(pending_calls, i) end
+    for i = #ticks, 1, -1 do
+        if ticks[i].owner == id then table.remove(ticks, i) end
     end
-    for i = #pending_mutes, 1, -1 do
-        if pending_mutes[i].owner == id then table.remove(pending_mutes, i) end
+    for i = #post_ticks, 1, -1 do
+        if post_ticks[i].owner == id then table.remove(post_ticks, i) end
+    end
+    for i = #ready_waiting, 1, -1 do
+        if ready_waiting[i].owner == id then table.remove(ready_waiting, i) end
+    end
+    for i = #state_handlers, 1, -1 do
+        if state_handlers[i].owner == id then table.remove(state_handlers, i) end
+    end
+    for i = #group_handlers, 1, -1 do
+        if group_handlers[i].owner == id then table.remove(group_handlers, i) end
     end
     for sid, rec in pairs(call_handlers) do
         if rec.owner == id then call_handlers[sid] = nil end
@@ -737,13 +882,65 @@ end
 _G.tw = tw
 _G.print = tw.log
 
--- One entry point for the host, so the C side never has to walk a Lua table on the hot path.
+-- One entry point per dispatch site, so the C side never has to walk a Lua table on the hot path.
+--
+-- **The host calls none of these before the state machine says `ready`.** That is the gate, and it
+-- is the whole symptom Ф2 was opened for: scripts used to run from the plugin's first frame, which
+-- is the middle of the game assembling itself - hence HUDs drawn over the loading screen, and a
+-- notefeed full of resolve failures that were never anything but "not yet".
+--
+-- The lifecycle dispatchers below are the exception: they run in every state, because their entire
+-- job is to say which state it is.
 function __tw_dispatch_frame()
-    tw.frame = tw.frame + 1
-    pump_pending_calls()
-    pump_pending_mutes()
+    tw.frame = C_frame()
+    tw.draw_frame_count = tw.draw_frame_count + 1
     for i = 1, #handlers do
         handlers[i].fn()
+    end
+end
+
+function __tw_dispatch_tick()
+    tw.frame = C_frame()
+
+    -- Drained here rather than at registration: everything a script is handed runs inside a guarded
+    -- dispatcher, so a script enabled mid-session gets its on_ready on the next frame instead of
+    -- inside its own chunk, where an error would look like a load failure.
+    if #ready_waiting > 0 then
+        local waiting = ready_waiting
+        ready_waiting = {}
+        for i = 1, #waiting do
+            waiting[i].fn()
+        end
+    end
+
+    for i = 1, #ticks do
+        ticks[i].fn()
+    end
+end
+
+function __tw_dispatch_post_tick()
+    for i = 1, #post_ticks do
+        post_ticks[i].fn()
+    end
+end
+
+-- Called on a transition, in any state.
+function __tw_dispatch_state(name)
+    for i = 1, #state_handlers do
+        state_handlers[i].fn(name)
+    end
+end
+
+-- Called when the set of loaded groups changed, in any state. One roster lookup per registered
+-- watcher, on a path taken twice a run - not per frame.
+function __tw_dispatch_graph()
+    for i = 1, #group_handlers do
+        local g = group_handlers[i]
+        local now = C_group_loaded(g.name) ~= 0
+        if now ~= g.loaded then
+            g.loaded = now
+            g.fn(now)
+        end
     end
 end
 )LUA";
@@ -769,6 +966,61 @@ int push_traceback_handler(lua_State* lua) noexcept
 
     lua_rawgeti(lua, LUA_REGISTRYINDEX, g_traceback_ref);
     return lua_gettop(lua);
+}
+
+// One pcall against a registry-held dispatcher, with the one-strike latch that keeps a broken script
+// from throwing sixty times a second.
+//
+// Used by the tick dispatchers, which are the draw one minus everything that is about drawing: no
+// ImGui push, no recovery snapshot, no io flags. There is no frame open where they run - the engine's
+// own thread, inside its call stack - and touching ImGui from there would at best be discarded at the
+// next NewFrame.
+//
+// The latch is the same design flaw the drawing path has: it takes down every script's tick, not the
+// one that threw. It stays that way until Ф4 of Docs/Internal/lua-engine-fix-roadmap.md replaces the
+// dispatcher with per-script isolation. What matters here is not introducing a *second* kind of it.
+void run_dispatcher(int ref, bool& latch, const char* where, const char* argument = nullptr) noexcept
+{
+    if(g_lua == nullptr || ref == LUA_NOREF || latch) [[unlikely]] {
+        return;
+    }
+
+    const int handler = push_traceback_handler(g_lua);
+    lua_rawgeti(g_lua, LUA_REGISTRYINDEX, ref);
+
+    int arguments = 0;
+    if(argument != nullptr) {
+        lua_pushstring(g_lua, argument);
+        arguments = 1;
+    }
+
+    if(lua_pcall(g_lua, arguments, 0, handler) != 0) {
+        set_error(where, lua_tostring(g_lua, -1));
+        lua_pop(g_lua, 1);
+
+        latch = true;
+        tw::ui::plugins::statics::notefeed::push("Lua script disabled: " + g_last_error);
+    }
+
+    if(handler != 0) {
+        lua_pop(g_lua, 1);
+    }
+}
+
+// The two dispatchers that run in **every** state, because their only job is to say which state it
+// is. Revision-compared rather than state-compared, so a transition that came and went inside one
+// frame is still delivered, and so calling this from two places costs nothing.
+void dispatch_lifecycle() noexcept
+{
+    if(const std::uint32_t revision = tw::engine::state::revision(); revision != g_seen_state_revision) [[unlikely]] {
+        g_seen_state_revision = revision;
+        run_dispatcher(g_dispatch_state_ref, g_state_dispatch_disabled, "on_state", tw::engine::state::current_name());
+    }
+
+    if(const std::uint32_t revision = tw::engine::groups::revision(); revision != g_seen_graph_revision) [[unlikely]] {
+        g_seen_graph_revision = revision;
+        run_dispatcher(g_dispatch_graph_ref, g_graph_dispatch_disabled, "on_group");
+    }
 }
 
 // Everything a script must not reach. Runs after the bootstrap chunk, which is the only code that
@@ -1027,10 +1279,9 @@ void initialize() noexcept
         return;
     }
 
-    // Best-effort and non-fatal: the graph entry points come from HighPoly.dll, which is certainly
-    // mapped by the time the overlay exists, but the VM is useful (logging, HUD) even if it is not.
-    tw::lua::channels::initialize();
-
+    // No graph setup here any more: the entry points into HighPoly.dll are resolved once, by
+    // engine_symbols, when the frame spine goes in, and the channel layer is src/engine/. The VM is
+    // useful (logging, HUD) whether or not any of that came up.
     const std::filesystem::path directory = script_directory();
     if(directory.empty()) {
         TW_LOG_INFO("lua_host: no TweakerStuff\\Scripts directory - scripting stays idle");
@@ -1085,6 +1336,24 @@ void initialize() noexcept
     }
     g_dispatch_ref = luaL_ref(lua, LUA_REGISTRYINDEX);
 
+    lua_getglobal(lua, "__tw_dispatch_tick");
+    if(!lua_isfunction(lua, -1)) {
+        set_error("bootstrap", "__tw_dispatch_tick missing");
+        lua_pop(lua, 1);
+        lua_close(lua);
+        return;
+    }
+    g_dispatch_tick_ref = luaL_ref(lua, LUA_REGISTRYINDEX);
+
+    lua_getglobal(lua, "__tw_dispatch_post_tick");
+    if(!lua_isfunction(lua, -1)) {
+        set_error("bootstrap", "__tw_dispatch_post_tick missing");
+        lua_pop(lua, 1);
+        lua_close(lua);
+        return;
+    }
+    g_dispatch_post_tick_ref = luaL_ref(lua, LUA_REGISTRYINDEX);
+
     lua_getglobal(lua, "__tw_dispatch_call");
     if(!lua_isfunction(lua, -1)) {
         set_error("bootstrap", "__tw_dispatch_call missing");
@@ -1093,6 +1362,24 @@ void initialize() noexcept
         return;
     }
     g_dispatch_call_ref = luaL_ref(lua, LUA_REGISTRYINDEX);
+
+    lua_getglobal(lua, "__tw_dispatch_state");
+    if(!lua_isfunction(lua, -1)) {
+        set_error("bootstrap", "__tw_dispatch_state missing");
+        lua_pop(lua, 1);
+        lua_close(lua);
+        return;
+    }
+    g_dispatch_state_ref = luaL_ref(lua, LUA_REGISTRYINDEX);
+
+    lua_getglobal(lua, "__tw_dispatch_graph");
+    if(!lua_isfunction(lua, -1)) {
+        set_error("bootstrap", "__tw_dispatch_graph missing");
+        lua_pop(lua, 1);
+        lua_close(lua);
+        return;
+    }
+    g_dispatch_graph_ref = luaL_ref(lua, LUA_REGISTRYINDEX);
 
     lua_getglobal(lua, "__tw_unload_owner");
     if(!lua_isfunction(lua, -1)) {
@@ -1106,6 +1393,33 @@ void initialize() noexcept
     g_lua = lua;
 
     tw::lua::config::load(tw::plugin::paths::config_file(L"scripts.cfg"));
+
+    // The one engine-layer setting that lives in the scripts file, because it is about when scripts
+    // start rather than about the engine. Absent lines leave the built-in value alone, so the usual
+    // case configures nothing.
+    if(const int frames = tw::lua::config::settle_frames(), milliseconds = tw::lua::config::settle_ms();
+        frames > 0 || milliseconds > 0) {
+        tw::engine::state::configure(frames > 0 ? frames : tw::engine::state::settle_frames(),
+            milliseconds > 0 ? milliseconds : tw::engine::state::settle_ms());
+        TW_LOG_INFO("lua_host: settle window from scripts.cfg - {} frame(s), {} ms",
+            tw::engine::state::settle_frames(),
+            tw::engine::state::settle_ms());
+    }
+
+    // In the early load the spine is already installed and already counting frames by now - it holds
+    // its subscribers back until framework::ready is published, which happens a few lines after this
+    // returns. That flag is what makes writing these lists from the startup thread safe while the
+    // engine thread reads them (engine_control.hxx).
+    //
+    // Registered after engine::state::initialize(), which put the group registry and the state
+    // machine in front of them: the pre-frame list runs in subscription order, and a script's tick
+    // must see this frame's state, not the previous one's.
+    tw::engine::control::subscribe_pre(&tw::lua::host::tick_frame);
+    tw::engine::control::subscribe_post(&tw::lua::host::post_tick_frame);
+
+    // The other half of the group registry's job: a subscription whose group went away is put back
+    // into waiting rather than left pointing at freed memory, and attached again when it returns.
+    tw::lua::api::install_engine_listeners();
 
     // Catalogue everything first, then run what is enabled. Two passes because the tab has to be
     // able to list a script the user turned off, and that listing comes from the file's header
@@ -1189,7 +1503,11 @@ bool set_script_enabled(int id, bool enabled) noexcept
     // the offending one may be the one just switched off, and if it is not, it will latch straight
     // back off on the next frame at no cost.
     g_frame_dispatch_disabled = false;
+    g_tick_dispatch_disabled = false;
+    g_post_tick_dispatch_disabled = false;
     g_call_dispatch_disabled = false;
+    g_state_dispatch_disabled = false;
+    g_graph_dispatch_disabled = false;
 
     if(!enabled) {
         unload_script(entry->info.id);
@@ -1261,19 +1579,48 @@ void shutdown() noexcept
     g_lua = nullptr;
     g_traceback_ref = LUA_NOREF;
     g_dispatch_ref = LUA_NOREF;
+    g_dispatch_tick_ref = LUA_NOREF;
+    g_dispatch_post_tick_ref = LUA_NOREF;
     g_dispatch_call_ref = LUA_NOREF;
+    g_dispatch_state_ref = LUA_NOREF;
+    g_dispatch_graph_ref = LUA_NOREF;
     g_call_dispatch_disabled = false;
+    g_state_dispatch_disabled = false;
+    g_graph_dispatch_disabled = false;
+    g_seen_state_revision = 0;
+    g_seen_graph_revision = 0;
     g_loaded_scripts = 0;
     g_frame_dispatch_disabled = false;
+    g_tick_dispatch_disabled = false;
+    g_post_tick_dispatch_disabled = false;
     g_unload_ref = LUA_NOREF;
     g_scripts.clear();
 }
+
 
 void draw_frame() noexcept
 {
     if(g_lua == nullptr || g_dispatch_ref == LUA_NOREF || g_frame_dispatch_disabled) [[unlikely]] {
         return;
     }
+
+    // Also from here, not only from the engine tick: a session where the spine never installed has
+    // no engine tick at all, and a script's on_state would then never fire.
+    dispatch_lifecycle();
+
+    // **The gate.** Scripts do not draw, do not tick and do not run at all until the game has come
+    // up - which is the symptom Ф2 exists to close. The draw counter above is deliberately left
+    // behind it: a frame nobody was allowed to draw in is not a frame a script drew in.
+    //
+    // Being held back is a state worth showing rather than hiding, hence the pin - but only when
+    // there is actually something being held. A session with no scripts installed has nothing to
+    // wait for and says nothing.
+    if(!tw::engine::state::ready()) [[unlikely]] {
+        tw::ui::plugins::statics::pins::set_status(g_loaded_scripts > 0 ? "Scripts waiting" : std::string_view {});
+        return;
+    }
+
+    tw::ui::plugins::statics::pins::set_status({});
 
     // ID scope first, then the recovery snapshot: recovery restores the ID stack to whatever depth
     // it was at when the snapshot was taken, so taking it *after* the push keeps our own PopID below
@@ -1320,6 +1667,28 @@ void draw_frame() noexcept
 
     ImGui::ErrorRecoveryTryToRecoverState(&saved);
     ImGui::PopID();
+}
+
+void tick_frame() noexcept
+{
+    // First subscriber on the engine thread after the group registry and the state machine, so what
+    // it reads is this frame's state, not the previous one's (see plugin/load.cxx).
+    dispatch_lifecycle();
+
+    if(!tw::engine::state::ready()) [[unlikely]] {
+        return;
+    }
+
+    run_dispatcher(g_dispatch_tick_ref, g_tick_dispatch_disabled, "on_tick");
+}
+
+void post_tick_frame() noexcept
+{
+    if(!tw::engine::state::ready()) [[unlikely]] {
+        return;
+    }
+
+    run_dispatcher(g_dispatch_post_tick_ref, g_post_tick_dispatch_disabled, "on_post_tick");
 }
 
 bool dispatch_call(int subscription_id) noexcept

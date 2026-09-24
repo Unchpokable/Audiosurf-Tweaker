@@ -11,20 +11,108 @@ index (number).
 
 ## Lifecycle
 
+**Nothing you register runs until the game has finished loading.** Your script's chunk is executed
+the moment the plugin finds it — which, with the plugin loaded by the game itself, is before the game
+has loaded a single channel group — but `on_tick`, `on_post_tick` and `on_frame` are all held back
+until the graph is up. So the top level of your script is for *declaring* things (handles, hooks,
+constants) and never for reading them.
+
+This is why you no longer need a "has it loaded yet" guard of your own. See
+[`tw.state()`](#twstate--string) for what the layer is doing while you wait, and
+[`tw.on_ready(fn)`](#twon_readyfn) for the one callback that fires when it stops waiting.
+
+There are two frames, and which one your handler runs on matters.
+
+| | Runs on | For |
+|---|---|---|
+| `tw.on_tick` / `tw.on_post_tick` | the **engine** frame — one per evaluation of the game's channel graph | reading channels, computing, keeping state |
+| `tw.on_frame` | the **overlay** frame — one per drawn frame of the overlay | drawing, and nothing else |
+
+They are not the same rate. The overlay's frame does not happen while the window is minimised, does
+not happen before the game has a device, and runs as fast as the machine allows. The engine's frame
+is when the values you are reading actually change.
+
+**Rule of thumb: compute in `on_tick`, draw in `on_frame`.**
+
+### `tw.on_ready(fn)`
+
+Registers `fn` to run **once**, on the first frame where everything is allowed: the graph is up,
+channels resolve, writes land.
+
+It also fires for a script enabled in the middle of a session, on that script's next frame — the
+contract is "once, when it can", not "once, at startup". That is the whole point: a script switched
+on mid-run needs the same setup a script loaded at boot needs, and neither has to detect which case
+it is in.
+
+```lua
+local points = tw.float_ch("StatCollector", "Points")   -- declare at the top level
+
+tw.on_ready(function()
+    -- everything works from here
+    tw.notify("score tracker armed at " .. tostring(points:get()))
+end)
+```
+
+### `tw.on_state(fn)`
+
+Registers `fn(state)` to run on every change of [`tw.state()`](#twstate--string), with the new state
+as a string. Unlike everything else here, **this runs in all states**, including while the game is
+still loading — it is how the layer reports what it is doing.
+
+### `tw.on_group(name, fn)`
+
+Registers `fn(loaded)` to run when that channel group appears or disappears. `name` is a pool name
+(`"Renderer"`) or a bare file name (`"Puzzle"`), the same two spellings every other call accepts.
+
+This is the event a script that lives inside a run actually wants. The game destroys and rebuilds
+whole groups as you play — the renderer pool goes on *every* run — and before this there was no way
+to know.
+
+```lua
+tw.on_group("Renderer", function(loaded)
+    if loaded then reset_my_caches() end
+end)
+```
+
+Like `on_state`, it runs in all states.
+
+### `tw.on_tick(fn)`
+
+Registers `fn` to run once per engine frame, immediately **before** the game evaluates its channel
+graph. Call at the top level; several handlers per script are allowed and run in registration order.
+
+Drawing from here does nothing — there is no frame open around it, and the `tw.hud.*` calls quietly
+refuse rather than corrupting anything.
+
+### `tw.on_post_tick(fn)`
+
+The same, immediately **after** the graph has been evaluated. This is where the results of the frame
+that just happened are readable.
+
 ### `tw.on_frame(fn)`
 
-Registers `fn` to run once per frame, for as long as the script is enabled. Call at the top level.
-Several handlers per script are allowed; they run in registration order.
+Registers `fn` to run once per drawn overlay frame, for as long as the script is enabled. Call at the
+top level. Several handlers per script are allowed; they run in registration order.
 
 This is the only place drawing works.
 
 ### `tw.frame`
 
-Number of frames dispatched since the VM started. Read-only in practice. Useful for throttling:
+The **engine** frame number: one per evaluation of the game's channel graph. Read-only in practice,
+and monotonic. Useful for throttling:
 
 ```lua
 if tw.frame % 30 == 0 then refresh_something_expensive() end
 ```
+
+> **Changed.** This used to count overlay frames. A script written against the old meaning still
+> works, but `% 60` now means "about once a second" on every machine instead of "once a second on a
+> 60 Hz one" — which is what it was always meant to mean.
+
+### `tw.draw_frame_count`
+
+Overlay frames drawn since the VM started, for the rare thing that really is about drawing rate.
+Almost always the wrong number to throttle on; `tw.frame` is the right one.
 
 ### `tw.dt()` → number
 
@@ -60,8 +148,9 @@ Every valid name for `tw.ease`, sorted. Currently: `linear`, `quadIn/Out/InOut`,
 ### `tw.float_ch(group, name)` → handle
 ### `tw.string_ch(group, name)` → handle
 ### `tw.vector_ch(group, name)` → handle
+### `tw.matrix_ch(group, name)` → handle
 
-Create a handle for a numeric, text or vector channel. Cheap; never fails; does not touch the game.
+Create a handle for a numeric, text, vector or matrix channel. Cheap; never fails; does not touch the game.
 Resolution happens on first use and is retried until it succeeds.
 
 `tw.channel` is a deprecated alias for `tw.float_ch`.
@@ -71,6 +160,7 @@ Resolution happens on first use and is retried until it succeeds.
 - float → number, or `nil`
 - text → string, or `nil`
 - vector → three numbers, or `nil`
+- matrix → sixteen numbers, row-major (`_11 _12 _13 _14 _21 … _44`), or `nil`
 
 `nil` means "not available" — the group is not loaded, the engine is not reachable yet, or the
 channel does not exist. Always handle it.
@@ -88,9 +178,39 @@ Wider effect than the numeric setter: the engine also writes each component into
 wired to that component, where one is wired. See
 [Reading and writing the game § Writing a vector](channels.md#writing-a-vector).
 
+### `handle:set(m11, m12, …, m44)` → boolean *(matrix handles)*
+### `handle:set(table)` → boolean *(matrix handles)*
+
+Writes all sixteen elements, either as sixteen arguments or as one table of sixteen numbers in the
+same row-major order. Returns `false` if it could not be resolved. Subject to the same rules as any
+other write — see [Limits](limits.md#writing-to-the-game).
+
+### `handle:live()` → boolean *or* `nil`
+
+Whether the game evaluated this channel **in the current frame**: `true`, `false`, or `nil` when that
+cannot be known — some channels are never cached by the engine, and for those nothing records when
+they were last computed.
+
+"The current frame" is literal. From `on_post_tick`, right after the game evaluated its graph, it
+tells you whether a part of the game is running right now as opposed to merely loaded. From
+`on_tick`, which runs *before* the graph, it is `false` for everything, because nothing has been
+evaluated yet this frame.
+
+It does not tell you whether the value is "real" — a channel you have just read yourself counts as
+evaluated, because reading it is what evaluates it.
+
 ### `handle:valid()` → boolean
 
 Whether this handle has resolved yet. Does not attempt a resolve.
+
+### `handle:dead_end()` → boolean
+
+Whether this handle has **given up**, which is a different thing from not having resolved yet.
+
+A handle retires when the group it names is loaded and has no channel by that name — a group's
+channel list is fixed once it loads, so no amount of waiting will produce one. That is a typo, it is
+reported once, and the handle stops looking. A handle that is merely waiting for its group (the
+groups of a run, asked for from the menu) is not a dead end and never becomes one.
 
 ### `tw.array(group, column, cursor)` → array handle
 
@@ -134,7 +254,13 @@ Runs `fn` when that channel is called by the game. `when` is `"after"` (default)
 `fn` takes no arguments. From a `"before"` handler, returning `false` cancels the game's own handler;
 any other return proceeds. Returning `false` from `"after"` does nothing.
 
-Registration is retried until the group is loaded.
+**A group that is not loaded is not a problem.** The subscription is accepted immediately and
+attached to the real channel whenever that group turns up — and attached again, by itself, if the
+group is destroyed and rebuilt, which is what happens to the renderer pool on every run. You hook a
+channel once, at the top level, and never think about it again.
+
+A name that will never resolve is the other case, and it is loud: if the group is loaded and has no
+such channel, you are told once and the subscription is dropped.
 
 **`name` may be a channel index instead of a string**, and for hooks this matters more than it does
 for reading. The handlers worth hooking are often generic-named — a group can contain dozens of
@@ -150,7 +276,8 @@ tw.on_call("Debris.cgr", 48, "after", function() ... end)
 
 Suppresses a channel: the game keeps calling it and it does nothing. Starts active.
 
-Takes an index in place of a name for the same reason as `tw.on_call`.
+Takes an index in place of a name for the same reason as `tw.on_call`, and waits for its group the
+same way.
 
 ### `mute:on()` / `mute:off()` / `mute:set(bool)`
 
@@ -306,16 +433,41 @@ Writes to the plugin log. **Stripped from release builds**, so it is a developme
 Both of the above: logged *and* shown as a toast. Use this when a script author needs to see
 something in a normal install.
 
+### `tw.state()` → string
+
+Where the game is, as one of:
+
+| | Meaning |
+|---|---|
+| `"detached"` | the plugin has not seen the game run a frame yet |
+| `"booting"` | the game is starting — its own loader is still in charge |
+| `"starting"` | the game has handed over, and is still assembling itself |
+| `"ready"` | everything works |
+| `"busy"` | was ready, and the game is loading content again — starting a run, for instance |
+
+`"busy"` is not a fault. It happens on every single run, and your callbacks keep running through it.
+
+### `tw.ready()` → boolean
+
+True in `"ready"` and `"busy"`: the graph is up and reading, writing and hooking all work.
+
+You rarely need to call it. Your handlers do not run in any other state, so inside `on_tick`,
+`on_post_tick` and `on_frame` it is always true. It is there for `on_state` and `on_group`, which do
+run in every state.
+
 ### `tw.can_write()` → boolean
 
-Whether writes to the graph are currently accepted. False while the game is still loading, when a
-write silently corrupts it rather than failing. A refused write returns `false` like any other failed
-write; this exists so a script can wait deliberately.
+An alias for `tw.ready()`, kept for scripts written before it. Writes used to have a gate of their
+own; they do not any more, because "has the game finished loading" turned out to be one question with
+one answer.
 
 ### `tw.engine_ready()` → boolean
 
-Whether the game's channel graph is reachable at all. False during startup, and until the Tweaker has
-captured the engine — which can take until the player interacts with a menu.
+Whether the game's channel graph is **reachable** — a weaker thing than `tw.ready()`, and a different
+question. It goes true about a second into the process, as soon as the game has run its first frame,
+which is long before the game has finished loading.
+
+Use `tw.ready()` to decide whether to act. This is here for diagnostics.
 
 ### `tw.groups()` → table of strings
 

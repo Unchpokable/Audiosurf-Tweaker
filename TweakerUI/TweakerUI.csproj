@@ -209,6 +209,17 @@
 		    folder, and a DLL sitting loose at the top is just a file bound for engine\, where the game never
 		    looks for a channel.
 		-->
+		<!--
+		    Wiped, not merged into. Copy only ever adds: a file dropped from assets\scripts or from
+		    Skyboxes\ - renamed, or moved into a dev\ subfolder - stays in this staging folder forever and
+		    goes on shipping, because the deploy scripts copy the folder wholesale and trust it. That is
+		    not hypothetical: the first bundle built after the dev\ split still carried all three probe
+		    scripts, from a payload folder left over by an earlier build.
+
+		    Only the content subtrees: channels\ holds one file under a fixed name, which cannot go stale
+		    this way, and re-copying a 9 MB dll on every build to prove it is a poor trade.
+		-->
+		<RemoveDir Directories="$(OutDir)PluginPayload\TweakerStuff" Condition="Exists('$(TweakerPluginDll)')" />
 		<!-- No <Error> here - a missing dll just means the overlay wasn't built this time (see above). -->
 		<Copy SourceFiles="$(TweakerPluginDll)" DestinationFolder="$(OutDir)PluginPayload\channels\" SkipUnchangedFiles="true"
 		      Condition="Exists('$(TweakerPluginDll)')" />

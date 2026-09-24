@@ -2,13 +2,19 @@
 
 #include "plugin/music.hxx"
 
-#include "lua/lua_channels.hxx"
+#include "engine/channel_ref.hxx"
+#include "engine/engine_groups.hxx"
+#include "engine/family/fam_number.hxx"
+#include "engine/family/fam_table.hxx"
 
 #include "plugin/diagnostics.hxx"
 
 namespace
 {
-namespace channels = tw::lua::channels;
+namespace channels = tw::engine::channels;
+
+using tw::engine::channel_ref;
+using tw::engine::kind;
 
 // The group and the channels inside it. Names are unique within VisMusic for all of these - the one
 // exception in that group is `SampleCount`, which exists twice (#10 and #566), and this file does
@@ -51,28 +57,31 @@ constexpr float k_flux_floor = 0.008f;
 constexpr float k_onset_hold_seconds = 0.120f;
 constexpr float k_onset_decay_seconds = 0.220f;
 
-// A resolve miss is the normal state in menus, and a miss costs a linear scan over every channel in
-// the group. Retrying every frame would pay that scan sixty times a second to learn nothing.
-constexpr int k_retry_frames = 60;
-
 struct resolved {
-    A3d_Channel* level {};
-    A3d_Channel* seconds {};
-    A3d_Channel* length {};
-    A3d_Channel* spectrum {};
-    A3d_Channel* cursor {};
-    A3d_Channel* max_intensity {};
+    channel_ref level {};
+    channel_ref seconds {};
+    channel_ref length {};
+    channel_ref spectrum {};
+    channel_ref cursor {};
+    channel_ref max_intensity {};
 
     [[nodiscard]] bool complete() const noexcept
     {
         // max_intensity is deliberately not required: it lives in a different group with a different
         // lifetime, and everything except the fold's normalisation works without it.
-        return level != nullptr && seconds != nullptr && length != nullptr && spectrum != nullptr && cursor != nullptr;
+        return level && seconds && length && spectrum && cursor;
     }
 };
 
 resolved g_channels {};
-int g_retry_countdown {};
+
+// The graph revision the refs above were resolved against (engine_groups::revision()). A miss is the
+// normal state in menus and costs a linear scan over the group, so a resolve is attempted once per
+// change of the set of loaded groups - which is exactly when the answer can differ - and never in
+// between. The same number also retires the refs: Highway is only loaded during a ride, and a ref
+// into it that outlived the ride would be a pointer into a destroyed group.
+constexpr std::uint32_t k_never = 0xFFFFFFFFu;
+std::uint32_t g_resolved_at = k_never;
 tw::plugin::music::frame g_frame {};
 
 // Smoothing state, kept here rather than in `frame` so the published struct stays a plain readout.
@@ -106,64 +115,55 @@ bool g_have_previous {};
     return current + (target - current) * k;
 }
 
-[[nodiscard]] A3d_Channel* find_numeric(A3d_ChannelGroup* group, const char* name) noexcept
+// Typed, not generic: slot 17 is GetFloat on a number and six other things elsewhere, so the family
+// is checked at resolve and the ref carries it from then on (engine/channel_ref.hxx).
+[[nodiscard]] channel_ref find_numeric(const char* group, const char* name) noexcept
 {
-    A3d_Channel* channel = channels::find_channel(group, name);
-    if(channel == nullptr) {
-        return nullptr;
-    }
-
-    // Typed, not generic: vtable slot 17 is GetFloat on a numeric channel and GetVector on a vector
-    // one, so calling it on the wrong family is a stack imbalance rather than a wrong number. Both
-    // the family and the slot are checked before this pointer is ever called through.
-    if(channels::kind_of(channel) != channels::kind::number || !channels::is_callable_as(channel, channels::kind::number)) {
-        return nullptr;
-    }
-
-    return channel;
+    channel_ref ref {};
+    (void)channels::resolve(group, name, kind::number, ref);
+    return ref;
 }
 
 bool resolve() noexcept
 {
-    if(g_channels.complete()) {
-        return true;
-    }
-
-    if(g_retry_countdown > 0) {
-        --g_retry_countdown;
+    // Before the revision is stamped, not after: "the engine is not captured yet" says nothing about
+    // these channels and must not use up the attempt this revision allows.
+    if(!channels::available()) {
         return false;
     }
 
-    g_retry_countdown = k_retry_frames;
-
-    if(!channels::is_ready() || !channels::has_engine()) {
-        return false;
+    const std::uint32_t revision = tw::engine::groups::revision();
+    if(revision == g_resolved_at) [[likely]] {
+        return g_channels.complete();
     }
 
-    A3d_ChannelGroup* group = channels::find_group(k_group);
-    if(group == nullptr) {
-        return false;
-    }
+    const bool was_complete = g_channels.complete();
+    const bool had_normaliser = static_cast<bool>(g_channels.max_intensity);
+
+    g_resolved_at = revision;
+    g_channels = {};
 
     resolved found {};
-    found.level = find_numeric(group, k_level);
-    found.seconds = find_numeric(group, k_seconds);
-    found.length = find_numeric(group, k_length);
-    found.spectrum = find_numeric(group, k_spectrum);
-    found.cursor = find_numeric(group, k_cursor);
+    found.level = find_numeric(k_group, k_level);
+    found.seconds = find_numeric(k_group, k_seconds);
+    found.length = find_numeric(k_group, k_length);
+    // `Array Value` is the numeric family, which is what makes fam_table::read legal on it.
+    found.spectrum = find_numeric(k_group, k_spectrum);
+    found.cursor = find_numeric(k_group, k_cursor);
 
-    // The `Array Value` family reports as numeric, which is what makes read_array's accessor legal
-    // on it - see lua_channels::kind.
     if(!found.complete()) {
         return false;
     }
 
-    if(A3d_ChannelGroup* highway = channels::find_group(k_highway_group); highway != nullptr) {
-        found.max_intensity = find_numeric(highway, k_max_intensity);
-    }
+    found.max_intensity = find_numeric(k_highway_group, k_max_intensity);
 
     g_channels = found;
-    TW_LOG_INFO("music: VisMusic resolved{}", found.max_intensity != nullptr ? "" : " (no Highway::maxIntensity yet)");
+
+    // Said when it changes, not on every re-resolve: the graph moves twice a run, and a log line per
+    // move would say nothing new.
+    if(!was_complete || had_normaliser != static_cast<bool>(found.max_intensity)) {
+        TW_LOG_INFO("music: VisMusic resolved{}", found.max_intensity ? "" : " (no Highway::maxIntensity yet)");
+    }
 
     return true;
 }
@@ -175,7 +175,7 @@ void invalidate() noexcept
 {
     g_channels = {};
     g_frame = {};
-    g_retry_countdown = 0;
+    g_resolved_at = k_never;
     g_have_previous = false;
     g_flux_average = 0.f;
 }
@@ -208,19 +208,19 @@ void sample(float dt) noexcept
         return;
     }
 
-    const float level = sane(channels::get_float(g_channels.level), 0.f, 1.f);
-    const float seconds = sane(channels::get_float(g_channels.seconds), 0.f, 100000.f);
-    const float length = sane(channels::get_float(g_channels.length), 0.f, 100000.f);
+    const float level = sane(tw::engine::fam_number::get(g_channels.level), 0.f, 1.f);
+    const float seconds = sane(tw::engine::fam_number::get(g_channels.seconds), 0.f, 100000.f);
+    const float length = sane(tw::engine::fam_number::get(g_channels.length), 0.f, 100000.f);
 
     // The same divisor the game uses on its own loudness, so the groups below land on one scale with
     // `level`. Absent or zero means the song has not been analysed - in which case the groups are
     // published as zero rather than as a division by nothing.
-    const float normaliser = g_channels.max_intensity != nullptr ? sane(channels::get_float(g_channels.max_intensity), 0.f, 1e6f) : 0.f;
+    const float normaliser = g_channels.max_intensity ? sane(tw::engine::fam_number::get(g_channels.max_intensity), 0.f, 1e6f) : 0.f;
 
     float groups[4] {};
 
     for(int band = 0; band < k_bands; ++band) {
-        const float value = sane(channels::read_array(g_channels.spectrum, g_channels.cursor, static_cast<float>(band)), 0.f, 1e6f);
+        const float value = sane(tw::engine::fam_table::read(g_channels.spectrum, g_channels.cursor, static_cast<float>(band)), 0.f, 1e6f);
 
         // 0, 1, 2, then everything else. Nine bands share the last slot because nine bands share one
         // meaning: above 5.4 kHz there is nothing in music but cymbals, breath and distortion, and

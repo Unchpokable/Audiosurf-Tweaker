@@ -4,6 +4,8 @@
 
 #include "lua/lua_host.hxx"
 
+#include "engine/engine_state.hxx"
+
 #include "plugin/diagnostics.hxx"
 
 #include "ui/plugins/interactive/menu.hxx"
@@ -128,6 +130,54 @@ void draw_row(const tw::lua::host::script_info& info, std::size_t index, float w
     ImGui::Dummy(ImVec2 { width, height });
 }
 
+// The header line: what the scripting layer is doing right now, and - while it is not running
+// anything - what it is waiting for.
+//
+// **This is the visible half of Ф2.** Before it, a script that could not find its channels because
+// the game had not loaded them yet reported that as a string of failures in the notefeed, and a user
+// had no way to tell that from a broken script. Now the layer waits quietly and says so here, in one
+// line, with the number that moves while it waits (loaded groups) and the signal it is waiting on
+// (the engine's start group).
+void draw_status()
+{
+    namespace state = tw::engine::state;
+
+    const state::phase phase = state::current();
+    const int groups = state::group_count();
+
+    switch(phase) {
+    case state::phase::detached:
+        ImGui::TextColored(theme::text_muted, "Waiting for the game's first frame.");
+        break;
+
+    case state::phase::booting:
+        ImGui::TextColored(theme::text_muted, "The game is loading - %d group%s so far.", groups, groups == 1 ? "" : "s");
+        break;
+
+    case state::phase::starting:
+        ImGui::TextColored(theme::text_muted, "The game has handed over - settling (%d groups).", groups);
+        break;
+
+    case state::phase::ready:
+        ImGui::TextColored(theme::text_secondary, "Ready - %d channel group%s loaded.", groups, groups == 1 ? "" : "s");
+        break;
+
+    case state::phase::busy:
+        ImGui::TextColored(theme::text_secondary, "Loading a run - %d group%s, scripts still running.", groups, groups == 1 ? "" : "s");
+        break;
+    }
+
+    // Only while waiting, and only as a second line: once the game is up, naming the start group is
+    // noise. While it is not, it is the difference between "stuck" and "the loader is still going".
+    if(phase == state::phase::booting || phase == state::phase::starting) {
+        if(const char* const group = state::start_group(); group != nullptr && group[0] != '\0') {
+            ImGui::TextColored(theme::text_faint, "Start group: %s", group);
+        }
+    }
+
+    ImGui::Dummy(ImVec2 { 0.f, 4.f });
+}
+
 void draw_tab()
 {
     const int count = tw::lua::host::script_count();
@@ -140,6 +190,8 @@ void draw_tab()
         }
         return;
     }
+
+    draw_status();
 
     if(count == 0) {
         ImGui::TextColored(theme::text_muted, "No scripts found.");

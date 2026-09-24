@@ -48,6 +48,9 @@ struct pin_label {
 // duplicating the layout or paying for it again.
 float g_rect[4] { 0.f, 0.f, 0.f, 0.f };
 bool g_rect_valid = false;
+
+// The pushed status row - see set_status(). Empty means there is none, which is the usual case.
+std::string g_status;
 } // namespace
 
 namespace tw::ui::plugins::statics::pins
@@ -60,6 +63,16 @@ void initialize() noexcept
 
 void shutdown() noexcept
 {
+    g_status.clear();
+}
+
+void set_status(std::string_view text) noexcept
+{
+    if(g_status == text) {
+        return;
+    }
+
+    g_status.assign(text);
 }
 
 void update(const tw::ui::overlay_state::cache& snapshot) noexcept
@@ -73,6 +86,12 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
     // is the whole block. See Docs/Internal/plugin-offline-mode.md, Р-7.
     if(!snapshot.host_connected && overlay_config::offline_pin()) {
         labels.emplace_back("Offline", std::string_view {}, pin_style::muted);
+    }
+
+    // First of the real rows, and muted: this is the overlay saying it is waiting, not a thing the
+    // player switched on.
+    if(!g_status.empty()) {
+        labels.emplace_back(g_status, std::string_view {}, pin_style::muted);
     }
 
     for(const auto id : tw::ui::overlay_state::all_tweak_ids()) {

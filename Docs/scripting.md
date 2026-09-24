@@ -23,7 +23,8 @@ tw.on_frame(function()
 end)
 ```
 
-Drop that in `scripts/` next to `TweakerPlugin.dll`, start a run, and the number is on your screen.
+Drop that in `engine\TweakerStuff\Scripts\` inside your Audiosurf install, start a run, and the
+number is on your screen. No rebuild, and Audiosurf Tweaker does not have to be running.
 
 ---
 
@@ -38,6 +39,7 @@ Read these in order the first time. After that they stand alone.
 | **[Reading and writing the game](scripting/channels.md)** | Channel accessors, values, text, vectors, tables, and how to handle the fact that nothing is available immediately. |
 | **[Reacting and intercepting](scripting/hooks.md)** | Running code when the game does something, and stopping the game from doing it. |
 | **[Drawing](scripting/drawing.md)** | The HUD API: text, shapes, measurement, colours, and laying out against the overlay. |
+| **[Worked examples](scripting/examples.md)** | Three probes written to answer a question about the game, annotated. Not shipped with the plugin — copy one in when you want it. |
 | **[API reference](scripting/api-reference.md)** | Every function, in one place. |
 | **[Limits, safety and performance](scripting/limits.md)** | What the environment deliberately cannot do, what it costs, and the rules that keep a script from ruining the game. |
 

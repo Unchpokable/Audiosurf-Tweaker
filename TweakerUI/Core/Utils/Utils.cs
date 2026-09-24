@@ -50,6 +50,27 @@ namespace TweakerUI.Core.Utils
             }
         }
 
+        /// <summary>
+        /// Opens a URL in whatever the user's default browser is. `UseShellExecute` is the whole trick: without
+        /// it .NET tries to execute the URL as a program and fails.
+        ///
+        /// Fire-and-forget like <see cref="Cmd"/> — a caller that has just told the user "go to this page" has
+        /// nothing useful to do if the shell refuses, beyond the log line below.
+        /// </summary>
+        public static void OpenUrl(string url)
+        {
+            try
+            {
+                using (Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }))
+                {
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log("Utils.OpenUrl", $"'{url}' could not be opened: {ex}");
+            }
+        }
+
         public static void HardClear(string path)
         {
             // Absolute and fast annihilation of any content in specified folder

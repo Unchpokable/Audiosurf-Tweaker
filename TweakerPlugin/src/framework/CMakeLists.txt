@@ -1,5 +1,4 @@
 target_sources(TweakerPlugin PRIVATE
-    channel_hook.cxx
     channel_shim.cxx
     d3d9_hooks.cxx
     d3d9_state.cxx

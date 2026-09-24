@@ -27,7 +27,7 @@ constexpr const char* k_get_channel_name_symbol = "?GetChannelName@A3d_Channel@@
 // All three below are __thiscall in the game, declared __fastcall here: on x86 the two agree on
 // `this` in ECX and on the remaining arguments being pushed right-to-left with the callee cleaning
 // up, so an ignored second parameter standing in for EDX makes the signatures interchangeable.
-// Same trick, same caveat, as framework/channel_hook.cxx.
+// Same trick, same caveat, as engine/engine_control.cxx.
 using load_from_memory_fn = bool(__fastcall*)(Aco_DX8_Texture* self, void* edx, char* buffer, int buffer_size);
 using get_texture_fn = IDirect3DTexture9*(__fastcall*)(Aco_DX8_Texture * self, void* edx);
 using get_channel_name_fn = const char*(__fastcall*)(A3d_Channel * self, void* edx);

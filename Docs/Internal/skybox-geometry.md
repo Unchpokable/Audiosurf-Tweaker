@@ -272,7 +272,7 @@ sphere normals, освещение от обоих солнц. Без текст
 и соответствует принятому решению «отдельные кучки, сквозь которые видно небо». Считается как
 `N · π·sin²(r)` против `2π` стерадиан полусферы.
 
-Настройки — в `TweakerPlugin.skybox.cfg` (`sprites`, `sprite_count`, `sprite_size_degrees`,
+Настройки — в `TweakerStuff\SkyboxReplacer\module.json` (`sprites`, `sprite_count`, `sprite_size_degrees`,
 `sprite_opacity`, `sprite_light_*`) и в оверлее, узел **Geometry layer (experimental)**. Ползунки
 двигают живой слой на `changed()` и пишут файл только на `committed()` — иначе перетаскивание стоило
 бы перезаписи конфига на кадр.

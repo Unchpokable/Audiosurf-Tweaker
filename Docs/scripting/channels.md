@@ -10,6 +10,7 @@ There is no generic "read a channel". You say what kind of channel you expect:
 local points = tw.float_ch("StatCollector", "Points")        -- a number
 local feats  = tw.string_ch("StatCollector", "Feat String")  -- text
 local colour = tw.vector_ch("StartGroup", 1542)              -- three numbers
+local view   = tw.matrix_ch("SomeGroup", "Some Matrix")       -- sixteen numbers
 ```
 
 This is deliberate, and it is a safety property rather than a style choice. Inside the engine, the
@@ -58,17 +59,20 @@ end)
 
 ## Nothing is available immediately
 
-**Every `:get()` can return `nil`, and will, for a while after the game starts.**
+**Every `:get()` can return `nil`.** Not only just after the game starts — a group can go away
+mid-session and come back, and while it is away its channels are `nil` again.
 
-Three reasons, all normal:
+Two reasons, both normal:
 
-- the Tweaker has not got hold of the game's engine yet — it captures that the first time the game
-  runs a certain kind of channel, which in practice can mean "after the player clicks something";
-- the group is not loaded (you are in the menu and asked for something that only exists in a run);
-- the channel genuinely does not exist (a typo).
+- the group is not loaded (you are in the menu and asked for something that only exists in a run, or
+  a run has just ended and taken its groups with it);
+- the channel genuinely does not exist (a typo) — the one case that is *not* normal, and the one the
+  handle reports.
 
-The handle keeps retrying by itself, roughly once a second, and caches the answer once it succeeds.
-You do not manage any of that. What you *do* have to do is handle `nil`:
+The handle retries itself when the set of loaded groups changes — which is exactly when the answer
+could be different, and never in between, so a handle waiting for a group costs nothing at all. It
+caches the result, and re-checks it when the graph moves, because a group that was destroyed takes
+its channels with it. You do not manage any of that. What you *do* have to do is handle `nil`:
 
 ```lua
 tw.on_frame(function()
@@ -82,29 +86,27 @@ end)
 `nil` rather than `0` is a deliberate choice: a script showing `--` until the game is reachable is
 telling the truth, one showing `0.0` is lying.
 
-If you want to check without reading, `handle:valid()` says whether it has resolved yet.
+If you want to check without reading, `handle:valid()` says whether it has resolved yet, and
+`handle:dead_end()` says whether it has given up — see below.
 
-For a whole-script gate, `tw.engine_ready()` answers "is the graph reachable at all":
-
-```lua
-tw.on_frame(function()
-    if not tw.engine_ready() then return end
-    -- ...
-end)
-```
+**You do not need a whole-script gate.** Your handlers do not run until the game has finished loading
+(see [API reference § Lifecycle](api-reference.md#lifecycle)), so a `tw.engine_ready()` check at the
+top of `on_frame` is dead code. If you want the state for its own sake, `tw.state()` has it.
 
 ### The one thing that is not silent
 
-Transient failures stay quiet, because they are normal. But a typo looks exactly like a transient
-failure at first, and a typo that stays silent forever is worse than a noisy one.
+A group that is not loaded stays quiet, because that is normal and says nothing: the groups of a run
+do not exist in the menu and never will until you start one.
 
-So after several failed attempts, a handle reports itself **once**:
+A channel that is not in a group that *is* loaded is the opposite. A group's channel list is fixed
+the moment it loads, so waiting cannot help — it is a typo, and it is reported **once**:
 
 ```
 Lua: StatCollector.Pointz: no such channel in group
 ```
 
-If you see that, it is a mistake, not timing.
+After that the handle retires: `handle:dead_end()` returns true and it stops looking. If you see that
+message, it is a mistake, not timing.
 
 ## Numbers
 
@@ -225,8 +227,9 @@ and show a ratio.
 - Before writing, look at what is wired into the channel. Nothing wired means it will hold.
 - If you measure a write by printing a verdict each frame, a contested channel produces a line that
   changes every frame — which at a high refresh rate is unreadable rather than informative. Count
-  over a window and show a ratio. `vecwrite.lua` does exactly this, and it does it because the first
-  version got it wrong.
+  over a window and show a ratio. See
+  [Worked examples § Writing a vector channel](examples.md#writing-a-vector-channel-and-proving-the-write-stuck),
+  which does exactly this, and does it because the first version got it wrong.
 
 It is not dangerous in the way a bad numeric write can be — the engine checks the type of each child
 before writing to it, so nothing is called with the wrong signature. But it does mean "I only changed
@@ -236,6 +239,51 @@ Writing a vector channel is also the reason the accessors are typed. The slot th
 "set" means different things on numeric and vector channels, with *different argument counts* — so
 calling the wrong one would corrupt the stack rather than write a wrong value. Because a handle can
 only reach `:set` after resolving as a vector, that mistake is impossible to make from a script.
+
+## Matrices
+
+Matrix channels hold a 4×4 transform — `Matrix`, `MatrixMotion`, `ProjectionMatrix` and the like.
+`:get()` gives sixteen numbers, row-major (`_11 _12 _13 _14`, then the second row, and so on):
+
+```lua
+local m = tw.matrix_ch("SomeGroup", "Some Matrix")
+
+local m11, m12, m13, m14,
+      m21, m22, m23, m24,
+      m31, m32, m33, m34,
+      m41, m42, m43, m44 = m:get()          -- or nil
+```
+
+Multiple return values rather than a table for the same reason as vectors: no garbage on the drawing
+path. To write, pass sixteen numbers or one table of sixteen:
+
+```lua
+m:set({ 1, 0, 0, 0,  0, 1, 0, 0,  0, 0, 1, 0,  0, 0, 0, 1 })
+```
+
+The family is new, and the reason it matters is the same as for vectors, only more so: the engine's
+matrix setter takes all sixteen numbers at once, and the same slot on any other kind of channel takes
+one or two. Calling it on the wrong kind would not write a wrong value — it would unbalance the
+game's stack. That is why `tw.float_ch` on a matrix channel is an error and not a guess.
+
+## Is this part of the game running right now?
+
+`handle:live()` asks whether the game evaluated that channel in the current frame. The useful place
+to ask is `on_post_tick`, right after the graph ran:
+
+```lua
+local spawn = tw.float_ch("TrafficCommander", "CurrentTraffic")
+
+tw.on_post_tick(function()
+    if spawn:live() then
+        -- the traffic logic ran this frame: a run is in progress, not just loaded
+    end
+end)
+```
+
+Three answers: `true`, `false`, and `nil` for channels the engine never caches, where nothing records
+when they were last computed. Asked from `on_tick` it is `false` for everything — that handler runs
+before the graph. And reading a channel yourself evaluates it, so ask before you read.
 
 ## Tables
 
@@ -277,7 +325,9 @@ walks that table sees rows nobody put there. Nothing about that failure looks li
 
 So `array:set` checks first, using the engine's own non-creating row lookup, and returns `false` for
 a row that does not exist. `false` therefore means either "could not resolve" or "no such row"; both
-are worth handling, and neither is a crash.
+are worth handling, and neither is a crash. The script that keeps that guard honest — it writes past
+the end on purpose and checks the table did not grow — is in
+[Worked examples § Writing a table row](examples.md#writing-a-table-row-and-checking-the-guard).
 
 What it cannot promise is that the value reached the table. The engine's setters return nothing at
 all and will silently skip the table write when the column is not connected to one — the same

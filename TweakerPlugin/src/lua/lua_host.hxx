@@ -23,6 +23,18 @@ void shutdown() noexcept;
 // (lua-scripting.md §8.3, "Контейнер отказа").
 void draw_frame() noexcept;
 
+// Runs every registered on_tick / on_post_tick handler, from the engine's own frame
+// (engine/engine_control), before and after the whole channel graph.
+//
+// This is the layer's real per-frame point, and it is a different frame from draw_frame(): the graph
+// ticks while the game loads and while the window is minimised, at the engine's rate rather than the
+// overlay's. Nothing here may touch ImGui - there is no frame open, and the drawing entry points in
+// lua_api already refuse outside one.
+//
+// Subscribed from initialize(); called only if a VM exists.
+void tick_frame() noexcept;
+void post_tick_frame() noexcept;
+
 // Runs the Lua callback registered for a tw.on_call subscription.
 //
 // Called from the engine's own call stack, through framework/channel_shim - not from the render

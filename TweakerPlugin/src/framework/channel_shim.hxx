@@ -61,7 +61,14 @@ using call_hook_fn = bool (*)(A3d_Channel* channel, void* user, phase when);
 // `user` identifies the subscriber and must be unique per subscription - it is the key unsubscribe()
 // takes. False when the channel's vtable cannot be copied safely (see the region clamp in the .cxx),
 // or on allocation failure.
-bool subscribe(A3d_Channel* channel, call_hook_fn hook, void* user) noexcept;
+//
+// **`group` is recorded, not used.** It is what remove_all_in() matches on when that group is being
+// destroyed, and it is taken here - at subscribe time, from a caller that had to find the group
+// anyway - rather than asked of the channel later, because "later" is inside the group's own
+// teardown. Asking a half-destroyed object which group it belongs to would be the one call this
+// layer cannot afford to get wrong. May be null; such a subscription is simply never matched by
+// group.
+bool subscribe(A3d_Channel* channel, A3d_ChannelGroup* group, call_hook_fn hook, void* user) noexcept;
 
 // Drops one subscriber. When it was the last one on that channel, the original vptr goes back and
 // the copy is freed - so a channel nobody is watching any more costs the game nothing at all, which
@@ -75,6 +82,18 @@ void unsubscribe_all_of(std::span<void* const> users) noexcept;
 // Puts a channel's original vptr back and frees the copy, dropping every subscriber on it. Safe on
 // a channel that was never hooked.
 void remove(A3d_Channel* channel) noexcept;
+
+// Puts every channel of one group back the way it was, dropping all their subscribers.
+//
+// **This is the call that has to happen before the group's own destructor runs, not after**, and the
+// difference is not stale data - it is that the engine would walk our copied vtable while destroying
+// each channel, and free the object our copy is stapled to. engine_groups detours
+// `A3d_ChannelGroup::Release` for exactly this and calls in before forwarding.
+//
+// Returns how many channels were restored. Nothing here touches the group or the channels through
+// the engine: the match is against the group pointer recorded at subscribe time, so a group that is
+// already half gone is still handled correctly.
+int remove_all_in(A3d_ChannelGroup* group) noexcept;
 
 // Unhooks everything. Called when the scripting layer reloads, and it must also be called before the
 // DLL could ever be unloaded: the thunk lives in our image, so a channel still pointing at it after

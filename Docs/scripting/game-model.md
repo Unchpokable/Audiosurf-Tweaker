@@ -72,7 +72,16 @@ Same thing.
 
 **Groups load and unload as you move around the game.** `XX_PauseScreen` is not loaded while you are
 in the main menu. This is the single most common reason a script "does not work" — and it is why
-channel handles resolve lazily and keep retrying rather than failing once at startup.
+channel handles resolve lazily and wait rather than failing once at startup.
+
+It is not only the menu, either: some groups are destroyed and built again *while you play*. The
+renderer's group goes on every single run. A handle into one of those goes `nil` and comes back by
+itself, and a hook into one detaches and reattaches by itself. If you want to know when it happens,
+[`tw.on_group(name, fn)`](api-reference.md#twon_groupname-fn) tells you.
+
+**"The game has loaded" is a thing the Tweaker knows, and you do not have to work it out.** Your
+handlers do not run before it. What the layer is waiting for, while it waits, is shown at the top of
+the Scripts tab and readable as [`tw.state()`](api-reference.md#twstate--string).
 
 To see what is loaded right now, enable the **Group Inspector** script that ships with the Tweaker,
 or call `tw.groups()` yourself.
@@ -217,8 +226,8 @@ The first three are three different moments and picking the wrong one is a class
 ### `XX_PauseScreen` — pause
 
 `GamePaused?` (number, 0/1), and the actions `Do_Pause`, `Do_Unpause`, `Do_TogglePauseState`. Only
-loaded during gameplay — do not ask for it from the menu, or you will collect warnings about a group
-that is legitimately absent.
+loaded during gameplay. Asking for it from the menu is fine and silent — an absent group is not a
+mistake, and nothing is reported for one.
 
 ### `SpecialPurpose` — the character you picked
 

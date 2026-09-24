@@ -34,23 +34,33 @@ enum resolve_status : int {
 // Resolves a channel of an expected kind. Cold path - a name lookup is a linear _stricmp scan over
 // the whole group, so callers keep the handle rather than repeating this.
 //
-// `kind` is tw::lua::channels::kind. `out` receives two ints: [0] a resolve_status, and [1] the kind
+// `kind` is tw::engine::kind. `out` receives two ints: [0] a resolve_status, and [1] the kind
 // the channel actually turned out to be (only meaningful on resolve_wrong_kind). Two out-ints rather
 // than a struct return, for the x86 ABI reasons in Docs/Internal/lua-scripting.md §8.3 - the Lua side
 // keeps one reusable cdata buffer, so this costs no allocation per call either.
 //
-// Returns null unless the status is resolve_ok.
+// Returns null unless the status is resolve_ok. Otherwise the handle is a **heap-allocated
+// tw::engine::channel_ref**, owned by whoever holds it and released with tw_ref_free - the prelude
+// ties that to the Lua handle with ffi.gc, so a handle that is dropped or re-resolved is freed by the
+// collector. Opaque to Lua: it is only ever passed back into the functions below.
 void* tw_channel_resolve(const char* group, const char* name, int kind, int* out) noexcept;
 
 // Same, addressing the channel by its index in the group instead of by name. Channel names are not
-// unique - see lua_channels::find_channel_at - so an index is sometimes the only way to be precise.
+// unique - see engine::channels::find_channel_at - so an index is sometimes the only way to be precise.
 void* tw_channel_resolve_at(const char* group, int index, int kind, int* out) noexcept;
 
-// Human-readable name of a tw::lua::channels::kind, for error messages.
+// Frees a handle from either resolve. Null-safe. Registered as the handle's ffi.gc finalizer.
+void tw_ref_free(void* handle) noexcept;
+
+// Human-readable name of a tw::engine::kind, for error messages.
 const char* tw_kind_name(int kind) noexcept;
 
-// Evaluates a numeric channel through its own vtable. Cheap; safe to call every frame. The handle
-// must have come from a resolve that asked for the number kind - this does not re-check.
+// Evaluates a numeric channel through its own vtable. Cheap; safe to call every frame.
+//
+// Every channel entry point below goes through a family function under src/engine/family/, and those
+// refuse a handle of any family but their own - one compare. So a handle passed to the wrong entry
+// point gives 0 / "" / false, never a call through the wrong slot. That used to be a promise the
+// prelude kept; since Ф3 it is enforced where the slot is called.
 float tw_channel_get(void* channel) noexcept;
 
 // Writes a numeric channel. The handle must have resolved as numeric; on an Aco_FloatChannel this is
@@ -72,11 +82,23 @@ const char* tw_channel_text(void* channel) noexcept;
 int tw_channel_vector(void* channel, float* out) noexcept;
 
 // Writes a vector channel. The handle must have resolved as the vector kind - that is what keeps
-// this off the numeric family's incompatible slot-19 setter (see lua_channels::set_vector).
+// this off the numeric family's incompatible slot-19 setter (see engine/family/fam_vector.hxx).
 //
 // Wider effect than tw_channel_set: the engine's own SetVector also writes each component through
 // into the numeric channel wired to that port, if there is one.
 void tw_channel_set_vector(void* channel, float x, float y, float z) noexcept;
+
+// A matrix channel - Aco_MatrixChannel and its derivatives (engine/family/fam_matrix.hxx). Sixteen
+// floats, row-major, D3DXMATRIX layout. Zero on failure, `out` untouched.
+int tw_channel_matrix(void* channel, float* out) noexcept;
+
+// Writes all sixteen elements. Subject to the write gate.
+void tw_channel_set_matrix(void* channel, const float* in) noexcept;
+
+// Whether the engine evaluated this channel in the current frame of its group: 1 yes, 0 no, -1
+// cannot be known (CHIC = 1 - the channel is never memoised, so the field that would say is never
+// written). See engine::channels::live() for what this can and cannot mean.
+int tw_channel_live(void* channel) noexcept;
 
 // Reads one cell of an Array Table column through its cursor pair. Both handles must have resolved
 // as numeric channels; the cursor is saved and restored around the read.
@@ -175,18 +197,59 @@ const char* tw_group_name(int index) noexcept;
 // Whether writes to the graph are currently accepted.
 //
 // False while the game is still assembling itself, when a write does not crash anything but does
-// silently corrupt it - see the write gate in lua_api.cxx. Exposed so a script can wait deliberately
-// rather than have its writes dropped without knowing why.
+// silently corrupt it. Now an alias for tw_ready(): the write gate stopped being a thing of its own
+// when engine::state took over answering "has the game come up" for everybody.
 int tw_can_write() noexcept;
 
-// Called once per frame by lua_host, before dispatch. Drives the write gate: it watches how long the
-// set of loaded channel groups has been unchanged, which is what "loading has finished" looks like
-// from outside without needing to know any of the game's state values.
+// The lifecycle state as an integer (tw::engine::state::phase) and as a name - "detached",
+// "booting", "starting", "ready", "busy". One observable value replacing the three questions
+// (engine captured? groups settled? writes allowed?) a script used to have to ask separately.
+int tw_state() noexcept;
+const char* tw_state_name() noexcept;
+
+// `ready` or `busy`: the graph is up and a script may run and write. This is the gate the scheduler
+// holds user callbacks behind, which is what stops a script from drawing over the loading screen.
+int tw_ready() noexcept;
+
+// Changes exactly when a channel that could not be resolved might now resolve - a group appeared or
+// went away. A handle compares this instead of counting frames, so a name that is not there yet
+// costs nothing until something actually changes (lua-engine-fix-roadmap.md §5.2).
+int tw_graph_revision() noexcept;
+
+// Whether a group with that pool or file name is loaded right now, out of the registry roster - no
+// engine call and no scan. This is what tw.on_group is built on: a script watches for its group
+// rather than polling for its channel.
+int tw_group_loaded(const char* name) noexcept;
+
+// Called once per frame by lua_host, before dispatch. All that is left of it is the fallback draw
+// counter behind tw_frame; the lifecycle it used to drive lives in engine::state.
 void tick() noexcept;
 
-// Whether the graph is reachable at all - false until framework/channel_hook captures
-// EngineInterface*, which can take until the player touches a menu (see lua-scripting.md §7).
+// Wires the subscription table to the group registry: one listener that drops a subscription's
+// pointers when its group is destroyed, and one that attaches it again when the group comes back.
+// Called once from lua_host::initialize, after the engine layer is up.
+void install_engine_listeners() noexcept;
+
+// Whether the graph is reachable at all - false until the engine pointer has been captured, which
+// with the frame spine in place means "the game has run its first frame" (engine/engine_control).
 int tw_engine_ready() noexcept;
+
+// The frame number a script sees as `tw.frame`.
+//
+// **Engine frames**, one per evaluation of the channel graph, taken from engine/engine_frame. Not
+// the overlay's: the overlay's advances in Present, so it stops while the window is minimised, does
+// not start until there is a device, and runs at whatever rate the machine reaches - which made the
+// `tw.frame % 60` idiom mean different things on different machines.
+//
+// Two safeguards, both because a script that stops seeing this number advance stops resolving its
+// channels:
+//
+//  - **it falls back to counting draw dispatches** while the engine spine has not ticked, so a
+//    session where the spine failed to install behaves exactly as it did before;
+//  - **it never goes backwards**, because the two sources are independent counters and the handover
+//    from one to the other would otherwise step back to 1 while scripts hold `retry_at` values
+//    computed from the other.
+int tw_frame() noexcept;
 
 // Seconds elapsed since the previous frame, from the same source the overlay's own animations use
 // (ui/widgets/detail/draw.hxx: dt_ms, which carries the sub-millisecond remainder forward instead

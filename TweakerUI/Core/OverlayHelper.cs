@@ -52,6 +52,9 @@ namespace TweakerUI.Core
         private const string OverlayInstanceMutexPrefix = @"Local\AudiosurfTweaker.Overlay.";
         private const string ReadyEventSuffix = ".Ready";
 
+        /// <summary>Where a user goes when their antivirus has eaten InjectHelper.exe.</summary>
+        private const string ReleasesUrl = "https://github.com/Unchpokable/Audiosurf-Tweaker/releases";
+
         private static readonly TimeSpan HandshakeTimeout = TimeSpan.FromSeconds(5);
         private const int HandshakeAttempts = 3;
 
@@ -448,18 +451,28 @@ namespace TweakerUI.Core
                           + (haveInjector
                               ? "It can be loaded into the running game now, or the game can be restarted so it loads the plugin by itself."
                               : "InjectHelper.exe is missing - most likely your antivirus removed it - so it cannot be loaded into the running game. "
-                                + "Restart the game and it will load the plugin by itself. To get InjectHelper.exe back, download Tweaker again from "
-                                + "https://github.com/Unchpokable/Audiosurf-Tweaker/releases and add the Tweaker folder to your antivirus exclusions.");
+                                + "Restart the game and it will load the plugin by itself. To get InjectHelper.exe back, download Tweaker again "
+                                + "and add the Tweaker folder to your antivirus exclusions.");
 
-            var choice = await Dispatcher.UIThread.InvokeAsync(() => haveInjector
-                ? ApplicationNotificationManager.Manager.AskForChoice("Plugin not loaded", message, "Load now", "Restart the game", "Later")
-                : ApplicationNotificationManager.Manager.AskForChoice("Plugin not loaded", message, "Restart the game", "Later"));
+            // Labels and outcomes side by side rather than index arithmetic over two different button lists.
+            // The previous shape ("the index, plus one when the injector is missing") was already a puzzle at
+            // two lists and would have been a trap at three.
+            var labels = haveInjector
+                ? new[] { "Load now", "Restart the game", "Later" }
+                : new[] { "Restart the game", "Open the releases page", "Later" };
+            var outcomes = haveInjector
+                ? new[] { LoadOffer.LoadNow, LoadOffer.RestartGame, LoadOffer.Later }
+                : new[] { LoadOffer.RestartGame, LoadOffer.OpenReleases, LoadOffer.Later };
 
-            var action = haveInjector ? choice : choice + 1;
+            var choice = await Dispatcher.UIThread.InvokeAsync(
+                () => ApplicationNotificationManager.Manager.AskForChoice("Plugin not loaded", message, labels));
 
-            switch (action)
+            if (choice < 0 || choice >= outcomes.Length)
+                return;
+
+            switch (outcomes[choice])
             {
-                case 0:
+                case LoadOffer.LoadNow:
                     if (!await RunInjectorAsync(injectorPath, pid, pluginPath))
                     {
                         ApplicationNotificationManager.Manager.ShowError("Plugin",
@@ -479,16 +492,32 @@ namespace TweakerUI.Core
                     await BeginHandshakeAsync(HandshakeTimeout, HandshakeAttempts);
                     return;
 
-                case 1:
+                case LoadOffer.RestartGame:
                     // The restarted game raises Registered again and comes back through ConnectAsync with the
                     // plugin loaded from channels\ - there is nothing to follow up on from here.
                     if (await GameProcessService.CloseAsync())
                         GameProcessService.Start(PluginService.GameRootDirectory);
                     return;
 
+                case LoadOffer.OpenReleases:
+                    // The offer is spent either way: whatever they do on that page ends with a new download and
+                    // a restarted Tweaker, not with coming back to this dialog.
+                    Utils.Utils.OpenUrl(ReleasesUrl);
+                    return;
+
                 default:
                     return;
             }
+        }
+
+        /// <summary>What the "this session has no plugin in it" dialog can end with (§6.5).</summary>
+        private enum LoadOffer
+        {
+            LoadNow,
+            RestartGame,
+            /// <summary>Only offered when InjectHelper.exe is gone, which is nearly always an antivirus.</summary>
+            OpenReleases,
+            Later
         }
 
         /// <summary>

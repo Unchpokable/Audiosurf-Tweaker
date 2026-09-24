@@ -12,8 +12,10 @@ Audiosurf Tweaker — сторонний инструмент для игры Au
 Живая архитектурная сводка и обоснование ключевых решений (зачем `asbridge` как отдельный процесс,
 зачем `LegacyDataConverter` заморожен на .NET Framework, и т.п.) — `Docs/Internal/overview.md`.
 План дальнейшей разработки (Фаза 6 — Quick Player QoL, Фаза 7 — внутриигровой оверлей) —
-`Docs/Internal/roadmap.md`. Протокол оверлея (`TW_OVL`, host ↔ asbridge ↔ TweakerPlugin) —
-`Docs/Internal/overlay-protocol.md`; его Quick Player-половина (операции `QP_*`, вкладка Player) —
+`Docs/Internal/roadmap.md`. **Как плагин попадает в игру и живёт там без хоста** (ранняя загрузка из
+`engine\channels\`, раскладка `engine\TweakerStuff\`, оффлайн-режим, установка из TweakerUI) —
+`Docs/Internal/plugin-offline-mode.md`, и его §0 написан так, чтобы его читали первым. Протокол
+оверлея (`TW_OVL`, host ↔ asbridge ↔ TweakerPlugin) — `Docs/Internal/overlay-protocol.md`; его Quick Player-половина (операции `QP_*`, вкладка Player) —
 `Docs/Internal/overlay-quickplayer.md`. Skybox Replacer (подмена скайсферы игры на cube map, плюс
 весь реверс её загрузки и отрисовки) — `Docs/Internal/skybox-replacer.md`; ресёрч и план
 процедурного (шейдерного) неба — `Docs/Internal/skybox-procedural.md`; замена процедурного
@@ -26,13 +28,17 @@ Audiosurf Tweaker — сторонний инструмент для игры Au
 `Docs/Internal/skybox-replacer-roadmap.md`** — это карта всех перечисленных документов, текущее
 состояние работ, хронология принятых решений с обоснованиями и порядок дальнейших шагов. Проект встраивания LuaJIT в
 `TweakerPlugin` (скрипты на пути обработки данных движка, выбор технологии, механика перехвата) —
-`Docs/Internal/lua-scripting.md`.
+`Docs/Internal/lua-scripting.md`. Он описывает **проект** слоя и остаётся источником правды по
+механике перехвата; план превращения написанного прототипа в инструмент (жизненный цикл движка,
+разделение разметки vtable по семействам каналов, изоляция отказов, сборка скриптов из модулей) —
+`Docs/Internal/lua-engine-fix-roadmap.md`, и **начинать работу над Lua-слоем надо с него**.
 
 **Пользовательская** документация по скриптовому API (в отличие от всего вышеперечисленного —
 на английском, для тех, кто пишет скрипты и делится ими) — `Docs/scripting.md` и `Docs/scripting/`:
 getting-started, game-model (как устроен граф каналов игры и как в нём искать), channels, hooks,
-drawing, api-reference, limits. При изменении публичного API `tw.*` обновлять их обязательно —
-`api-reference.md` перечисляет каждую функцию поимённо.
+drawing, api-reference, limits, examples (разобранные скрипты из `assets/scripts/dev/`). При
+изменении публичного API `tw.*` обновлять их обязательно — `api-reference.md` перечисляет каждую
+функцию поимённо.
 
 Второй такой же набор — по **формату неба** `.sky`, для тех, кто делает свои скайбоксы:
 `Docs/skyboxes.md` и `Docs/skyboxes/`: getting-started, manifest (`Config.json` целиком), shaders
@@ -41,8 +47,13 @@ clouds (спрайтовый слой, `place()`/`fill()`), limits (цена, з
 любом изменении манифеста, набора регистров или Lua-API генераторов. `Docs/Internal/sky-package.md`
 устарел и **не** является заменой — источник правды теперь публичный набор.
 
-Накопительный полевой журнал реверса самой игры — пять файлов, все описывают **чужой** код, игру,
-и служат источником для остальных документов: `Docs/Internal/reversing-journal-lua.md` (формат
+Накопительный полевой журнал реверса самой игры — шесть файлов, все описывают **чужой** код, игру,
+и служат источником для остальных документов: `Docs/Internal/reversing-journal-boot.md` — про
+**запуск и жизненный цикл** (кто зовёт кадр — `EngineControl::EngineLoop`, порядок загрузки
+`Q3DStart.q3d` → `start - project loader.cgr` → `XX_StartHere.cgr`, как увидеть «игра загрузилась»,
+почему значение канала до первого исполнения графа принадлежит редактору, а не игре, выгрузка и
+пересоздание групп во время игры, полная перепись семейств каналов и слотов 17–19 у каждого);
+`Docs/Internal/reversing-journal-lua.md` (формат
 `.cgr`, Lua-движок `Aco_Lua` и его API, дамп скриптов, настройка Ghidra);
 `Docs/Internal/reversing-journal-gameplay.md` — про **игровую логику** (граф каналов Quest3D как
 язык, `StatCollector.cgr` и вся статистика заезда, 18 персонажей/режимов в `SpecialPurpose.cgr`,
@@ -98,8 +109,10 @@ clouds (спрайтовый слой, `place()`/`fill()`), limits (цена, з
 - **`ASBridge`** (`asbridge.exe`) — нативный C++23/CMake субпроцесс, единственный, кто трогает
   Win32 (`WM_COPYDATA`, поиск окна игры). Держит именованный пайп с текстовым протоколом наружу.
   Собирается CMake-хуком из pre-build шага `TweakerUI.csproj`, в `.sln` не участвует.
-- **`InjectHelper`** — обобщённый `CreateRemoteThread`-DLL-инжектор (x86 exe, для `TweakerPlugin`),
-  заморожен на `vcxproj`, собирается тем же pre-build-хуком.
+- **`InjectHelper`** — обобщённый `CreateRemoteThread`-DLL-инжектор (x86 exe), заморожен на
+  `vcxproj`, собирается тем же pre-build-хуком. **Запасной путь:** игру `TweakerPlugin` грузит себе
+  сама из `engine\channels\`, а инжектор нужен только чтобы подсадить плагин в сессию игры, которая
+  была запущена раньше его установки, — и только по явному согласию пользователя.
 - **`TweakerPlugin`** — нативный x86 C++23/CMake DLL-плагин внутриигрового оверлея (см. отдельный
   раздел ниже). Собирается аналогично `ASBridge`, но **best-effort**: неудачная сборка (нет
   DirectX/Quest3D SDK, ImGui или Detours submodule) не ломает сборку остального решения.
@@ -201,18 +214,65 @@ SkiaSharp/HarfBuzzSharp), чтобы можно было приаттачить�
 
 ### `TweakerPlugin` — внутриигровой оверлей
 
-Внедряемая **x86 DLL** для Audiosurf (32-bit процесс). Стек: **C++23**, Win32 API, **DirectX 9**
+**x86 DLL** для Audiosurf (32-bit процесс). Стек: **C++23**, Win32 API, **DirectX 9**
 (June 2010 SDK), **Microsoft Detours**, **Quest3D SDK**, **ImGui**, **LunaSVG** (+ её сабмодуль
 plutovg). Сборка: CMake + Ninja, MSVC, PCH.
 
+**Как он оказывается в игре и что из этого следует** (подробно — `plugin-offline-mode.md`):
+
+- Лежит в `engine\channels\` и загружается **самой игрой** при старте, до создания устройства D3D9.
+  Инжект — запасной путь. Значит, код исполняется в двух разных режимах, и оба надо держать в голове.
+- **Запуск по этапам.** `DllMain` только зовёт `on_process_attach` (`src/plugin/load.cxx`): резолв
+  путей, проверка `QuestViewer.exe` и файла `DISABLE`, захват мьютекса присутствия, выбор режима,
+  ранние хуки — и поток запуска. Под loader lock нельзя ждать, трогать оконные функции и
+  приостанавливать потоки (§4.2); Detours-транзакции в ранней фазе идут **без** приостановки потоков.
+- **Все пути — от `QuestViewer.exe`**, через `src/plugin/paths.{hxx,cxx}`: `engine\TweakerStuff\`
+  (`Config\`, `Scripts\`, `SkyboxReplacer\`, `Logs\`). Ни рабочий каталог, ни положение самой DLL
+  опорой быть не могут — игра меняет первый, а вторая лежит в разных местах в разных режимах.
+- **Правило рендер-потока** (§4.5): запрет на системные вызовы касается **покадрового** кода.
+  Инициализация на рендер-потоке — создание устройства, `bind_device`, `Reset` — под него не
+  попадает, там `SetEvent` и запись в лог разрешены.
+- **Лог жизненного цикла** `TW_BOOT_LOG` → `TweakerStuff\Logs\TweakerPlugin.log` включён и в Release:
+  только kernel32, форматирование в буфер на стеке. Это единственный способ понять, что произошло у
+  пользователя, которому плагин уронил игру ещё до появления окна.
+- **Без хоста плагин полностью работоспособен**: небо, скрипты, оверлей. Хост нужен вкладкам Skins,
+  Tweaks и Player — без него они заглушки, и висит пин Offline.
+
 ```
-dllmain.cxx      — минимальный DllMain, инициализация в отдельном потоке
-src/framework/    — хуки (Detours, D3D9, dinput8, Quest3D channel + texture_hook на
+dllmain.cxx      — только DisableThreadLibraryCalls + plugin::on_process_attach
+src/engine/       — движок Quest3D как объект, НЕ часть скриптового слоя (им пользуется и music, и
+                    в перспективе skybox): engine_symbols (экспорты HighPoly.dll, один резолв; два
+                    яруса — спина кадра обязательна, группы могут не резолвнуться и тогда деградирует
+                    только реестр), engine_control (детур на EngineControl::EngineLoop — ЕДИНСТВЕННАЯ
+                    покадровая точка входа в граф; оттуда же EngineInterface* на первом кадре,
+                    личность объекта сверяется с экспортированным ??_7EngineControl@@6B@; подписчики
+                    до/после графа публикуются через framework::ready), engine_frame (номер кадра
+                    движка, dt, GetTreeCalculateCount), engine_groups (реестр загруженных групп:
+                    ОДНО сравнение счётчика за кадр, пересборка только на изменении; ПОКОЛЕНИЕ на
+                    группу — адреса переиспользуются, сравнение указателей не годится; детуры на
+                    A3d_ChannelGroup::Release и EngineInterface::DeleteChannelGroup, где ДО оригинала
+                    снимаются vtable-копии channel_shim — иначе деструктор канала пойдёт по копии,
+                    которая его переживёт), engine_state (жизненный цикл detached → booting →
+                    starting → ready ⇄ busy; признак — стартовая группа движка, а НЕ значение из
+                    канала: .cgr хранит то, что оставил автор в редакторе, и StartupState врёт
+                    правдоподобно. ЕДИНСТВЕННЫЙ ответ на «можно ли сейчас» — скриптовые колбэки до
+                    ready не зовутся вовсе). Слой каналов (Ф3, бывший lua/lua_channels): channel_ref
+                    (канал + группа + поколение + семейство + CHIC; резолв, valid(), live(),
+                    bust_memo), channel_kind (baseguid → семейство — ЕДИНСТВЕННОЕ место, знающее
+                    все семейства), channel_vtable (только арифметика слотов и is_code — НИ ОДНОГО
+                    знания о том, что в каком слоте), family/fam_number, fam_text, fam_vector,
+                    fam_matrix, fam_table — каждый файл владеет смыслом СВОИХ слотов и описывает,
+                    чем грозит вызов этого слота на чужом семействе; функции семейств принимают
+                    только channel_ref и отказывают ref'у чужого семейства одним сравнением. Новое
+                    семейство — новый файл. См. reversing-journal-boot.md §1, §2.4, §6, §7 и
+                    lua-engine-fix-roadmap.md
+src/framework/    — хуки (Detours, D3D9, dinput8 + texture_hook на
                     Aco_DX8_Texture::LoadTextureFromMemory), channel_shim (перехват вызова
                     ОДНОГО канала подменой vptr на копию vtable; подписчиков на канал может быть
                     НЕСКОЛЬКО — все before отрабатывают до отмены, отмена это ИЛИ, у подавленного
                     вызова нет after; оригинальная vtable возвращается с уходом последнего
-                    подписчика — см. lua-scripting.md §8.5 и Ф4), d3d9_state (`state_scope`:
+                    подписчика; группа канала запоминается ПРИ ПОДПИСКЕ, чтобы remove_all_in(group) на выгрузке
+                    не спрашивал ничего у разрушаемого объекта — см. lua-scripting.md §8.5 и Ф4), d3d9_state (`state_scope`:
                     сохранение и откат РОВНО того состояния устройства, которое хук тронул — старое
                     значение читается перед записью нового, поэтому список «что ставим» и список
                     «что возвращаем» физически один и разойтись не могут; запись, ничего не
@@ -221,7 +281,9 @@ src/framework/    — хуки (Detours, D3D9, dinput8, Quest3D channel + textur
                     target, depth-stencil, SetSoftwareVertexProcessing. Пришёл на смену
                     `CreateStateBlock(D3DSBT_ALL)`: замерено 10.9 мкс против 0.85 мкс на перехват,
                     harness/state), wndproc_hub (общая точка
-                    подписки на WndProc игры: IPC, D3D9 WM_ACTIVATEAPP, будущий ImGui-инпут)
+                    подписки на WndProc игры: IPC, D3D9 WM_ACTIVATEAPP, будущий ImGui-инпут).
+                    vtable в d3d9_hooks/dinput8_hooks/channel_shim разбираются вручную; план
+                    обобщить под это engine/channel_vtable — lua-engine-fix-roadmap.md §17.1
 src/ipc/          — overlay_ipc: разбор/сборка L3-протокола TW_OVL (см. overlay-protocol.md);
                     операции с префиксом QP_ он не разбирает, а форвардит в src/ui/qp/
 src/ui/           — overlay_state (кэш состояния, generation-counter, lock-free read по try_lock),
@@ -267,23 +329,28 @@ src/skybox/       — Skybox Replacer: перехват draw-call скайсфе
                     sky_sprite_atlas (геометрический слой). Текстуры слоя живут в кэше sky_shader
                     вместе с шейдерами: один жизненный цикл, одна инвалидация, один release.
                     См. skybox-geometry.md и skybox-replacer-roadmap.md
-src/lua/          — LuaJIT-скриптинг: lua_channels (доступ к графу каналов через vtable: слот 17
-                    у числовых/строковых/векторных значит РАЗНОЕ, поэтому тип проверяется до
-                    вызова), lua_api (extern "C" ABI, который скрипт зовёт через FFI — НЕ
-                    lua_CFunction, см. lua-scripting.md §2.2), lua_host (VM, пролог, песочница,
+src/lua/          — LuaJIT-скриптинг поверх src/engine/ (своего доступа к графу у него больше нет):
+                    lua_api (extern "C" ABI, который скрипт зовёт через FFI — НЕ lua_CFunction, см.
+                    lua-scripting.md §2.2; хендл канала в Lua — это channel_ref в куче, которым
+                    владеет Lua-объект через ffi.gc → tw_ref_free), lua_host (VM, пролог, песочница,
                     диспетч on_frame под ImGui ErrorRecovery-guard'ом + реестр скриптов:
                     метаданные из `-- @name/@author/@version/@description` читаются БЕЗ запуска
-                    файла), lua_config (какие скрипты выключены, TweakerScripts.cfg — хранятся
-                    только исключения), lua_ui (вкладка Scripts, регистрируется через
-                    menu::add_extra_tab, как и Skybox). Выключение скрипта = снятие его подписок
+                    файла; колбэки скриптов НЕ зовутся, пока engine_state не скажет ready), lua_config (какие
+                    скрипты выключены, TweakerStuff\Config\scripts.cfg — только исключения, плюс
+                    engine.settle_frames / engine.settle_ms — окно отстоя для engine_state, и save()
+                    их сохраняет), lua_ui (вкладка Scripts, регистрируется через
+                    menu::add_extra_tab, как и Skybox; шапка показывает состояние слоя). Выключение скрипта = снятие его подписок
                     и возврат оригинальных vtable, а не спящий хук; включение = повторный запуск
                     файла с диска, оно же горячая перезагрузка. Скрипты — loose-файлы
                     в engine\TweakerStuff\Scripts\, не ресурсы: их правят без пересборки; в бандл
                     их кладёт CopyTweakerPlugin (TweakerUI.csproj) как PluginPayload\TweakerStuff\
                     Scripts\, а в игру — PluginInstallation (см. раздел «Деплой»)
-src/plugin/       — lifecycle, глобальное состояние, Quest3D state, music (что играет прямо сейчас:
-                    читает `VisMusic` через lua_channels, отдаёт наружу низ/середину/верх/воздух,
-                    громкость, онсеты — НЕ «полосу k», см. reversing-journal-gameplay.md §10)
+src/plugin/       — load (этапы 0-3 запуска, оба режима загрузки), paths (вся раскладка от
+                    QuestViewer.exe), presence (мьютекс «я здесь» + событие Ready для хоста),
+                    boot_log (TW_BOOT_LOG, живёт и в Release), глобальное состояние, Quest3D state,
+                    music (что играет прямо сейчас: читает `VisMusic` через engine/channel_ref, отдаёт
+                    наружу низ/середину/верх/воздух, громкость, онсеты — НЕ «полосу k», см.
+                    reversing-journal-gameplay.md §10)
 src/resource/     — .rc-based упаковка ассетов (шрифты/текстуры/SVG/шейдеры) прямо в DLL;
                     assets/shaders/*.hlsl при этом компилируются fxc на этапе сборки, и вшивается
                     только байткод (TW_SHADER). Профиль берётся из имени: *.vs.hlsl / *.ps.hlsl;
@@ -328,11 +395,19 @@ cmake --build --preset smoke         # smoke_test: визуальный Win32+Op
 прогоняет сюиты с проверками, `run.bat build` — вдобавок инструменты (рендер превью, замеры
 распределения спрайтов, дампы). Правишь `sky_*` — прогони. Скриптовый слой прогоняется там же: `harness/lua/` (`ljtest` — пролог
 из `lua_host.cxx` против заглушек C-ABI и все поставляемые скрипты; `shimtest` — настоящий
-`channel_shim.cxx` плюс проверка соглашения о вызове `SetVector`). Правишь `src/lua/*` или
-`assets/scripts/*` — прогони. Часть требует собранного плагина: они
+`channel_shim.cxx` плюс проверка соглашения о вызове `SetVector`; `arraytest` — настоящий
+`engine/family/fam_table.cxx` против поддельных каналов; `famtest` — все семейства, по секции на
+каждое, с мутационной проверкой). Слой движка — `harness/lifecycle/lifetest`:
+настоящие `engine_groups.cxx`, `engine_state.cxx` и `channel_shim.cxx` против поддельного движка, а
+заглушка `detour::attach` **запоминает адрес хук-функции**, поэтому «игра выгрузила группу» в сюите —
+это вызов настоящего тела хука. Правишь `src/lua/*`, `src/engine/*` или `assets/scripts/*` — прогони. Часть требует собранного плагина: они
 линкуются с `build/x86-release/luajit.lib`.
 
-- Корневой namespace: `tw::`, подпространства по слоям: `tw::plugin`, `tw::framework`, `tw::ui`.
+**`TweakerPlugin/harness/` при этом в `.gitignore`** (строка 12) — каталог не в репозитории, правки
+в нём локальные и в коммит не попадают. Учитывать, когда добавляешь туда сюиту: её не будет у
+следующего, кто склонирует репозиторий.
+
+- Корневой namespace: `tw::`, подпространства по слоям: `tw::plugin`, `tw::framework`, `tw::engine`, `tw::ui`.
 - Публичный API — в заголовках; детали реализации (хуки, оригиналы, file-local state) — в
   **anonymous namespace** в `.cxx`, объявленный **вне** именованных, **над** ними, сразу после
   блока `#include`:
@@ -360,7 +435,8 @@ namespace tw::framework
 
 #### Performance (hot-path)
 
-Hot-path: `EndScene`, `Present`, `CallChannel`, любой код, вызываемый каждый кадр (включая `overlay_state`
+Hot-path: `EndScene`, `Present`, `EngineControl::EngineLoop` (спина кадра, `src/engine/engine_control.cxx`),
+перехваченный `CallChannel` конкретного канала, любой код, вызываемый каждый кадр (включая `overlay_state`
 чтение в `ui_main.cxx: draw_frame` — но **не** сам разбор `TW_OVL`-сообщений, он происходит
 синхронно на IPC-потоке и редко, см. `overlay-protocol.md`, «Многопоточность»).
 

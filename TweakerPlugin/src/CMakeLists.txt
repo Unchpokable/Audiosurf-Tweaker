@@ -6,6 +6,9 @@ add_subdirectory(libuulog)
 
 add_subdirectory(framework)
 add_subdirectory(plugin)
+
+# After plugin: engine_control writes quest3d::g_engine and the lifecycle log.
+add_subdirectory(engine)
 add_subdirectory(ipc)
 add_subdirectory(resource)
 add_subdirectory(libstb)

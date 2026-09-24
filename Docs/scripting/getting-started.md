@@ -4,28 +4,55 @@
 
 ## Where scripts live
 
-Scripts are plain `.lua` files in a folder called `scripts/`, sitting next to `TweakerPlugin.dll`:
+Scripts are plain `.lua` files, inside your Audiosurf installation. Everything the Tweaker plugin
+reads or writes lives under `engine\TweakerStuff\`:
 
 ```
-TweakerUI/
-  TweakerPlugin.dll
-  scripts/
-    hello.lua
-    puzzlepro_hud.lua
-    particles.lua
-    arrayprobe.lua
-    my-script.lua        <- yours
-  TweakerScripts.cfg     <- created automatically; remembers which scripts you turned off
+Audiosurf/
+  engine/
+    QuestViewer.exe             <- the game; everything below is found relative to it
+    channels/
+      TweakerPlugin.dll         <- the plugin itself, loaded by the game at startup
+    TweakerStuff/
+      Scripts/
+        hello.lua
+        puzzlepro_hud.lua
+        particles.lua
+        my-script.lua           <- yours
+      Config/
+        scripts.cfg             <- created automatically; remembers which scripts you turned off
+      SkyboxReplacer/           <- the Skybox Replacer's own folder, see Docs/skyboxes.md
+      Logs/
 ```
 
 They are loose files on purpose, not packed into the plugin. You can edit one in a text editor and
 reload it without rebuilding anything, and sharing a script means sending someone a file.
 
-Every `.lua` file directly in that folder is picked up. Subfolders are not scanned.
+Every `.lua` file directly in `Scripts/` is picked up. **Subfolders are not scanned**, so a folder
+is a fine place to park scripts you do not want running.
+
+## Getting the plugin in there
+
+The usual way is Audiosurf Tweaker: **Settings → In-game plugin → Install the plugin into
+Audiosurf**. It copies the plugin and the bundled scripts into the layout above, and keeps them up
+to date when you update the Tweaker. Anything you wrote yourself it leaves alone; if you edited one
+of the bundled scripts, an update keeps your version next to the new one as `<name>.lua.old`.
+
+**You do not need Audiosurf Tweaker running to use scripts.** The game loads the plugin by itself at
+startup, so scripts, skyboxes and the overlay work with nothing else running. The Tweaker is only
+needed for the overlay's Skins, Tweaks and Player tabs, which are its own features — without it
+those tabs show as offline and everything else carries on.
+
+You can also install by hand: copy `TweakerPlugin.dll` into `engine\channels\` and put your `.lua`
+files in `engine\TweakerStuff\Scripts\` (the plugin creates the folders on first run). In a Tweaker
+release both live under `PluginPayload\`, laid out exactly as above.
+
+If you ever want the plugin to sit out a session without uninstalling it, create an empty file
+called `DISABLE` in `engine\TweakerStuff\`. The plugin checks for it before doing anything at all.
 
 ## Your first script
 
-Create `scripts/first.lua`:
+Create `engine\TweakerStuff\Scripts\first.lua`:
 
 ```lua
 -- @name        First
@@ -48,8 +75,15 @@ Three things are happening, and they are the shape of nearly every script:
 
 1. **At the top level, you declare what you need.** `tw.float_ch(...)` does not read anything yet —
    it creates a *handle* that will resolve itself later. Top-level code runs once, when the script
-   loads, which is usually long before the game has a run going.
-2. **`tw.on_frame` registers a function to run every frame.** This is where the work happens.
+   loads, which is long before the game has a run going — and, with the Tweaker loaded by the game
+   itself, before the game has loaded anything at all. So the top level declares; it never reads.
+   Your handlers do not start until the game has finished loading, which is why you will not find a
+   "has it loaded yet?" check anywhere in this guide.
+2. **`tw.on_frame` registers a function to run every drawn frame.** This is where drawing happens —
+   and only drawing. Work that reads channels and computes belongs in **`tw.on_tick`**, which runs
+   on the *game's* frame rather than the overlay's. The two are different rates: see
+   [API reference § Lifecycle](api-reference.md#lifecycle). A small script can do everything in
+   `on_frame` and be fine; a script that counts things cannot.
 3. **Everything can be `nil`.** `timer:get()` returns `nil` until the channel is actually reachable.
    Scripts that assume otherwise crash the moment you open a menu. See
    [Reading and writing the game § Nothing is available immediately](channels.md#nothing-is-available-immediately).
@@ -108,10 +142,10 @@ You can toggle a script mid-run. The game handles it.
 
 ### Which scripts are on is remembered
 
-`TweakerScripts.cfg` next to the DLL stores **only the scripts you switched off**. Anything not
-listed is on. So a new `.lua` dropped into the folder runs immediately, which is what you want when
-someone sends you one, and deleting a script leaves at worst a stale line naming a file that no
-longer exists.
+`TweakerStuff\Config\scripts.cfg` stores **only the scripts you switched off**. Anything not listed
+is on. So a new `.lua` dropped into the folder runs immediately, which is what you want when someone
+sends you one, and deleting a script leaves at worst a stale line naming a file that no longer
+exists.
 
 ## When something goes wrong
 
@@ -138,10 +172,13 @@ If a script asks for a channel that does not exist, you get one notification nam
 Lua: StatCollector.Pointz: no such channel in group
 ```
 
-It is reported **once**, and only after several failed attempts — because "not there yet" and "never
-going to be there" look identical at first, and the game genuinely does load and unload parts of
-itself as you move between menus and runs. If you see this message, it is a typo or a wrong group
-name, not a timing problem.
+It is reported **once**, and it means what it says: the group *is* loaded and has no channel by that
+name. A group's channel list is fixed the moment it loads, so this can never come right by waiting —
+it is a typo or a wrong name, never a timing problem, and the handle stops looking.
+
+The other case — the group itself not being loaded — is silent, because it is normal. The groups of a
+run do not exist in the menu and never will until you start one. Your handle waits, and resolves
+itself when the group turns up.
 
 If you asked for something through the *wrong kind* of accessor — a number accessor on a text
 channel — that is a hard error immediately, naming both types. It can never fix itself, so it is not
@@ -151,7 +188,8 @@ worth waiting on.
 
 Check, in order:
 
-- Is the script listed in the Scripts tab? If not, it is not in `scripts/` or does not end in `.lua`.
+- Is the script listed in the Scripts tab? If not, it is not directly in
+  `engine\TweakerStuff\Scripts\` (a subfolder will not do), or does not end in `.lua`.
 - Is its toggle on?
 - Are you in a run? Most of the interesting channels only exist while the game is actually playing.
 - Does anything draw? Try `tw.notify("alive")` at the top level — it shows a toast the moment the

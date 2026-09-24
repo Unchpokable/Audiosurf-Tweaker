@@ -12,6 +12,21 @@ std::filesystem::path g_path;
 // Only the scripts that differ from the default. See the header: absence means enabled.
 std::vector<std::string> g_disabled;
 
+// 0 means "not in the file", which is what engine::state reads as "use the default". Kept as the
+// raw value rather than resolved here so that save() writes back exactly what was read, and a file
+// with no such line stays a file with no such line.
+int g_settle_frames = 0;
+int g_settle_ms = 0;
+
+int parse_int(std::string_view text) noexcept
+{
+    int value = 0;
+    const auto* const end = text.data() + text.size();
+    const std::from_chars_result result = std::from_chars(text.data(), end, value);
+
+    return result.ec == std::errc {} && result.ptr == end ? value : 0;
+}
+
 std::string_view trim(std::string_view text) noexcept
 {
     while(!text.empty() && (text.front() == ' ' || text.front() == '\t' || text.front() == '\r')) {
@@ -59,6 +74,16 @@ void load(const std::filesystem::path& path)
         const std::string_view key = trim(trimmed.substr(0, eq));
         const std::string_view value = trim(trimmed.substr(eq + 1));
 
+        if(key == "engine.settle_frames") {
+            g_settle_frames = parse_int(value);
+            continue;
+        }
+
+        if(key == "engine.settle_ms") {
+            g_settle_ms = parse_int(value);
+            continue;
+        }
+
         if(!key.starts_with("script.")) {
             continue;
         }
@@ -93,6 +118,30 @@ void save()
     for(const std::string& name : g_disabled) {
         file << "script." << name << "=0\n";
     }
+
+    // Written back only when it was there to begin with. A toggle in the Scripts tab rewrites this
+    // file, and a line the user put in by hand must survive that - but writing defaults nobody asked
+    // for would turn a tuning knob into a setting every install carries.
+    if(g_settle_frames > 0 || g_settle_ms > 0) {
+        file << "\n# How long the set of loaded channel groups must stand still before scripts run.\n";
+        file << "# Both conditions apply. Delete a line to go back to the built-in value.\n";
+        if(g_settle_frames > 0) {
+            file << "engine.settle_frames=" << g_settle_frames << "\n";
+        }
+        if(g_settle_ms > 0) {
+            file << "engine.settle_ms=" << g_settle_ms << "\n";
+        }
+    }
+}
+
+int settle_frames() noexcept
+{
+    return g_settle_frames;
+}
+
+int settle_ms() noexcept
+{
+    return g_settle_ms;
 }
 
 bool enabled(std::string_view file) noexcept

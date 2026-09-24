@@ -16,8 +16,18 @@ end)
 Your function runs on the game's own call stack, the instant that channel is called. This is not
 polling: nothing is missed, and there is no frame of latency.
 
-Register at the top level of your script. Like channel handles, registration is retried until the
-group is loaded, so it is fine to ask for something that does not exist yet.
+Register at the top level of your script. The subscription is accepted the moment you ask for it,
+even when the group is nowhere to be seen, and the hook is attached as soon as that group appears —
+so it is fine, and expected, to ask for something that does not exist yet.
+
+**And it reattaches by itself.** The game destroys whole groups as you play: the renderer pool is
+dropped and rebuilt on *every single run*. A hook into one of those goes quiet when its group is
+destroyed and comes back when the group does, without the script doing anything. Before, a cached
+pointer into a destroyed group was a crash waiting for the right moment; now it is not a case you
+have to think about.
+
+If you want to know when that happens — to reset a counter, say — use
+[`tw.on_group(name, fn)`](api-reference.md#twon_groupname-fn).
 
 ### `after` and `before`
 

@@ -2,7 +2,12 @@
 
 #include "plugin/load.hxx"
 
-#include "framework/channel_hook.hxx"
+#include "engine/engine_control.hxx"
+#include "engine/engine_frame.hxx"
+#include "engine/engine_groups.hxx"
+#include "engine/engine_state.hxx"
+#include "engine/engine_symbols.hxx"
+
 #include "framework/d3d9_hooks.hxx"
 #include "framework/dinput8_hooks.hxx"
 #include "framework/loader_watch.hxx"
@@ -136,13 +141,83 @@ void on_device_bound(IDirect3DDevice9* device, HWND hwnd)
 
 // --- stage 1 and 3 ----------------------------------------------------------------------------------------
 
+// The frame spine: `EngineControl::EngineLoop`, where the engine pointer and the per-frame tick both
+// come from (Docs/Internal/reversing-journal-boot.md §1.2).
+//
+// There is no fallback. The detour on the empty `A3d_Channel::CallChannel` that used to capture the
+// engine pointer is gone, and with it a trampoline on every call of 22 655 channels for the whole
+// session. It was kept behind this call through Ф1 in case the class had been identified wrongly;
+// both load modes are now confirmed on the real game (see the plan's Ф1 section), and the one failure
+// it could have covered - the symbol missing from a shipped HighPoly.dll - cannot happen.
+//
+// The failure it could NOT cover, and still cannot: "installed, but the object is not an
+// EngineControl". That is checked on the first frame, on the engine thread, and reported on the
+// `engine: first EngineLoop` line below. Recovering from it automatically was deliberately not
+// built - reading the log once on a real game is the mitigation.
+//
+// `stage` and `threads` travel together because they are one decision seen twice: stage 0 means
+// DllMain, which means suspend::none, and "late" means the startup thread, which means
+// suspend::others. The reasoning is in engine_control::install().
+void install_frame_spine(const char* stage, tw::framework::detour::suspend threads)
+{
+    if(tw::engine::control::install(threads)) {
+        TW_BOOT_LOG("{}: EngineLoop hooked - engine pointer and frame tick come from the spine", stage);
+    }
+    else {
+        const std::string_view reason = tw::engine::symbols::missing();
+        TW_BOOT_LOG("{}: EngineLoop hook FAILED ({}) - no engine pointer, no frame tick, scripts stay inert",
+            stage,
+            reason.empty() ? std::string_view { "detour refused" } : reason);
+        return;
+    }
+
+    // The group registry's two detours go in with the spine and under the same rule, because the
+    // argument for `suspend::none` is the same one: at stage 0 the game is still enumerating
+    // engine\channels\ - which is what loaded us - and has not loaded a single channel group yet, so
+    // nobody can be inside A3d_ChannelGroup::Release. Late, the game is running and the other threads
+    // are held, exactly as for EngineLoop (plugin-offline-mode.md §4.2).
+    //
+    // Failing here is survivable in a way failing above is not: without it the plugin still sees
+    // frames and still reads the graph, it just cannot tell when a group goes away - so scripts
+    // hooking a channel in a pool that is rebuilt every run are the part that breaks.
+    if(tw::engine::groups::install_hooks(threads)) {
+        TW_BOOT_LOG("{}: group registry hooked - handles and channel hooks survive a group unloading", stage);
+        return;
+    }
+
+    const std::string_view reason = tw::engine::symbols::missing();
+    TW_BOOT_LOG("{}: group registry NOT hooked ({}) - a script hooking a channel in a pool the game "
+                "rebuilds each run is unsafe this session",
+        stage,
+        reason.empty() ? std::string_view { "detour refused" } : reason);
+}
+
+// What the spine is doing, in the words the log reader needs.
+//
+// **In the early load this is always called before the first engine frame, and that is normal.**
+// Stage 3 finishes when the device binds, and the game creates its device while it is still
+// initialising - the message pump that calls EngineLoop starts afterwards. Measured on the game:
+// 140 ms between the two on one run, 800 ms on another. An earlier version of this called that state
+// "installed, silent", which reads like a fault and is the healthy case; hence the wording below and
+// the pointer to the line that actually carries the verdict.
+const char* describe_spine()
+{
+    if(!tw::engine::control::installed()) {
+        return "NOT INSTALLED - scripts will not see the engine";
+    }
+
+    if(!tw::engine::control::ticked()) {
+        return "installed, no frame yet - look for 'engine: first EngineLoop' below";
+    }
+
+    return tw::engine::control::healthy() ? "live" : "installed, WRONG OBJECT - the detour fired on something that is not an EngineControl";
+}
+
 void install_late_hooks()
 {
-    const bool channel_ok = tw::framework::install_channel_hook();
-    TW_BOOT_LOG("late: CallChannel {}", channel_ok ? "hooked" : "hook FAILED - scripts will not see the engine");
-    if(!channel_ok) {
-        TW_LOG_WARNING("load: channel hook not installed - Quest3D engine pointer will stay null");
-    }
+    // The game is already running its message pump here, so the spine goes in the way any hook into
+    // live code does - with the other threads held.
+    install_frame_spine("late", tw::framework::detour::suspend::others);
 
     // Best-effort here, and retried from the skybox module's device bind listener: the game loads
     // channel DLLs on demand, so an injection early enough can beat the Texture channel into the
@@ -185,9 +260,15 @@ void run_startup(HMODULE module)
     tw::skybox::ui::initialize();
     tw::lua::ui::initialize();
 
-    // lua_channels resolves HighPoly.dll entry points here, and the VM has to exist before the first frame
-    // calls into it. Script handles resolve lazily anyway, because the EngineInterface pointer the channel
-    // hook captures arrives late (see lua-scripting.md §7).
+    // Before the scripting layer, and that order is load-bearing rather than tidy. The spine calls its
+    // pre-frame subscribers in registration order, and a script's tick has to see this frame's state:
+    // the group registry has to have rebuilt its roster and the state machine has to have decided
+    // where it is before anything asks either of them.
+    tw::engine::state::initialize();
+
+    // The VM has to exist before the first frame calls into it. This is also where the scripting layer subscribes to the frame spine - which in the
+    // early load is already installed and already counting frames, and is holding its subscribers back
+    // until framework::ready goes up a few lines below.
     tw::lua::host::initialize();
 
     tw::framework::d3d9::attach_device_bind_listener(&on_device_bound, nullptr);
@@ -205,12 +286,18 @@ void run_startup(HMODULE module)
 
         if(std::chrono::steady_clock::now() >= next_report) {
             next_report += k_slow_stage;
-            TW_BOOT_LOG("stage 2: still no device bound after {:.0f} s (d3d9.dll {}, Direct3DCreate9 hook {})",
+            TW_BOOT_LOG("stage 2: still no device bound after {:.0f} s (d3d9.dll {}, Direct3DCreate9 hook {}, spine {})",
                 elapsed_ms() / 1000.0,
                 ::GetModuleHandleW(k_d3d9_module.data()) != nullptr ? "mapped" : "not mapped",
-                g_startup == startup::early ? (g_d3d9_hooked.load() ? "installed" : "not installed") : "not used (late)");
+                g_startup == startup::early ? (g_d3d9_hooked.load() ? "installed" : "not installed") : "not used (late)",
+                describe_spine());
         }
     }
+
+    // The one line worth reading when scripts do not work. "installed, silent" means the detour went into
+    // something the game never calls, and "installed, wrong object" means EngineControl is not the class
+    // the main loop drives - both of which are the risk Ф1 was told to check on a real game.
+    TW_BOOT_LOG("stage 3: frame spine {} ({} engine frame(s))", describe_spine(), tw::engine::frame::count());
 
     tw::ipc::start_host_watchdog();
 
@@ -294,10 +381,11 @@ void on_process_attach(HMODULE module) noexcept
         const bool watching = framework::loader_watch::start(k_watches);
         TW_BOOT_LOG("stage 0: loader notifications {}", watching ? "registered" : "FAILED - no overlay and no sky this session");
 
-        // Nobody runs a channel while the engine is still scanning for them, and this DllMain is part of
-        // that scan - so the patch goes in without suspending anyone.
-        const bool channel_ok = framework::install_channel_hook(framework::detour::suspend::none);
-        TW_BOOT_LOG("stage 0: CallChannel {}", channel_ok ? "hooked" : "hook FAILED - scripts will not see the engine");
+        // The frame spine replaces the CallChannel hook that used to go in here. Same argument for
+        // suspend::none as that one had, and a stronger one: nobody can be inside EngineLoop yet either,
+        // because the engine is still enumerating engine\channels\ - which is what is running this
+        // DllMain - and its message pump has not started.
+        install_frame_spine("stage 0", framework::detour::suspend::none);
 
         const bool dinput_ok = framework::dinput::install_create_hook_from_loader();
         TW_BOOT_LOG("stage 0: DirectInput8Create {}", dinput_ok ? "hooked" : "hook FAILED - the game will see input the menu eats");

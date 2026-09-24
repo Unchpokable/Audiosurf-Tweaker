@@ -20,4 +20,20 @@ void save();
 
 [[nodiscard]] bool enabled(std::string_view file) noexcept;
 void set_enabled(std::string_view file, bool value);
+
+// The settle window engine::state uses to decide the game has finished loading: the set of channel
+// groups must have stood still for this many engine frames **and** this many milliseconds.
+//
+// Both, because neither is trustworthy on its own - the engine has been measured at 625 Hz during a
+// load and at the screen's refresh rate in the menu, so a window counted only in frames expires
+// inside the very period it exists to wait out (lua-engine-fix-roadmap.md §4.1).
+//
+// Here rather than hardcoded because this is the one number that could plausibly need tuning on a
+// machine nobody has: a slow disk stretches loading, and a wrong value shows up as scripts starting
+// slightly too early or a second of extra wait. Written back out by save(), so editing the file by
+// hand survives a toggle in the Scripts tab.
+//
+// Zero or negative means "use the default". Read once, at startup.
+[[nodiscard]] int settle_frames() noexcept;
+[[nodiscard]] int settle_ms() noexcept;
 } // namespace tw::lua::config

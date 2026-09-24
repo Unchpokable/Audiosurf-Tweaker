@@ -43,7 +43,15 @@ TWEAKER_UI_PROJ="$REPO_ROOT/TweakerUI/TweakerUI.csproj"
 LEGACY_CONVERTER_PROJ="$REPO_ROOT/LegacyDataConverter/LegacyDataConverter.csproj"
 
 echo "==> Cleaning $DIST_DIR"
-rm -rf "$DIST_DIR"
+# Retried for the same reason as Deploy.sh / Deploy.ps1 - a transiently held directory handle.
+for attempt in 1 2 3 4 5; do
+    rm -rf "$DIST_DIR" 2>/dev/null && break
+    if [ "$attempt" -eq 5 ]; then
+        echo "ERROR: could not remove $DIST_DIR - something is holding a handle inside it" >&2
+        exit 1
+    fi
+    sleep 0.5
+done
 mkdir -p "$DIST_DIR"
 
 # --- 1. TweakerUI: multi-file publish, symbols kept ----------------------------------------------

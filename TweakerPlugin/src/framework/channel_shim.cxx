@@ -31,6 +31,9 @@ struct subscriber {
 
 struct binding {
     A3d_Channel* channel;
+    // The group the channel was in when it was hooked. Recorded rather than derived, because the one
+    // moment it is needed is inside that group's teardown - see remove_all_in() in the header.
+    A3d_ChannelGroup* group;
     void** original_vtable;
     call_channel_fn original_call;
     // Small by construction - one or two in practice, and only ever as many as there are scripts
@@ -157,7 +160,7 @@ bool detach(binding* item, void* user, std::size_t binding_index) noexcept
 
 namespace tw::framework::channel_shim
 {
-bool subscribe(A3d_Channel* channel, call_hook_fn hook, void* user) noexcept
+bool subscribe(A3d_Channel* channel, A3d_ChannelGroup* group, call_hook_fn hook, void* user) noexcept
 {
     if(channel == nullptr || hook == nullptr) {
         return false;
@@ -201,6 +204,7 @@ bool subscribe(A3d_Channel* channel, call_hook_fn hook, void* user) noexcept
     std::memcpy(block + k_prefix_slots, original, slots * sizeof(void*));
 
     item->channel = channel;
+    item->group = group;
     item->original_vtable = original;
     item->original_call = reinterpret_cast<call_channel_fn>(original[k_call_channel_slot]);
     item->subscribers.push_back(subscriber { hook, user });
@@ -264,6 +268,31 @@ int subscriber_count(A3d_Channel* channel) noexcept
 {
     const binding* item = find_binding(channel);
     return item != nullptr ? static_cast<int>(item->subscribers.size()) : 0;
+}
+
+int remove_all_in(A3d_ChannelGroup* group) noexcept
+{
+    if(group == nullptr) {
+        return 0;
+    }
+
+    int removed = 0;
+
+    // Backwards, so erasing does not move anything still to be looked at.
+    for(std::size_t i = g_bindings.size(); i-- > 0;) {
+        binding* item = g_bindings[i];
+        if(item->group != group) {
+            continue;
+        }
+
+        (void)restore(item);
+        delete[] item->block;
+        delete item;
+        g_bindings.erase(g_bindings.begin() + static_cast<std::ptrdiff_t>(i));
+        ++removed;
+    }
+
+    return removed;
 }
 
 void remove_all() noexcept

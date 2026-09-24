@@ -2,11 +2,21 @@
 
 #include "lua/lua_api.hxx"
 
+#include "engine/channel_kind.hxx"
+#include "engine/channel_ref.hxx"
+#include "engine/engine_frame.hxx"
+#include "engine/engine_groups.hxx"
+#include "engine/engine_state.hxx"
+#include "engine/family/fam_matrix.hxx"
+#include "engine/family/fam_number.hxx"
+#include "engine/family/fam_table.hxx"
+#include "engine/family/fam_text.hxx"
+#include "engine/family/fam_vector.hxx"
+
 #include "framework/channel_shim.hxx"
 
 #include "libtweeny/tweeny.hxx"
 
-#include "lua/lua_channels.hxx"
 #include "lua/lua_host.hxx"
 
 #include "plugin/diagnostics.hxx"
@@ -34,7 +44,21 @@ struct subscription {
     // has to take exactly its own hooks back out and leave everyone else's in place - see
     // tw_unsubscribe_owner.
     int owner;
+
+    // Null while detached, which is a normal state and not an error: a subscription is accepted the
+    // moment a script asks for it, and attached whenever its group turns up. A script that hooks a
+    // channel in the `Renderer` pool detaches at the end of every run and re-attaches at the start
+    // of the next one without noticing, because its id never changes.
     A3d_Channel* channel;
+    A3d_ChannelGroup* group;
+    tw::engine::groups::generation gen;
+
+    // How the script asked, kept so the subscription can be resolved again after the group comes
+    // back. `index` is -1 when it was addressed by name.
+    std::string group_name;
+    std::string channel_name;
+    int index;
+
     bool after;
     // A mute answers "do not run the original" from C and never enters the VM. Kept in the same
     // table as the Lua subscriptions so one clear releases both, and so a script cannot mute and
@@ -142,103 +166,183 @@ bool dispatch_channel_call(A3d_Channel* /*channel*/, void* user, tw::framework::
     return record->after || proceed;
 }
 
-// Shared tail of every subscribe path. No kind check on purpose: CallChannel is slot 1 of the *base*
-// vtable, so every channel of every family has it - this is the one thing that does not care what
-// the channel is.
-int subscribe(A3d_Channel* channel, int owner, int after, bool mute, int* out) noexcept
+// Said once, with the name the script used, and only for the answer that will never change.
+//
+// **The distinction this rests on is the whole reason waiting stopped being polling.** "The group is
+// not loaded" is transient and says nothing - the menu does not have a run's groups, and never will
+// until there is a run. "The group is loaded and has no such channel" is final: a group's channel
+// list is fixed when it loads, so no amount of waiting will produce one. That is a typo, and a typo
+// that stays silent forever is worse than a noisy one.
+void report_missing_target(const subscription& record, tw::lua::api::resolve_status status) noexcept
 {
-    const int id = g_next_subscription_id;
+    const char* const what = record.mute ? "mute" : "on_call";
 
-    auto* record = new(std::nothrow) subscription { id, owner, channel, after != 0, mute, true };
-    if(record == nullptr) {
-        if(out != nullptr) { out[0] = tw::lua::api::resolve_unusable; }
-        return -1;
+    if(status == tw::lua::api::resolve_unusable) {
+        TW_LOG_WARNING("lua_api: {} target {} could not be hooked", what, record.group_name);
+        tw::ui::plugins::statics::notefeed::push(std::format("Lua: {} target in {} could not be hooked", what, record.group_name));
+        return;
+    }
+
+    if(record.index >= 0) {
+        TW_LOG_WARNING("lua_api: {} target {}#{} does not exist in that group", what, record.group_name, record.index);
+        tw::ui::plugins::statics::notefeed::push(
+            std::format("Lua: {}.#{}: no such channel in group", record.group_name, record.index));
+        return;
+    }
+
+    TW_LOG_WARNING("lua_api: {} target {}.{} does not exist in that group", what, record.group_name, record.channel_name);
+    tw::ui::plugins::statics::notefeed::push(std::format("Lua: {}.{}: no such channel in group", record.group_name, record.channel_name));
+}
+
+// Tries to bind one record to a live channel. No kind check on purpose: CallChannel is slot 1 of the
+// *base* vtable, so every channel of every family has it - this is the one thing that does not care
+// what the channel is.
+//
+// Returns the status a script would want to hear about, and leaves the record detached on anything
+// but `resolve_ok`. It is called twice for most subscriptions: once when the script registers, and
+// again from the group registry when the group it was waiting for turns up.
+tw::lua::api::resolve_status attach_subscription(subscription* record) noexcept
+{
+    if(record->channel != nullptr) {
+        return tw::lua::api::resolve_ok;
+    }
+
+    if(!tw::engine::channels::available()) {
+        return tw::lua::api::resolve_engine_pending;
+    }
+
+    A3d_ChannelGroup* const group = tw::engine::channels::find_group(record->group_name.c_str());
+    if(group == nullptr) {
+        return tw::lua::api::resolve_no_group;
+    }
+
+    A3d_Channel* const channel = record->index < 0 ? tw::engine::channels::find_channel(group, record->channel_name.c_str())
+                                                   : tw::engine::channels::find_channel_at(group, record->index);
+    if(channel == nullptr) {
+        return tw::lua::api::resolve_no_channel;
     }
 
     // The record doubles as the subscriber key: it is unique per subscription, which is exactly what
-    // the shim needs to tell two scripts watching the same channel apart.
-    if(!tw::framework::channel_shim::subscribe(channel, &dispatch_channel_call, record)) {
-        delete record;
-        if(out != nullptr) { out[0] = tw::lua::api::resolve_unusable; }
-        return -1;
+    // the shim needs to tell two scripts watching the same channel apart. The group goes with it so
+    // that the shim can be torn off the whole group at once when it is destroyed.
+    if(!tw::framework::channel_shim::subscribe(channel, group, &dispatch_channel_call, record)) {
+        return tw::lua::api::resolve_unusable;
     }
 
-    g_subscriptions.push_back(record);
-    ++g_next_subscription_id;
+    record->channel = channel;
+    record->group = group;
+    record->gen = tw::engine::groups::generation_of(group);
 
-    if(out != nullptr) { out[0] = tw::lua::api::resolve_ok; }
-    return id;
+    return tw::lua::api::resolve_ok;
 }
 
-// Resolve-and-subscribe, shared by the by-name and by-index forms of on_call and mute. Returns -1
-// with a status in `out` when the group or channel is not there yet, which is a normal startup state
-// and gets retried from Lua.
+// Registers a subscription, shared by the by-name and by-index forms of on_call and mute.
+//
+// **A group that is not loaded is not a failure any more.** It used to be: the call returned -1 and
+// Lua re-tried it every 60 dispatches, forever, which cost a full group scan per attempt and never
+// stopped for a name that would never resolve. Now the record is kept and the group registry
+// attaches it the moment that group appears, so waiting costs nothing at all.
+//
+// -1 still means "this will not happen": either the group is loaded and has no such channel - a
+// final answer, because a group's channel list does not change once it is loaded - or the channel
+// could not be hooked. Both are reported here rather than left for Lua to count misses.
 int resolve_and_subscribe(
     const char* group_name, const char* channel_name, int index, int owner, int after, bool mute, int* out) noexcept
 {
     const auto set = [out](tw::lua::api::resolve_status status) {
         if(out != nullptr) {
             out[0] = status;
-            out[1] = static_cast<int>(tw::lua::channels::kind::unknown);
+            out[1] = static_cast<int>(tw::engine::kind::unknown);
         }
     };
 
-    if(!tw::lua::channels::is_ready() || !tw::lua::channels::has_engine()) {
-        set(tw::lua::api::resolve_engine_pending);
+    auto* record = new(std::nothrow) subscription {};
+    if(record == nullptr) {
+        set(tw::lua::api::resolve_unusable);
         return -1;
     }
 
-    A3d_ChannelGroup* group = tw::lua::channels::find_group(group_name);
-    if(group == nullptr) {
-        set(tw::lua::api::resolve_no_group);
+    record->id = g_next_subscription_id;
+    record->owner = owner;
+    record->channel = nullptr;
+    record->group = nullptr;
+    record->gen = tw::engine::groups::no_generation;
+    record->group_name = group_name != nullptr ? group_name : "";
+    record->channel_name = channel_name != nullptr ? channel_name : "";
+    record->index = channel_name != nullptr ? -1 : index;
+    record->after = after != 0;
+    record->mute = mute;
+    record->enabled = true;
+
+    const tw::lua::api::resolve_status status = attach_subscription(record);
+
+    if(status == tw::lua::api::resolve_no_channel || status == tw::lua::api::resolve_unusable) {
+        report_missing_target(*record, status);
+        delete record;
+        set(status);
         return -1;
     }
 
-    A3d_Channel* channel = channel_name != nullptr ? tw::lua::channels::find_channel(group, channel_name)
-                                                   : tw::lua::channels::find_channel_at(group, index);
-    if(channel == nullptr) {
-        set(tw::lua::api::resolve_no_channel);
-        return -1;
-    }
+    g_subscriptions.push_back(record);
+    ++g_next_subscription_id;
 
-    return subscribe(channel, owner, after, mute, out);
+    set(status);
+
+    return record->id;
 }
+
+// A group is being destroyed. The shim copies are already off its channels by the time this runs -
+// engine_groups does that first, before any listener - so all that is left is to forget the
+// pointers, which puts the subscription back into the waiting state it started in.
+void on_group_unloading(A3d_ChannelGroup* group, tw::engine::groups::generation /*gen*/) noexcept
+{
+    for(subscription* record : g_subscriptions) {
+        if(record->group == group) {
+            record->channel = nullptr;
+            record->group = nullptr;
+            record->gen = tw::engine::groups::no_generation;
+        }
+    }
+}
+
+// The roster moved. Cold path by construction: it runs only on the frames where a group actually
+// appeared or disappeared, which during play is the start and the end of a run.
+void on_groups_changed() noexcept
+{
+    for(subscription* record : g_subscriptions) {
+        if(record->channel != nullptr) {
+            continue;
+        }
+
+        if(attach_subscription(record) == tw::lua::api::resolve_no_channel) {
+            report_missing_target(*record, tw::lua::api::resolve_no_channel);
+        }
+    }
+}
+
+// The two halves of tw.frame (see tw_frame): a count of draw dispatches, used only while the engine
+// spine has never ticked, and the monotonic value actually handed out.
+//
+// Both are touched from the engine/render thread only - tick() runs from lua_host::draw_frame, and
+// tw_frame() from the dispatchers, all of which are that one thread (engine journal §4.1).
+std::uint32_t g_draw_frames = 0;
+std::uint32_t g_frame = 0;
+
+bool g_write_gate_warned = false;
 
 // Whether the game has finished coming up far enough to be written to.
 //
-// **This exists because of a failure mode that does not announce itself.** Writing into the graph
-// while the game is still loading does not crash it - it makes it quietly wrong. Observed: a broken
-// track generator, and characters swapped around in the menu, from a script whose only stated job was
-// recolouring tiles. Nothing connects the symptom to the cause, and the player has no way to guess.
-// A script injected early is exactly the case that hits this, because its first frames land in the
-// middle of the game assembling itself.
+// **This used to be a local heuristic and is now one question asked of engine::state.** The old
+// version watched the engine's group count and opened a latch once it had not moved for a second.
+// That was the right intuition with the wrong sensor: it caught the end of loading by its side
+// effect, knew nothing about what it was watching, and could not say anything about the states after
+// the game was up - so it could not be used to hold a script's callbacks back, only its writes.
 //
-// **What the signal must not be: a game state.** The obvious gate is "StartupState == State_MainMenu",
-// and it is wrong twice over. StartupState (#855) is a leaf whose stored value *is* 2, the same number
-// as State_MainMenu - so it reads "in the menu" from the instant XX_StartHere loads, which is the
-// middle of the window this is supposed to protect. And latching on any particular state also breaks
-// the common case of injecting into an already-running game: sitting in the song selector, the game
-// would never present the state being waited for, and writes would stay blocked until the player
-// happened to walk back to the menu.
-//
-// **What it is instead: the game has stopped assembling itself.** Loading is exactly the period when
-// channel groups are being added, so a group count that has not moved for a while means loading has
-// finished - and that is true whether we were injected before the game started or into a session
-// already in progress. No table of state values, nothing to keep in step with the game.
-//
-// This is a heuristic, and it is worth being plain about that. It says "nothing has loaded recently",
-// not "the game is definitely ready". A latch, so a later transition (entering a run does move groups
-// around) cannot close it again.
-constexpr float k_settle_seconds = 1.0f;
-
-bool g_write_gate_open = false;
-bool g_write_gate_warned = false;
-int g_last_group_count = -1;
-float g_stable_seconds = 0.f;
-
+// The signal, the reasoning behind it, and the failure mode it protects against now live in
+// src/engine/engine_state.hxx, in one place, for every consumer.
 [[nodiscard]] bool writes_allowed() noexcept
 {
-    return g_write_gate_open;
+    return tw::engine::state::ready();
 }
 
 // Said once, not per attempt: a script that writes every frame would otherwise paper the screen over
@@ -379,7 +483,42 @@ void* g_entry_points[] = {
     reinterpret_cast<void*>(&tw::lua::api::tw_ease_count),
     reinterpret_cast<void*>(&tw::lua::api::tw_ease_name),
     reinterpret_cast<void*>(&tw::lua::api::tw_hud_rect_gradient),
+    reinterpret_cast<void*>(&tw::lua::api::tw_frame),
+    reinterpret_cast<void*>(&tw::lua::api::tw_state),
+    reinterpret_cast<void*>(&tw::lua::api::tw_state_name),
+    reinterpret_cast<void*>(&tw::lua::api::tw_ready),
+    reinterpret_cast<void*>(&tw::lua::api::tw_graph_revision),
+    reinterpret_cast<void*>(&tw::lua::api::tw_group_loaded),
+    reinterpret_cast<void*>(&tw::lua::api::tw_ref_free),
+    reinterpret_cast<void*>(&tw::lua::api::tw_channel_live),
+    reinterpret_cast<void*>(&tw::lua::api::tw_channel_matrix),
+    reinterpret_cast<void*>(&tw::lua::api::tw_channel_set_matrix),
 };
+// A resolve result handed to Lua: a heap-allocated channel_ref, owned by the Lua handle and freed by
+// its ffi.gc finalizer (tw_ref_free). Heap rather than a pool because its life is the handle's, and
+// the handle's is the collector's business - a script that resolves the same channel on every
+// re-resolve of the graph produces garbage, not a leak.
+void* hand_over(const tw::engine::channel_ref& ref) noexcept
+{
+    return new(std::nothrow) tw::engine::channel_ref(ref);
+}
+
+void report(int* out, tw::engine::resolve_status status, tw::engine::kind actual) noexcept
+{
+    if(out != nullptr) {
+        out[0] = static_cast<int>(status);
+        out[1] = static_cast<int>(actual);
+    }
+}
+
+// Every channel entry point below takes what hand_over() returned. Null-tolerant, and nothing more:
+// the family check that decides whether a slot may be called lives in the family functions, which
+// refuse a ref of any family but their own.
+const tw::engine::channel_ref& as_ref(const void* handle) noexcept
+{
+    static const tw::engine::channel_ref k_empty {};
+    return handle != nullptr ? *static_cast<const tw::engine::channel_ref*>(handle) : k_empty;
+}
 } // namespace
 
 namespace tw::lua::api
@@ -387,97 +526,51 @@ namespace tw::lua::api
 extern "C" {
 void* tw_channel_resolve(const char* group_name, const char* channel_name, int wanted_kind, int* out) noexcept
 {
-    const auto set = [out](resolve_status status, tw::lua::channels::kind actual) {
-        if(out != nullptr) {
-            out[0] = status;
-            out[1] = static_cast<int>(actual);
-        }
-    };
+    tw::engine::channel_ref ref {};
+    tw::engine::kind actual = tw::engine::kind::unknown;
+    const tw::engine::resolve_status status
+        = tw::engine::channels::resolve(group_name, channel_name, static_cast<tw::engine::kind>(wanted_kind), ref, &actual);
 
-    if(!tw::lua::channels::is_ready() || !tw::lua::channels::has_engine()) {
-        set(resolve_engine_pending, tw::lua::channels::kind::unknown);
+    if(status != tw::engine::resolve_status::ok) {
+        report(out, status, actual);
         return nullptr;
     }
 
-    A3d_ChannelGroup* group = tw::lua::channels::find_group(group_name);
-    if(group == nullptr) {
-        set(resolve_no_group, tw::lua::channels::kind::unknown);
-        return nullptr;
-    }
-
-    A3d_Channel* channel = tw::lua::channels::find_channel(group, channel_name);
-    if(channel == nullptr) {
-        set(resolve_no_channel, tw::lua::channels::kind::unknown);
-        return nullptr;
-    }
-
-    // The gate that keeps a wrong accessor from becoming a wild call: the same vtable slot means
-    // GetFloat on one family and GetString on another, and on a family with no virtuals of its own it
-    // is past the end of the table entirely. See lua_channels::kind_of.
-    const tw::lua::channels::kind actual = tw::lua::channels::kind_of(channel);
-    if(actual != static_cast<tw::lua::channels::kind>(wanted_kind)) {
-        set(resolve_wrong_kind, actual);
-        return nullptr;
-    }
-
-    if(!tw::lua::channels::is_callable_as(channel, actual)) {
-        set(resolve_unusable, actual);
-        return nullptr;
-    }
-
-    set(resolve_ok, actual);
-    return channel;
+    void* handle = hand_over(ref);
+    report(out, handle != nullptr ? status : tw::engine::resolve_status::unusable, actual);
+    return handle;
 }
 
 void* tw_channel_resolve_at(const char* group_name, int index, int wanted_kind, int* out) noexcept
 {
-    const auto set = [out](resolve_status status, tw::lua::channels::kind actual) {
-        if(out != nullptr) {
-            out[0] = status;
-            out[1] = static_cast<int>(actual);
-        }
-    };
+    tw::engine::channel_ref ref {};
+    tw::engine::kind actual = tw::engine::kind::unknown;
+    const tw::engine::resolve_status status
+        = tw::engine::channels::resolve_at(group_name, index, static_cast<tw::engine::kind>(wanted_kind), ref, &actual);
 
-    if(!tw::lua::channels::is_ready() || !tw::lua::channels::has_engine()) {
-        set(resolve_engine_pending, tw::lua::channels::kind::unknown);
+    if(status != tw::engine::resolve_status::ok) {
+        report(out, status, actual);
         return nullptr;
     }
 
-    A3d_ChannelGroup* group = tw::lua::channels::find_group(group_name);
-    if(group == nullptr) {
-        set(resolve_no_group, tw::lua::channels::kind::unknown);
-        return nullptr;
-    }
+    void* handle = hand_over(ref);
+    report(out, handle != nullptr ? status : tw::engine::resolve_status::unusable, actual);
+    return handle;
+}
 
-    A3d_Channel* channel = tw::lua::channels::find_channel_at(group, index);
-    if(channel == nullptr) {
-        set(resolve_no_channel, tw::lua::channels::kind::unknown);
-        return nullptr;
-    }
-
-    const tw::lua::channels::kind actual = tw::lua::channels::kind_of(channel);
-    if(actual != static_cast<tw::lua::channels::kind>(wanted_kind)) {
-        set(resolve_wrong_kind, actual);
-        return nullptr;
-    }
-
-    if(!tw::lua::channels::is_callable_as(channel, actual)) {
-        set(resolve_unusable, actual);
-        return nullptr;
-    }
-
-    set(resolve_ok, actual);
-    return channel;
+void tw_ref_free(void* handle) noexcept
+{
+    delete static_cast<tw::engine::channel_ref*>(handle);
 }
 
 const char* tw_kind_name(int kind) noexcept
 {
-    return tw::lua::channels::kind_name(static_cast<tw::lua::channels::kind>(kind));
+    return tw::engine::channel_kind::name(static_cast<tw::engine::kind>(kind));
 }
 
 float tw_channel_get(void* channel) noexcept
 {
-    return tw::lua::channels::get_float(static_cast<A3d_Channel*>(channel));
+    return tw::engine::fam_number::get(as_ref(channel));
 }
 
 void tw_channel_set(void* channel, float value) noexcept
@@ -487,7 +580,7 @@ void tw_channel_set(void* channel, float value) noexcept
         return;
     }
 
-    tw::lua::channels::set_float(static_cast<A3d_Channel*>(channel), value);
+    tw::engine::fam_number::set(as_ref(channel), value);
 }
 
 void tw_channel_set_vector(void* channel, float x, float y, float z) noexcept
@@ -497,38 +590,47 @@ void tw_channel_set_vector(void* channel, float x, float y, float z) noexcept
         return;
     }
 
-    tw::lua::channels::set_vector(static_cast<A3d_Channel*>(channel), x, y, z);
+    tw::engine::fam_vector::set(as_ref(channel), x, y, z);
 }
 
 const char* tw_channel_text(void* channel) noexcept
 {
-    return tw::lua::channels::get_text(static_cast<A3d_Channel*>(channel));
+    return tw::engine::fam_text::get(as_ref(channel));
 }
 
 int tw_channel_vector(void* channel, float* out) noexcept
 {
-    if(out == nullptr) {
-        return 0;
+    return tw::engine::fam_vector::get(as_ref(channel), out) ? 1 : 0;
+}
+
+int tw_channel_matrix(void* channel, float* out) noexcept
+{
+    return tw::engine::fam_matrix::get(as_ref(channel), out) ? 1 : 0;
+}
+
+void tw_channel_set_matrix(void* channel, const float* in) noexcept
+{
+    if(!writes_allowed()) {
+        report_write_refused();
+        return;
     }
 
-    return tw::lua::channels::get_vector(static_cast<A3d_Channel*>(channel), out) ? 1 : 0;
+    tw::engine::fam_matrix::set(as_ref(channel), in);
+}
+
+int tw_channel_live(void* channel) noexcept
+{
+    return static_cast<int>(tw::engine::channels::live(as_ref(channel)));
 }
 
 float tw_array_read(void* array_value, void* indexer, float index) noexcept
 {
-    return tw::lua::channels::read_array(static_cast<A3d_Channel*>(array_value), static_cast<A3d_Channel*>(indexer), index);
+    return tw::engine::fam_table::read(as_ref(array_value), as_ref(indexer), index);
 }
 
 int tw_array_read_vector(void* array_vector, void* indexer, float index, float* out) noexcept
 {
-    if(out == nullptr) {
-        return 0;
-    }
-
-    return tw::lua::channels::read_array_vector(
-               static_cast<A3d_Channel*>(array_vector), static_cast<A3d_Channel*>(indexer), index, out)
-        ? 1
-        : 0;
+    return tw::engine::fam_table::read_vector(as_ref(array_vector), as_ref(indexer), index, out) ? 1 : 0;
 }
 
 int tw_array_write(void* array_value, void* indexer, float index, float value) noexcept
@@ -538,9 +640,7 @@ int tw_array_write(void* array_value, void* indexer, float index, float value) n
         return 0;
     }
 
-    return tw::lua::channels::write_array(static_cast<A3d_Channel*>(array_value), static_cast<A3d_Channel*>(indexer), index, value)
-        ? 1
-        : 0;
+    return tw::engine::fam_table::write(as_ref(array_value), as_ref(indexer), index, value) ? 1 : 0;
 }
 
 int tw_array_write_vector(void* array_vector, void* indexer, float index, float x, float y, float z) noexcept
@@ -550,15 +650,12 @@ int tw_array_write_vector(void* array_vector, void* indexer, float index, float 
         return 0;
     }
 
-    return tw::lua::channels::write_array_vector(
-               static_cast<A3d_Channel*>(array_vector), static_cast<A3d_Channel*>(indexer), index, x, y, z)
-        ? 1
-        : 0;
+    return tw::engine::fam_table::write_vector(as_ref(array_vector), as_ref(indexer), index, x, y, z) ? 1 : 0;
 }
 
 int tw_array_rows(void* column) noexcept
 {
-    return tw::lua::channels::array_row_count(static_cast<A3d_Channel*>(column));
+    return tw::engine::fam_table::row_count(as_ref(column));
 }
 
 int tw_theme_count() noexcept
@@ -593,12 +690,26 @@ int tw_on_call(int owner, const char* group_name, const char* channel_name, int 
 
 int tw_group_count() noexcept
 {
-    return tw::lua::channels::group_count();
+    return tw::engine::groups::roster_size();
 }
 
 const char* tw_group_name(int index) noexcept
 {
-    return tw::lua::channels::group_describe(index);
+    // "<pool name> | <file name>", out of the registry's roster. Module-owned, valid until the next
+    // call - Lua copies it into a string on the way through the FFI.
+    static std::string buffer;
+
+    A3d_ChannelGroup* const group = tw::engine::groups::roster_at(index);
+    if(group == nullptr) {
+        buffer.clear();
+        return buffer.c_str();
+    }
+
+    buffer.assign(tw::engine::groups::pool_name_of(group));
+    buffer.append(" | ");
+    buffer.append(tw::engine::groups::file_name_of(group));
+
+    return buffer.c_str();
 }
 
 int tw_on_call_at(int owner, const char* group_name, int index, int after, int* out) noexcept
@@ -690,31 +801,17 @@ int tw_shared_channel_count() noexcept
     return static_cast<int>(seen.size());
 }
 
+void install_engine_listeners() noexcept
+{
+    tw::engine::groups::subscribe_unloading(&on_group_unloading);
+    tw::engine::groups::subscribe_changed(&on_groups_changed);
+}
+
 void tick() noexcept
 {
-    if(g_write_gate_open) [[likely]] {
-        return;
-    }
-
-    if(!tw::lua::channels::is_ready() || !tw::lua::channels::has_engine()) {
-        g_stable_seconds = 0.f;
-        return;
-    }
-
-    const int count = tw::lua::channels::group_count();
-    if(count != g_last_group_count) {
-        g_last_group_count = count;
-        g_stable_seconds = 0.f;
-        return;
-    }
-
-    g_stable_seconds += ImGui::GetIO().DeltaTime;
-    if(g_stable_seconds < k_settle_seconds) {
-        return;
-    }
-
-    g_write_gate_open = true;
-    TW_LOG_INFO("lua_api: write gate open - {} channel group(s) loaded and stable for {:.1f}s", count, k_settle_seconds);
+    // All that is left of what used to be the write gate. The gate itself moved to engine::state,
+    // where it is one term of a state machine rather than a latch of its own.
+    ++g_draw_frames;
 }
 
 int tw_can_write() noexcept
@@ -722,9 +819,60 @@ int tw_can_write() noexcept
     return writes_allowed() ? 1 : 0;
 }
 
+int tw_state() noexcept
+{
+    return static_cast<int>(tw::engine::state::current());
+}
+
+const char* tw_state_name() noexcept
+{
+    return tw::engine::state::current_name();
+}
+
+int tw_ready() noexcept
+{
+    return tw::engine::state::ready() ? 1 : 0;
+}
+
+int tw_group_loaded(const char* name) noexcept
+{
+    return tw::engine::groups::find(name) != nullptr ? 1 : 0;
+}
+
+int tw_graph_revision() noexcept
+{
+    // Degraded path first, and it matters: with no group registry there is no revision to report,
+    // and a handle comparing a number that never changes would try to resolve once and then give up
+    // for the session. Falling back to a frame-derived value reproduces exactly the old
+    // retry-every-60-frames behaviour for a session where the registry could not be built.
+    if(!tw::engine::groups::available()) [[unlikely]] {
+        return tw_frame() / 60;
+    }
+
+    // One number that changes exactly when re-resolving a handle could produce a different answer:
+    // a group appeared, or one went away. A script's handle compares it instead of counting frames,
+    // which is what turns "rescan the whole group every 60 frames forever" into "rescan when
+    // something actually changed" (lua-engine-fix-roadmap.md §5.2).
+    return static_cast<int>(tw::engine::groups::revision());
+}
+
 int tw_engine_ready() noexcept
 {
-    return (tw::lua::channels::is_ready() && tw::lua::channels::has_engine()) ? 1 : 0;
+    return tw::engine::channels::available() ? 1 : 0;
+}
+
+int tw_frame() noexcept
+{
+    const std::uint32_t candidate = tw::engine::frame::started() ? tw::engine::frame::count() : g_draw_frames;
+
+    // Monotonic clamp, not a max() for its own sake: the handover from the draw counter to the
+    // engine counter happens mid-session and the two are unrelated numbers, so without this a script
+    // holding `retry_at = tw.frame + 60` would stop retrying until the engine caught up.
+    if(candidate > g_frame) {
+        g_frame = candidate;
+    }
+
+    return static_cast<int>(g_frame);
 }
 
 float tw_dt() noexcept

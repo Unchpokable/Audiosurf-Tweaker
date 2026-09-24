@@ -107,13 +107,16 @@ set_target_properties(TweakerPlugin PROPERTIES
 #
 # Lives here rather than in src/lua/CMakeLists.txt because add_custom_command(TARGET) has to be in
 # the directory that created the target.
-add_custom_command(TARGET TweakerPlugin POST_BUILD
-    COMMAND "${CMAKE_COMMAND}" -E copy_directory
-        "${CMAKE_SOURCE_DIR}/assets/scripts"
-        "$<TARGET_FILE_DIR:TweakerPlugin>/scripts"
-    COMMENT "Copying Lua scripts next to TweakerPlugin.dll"
-    VERBATIM
-)
+# No POST_BUILD copy of assets/scripts any more. It existed because the plugin used to load its Lua
+# files from a scripts/ folder beside the DLL, back when the DLL was injected out of the TweakerUI
+# folder. The plugin now resolves every path from QuestViewer.exe instead (plugin/paths.cxx), so the
+# scripts it reads live in engine\TweakerStuff\Scripts\ and nothing ever looked at a copy in the build
+# tree: the harnesses read assets/scripts straight out of the source tree, the bundle is assembled by
+# CopyTweakerPlugin in TweakerUI.csproj, and the game gets its copy from PluginInstallation.
+#
+# Relocating that copy to $<TARGET_FILE_DIR>/TweakerStuff/Scripts (as Ф6 originally proposed) would
+# only move output nobody reads - and a second folder full of .lua files, sitting next to the DLL and
+# silently stale, is exactly the "which of these is the real one" question worth not having.
 
 # Each preset writes compile_commands.json under build/<preset>/, but clangd
 # wants a single stable path at the project root. Refresh it on every build.
