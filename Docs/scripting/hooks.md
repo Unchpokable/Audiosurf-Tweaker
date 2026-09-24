@@ -196,6 +196,14 @@ You do not unregister anything. When a script is disabled, everything it registe
 the game's own dispatch is restored — see
 [Getting started § Turning a script off really turns it off](getting-started.md#turning-a-script-off-really-turns-it-off).
 
+What the Tweaker cannot undo for you is a value your script *wrote* into the game. If you change
+something the game will not reset by itself, put it back in [`tw.on_unload`](api-reference.md#twon_unloadfn),
+which runs when the script is switched off or reloaded, before its hooks are taken out.
+
+Hooks and mutes are registered at the top level or in `tw.on_ready` — not from inside other
+callbacks, where they are refused. A hook that waits for its group already re-attaches by itself, so
+there is nothing a later registration would add.
+
 ## Next
 
 [Drawing](drawing.md) — putting something on screen.

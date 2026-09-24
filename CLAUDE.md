@@ -329,17 +329,30 @@ src/skybox/       — Skybox Replacer: перехват draw-call скайсфе
                     sky_sprite_atlas (геометрический слой). Текстуры слоя живут в кэше sky_shader
                     вместе с шейдерами: один жизненный цикл, одна инвалидация, один release.
                     См. skybox-geometry.md и skybox-replacer-roadmap.md
-src/lua/          — LuaJIT-скриптинг поверх src/engine/ (своего доступа к графу у него больше нет):
-                    lua_api (extern "C" ABI, который скрипт зовёт через FFI — НЕ lua_CFunction, см.
+src/lua/          — LuaJIT-скриптинг поверх src/engine/ (своего доступа к графу у него больше нет),
+                    разрезан по lua-engine-fix-roadmap.md §3.3 (Ф4); карта кусков — в шапке
+                    lua_host.hxx. lua_host (фасад: подъём слоя, draw_frame под ОДНИМ ImGui
+                    ErrorRecovery-guard'ом на весь диспетч), lua_vm (lua_State, песочница и
+                    ЕДИНСТВЕННЫЙ список C-точек входа k_entry_points — ПО ИМЕНИ, не по позиции;
+                    пролог сверяет имена в обе стороны и не стартует при расхождении), lua_prelude
+                    (Lua-половина слоя текстом, пять секций-чанков tw.abi/core/channels/hud/callbacks;
+                    ljtest читает их из этого файла), api/api_core|api_channels|api_hooks|api_hud
+                    (extern "C" ABI, который скрипт зовёт через FFI — НЕ lua_CFunction, см.
                     lua-scripting.md §2.2; хендл канала в Lua — это channel_ref в куче, которым
-                    владеет Lua-объект через ffi.gc → tw_ref_free), lua_host (VM, пролог, песочница,
-                    диспетч on_frame под ImGui ErrorRecovery-guard'ом + реестр скриптов:
-                    метаданные из `-- @name/@author/@version/@description` читаются БЕЗ запуска
-                    файла; колбэки скриптов НЕ зовутся, пока engine_state не скажет ready), lua_config (какие
+                    владеет Lua-объект через ffi.gc → tw_ref_free), lua_registry (скрипты из
+                    Scripts\, id = индекс, вкл/выкл/перезагрузка; метаданные из
+                    `-- @name/@author/@version/@description` читаются БЕЗ запуска файла), lua_script
+                    (один скрипт + его здоровье), lua_sched (ЕДИНИЦА ОТКАЗА — СКРИПТ: каждый колбэк
+                    под своим xpcall в прологе, учёт в C через tw_script_enter/leave; 5 ошибок за 300
+                    кадров или >4 мс/кадр 120 кадров подряд → приостановка, у приостановленного
+                    мьюты сняты; колбэки скриптов НЕ зовутся, пока engine_state не скажет ready),
+                    lua_diag (дедуплицирующий приёмник: запись на (скрипт, место, форма), ошибки в
+                    ленту раз и только в ready, лимит ленты на скрипт), lua_config (какие
                     скрипты выключены, TweakerStuff\Config\scripts.cfg — только исключения, плюс
                     engine.settle_frames / engine.settle_ms — окно отстоя для engine_state, и save()
                     их сохраняет), lua_ui (вкладка Scripts, регистрируется через
-                    menu::add_extra_tab, как и Skybox; шапка показывает состояние слоя). Выключение скрипта = снятие его подписок
+                    menu::add_extra_tab, как и Skybox; шапка показывает состояние слоя, строка скрипта —
+                    чип состояния, стоимость, хуки/ожидания, сообщения, Resume). Выключение скрипта = on_unload + снятие его подписок
                     и возврат оригинальных vtable, а не спящий хук; включение = повторный запуск
                     файла с диска, оно же горячая перезагрузка. Скрипты — loose-файлы
                     в engine\TweakerStuff\Scripts\, не ресурсы: их правят без пересборки; в бандл
@@ -394,13 +407,17 @@ cmake --build --preset smoke         # smoke_test: визуальный Win32+Op
 линкует настоящий `.cxx` плагина и работает без игры и без девайса; `harness\run.bat` собирает и
 прогоняет сюиты с проверками, `run.bat build` — вдобавок инструменты (рендер превью, замеры
 распределения спрайтов, дампы). Правишь `sky_*` — прогони. Скриптовый слой прогоняется там же: `harness/lua/` (`ljtest` — пролог
-из `lua_host.cxx` против заглушек C-ABI и все поставляемые скрипты; `shimtest` — настоящий
+из `lua_prelude.cxx` против заглушек C-ABI, отданных по имени, и все поставляемые скрипты; заглушка
+`tw_script_leave` считает любую ошибку скрипта провалом — после Ф4 ошибка не вылетает из
+диспетчера, и иначе сломанный скрипт проходил бы молча; `shimtest` — настоящий
 `channel_shim.cxx` плюс проверка соглашения о вызове `SetVector`; `arraytest` — настоящий
 `engine/family/fam_table.cxx` против поддельных каналов; `famtest` — все семейства, по секции на
 каждое, с мутационной проверкой). Слой движка — `harness/lifecycle/lifetest`:
 настоящие `engine_groups.cxx`, `engine_state.cxx` и `channel_shim.cxx` против поддельного движка, а
 заглушка `detour::attach` **запоминает адрес хук-функции**, поэтому «игра выгрузила группу» в сюите —
-это вызов настоящего тела хука. Правишь `src/lua/*`, `src/engine/*` или `assets/scripts/*` — прогони. Часть требует собранного плагина: они
+это вызов настоящего тела хука. Планировщик — `harness/sched/schedtest`: настоящие `lua_sched.cxx`,
+`lua_diag.cxx`, `lua_script.cxx` против заглушек (бюджеты ошибок и времени — последнее настоящим
+временем, ~1 с; дедупликация, маршруты в ленту). Правишь `src/lua/*`, `src/engine/*` или `assets/scripts/*` — прогони. Часть требует собранного плагина: они
 линкуются с `build/x86-release/luajit.lib`.
 
 **`TweakerPlugin/harness/` при этом в `.gitignore`** (строка 12) — каталог не в репозитории, правки

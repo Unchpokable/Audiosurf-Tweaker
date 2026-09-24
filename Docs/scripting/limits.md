@@ -22,6 +22,13 @@ native calls rather than going through a slow generic bridge, so an individual c
 little. Budget is spent on *how many* things you do, not on the fact that you are doing them from
 Lua.
 
+For scale: `puzzlepro_hud.lua` reads a good half of the game's state and registers a dozen channel
+hooks. Measured in the Scripts tab (hover a script's state chip), it costs **0.002 ms** per frame
+while paused, **about 0.035–0.040 ms** on a calm track and **up to 0.09 ms** in dense traffic, all
+of the Tweaker's own bookkeeping included. The warning threshold is 0.5 ms. Those numbers come from one
+fast desktop CPU (Ryzen 7 9800X3D) and have **not** been checked on a slow machine, where they can be
+several times higher. Hover the chip on your own machine to see your numbers.
+
 **Rules that matter:**
 
 1. **Resolve channel handles once, at the top level.** A by-name lookup is a linear scan over
@@ -196,15 +203,31 @@ it occupies in the Scripts tab.
 Scripts cannot take the game down through ordinary mistakes, and the mechanisms are worth knowing so
 their behaviour is not surprising.
 
-**Errors are caught.** A handler that throws does not propagate into the game. The error is reported
-in the notification strip and the log.
+**Errors are caught, one handler at a time.** A handler that throws does not propagate into the game,
+and it does not take anybody else with it: every handler runs under its own guard, so the one that
+threw loses that call and the next one — yours or another script's — runs as normal.
 
-**One strike.** The first error switches the dispatcher off — frame handlers and channel hooks
-separately. It is not retried. A handler that throws once throws sixty times a second, and the flood
-is worse than the failure. Toggling any script in the Scripts tab clears the latch.
+**A script that keeps failing is suspended.** Five errors within 300 engine frames (about five
+seconds) suspend the script. One error is a bad frame; five in a few seconds is a script that is
+failing faster than it is working. Suspended means inert, not unloaded: its handlers are skipped, its
+`before` hooks let the game's call through, and **its mutes are lifted** until it runs again. The
+Scripts tab shows it amber with the reason, and has **Resume** (carry on, with a clean slate of
+errors) and **Reload** (start over from the file). Other scripts are never affected.
 
-**Drawing state is snapshotted.** If a script dies halfway through drawing, the UI state it left
-unbalanced is restored, so a broken script loses its own output rather than corrupting the overlay.
+**So is a script that is too slow.** Each script's handlers are timed. When they average more than
+0.5 ms per engine frame, the Scripts tab shows the number; when they average more than **4 ms per
+frame for 120 frames in a row**, the script is suspended. Frames where the game is loading a run are
+not counted — every frame is slow there, and that is the game's cost, not the script's.
+
+**Messages are counted, not repeated.** The same warning or error from the same place is one line in
+the script's messages with a counter next to it. The notification strip gets an error once, and not
+while the game is still loading — those wait and are shown once it has loaded. Each script can put at
+most five lines a minute into the strip, `tw.notify` included; past that, one line says so and the
+rest go to the tab.
+
+**Registration has a window.** Handlers, hooks and mutes can be registered while the script loads and
+from `tw.on_ready`. Anywhere else they are refused and reported once — see
+[API reference § Lifecycle](api-reference.md#lifecycle).
 
 **Suppression fails open.** A `before` handler that errors lets the game's call through. A script can
 never remove a piece of the game by crashing.

@@ -34,6 +34,17 @@ is when the values you are reading actually change.
 
 **Rule of thumb: compute in `on_tick`, draw in `on_frame`.**
 
+**Register at the top level of your script, or inside `tw.on_ready` — nowhere else.** Every `tw.on_*`
+call and `tw.mute` made from inside some other callback is refused and reported once in the Scripts
+tab. Handlers run in the order they were registered, and registering from a callback that runs every
+frame is a list that grows every frame. Passing something that is not a function is an error on the
+spot, at your line.
+
+**Each script fails on its own.** Every handler runs under its own error guard: when yours throws,
+you lose that one call, and every other script — and every other handler of yours — runs as if
+nothing happened. A script that keeps failing, or keeps taking too long, is *suspended* rather than
+left to drag everything down. See [Limits § Failure containment](limits.md#failure-containment).
+
 ### `tw.on_ready(fn)`
 
 Registers `fn` to run **once**, on the first frame where everything is allowed: the graph is up,
@@ -90,11 +101,26 @@ The same, immediately **after** the graph has been evaluated. This is where the 
 that just happened are readable.
 
 ### `tw.on_frame(fn)`
+### `tw.on_frame(fn, { before_ready = true })`
 
 Registers `fn` to run once per drawn overlay frame, for as long as the script is enabled. Call at the
 top level. Several handlers per script are allowed; they run in registration order.
 
 This is the only place drawing works.
+
+Like everything else, it does not run until the game has loaded. For the rare script that really
+does want to draw over the loading screen, pass `{ before_ready = true }`: that handler, and only that
+one, runs from the first frame. Channels may not resolve yet and writes are refused while the game
+loads, so draw with what you have.
+
+### `tw.on_unload(fn)`
+
+Registers `fn` to run when the script is switched off or reloaded — before its hooks are taken out,
+so it can still reach the channels it held. The place to put back whatever the script changed.
+
+Every `on_unload` handler runs, even if an earlier one throws. It does **not** run when the game
+itself exits: there is nothing left to put back by then. Writes follow the usual rule and are refused
+while the game is loading.
 
 ### `tw.frame`
 
@@ -252,7 +278,9 @@ cannot be resolved or its table is not connected.
 Runs `fn` when that channel is called by the game. `when` is `"after"` (default) or `"before"`.
 
 `fn` takes no arguments. From a `"before"` handler, returning `false` cancels the game's own handler;
-any other return proceeds. Returning `false` from `"after"` does nothing.
+any other return proceeds — and so does a handler that throws, and one whose script is suspended. A
+script can never take a piece of the game away by failing. Returning `false` from `"after"` does
+nothing.
 
 **A group that is not loaded is not a problem.** The subscription is accepted immediately and
 attached to the real channel whenever that group turns up — and attached again, by itself, if the
@@ -278,6 +306,10 @@ Suppresses a channel: the game keeps calling it and it does nothing. Starts acti
 
 Takes an index in place of a name for the same reason as `tw.on_call`, and waits for its group the
 same way.
+
+A mute belongs to its script: while the script is suspended, the game gets the channel back. A HUD
+script that mutes the game's own HUD and then breaks leaves the player with the game's HUD, not with
+nothing.
 
 ### `mute:on()` / `mute:off()` / `mute:set(bool)`
 
@@ -420,7 +452,8 @@ widget.
 ### `tw.notify(message)`
 
 Raises a toast in the overlay's notification strip. For events, not for state — do not call it every
-frame.
+frame. Capped per script: a handful a minute, then one line saying so, and the rest are collected in
+the script's messages in the Scripts tab.
 
 ### `tw.log(message)`
 
@@ -429,9 +462,28 @@ Writes to the plugin log. **Stripped from release builds**, so it is a developme
 `print` is an alias for this.
 
 ### `tw.warn(message)`
+### `tw.error(message)`
+### `tw.pending(message)`
 
-Both of the above: logged *and* shown as a toast. Use this when a script author needs to see
-something in a normal install.
+Messages for the script's author, filed in the script's row in the Scripts tab — which, unlike the
+log, exists in a normal install. All three remember where they were said from (`myhud.lua:88`), and
+saying the same thing from the same place again only increases a counter next to it: calling one of
+these every frame is one line, not thousands.
+
+| | Scripts tab | Notification strip |
+|---|---|---|
+| `tw.warn` | yes, with a count | never |
+| `tw.error` | yes, with a count | once per message, and only once the game has loaded |
+| `tw.pending` | shows the script as **waiting** | never |
+
+`tw.error` reports; it does not raise. Use Lua's own `error()` to stop.
+
+`tw.pending` is a statement about *now*: the script shows as waiting for as long as it keeps saying
+it, and stops showing as waiting a couple of seconds after it stops. Say it every frame you are
+waiting — "waiting for a run to start" — and the row reads correctly by itself.
+
+> **Changed.** `tw.warn` used to show a toast as well. It no longer does: the notification strip is
+> for things the *player* should see, and those are `tw.notify` and `tw.error`.
 
 ### `tw.state()` → string
 

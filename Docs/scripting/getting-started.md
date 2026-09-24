@@ -115,9 +115,17 @@ Every `.lua` file in the folder is listed, whether it is running or not, with it
 author and description. Each row has:
 
 - a **toggle** — turns the script on and off;
-- a **Reload** button, on running scripts — re-runs the file from disk.
+- a **Reload** button, on running scripts — re-runs the file from disk;
+- a **state**: `running`, `waiting` (the game is still loading, a group it hooks is not loaded yet, or
+  it said [`tw.pending`](api-reference.md#twwarnmessage)), `suspended`, `failed` or `off`;
+- its **cost**, when it is high enough to mention — the average time its handlers take per frame;
+- how many channel **hooks** it holds, and how many of those are still waiting for their group;
+- its **messages** — click to unfold: every warning and error it produced, each with a count, and the
+  full text with the traceback when you hover one;
+- a **Resume** button, on a suspended script.
 
-At the bottom: how many scripts are running and how many channel hooks they hold between them.
+At the top: what the game is doing (loading, ready, loading a run). At the bottom: how many scripts
+are running and how many channel hooks they hold between them.
 
 ### Turning a script off really turns it off
 
@@ -156,20 +164,25 @@ toggle springs back to off. Fix the file and toggle it on again.
 
 ### The script throws while running
 
-The first time a frame handler throws, **script drawing is switched off** and you get a notification
-with the error. It is not retried: a handler that throws once throws sixty times a second, and a
-screen full of the same error is worse than no error.
+You get one notification naming the script and the error, and the error goes into the script's
+messages in the Scripts tab, with a counter. **Nothing else stops**: the handler that threw loses
+that one call, and every other handler — yours and every other script's — carries on.
 
-The same applies to channel hooks, separately.
+If it keeps happening — five errors within a few seconds — the script is **suspended**: its row
+turns amber and says why, its handlers stop running, and anything it muted in the game comes back.
+Other scripts are not affected. Fix the file and hit **Reload**, or hit **Resume** to let it carry on
+from where it was.
 
-To recover: fix the file and toggle any script off and on. Toggling clears the latch.
+A script whose handlers take too long, frame after frame, is suspended the same way; see
+[Limits § Failure containment](limits.md#failure-containment).
 
 ### A script cannot find something
 
-If a script asks for a channel that does not exist, you get one notification naming it:
+If a script asks for a channel that does not exist, it is an error of that script, pointing at the
+line that asked:
 
 ```
-Lua: StatCollector.Pointz: no such channel in group
+Lua: My HUD: StatCollector.Pointz: no such channel in group
 ```
 
 It is reported **once**, and it means what it says: the group *is* loaded and has no channel by that
@@ -196,8 +209,9 @@ Check, in order:
   script loads.
 
 `print(...)` works and goes to the plugin log. `tw.notify(...)` shows a toast on screen. In release
-builds the log is stripped, so `tw.warn(...)` — which does both — is the one to reach for when you
-need to see something in a normal install.
+builds the log is stripped, so `tw.warn(...)` — which files the message in your script's row in the
+Scripts tab, with a counter — is the one to reach for when you need to see something in a normal
+install.
 
 ## Next
 
