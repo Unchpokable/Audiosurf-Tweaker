@@ -20,8 +20,10 @@
 //  - `S.ptrs` arrives holding every C entry point **by name** (lua_vm.cxx has the one list). The
 //    first section binds them all against their signatures, refuses to start if either side has a
 //    name the other lacks, and leaves the casts in `S.C` for the others;
-//  - the last section leaves in `S.exports` the functions C calls back - the dispatchers, script
-//    loading and unloading. C takes references to those and nothing else survives.
+//  - tw.callbacks leaves in `S.exports` the functions C calls back - the dispatchers, script loading
+//    and unloading. C takes references to those and nothing else survives;
+//  - tw.sandbox, the last section, takes away what a script must not reach. Everything above it has
+//    already captured what it needs from those names.
 namespace tw::lua::prelude
 {
 struct section {

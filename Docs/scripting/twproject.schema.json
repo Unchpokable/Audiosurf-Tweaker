@@ -1,0 +1,80 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "twproject.json - an Audiosurf Tweaker script project",
+  "description": "Built into one script by twllink. See Docs/scripting/authoring.md.",
+  "type": "object",
+  "required": ["format", "id", "name", "author", "version", "description", "api"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "format": {
+      "description": "The manifest format. Always 1 for now.",
+      "const": 1
+    },
+    "id": {
+      "description": "The built script is <id>.lua. It is the script's identity to the plugin - do not change it once people have your script.",
+      "type": "string",
+      "pattern": "^[a-z0-9_]{1,64}$"
+    },
+    "name": {
+      "description": "What the Scripts tab shows. One line.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
+    },
+    "author": {
+      "description": "Shown in the Scripts tab. One line.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
+    },
+    "version": {
+      "description": "MAJOR.MINOR.PATCH, strictly: three whole numbers without leading zeros.",
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})\\.(0|[1-9][0-9]{0,8})$"
+    },
+    "description": {
+      "description": "Shown in the Scripts tab. One line.",
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
+    },
+    "api": {
+      "description": "The tw.api_version the script is written against. A Tweaker with an older API refuses to run it.",
+      "type": "integer",
+      "minimum": 1
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "comments": {
+          "description": "keep: modules go into the script as written. strip: comments are taken out, with their lines.",
+          "enum": ["keep", "strip"],
+          "default": "keep"
+        },
+        "embed": {
+          "description": "Text files of the project carried inside the script as comments - a licence, design notes.",
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "warnings_as_errors": {
+          "description": "Fail the build on any warning.",
+          "type": "boolean",
+          "default": false
+        },
+        "suppress": {
+          "description": "Warning codes to silence, e.g. TW0109. Errors cannot be suppressed.",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^TW[0-9]{4}$" }
+        }
+      }
+    }
+  }
+}

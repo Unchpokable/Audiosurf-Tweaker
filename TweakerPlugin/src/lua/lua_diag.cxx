@@ -237,6 +237,20 @@ namespace tw::lua::diag
 {
 void report(int owner, level severity, std::string_view where, std::string_view message) noexcept
 {
+    // A bundled script's positions go back to its sources before anything else sees them - the dedup
+    // key included, so a record is keyed by the line the author will actually go and fix. Nothing is
+    // allocated for a script without a map, which is every script written by hand.
+    std::string mapped_where;
+    std::string mapped_message;
+    if(const tw::lua::script* script = tw::lua::registry::find(owner); script != nullptr && !script->map.empty()) {
+        if(tw::lua::map_positions(script->map, script->file, where, mapped_where)) {
+            where = mapped_where;
+        }
+        if(tw::lua::map_positions(script->map, script->file, message, mapped_message)) {
+            message = mapped_message;
+        }
+    }
+
     owner_log* const log = log_of(owner, true);
     const std::string shape = shape_of(message);
     const std::uint32_t now = tw::lua::sched::frame();

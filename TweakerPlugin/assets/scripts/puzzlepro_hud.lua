@@ -1,389 +1,387 @@
 -- @name        PuzzlePRO HUD
 -- @author      Audiosurf Tweaker
--- @version     1.7
+-- @version     1.7.0
 -- @description HUD Replacer for real puzzle players. Real-time all-color statistics tracker, chain multiplier and chain drop timer read straight out of the game, live skill rating calculation, projected final score against your personal best, and points that land before they are counted. Get GUD, Get PuzzlePRO HUD
---
--- A run tracker that replaces several pieces of the game's own HUD rather than sitting next to
--- them. Everything it draws is measured, themed and positioned against the viewport; nothing is
--- hardcoded except padding.
---
--- The interesting parts are documented where they happen. Ten things are worth reading first,
--- because they are the reasons this is not the obvious script.
---
---
--- 1. WHAT IT MEASURES - by track ROW, not by collection EVENT
---
--- The obvious tracker counts TrafficCommander::Do_CollectCar (#763) and divides by the generated
--- track. That over-counts, visibly: on a colour a good player clears to the last block it goes past
--- 100%, by roughly the number of power-ups on the track.
---
--- The cause is not that the game subtracts anything. It adds a car that is not in the track.
---
---     IfElse #985:  QuestionBoxState[CurrentTraffic] > 0 && !DumptyScoopDown?
---                       -> Do_CollectQuestionBox (#986)     -- Do_CollectCar never runs
---                   else
---                       -> Do_CollectCar (#763)
---
--- and #986 ends with:
---
---     Traffic.Type[CurrentTraffic] := -1
---     BirthID := CurrentTraffic
---     call Do_BirthCar                       -- the INNER one (#207), not the wrapper (#756)
---
--- The wrapper is where the bookkeeping lives: it advances Index_TrafficPattern to the next row,
--- bumps NextStatCarToBirth, writes Traffic.PrecalcedArrayNum, and range-checks against
--- TotalCarCount. Bypassing it births a *duplicate of whatever row the spawner used last*, into the
--- slot the power-up just vacated - a real, collectible car with no row of its own. That row is
--- still spawned again later, normally.
---
--- So each power-up costs the colour tally -1 on the power-up's own colour (its collection never
--- reaches Do_CollectCar) and +1 on the duplicated row's colour. The total is right; the per-colour
--- split is not.
---
--- Both halves are fixed by counting rows instead of events. Do_CollectCar hands us the row id for
--- free - it is the second thing the handler does:
---
---     TrafficType := Traffic.Type[CurrentTraffic]
---     TrafficID   := Traffic.PrecalcedArrayNum[CurrentTraffic]
---
--- A legitimately born car's id is unique; a ghost carries the id of the power-up that vacated its
--- slot, which we have already spent. So: hook both handlers, count each row once, and the ghosts
--- fall out by themselves. See count_row().
---
--- What this deliberately does NOT do is de-duplicate the bonus prediction. Achievements::
--- Do_ReportBlockHit (#1088) does not de-duplicate either - it increments {colour}Hit and
--- TotalBlocksHit unconditionally - and those are the counters Do_CalculateFinalStats copies into
--- CollectedColorCounts and tests at >= 0.95 for Butter Ninja and Seeing Red. The prediction has to
--- count what the game will count, ghosts and all, so it reads those channels directly.
---
---
--- 2. WHERE THE DENOMINATORS COME FROM - the live pattern, and WHEN to re-read it
---
--- The track is StatCollector::Stats: TrafficPattern (#57): one row per block, colour id in x, ring
--- in y, lane in z. Bucketed the way Achievements::Do_GetTrafficCounts buckets it (see BUCKET), that
--- walk *is* the game's {colour}Total - the number Do_CalculateFinalStats divides by for the 95%
--- Butter Ninja / Seeing Red test. So walking it is not second-guessing the game; it is computing
--- the same number early.
---
--- Two other sources look easier and are both wrong, which cost two rounds of this:
---
---   * **Stats: TrafficColorCounts is not it.** Do_CountColors (#940) fills that at track generation
---     - and white and wild blocks do not exist yet at that point. They are placed afterwards, by
---     Do_ReseteWhiteWildBlocks (#1156), which **overwrites already-coloured rows**:
---
---         Do_RestoreToOriginalState : every row back to Stats: Old Color / Old Lane
---         Do_PlaceWhites (#1170)    : NumWhites random rows with x < 6  ->  x := 7
---         Do_PlaceWilds  (#1171)    : NumWilds  random rows with x < 6  ->  x := 6.1
---         Do_GeneratePowerups(#1528): QuestionBoxState per row, seeded by the song title
---
---     So TrafficColorCounts still counts a red that has since become a white. It is too big on
---     every colour and exactly zero on white - which is why the white column read "--" and why
---     Seeing Red went unpredicted on tracks with few reds, where losing one to a white is the
---     difference. The game gets this right because Do_GetTrafficCounts re-walks the live pattern at
---     the end of the run, and Do_CalculateFinalStats then overwrites TrafficColorCounts with the
---     result - which is the couple of frames of the numbers visibly correcting themselves just
---     before the results screen.
---
---   * **"Rescan when TotalCarCount changes" is not it either.** Nothing above changes the number of
---     blocks. Neither does Do_CharacterAndLeagueTrafficMods, which recolours the track for Mono,
---     Casual and Pro (Do_NinjaMagic, Do_TurnYellowRed, Do_TurnPurplesBlue,
---     Do_LimitTo4ColorsForProMode). The count is the one thing that does not move.
---
--- The rescan is therefore driven by the events that mean "the track is now what it will be", never
--- by watching a number - see the hooks below.
---
---
--- 3. WHAT IT TAKES OVER
---
---     XX_gui::Do_LadderMedalRequirements (#3464)  the medal dashboard
---     XX_gui::Do_ShowSongName            (#2955)  the song title
---     XX_gui::Timer1                     (#3938)  the chain bar
---     XX_gui::Timer2                     (#3970)  the song progress bar
---     XX_gui::Do_ShowScore               (#2351)  the top frame, the score, the "+N" floaters
---     XX_gui::If                         (#5412)  the "Best Score" popup
---     XX_gui::Do_CooperativeModeSeparateScores (#3707)  the two Double Vision scores
---
--- Every one is a pure render branch, and in each case the choice of node is the entire safety
--- argument:
---
---   * #3464 - rings, cover shape, celebration and flash timers hang off it and nothing else does;
---     nothing downstream reads a value it produces.
---   * #2955 - writes only SongnameX / SongnameEmissive / SongNamePositionSet?, and no other group
---     in the project imports any of the three.
---   * #3938 / #3970 - Timer1 is the chain bar and Timer2 is the song progress bar, both under
---     Do_ShrinkingBars (#3936). They are muted as two objects rather than as their parent
---     Do_ShowChainBar (#398), because #398 also carries the Z - Buffer Clear (#3937) the rest of
---     the GUI is drawn against.
---   * #2351 - the whole strip in one cut. It hands nothing outward: LastKnownPoints (#5631) and the
---     PointFloaters table (#5642) are read by the branch that writes them and by nothing else.
---   * #5412 - the draw branch INSIDE Do_ShowPersonalBest, not Do_ShowPersonalBest (#5348) itself.
---     Muting the parent would take a Trigger (#6721) with it that toggles Player::AutopilotOn? on
---     SPACE in Freeride. Cutting at #5412 also leaves Set Value #12349 running, which is what keeps
---     XX_gui::PB (#731) - the game's own `Online? ? MAX(PB_FromServer, PersonalBestScore) :
---     PersonalBestScore` - fresh for us to read.
---   * #3707 - two CloneScoreText objects under a gate on SpecialPurpose::useClone?, nothing else.
---
--- And one node that looks exactly like the others and must NEVER be muted:
---
---     XX_gui::Do_RenderMoneyParticles (#3980)
---
--- It is not a render branch. It calls MoneyFloaterCommander::Do (#1), which is ONE loop that draws
--- each particle, ages it, and on the frame its life runs out calls Do_EndLifeApplyScore (#198) ->
--- StatCollector::Do_UpdatePoints. Muting it does not hide the flying points; it stops the game
--- awarding any score at all, for the rest of the run. If the blobs ever need to go, the node for it
--- is MoneyFloaterCommander::MoneyFloater_GiveAlpha (#4), inside the loop.
---
--- Muting is also the right tool for the song title rather than driving the Tweaker's own
--- hidden_song_title tweak: a script has no access to the host's tweak state, and even with access
--- it would be sharing a toggle with the user. A mute needs no coordination - if the tweak is on,
--- the game's own If (#6378) already skips the call; if it is off, the mute catches it - and it is
--- removed the moment the script is disabled.
---
---
--- 4. THE CHAIN MULTIPLIER
---
--- Puzzle::ChainCount (#468) counts consecutive collections, capped at 100. What it is worth is not
--- linear in it: Do_SetMoneyMultiplier (#94) does
---
---     ScoreBonus := 1
---     if MultipleColorsMatched? : ScoreBonus += 0.3
---     if ChainCount > 0         : ScoreBonus += Envelope#643(ChainCount)
---
--- and Envelope #643 is a six-key curve, 0/1/4/10/20/100 -> 0/0.5/1.5/2/2.5/3. So the displayed
--- multiplier runs 1.0 to 4.0, and the bonus behind it runs 0 to 3.
---
--- That curve is also the answer to "how do I put a logarithmic scale on a linear colour gradient":
--- the game has already linearised it. The indicator's colour walks the block palette one stop per
--- key, so the colour moves at the rate the bonus actually grows.
---
--- The bar length is not this script's invention either. The game's own chain bar is
---
---     XX_gui::Timer1 (#3938) width = Inertia( (15.1041/3) * Envelope#12477(ChainCount) )
---
--- - the same six-key curve, and **linear in the bonus rather than in ChainCount**. That is the part
--- worth copying: a bar that grows with the bonus is the one the player has spent every previous run
--- learning to read at a glance. What is not copied is the constant. The game's own is a fixed world
--- length; a rail here is a sixteenth of the viewport per point of bonus, because a bar tuned to look
--- right at 1280 is a smear at QHD. The Inertia is why the game's slides rather than snaps; here that
--- is roll().
---
---
--- 5. THE CHAIN DROP TIMER
---
--- The chain is not held for a while and then released by a timer of its own. What exists is the
--- match collection pass, and the chain is whatever survives it:
---
---     Do_CollectMatchesOnTimer (#113) -> Do_ManageCollectionTimer (#455)
---
---         MatchTimer := (HintmanEliteFreezingMatchCollection? || BlocksSlidThisFrame?)
---                           ? MatchTimer
---                           : MatchTimer + StartGroup::PausableTickCount
---
---         if MatchTimer > SpecialPurpose::MatchCollectionTicks:
---             MatchTimer := 0
---             ...find matches...
---             if any        -> score them, Do_IncrementChainCount (#1437)
---             if none       -> Do_GraduallyResetChain (#1500)
---
--- So the countdown to "the chain is judged" is MatchCollectionTicks - MatchTimer, and it freezes
--- while blocks are sliding - which is why the number holds still through a collapse. That freeze is
--- also why the remaining time is read from the game every frame rather than timed here: a clock of
--- our own would keep running through it and promise time the player does not have.
---
--- Ticks are 25ths of a second. StartGroup::PausableTickCount is Quest3D's TickCount gated on the
--- pause screen (Stage/XX_Timer.cgr #0), and every second-valued counter in the game divides it by
--- 25 - StatCollector::Timer is `Timer + PausableTickCount/25`, and FirstPersonGracePeriod, the
--- constant it is compared against, is 5.
---
--- What losing the pass costs is the league's business rather than the timer's - ChannelSwitch #1467
--- on LeagueID: 0 -> the chain is gone, 1 -> FLOOR(chain/2), 2 -> gone. Only Pro halves it.
---
--- MatchCollectionTicks is per character and per league rather than a constant: 10/10/20 by league,
--- overridden to 15 for Easy Ninja, 17 for Ninja Pro, 25 for Eraser Elite, 28 for Ninja Mono, 35 for
--- Berserker, 50 for Freeride, and to whatever a song's own tag asks for. Reading the channel rather
--- than assuming a number is the entire reason the bar is right for every character.
---
---
--- 6. WHY EVERYTHING MOVES THROUGH ONE FUNCTION
---
--- Every number and every bar here is drawn from roll(), a keyed tween sampled through tw.ease.
--- Two things follow, and both are why it is not done per widget:
---
---   * retargeting mid-flight is the normal case rather than the exception. Points arrive in bursts,
---     the chain can jump two tiers in one pass, and a tween that has to finish before it accepts a
---     new target falls visibly behind the game. roll() restarts from wherever the value has got to.
---   * the chain's colour, its rail length and its printed multiplier are all functions of ONE
---     tweened bonus, so they cannot disagree. Tweening the three separately is three ways for the
---     colour to arrive before the bar.
---
--- The drop timer is deliberately NOT tweened. It is a countdown; smoothing it would mean showing a
--- number that is not the time left.
---
---
--- 7. THE SKILL RATING IS THE GAME'S OWN NUMBER
---
--- The game never shows it. It computes it at the end of a run and puts it on the wire, so a HUD that
--- gets it wrong is wrong invisibly - the player just concludes they had a bad run. Every term below
--- is therefore taken from the graph rather than reasoned about.
---
---     Achievements::Do_CalcSkillRating (#1189), inside Do_FinalizeAndStringEncodeExtendedRideStats
---     (#1118), which Do_CalculateFinalStats calls:
---
---         SkillRating := MAX(1, ROUND( PointsWithGridBonus / GoldRequirement * 100
---                                                          * (LeagueID + 1) ))
---
---     StatCollector::Do_FindAddBonusPoints (#797):
---
---         BonusPoints           += Points * <scaler>   per feat earned
---         BonusPoints_CleanOnly += Points * GridBonusMultiplyer   if NumTilesInGrid == 0
---         PointsWithGridBonus    = ROUND(Points) + ROUND(BonusPoints) + ROUND(BonusPoints_CleanOnly)
---
--- Three things about that are worth stating because each was a candidate for the figure being wrong
--- and each turned out not to be:
---
---   * **Every scaler is over the raw Points**, not compounded. So the whole thing is
---     `Points * (1 + sum of scalers)` and a script may add them up.
---   * **GoldRequirement is not a constant of the song.** XX_StartHere::Do_CalcMedalRequirements
---     (#4267) sets it to `TotalCarCount * {10, 30, 35}[LeagueID]`. Read the channel.
---   * **LeagueID is a property of the character**, written by XX_WindowState::Do_SetCharacter (#307)
---     as 0, 1 or 2 - not of the difficulty, which is ChosenDifficulty and drives a different set of
---     medal requirements entirely. `LeagueID + 1` is the 1/2/3 multiplier.
---
--- What WAS wrong was the last clause of the middle line. `NumTilesInGrid == 0` is tested **at the
--- moment the game scores**, so the Clean Finish bonus belongs to the player for as long as the board
--- is clear - it is not an optimistic extra. Showing it only as a parenthesised maybe under-reported
--- the headline by a fifth for most of a good puzzle run.
---
---
--- 8. THE POINTS ARRIVE BEFORE THEY ARE COUNTED - and that is the game's own clock
---
--- One collected match takes three separate visuals in the stock HUD, and they happen in this order:
---
---     Puzzle #1336   inDisplayedMoney := PointsThisTile
---                    inLaunchColor    := Puzzle_State.MatchedColors[...]
---                    call MoneyFloaterCommander::Do_LaunchParticle (#27)
---                         -> a row in MoneyParticles, plus the cash-register sound
---     ~~~ the particle flies, at SpeedModifier = Min + RAND*Max, drawn RANDOM PER PARTICLE ~~~
---     #198           SpentLifePercentage >= 1 -> Do_EndLifeApplyScore
---                         -> StatCollector::Do_UpdatePoints -> Points += delta
---     next frame     XX_gui::Do_LaunchScoreFloaters (#3086) notices PointsByColor moved
---                         -> spawns the "+N" text
---     every frame    TotalResourcesText (#2480) = ROUND(Inertia(Points))
---
--- So the game's "+N" really does appear after the score has already grown. Inverting that is the
--- point of this widget - but the inversion does not need a timer of its own, because **the game is
--- already holding the score back for the length of the particle's flight**. Drawing the number at
--- #27 and rolling the total towards Points gives exactly the requested order, on the game's clock.
---
--- **A particle is launched per matched TILE, not per match.** Do_LaunchMoneyParticles (#95) loops
--- over every block in the collection, so a seven-block match is seven launches carrying the same
--- colour and the same PointsThisTile. Announcing each one separately printed seven identical numbers
--- in the same place. The game has the same problem and solves it by building its text floaters from
--- a once-a-frame diff of PointsByColor, which merges them per colour; this merges them per colour at
--- the point of launch, which comes to the same set of numbers.
---
--- A merged entry is then held until the LAST of its particles has landed, because that is when the
--- game has finished adding its points. Do_EndLifeApplyScore runs inside the particle loop, so
--- Index_Particles is on the row that landed, and one read matches the landing to the entry waiting
--- for it.
---
--- Not every point goes through a particle. Do_UpdatePoints is called directly by the ninja ram
--- bonus (Puzzle::Do_HitColor #1228), the penalties (#1205), BusyBee, the question box and boss
--- damage. Those are caught by hooking Do_UpdatePoints itself and asking "was this one already
--- announced by a particle landing?" - Do_EndLifeApplyScore runs immediately before the call it
--- makes, so a counter bumped there and consumed here separates the two exactly.
---
--- Two things about that hook are deliberate:
---
---   * **the delta is Points-now minus Points-then, not UpdatePoints_Delta.** The parameter channel
---     would need the group-parameter push to work the way it appears to; the difference needs
---     nothing but two reads, and it also catches the `Points := MAX(0, Points + Delt)` clamp, which
---     is the amount the player's score actually moved.
---   * **the colour can be stale.** UpdatePoints_Color (#155) is written by three sites and
---     Do_UpdatePoints is called from ten, so some events inherit the previous event's colour. The
---     game has the same bug - its PointsByColor table is indexed by that same channel - so matching
---     it is matching the game, but an unrecognised id is drawn neutral rather than guessed at.
---
---
--- 9. THE TOP STRIP IS A QUEUE ON A BACKDROP, AND BOTH ARE THERE FOR THE SAME REASON
---
--- Three things about the top of the screen that only showed up in a real run.
---
---   * **It is measured from the viewport, not from the safe area.** tw.hud.safe() exists to keep a
---     widget clear of the overlay's own top chrome, and obeying it here put the score a tenth of the
---     way down the screen - far enough in to sit over the track and cover oncoming traffic. The
---     chrome it was avoiding lives in the corners; this block is centred and narrow, so it passes.
---
---   * **It has a backdrop, because white text on a bright skybox is not text.** The game puts a
---     solid bar behind its score for exactly this reason. This is the same idea without the bar:
---     flat top and bottom, full strength across the content, and a horizontal falloff to nothing on
---     both sides, so it reads as the screen getting darker rather than as a panel sitting on it. The
---     first stop is the end of the content, so nothing that is actually behind text is in the
---     falloff. Symmetric on purpose: the queue extends left only, and a backdrop that grew on one
---     side to follow it would change shape on every match.
---
---   * **The numbers are a queue, not a heap.** Each entry sits behind the one in front of it by its
---     own width plus a gap, and appears one step later. The slots are recomputed every frame from
---     whoever is still on screen, so when the head leaves - which is when the total takes its points
---     - everything behind slides up into the space. That sliding is why the position is no longer
---     read from the particle: per-particle progress looked right with one number in the air and put
---     every colour of a multicolour collection in the same place at the same time.
---
---
--- 10. THE SCORE ON SCREEN IS THE PROJECTED FINAL SCORE, NOT StatCollector::Points
---
--- The personal best is not a raw score. LocalScores::Do_WriteScore stores
---
---     PersonalBest.score[index] := StatCollector::PointsWithGridBonus
---
--- and the server copy is the same figure uploaded, so `best` is the final score WITH every bonus.
--- Showing raw Points beside it compared two different quantities: raw runs some 20-50 % under the
--- figure the record is made of - Clean Finish alone is 25 % - so the gap read as "you are having a
--- bad run" for the whole of a good one.
---
--- So the headline is the same projection the skill rating is built from (§7): raw Points times one
--- plus the scalers earned so far, with Clean Finish in it while the board is clear and in the
--- bracketed figure when it is not. One computation, three consumers - the rating, the score, and the
--- multiplier below.
---
--- **The points in flight are scaled by that same multiplier**, and the reason this is exact rather
--- than approximate is worth stating, because it looks like it should not be. Do_FindAddBonusPoints
--- adds each feat as `Points * scaler` over the RAW points - never compounded, never against a
--- running subtotal - so the whole projection is `Points * (1 + SUM scalers)`. The factor is common
--- to every point in the run, and a common factor distributes:
---
---     SUM_i ( d_i * (1 + B) )  ==  ( SUM_i d_i ) * (1 + B)
---
--- The numbers flying in therefore still sum to the total, exactly, and the widget's contract - the
--- number lands and the total takes it - survives. It would not survive showing raw amounts against a
--- projected total: every match would move the total by half again what its number said.
---
--- The one thing that does not come from a floater is a change in B itself: earning Match21 or
--- clearing the board steps the headline with nothing flying in. That is a real event rather than an
--- error, and the bracketed figure swapping sides is what explains it on screen.
+-- @api         1
+-- @bundle      twllink 1.1, 17 modules
 
--- ---------------------------------------------------------------------------------------------
--- Palette
--- ---------------------------------------------------------------------------------------------
+local __twl_modules, __twl_cache, __twl_loading = {}, {}, {}
+
+--[[ docs/DESIGN.md
+# PuzzlePRO HUD - design notes
+
+A run tracker that replaces several pieces of the game's own HUD rather than sitting next to
+them. Everything it draws is measured, themed and positioned against the viewport; nothing is
+hardcoded except padding.
+
+The interesting parts are documented where they happen. Ten things are worth reading first,
+because they are the reasons this is not the obvious script.
+
+## 1. WHAT IT MEASURES - by track ROW, not by collection EVENT
+
+The obvious tracker counts TrafficCommander::Do_CollectCar (#763) and divides by the generated
+track. That over-counts, visibly: on a colour a good player clears to the last block it goes past
+100%, by roughly the number of power-ups on the track.
+
+The cause is not that the game subtracts anything. It adds a car that is not in the track.
+
+    IfElse #985:  QuestionBoxState[CurrentTraffic] > 0 && !DumptyScoopDown?
+                      -> Do_CollectQuestionBox (#986)     -- Do_CollectCar never runs
+                  else
+                      -> Do_CollectCar (#763)
+
+and #986 ends with:
+
+    Traffic.Type[CurrentTraffic] := -1
+    BirthID := CurrentTraffic
+    call Do_BirthCar                       -- the INNER one (#207), not the wrapper (#756)
+
+The wrapper is where the bookkeeping lives: it advances Index_TrafficPattern to the next row,
+bumps NextStatCarToBirth, writes Traffic.PrecalcedArrayNum, and range-checks against
+TotalCarCount. Bypassing it births a *duplicate of whatever row the spawner used last*, into the
+slot the power-up just vacated - a real, collectible car with no row of its own. That row is
+still spawned again later, normally.
+
+So each power-up costs the colour tally -1 on the power-up's own colour (its collection never
+reaches Do_CollectCar) and +1 on the duplicated row's colour. The total is right; the per-colour
+split is not.
+
+Both halves are fixed by counting rows instead of events. Do_CollectCar hands us the row id for
+free - it is the second thing the handler does:
+
+    TrafficType := Traffic.Type[CurrentTraffic]
+    TrafficID   := Traffic.PrecalcedArrayNum[CurrentTraffic]
+
+A legitimately born car's id is unique; a ghost carries the id of the power-up that vacated its
+slot, which we have already spent. So: hook both handlers, count each row once, and the ghosts
+fall out by themselves. See count_row() in src/tally.lua.
+
+What this deliberately does NOT do is de-duplicate the bonus prediction. Achievements::
+Do_ReportBlockHit (#1088) does not de-duplicate either - it increments {colour}Hit and
+TotalBlocksHit unconditionally - and those are the counters Do_CalculateFinalStats copies into
+CollectedColorCounts and tests at >= 0.95 for Butter Ninja and Seeing Red. The prediction has to
+count what the game will count, ghosts and all, so it reads those channels directly.
+
+## 2. WHERE THE DENOMINATORS COME FROM - the live pattern, and WHEN to re-read it
+
+The track is StatCollector::Stats: TrafficPattern (#57): one row per block, colour id in x, ring
+in y, lane in z. Bucketed the way Achievements::Do_GetTrafficCounts buckets it (see BUCKET in src/colours.lua), that
+walk *is* the game's {colour}Total - the number Do_CalculateFinalStats divides by for the 95%
+Butter Ninja / Seeing Red test. So walking it is not second-guessing the game; it is computing
+the same number early.
+
+Two other sources look easier and are both wrong, which cost two rounds of this:
+
+  * **Stats: TrafficColorCounts is not it.** Do_CountColors (#940) fills that at track generation
+    - and white and wild blocks do not exist yet at that point. They are placed afterwards, by
+    Do_ReseteWhiteWildBlocks (#1156), which **overwrites already-coloured rows**:
+
+        Do_RestoreToOriginalState : every row back to Stats: Old Color / Old Lane
+        Do_PlaceWhites (#1170)    : NumWhites random rows with x < 6  ->  x := 7
+        Do_PlaceWilds  (#1171)    : NumWilds  random rows with x < 6  ->  x := 6.1
+        Do_GeneratePowerups(#1528): QuestionBoxState per row, seeded by the song title
+
+    So TrafficColorCounts still counts a red that has since become a white. It is too big on
+    every colour and exactly zero on white - which is why the white column read "--" and why
+    Seeing Red went unpredicted on tracks with few reds, where losing one to a white is the
+    difference. The game gets this right because Do_GetTrafficCounts re-walks the live pattern at
+    the end of the run, and Do_CalculateFinalStats then overwrites TrafficColorCounts with the
+    result - which is the couple of frames of the numbers visibly correcting themselves just
+    before the results screen.
+
+  * **"Rescan when TotalCarCount changes" is not it either.** Nothing above changes the number of
+    blocks. Neither does Do_CharacterAndLeagueTrafficMods, which recolours the track for Mono,
+    Casual and Pro (Do_NinjaMagic, Do_TurnYellowRed, Do_TurnPurplesBlue,
+    Do_LimitTo4ColorsForProMode). The count is the one thing that does not move.
+
+The rescan is therefore driven by the events that mean "the track is now what it will be", never
+by watching a number - see the hooks in src/tally.lua.
+
+## 3. WHAT IT TAKES OVER
+
+    XX_gui::Do_LadderMedalRequirements (#3464)  the medal dashboard
+    XX_gui::Do_ShowSongName            (#2955)  the song title
+    XX_gui::Timer1                     (#3938)  the chain bar
+    XX_gui::Timer2                     (#3970)  the song progress bar
+    XX_gui::Do_ShowScore               (#2351)  the top frame, the score, the "+N" floaters
+    XX_gui::If                         (#5412)  the "Best Score" popup
+    XX_gui::Do_CooperativeModeSeparateScores (#3707)  the two Double Vision scores
+
+Every one is a pure render branch, and in each case the choice of node is the entire safety
+argument:
+
+  * #3464 - rings, cover shape, celebration and flash timers hang off it and nothing else does;
+    nothing downstream reads a value it produces.
+  * #2955 - writes only SongnameX / SongnameEmissive / SongNamePositionSet?, and no other group
+    in the project imports any of the three.
+  * #3938 / #3970 - Timer1 is the chain bar and Timer2 is the song progress bar, both under
+    Do_ShrinkingBars (#3936). They are muted as two objects rather than as their parent
+    Do_ShowChainBar (#398), because #398 also carries the Z - Buffer Clear (#3937) the rest of
+    the GUI is drawn against.
+  * #2351 - the whole strip in one cut. It hands nothing outward: LastKnownPoints (#5631) and the
+    PointFloaters table (#5642) are read by the branch that writes them and by nothing else.
+  * #5412 - the draw branch INSIDE Do_ShowPersonalBest, not Do_ShowPersonalBest (#5348) itself.
+    Muting the parent would take a Trigger (#6721) with it that toggles Player::AutopilotOn? on
+    SPACE in Freeride. Cutting at #5412 also leaves Set Value #12349 running, which is what keeps
+    XX_gui::PB (#731) - the game's own `Online? ? MAX(PB_FromServer, PersonalBestScore) :
+    PersonalBestScore` - fresh for us to read.
+  * #3707 - two CloneScoreText objects under a gate on SpecialPurpose::useClone?, nothing else.
+
+And one node that looks exactly like the others and must NEVER be muted:
+
+    XX_gui::Do_RenderMoneyParticles (#3980)
+
+It is not a render branch. It calls MoneyFloaterCommander::Do (#1), which is ONE loop that draws
+each particle, ages it, and on the frame its life runs out calls Do_EndLifeApplyScore (#198) ->
+StatCollector::Do_UpdatePoints. Muting it does not hide the flying points; it stops the game
+awarding any score at all, for the rest of the run. If the blobs ever need to go, the node for it
+is MoneyFloaterCommander::MoneyFloater_GiveAlpha (#4), inside the loop.
+
+Muting is also the right tool for the song title rather than driving the Tweaker's own
+hidden_song_title tweak: a script has no access to the host's tweak state, and even with access
+it would be sharing a toggle with the user. A mute needs no coordination - if the tweak is on,
+the game's own If (#6378) already skips the call; if it is off, the mute catches it - and it is
+removed the moment the script is disabled.
+
+## 4. THE CHAIN MULTIPLIER
+
+Puzzle::ChainCount (#468) counts consecutive collections, capped at 100. What it is worth is not
+linear in it: Do_SetMoneyMultiplier (#94) does
+
+    ScoreBonus := 1
+    if MultipleColorsMatched? : ScoreBonus += 0.3
+    if ChainCount > 0         : ScoreBonus += Envelope#643(ChainCount)
+
+and Envelope #643 is a six-key curve, 0/1/4/10/20/100 -> 0/0.5/1.5/2/2.5/3. So the displayed
+multiplier runs 1.0 to 4.0, and the bonus behind it runs 0 to 3.
+
+That curve is also the answer to "how do I put a logarithmic scale on a linear colour gradient":
+the game has already linearised it. The indicator's colour walks the block palette one stop per
+key, so the colour moves at the rate the bonus actually grows.
+
+The bar length is not this script's invention either. The game's own chain bar is
+
+    XX_gui::Timer1 (#3938) width = Inertia( (15.1041/3) * Envelope#12477(ChainCount) )
+
+- the same six-key curve, and **linear in the bonus rather than in ChainCount**. That is the part
+worth copying: a bar that grows with the bonus is the one the player has spent every previous run
+learning to read at a glance. What is not copied is the constant. The game's own is a fixed world
+length; a rail here is a sixteenth of the viewport per point of bonus, because a bar tuned to look
+right at 1280 is a smear at QHD. The Inertia is why the game's slides rather than snaps; here that
+is roll().
+
+## 5. THE CHAIN DROP TIMER
+
+The chain is not held for a while and then released by a timer of its own. What exists is the
+match collection pass, and the chain is whatever survives it:
+
+    Do_CollectMatchesOnTimer (#113) -> Do_ManageCollectionTimer (#455)
+
+        MatchTimer := (HintmanEliteFreezingMatchCollection? || BlocksSlidThisFrame?)
+                          ? MatchTimer
+                          : MatchTimer + StartGroup::PausableTickCount
+
+        if MatchTimer > SpecialPurpose::MatchCollectionTicks:
+            MatchTimer := 0
+            ...find matches...
+            if any        -> score them, Do_IncrementChainCount (#1437)
+            if none       -> Do_GraduallyResetChain (#1500)
+
+So the countdown to "the chain is judged" is MatchCollectionTicks - MatchTimer, and it freezes
+while blocks are sliding - which is why the number holds still through a collapse. That freeze is
+also why the remaining time is read from the game every frame rather than timed here: a clock of
+our own would keep running through it and promise time the player does not have.
+
+Ticks are 25ths of a second. StartGroup::PausableTickCount is Quest3D's TickCount gated on the
+pause screen (Stage/XX_Timer.cgr #0), and every second-valued counter in the game divides it by
+25 - StatCollector::Timer is `Timer + PausableTickCount/25`, and FirstPersonGracePeriod, the
+constant it is compared against, is 5.
+
+What losing the pass costs is the league's business rather than the timer's - ChannelSwitch #1467
+on LeagueID: 0 -> the chain is gone, 1 -> FLOOR(chain/2), 2 -> gone. Only Pro halves it.
+
+MatchCollectionTicks is per character and per league rather than a constant: 10/10/20 by league,
+overridden to 15 for Easy Ninja, 17 for Ninja Pro, 25 for Eraser Elite, 28 for Ninja Mono, 35 for
+Berserker, 50 for Freeride, and to whatever a song's own tag asks for. Reading the channel rather
+than assuming a number is the entire reason the bar is right for every character.
+
+## 6. WHY EVERYTHING MOVES THROUGH ONE FUNCTION
+
+Every number and every bar here is drawn from roll() (src/roll.lua), a keyed tween sampled through tw.ease.
+Two things follow, and both are why it is not done per widget:
+
+  * retargeting mid-flight is the normal case rather than the exception. Points arrive in bursts,
+    the chain can jump two tiers in one pass, and a tween that has to finish before it accepts a
+    new target falls visibly behind the game. roll() restarts from wherever the value has got to.
+  * the chain's colour, its rail length and its printed multiplier are all functions of ONE
+    tweened bonus, so they cannot disagree. Tweening the three separately is three ways for the
+    colour to arrive before the bar.
+
+The drop timer is deliberately NOT tweened. It is a countdown; smoothing it would mean showing a
+number that is not the time left.
+
+## 7. THE SKILL RATING IS THE GAME'S OWN NUMBER
+
+The game never shows it. It computes it at the end of a run and puts it on the wire, so a HUD that
+gets it wrong is wrong invisibly - the player just concludes they had a bad run. Every term below
+is therefore taken from the graph rather than reasoned about.
+
+    Achievements::Do_CalcSkillRating (#1189), inside Do_FinalizeAndStringEncodeExtendedRideStats
+    (#1118), which Do_CalculateFinalStats calls:
+
+        SkillRating := MAX(1, ROUND( PointsWithGridBonus / GoldRequirement * 100
+                                                         * (LeagueID + 1) ))
+
+    StatCollector::Do_FindAddBonusPoints (#797):
+
+        BonusPoints           += Points * <scaler>   per feat earned
+        BonusPoints_CleanOnly += Points * GridBonusMultiplyer   if NumTilesInGrid == 0
+        PointsWithGridBonus    = ROUND(Points) + ROUND(BonusPoints) + ROUND(BonusPoints_CleanOnly)
+
+Three things about that are worth stating because each was a candidate for the figure being wrong
+and each turned out not to be:
+
+  * **Every scaler is over the raw Points**, not compounded. So the whole thing is
+    `Points * (1 + sum of scalers)` and a script may add them up.
+  * **GoldRequirement is not a constant of the song.** XX_StartHere::Do_CalcMedalRequirements
+    (#4267) sets it to `TotalCarCount * {10, 30, 35}[LeagueID]`. Read the channel.
+  * **LeagueID is a property of the character**, written by XX_WindowState::Do_SetCharacter (#307)
+    as 0, 1 or 2 - not of the difficulty, which is ChosenDifficulty and drives a different set of
+    medal requirements entirely. `LeagueID + 1` is the 1/2/3 multiplier.
+
+What WAS wrong was the last clause of the middle line. `NumTilesInGrid == 0` is tested **at the
+moment the game scores**, so the Clean Finish bonus belongs to the player for as long as the board
+is clear - it is not an optimistic extra. Showing it only as a parenthesised maybe under-reported
+the headline by a fifth for most of a good puzzle run.
+
+## 8. THE POINTS ARRIVE BEFORE THEY ARE COUNTED - and that is the game's own clock
+
+One collected match takes three separate visuals in the stock HUD, and they happen in this order:
+
+    Puzzle #1336   inDisplayedMoney := PointsThisTile
+                   inLaunchColor    := Puzzle_State.MatchedColors[...]
+                   call MoneyFloaterCommander::Do_LaunchParticle (#27)
+                        -> a row in MoneyParticles, plus the cash-register sound
+    ~~~ the particle flies, at SpeedModifier = Min + RAND*Max, drawn RANDOM PER PARTICLE ~~~
+    #198           SpentLifePercentage >= 1 -> Do_EndLifeApplyScore
+                        -> StatCollector::Do_UpdatePoints -> Points += delta
+    next frame     XX_gui::Do_LaunchScoreFloaters (#3086) notices PointsByColor moved
+                        -> spawns the "+N" text
+    every frame    TotalResourcesText (#2480) = ROUND(Inertia(Points))
+
+So the game's "+N" really does appear after the score has already grown. Inverting that is the
+point of this widget - but the inversion does not need a timer of its own, because **the game is
+already holding the score back for the length of the particle's flight**. Drawing the number at
+#27 and rolling the total towards Points gives exactly the requested order, on the game's clock.
+
+**A particle is launched per matched TILE, not per match.** Do_LaunchMoneyParticles (#95) loops
+over every block in the collection, so a seven-block match is seven launches carrying the same
+colour and the same PointsThisTile. Announcing each one separately printed seven identical numbers
+in the same place. The game has the same problem and solves it by building its text floaters from
+a once-a-frame diff of PointsByColor, which merges them per colour; this merges them per colour at
+the point of launch, which comes to the same set of numbers.
+
+A merged entry is then held until the LAST of its particles has landed, because that is when the
+game has finished adding its points. Do_EndLifeApplyScore runs inside the particle loop, so
+Index_Particles is on the row that landed, and one read matches the landing to the entry waiting
+for it.
+
+Not every point goes through a particle. Do_UpdatePoints is called directly by the ninja ram
+bonus (Puzzle::Do_HitColor #1228), the penalties (#1205), BusyBee, the question box and boss
+damage. Those are caught by hooking Do_UpdatePoints itself and asking "was this one already
+announced by a particle landing?" - Do_EndLifeApplyScore runs immediately before the call it
+makes, so a counter bumped there and consumed here separates the two exactly.
+
+Two things about that hook are deliberate:
+
+  * **the delta is Points-now minus Points-then, not UpdatePoints_Delta.** The parameter channel
+    would need the group-parameter push to work the way it appears to; the difference needs
+    nothing but two reads, and it also catches the `Points := MAX(0, Points + Delt)` clamp, which
+    is the amount the player's score actually moved.
+  * **the colour can be stale.** UpdatePoints_Color (#155) is written by three sites and
+    Do_UpdatePoints is called from ten, so some events inherit the previous event's colour. The
+    game has the same bug - its PointsByColor table is indexed by that same channel - so matching
+    it is matching the game, but an unrecognised id is drawn neutral rather than guessed at.
+
+## 9. THE TOP STRIP IS A QUEUE ON A BACKDROP, AND BOTH ARE THERE FOR THE SAME REASON
+
+Three things about the top of the screen that only showed up in a real run.
+
+  * **It is measured from the viewport, not from the safe area.** tw.hud.safe() exists to keep a
+    widget clear of the overlay's own top chrome, and obeying it here put the score a tenth of the
+    way down the screen - far enough in to sit over the track and cover oncoming traffic. The
+    chrome it was avoiding lives in the corners; this block is centred and narrow, so it passes.
+
+  * **It has a backdrop, because white text on a bright skybox is not text.** The game puts a
+    solid bar behind its score for exactly this reason. This is the same idea without the bar:
+    flat top and bottom, full strength across the content, and a horizontal falloff to nothing on
+    both sides, so it reads as the screen getting darker rather than as a panel sitting on it. The
+    first stop is the end of the content, so nothing that is actually behind text is in the
+    falloff. Symmetric on purpose: the queue extends left only, and a backdrop that grew on one
+    side to follow it would change shape on every match.
+
+  * **The numbers are a queue, not a heap.** Each entry sits behind the one in front of it by its
+    own width plus a gap, and appears one step later. The slots are recomputed every frame from
+    whoever is still on screen, so when the head leaves - which is when the total takes its points
+    - everything behind slides up into the space. That sliding is why the position is no longer
+    read from the particle: per-particle progress looked right with one number in the air and put
+    every colour of a multicolour collection in the same place at the same time.
+
+## 10. THE SCORE ON SCREEN IS THE PROJECTED FINAL SCORE, NOT StatCollector::Points
+
+The personal best is not a raw score. LocalScores::Do_WriteScore stores
+
+    PersonalBest.score[index] := StatCollector::PointsWithGridBonus
+
+and the server copy is the same figure uploaded, so `best` is the final score WITH every bonus.
+Showing raw Points beside it compared two different quantities: raw runs some 20-50 % under the
+figure the record is made of - Clean Finish alone is 25 % - so the gap read as "you are having a
+bad run" for the whole of a good one.
+
+So the headline is the same projection the skill rating is built from (§7): raw Points times one
+plus the scalers earned so far, with Clean Finish in it while the board is clear and in the
+bracketed figure when it is not. One computation, three consumers - the rating, the score, and the
+multiplier below.
+
+**The points in flight are scaled by that same multiplier**, and the reason this is exact rather
+than approximate is worth stating, because it looks like it should not be. Do_FindAddBonusPoints
+adds each feat as `Points * scaler` over the RAW points - never compounded, never against a
+running subtotal - so the whole projection is `Points * (1 + SUM scalers)`. The factor is common
+to every point in the run, and a common factor distributes:
+
+    SUM_i ( d_i * (1 + B) )  ==  ( SUM_i d_i ) * (1 + B)
+
+The numbers flying in therefore still sum to the total, exactly, and the widget's contract - the
+number lands and the total takes it - survives. It would not survive showing raw amounts against a
+projected total: every match would move the total by half again what its number said.
+
+The one thing that does not come from a floater is a change in B itself: earning Match21 or
+clearing the board steps the headline with nothing flying in. That is a real event rather than an
+error, and the bracketed figure swapping sides is what explains it on screen.
+]]
+
+local function require(name)
+    local hit = __twl_cache[name]
+    if hit == __twl_loading then
+        error("module '" .. tostring(name) .. "' is still loading - a require cycle, or it failed while loading", 2)
+    end
+    if hit ~= nil then return hit end
+    local body = __twl_modules[name]
+    if body == nil then error("module '" .. tostring(name) .. "' is not in this bundle", 2) end
+    __twl_cache[name] = __twl_loading
+    local value = body(require, name)
+    if value == nil then value = true end
+    __twl_cache[name] = value
+    return value
+end
+
+__twl_modules["colours"] = function(require, ...)
+-- The colours and colour ids everything else agrees on: the block colours and how the game buckets
+-- them, the literal medal and ahead/behind colours, and mix() to blend two of them.
 --
--- The colours the player actually sees come from XX_StartHere::FetchColorByID (#882), and there is
--- more than one palette behind it:
---
---     #1533  switch (XX_gui::Color5.x + .y + .z) == 0
---      +- 1 -> #1535  StartGroup #1542/#1538/#1534/#1530/#1526      "fallback"
---      +- 0 -> #7157  switch SpecialPurpose::isMechMode
---              +- 1 -> #7159  Highway::MechColor0..4                "mech"
---              +- 0 -> #7072  switch SpecialPurpose::PortalMode?
---                      +- 1 -> #7074  PlayerCar_Sword::PortalColor1..5   "portal"
---                      +- 0 -> #440   XX_gui::Color1..Color5             "normal"
---
--- Reading a channel and getting a plausible colour is not evidence the game is using it - a
--- Value Vector carries no "someone reads me" flag. The only way to tell a live branch from a spare
--- is to walk the switches, which is what palette_source() does.
---
--- Note the reversed numbering in the normal branch (ColorID 0 -> Color5) and the extra switch on
--- ids 2 and 3, which become GlobalMonoColor under Ninja or Freeride. Both are the game's, not a
--- transcription slip.
+-- COLOURS[i].colour is filled from the game's live palette by palette.lua; until then it is the
+-- fallback below.
+
 -- One row per bucket of BUCKET below, keyed by the colour id the palette should draw for it.
 local COLOURS = {
     { id = 0, name = "purple", fallback = 0xFFE08CC8 },
@@ -443,12 +441,63 @@ local MEDALS = { BRONZE, SILVER, GOLD }
 -- the draw loop would put three throwaway strings a frame on the collector for no reason.
 local DOT_KEYS = { "medal_dot_bronze", "medal_dot_silver", "medal_dot_gold" }
 
--- ---------------------------------------------------------------------------------------------
--- Channels
+for _, c in ipairs(COLOURS) do
+    c.colour = c.fallback
+    -- Built once rather than concatenated per frame per cell: twelve throwaway strings a frame is
+    -- twelve more than a table of six fixed rows needs.
+    c.key_total = "total:" .. c.name
+    c.key_taken = "taken:" .. c.name
+end
+
+local function mix(a, b, t)
+    if t <= 0 then
+        return a
+    end
+    if t >= 1 then
+        return b
+    end
+
+    local out = 0
+    local scale = 1
+    for _ = 1, 4 do
+        local ca = a % 256
+        local cb = b % 256
+        out = out + math.floor(ca + (cb - ca) * t + 0.5) * scale
+        a = math.floor(a / 256)
+        b = math.floor(b / 256)
+        scale = scale * 256
+    end
+    return out
+end
+
+return {
+    COLOURS = COLOURS,
+    BUCKET = BUCKET,
+    COLOUR_BY_ID = COLOUR_BY_ID,
+    YELLOW = YELLOW,
+    RED = RED,
+    BRONZE = BRONZE,
+    SILVER = SILVER,
+    GOLD = GOLD,
+    WHITE = WHITE,
+    AHEAD = AHEAD,
+    BEHIND = BEHIND,
+    MEDALS = MEDALS,
+    DOT_KEYS = DOT_KEYS,
+    mix = mix,
+}
+end
+
+__twl_modules["channels"] = function(require, ...)
+-- Every channel handle the HUD reads, created once, here, in one place. Each resolves itself lazily.
+-- Creating one inside on_frame would rescan the whole group every frame forever - see
+-- Docs/scripting/channels.md.
 --
--- Every handle is created once, here, and resolves itself lazily. Creating one inside on_frame
--- would rescan the whole group every frame forever - see Docs/scripting/channels.md.
--- ---------------------------------------------------------------------------------------------
+-- Returned as one table so the modules that read them name the channel they mean; each module takes
+-- local aliases for the handful it uses.
+
+local colours = require("colours")
+local YELLOW, RED = colours.YELLOW, colours.RED
 
 -- Run state. Two reads, not a state machine fed by hooks: a flag assembled from transitions is only
 -- correct if it saw every one of them, and this script can be enabled mid-run.
@@ -512,17 +561,13 @@ local chain_count = tw.float_ch("Puzzle", "ChainCount")
 -- ChainCount currently holds. Addressed by index because it has no name of its own.
 local chain_curve = tw.float_ch("Puzzle", 643)
 
--- The chain drop timer (header §5). Both names are unique in their own groups, so neither needs an
+-- The chain drop timer (DESIGN.md §5). Both names are unique in their own groups, so neither needs an
 -- index - and neither should get one: MatchCollectionTicks is written from a dozen places and an
 -- index would make the read more fragile without making it more precise.
 local match_timer = tw.float_ch("Puzzle", "MatchTimer")
 local match_ticks = tw.float_ch("SpecialPurpose", "MatchCollectionTicks")
 
--- Quest3D counts in 25ths of a second, and the game converts with a bare `/25` everywhere it wants
--- seconds. This is that 25.
-local TICKS_PER_SECOND = 25
-
--- Score, personal best and the points in flight (header §8).
+-- Score, personal best and the points in flight (DESIGN.md §8).
 --
 -- PB (#731) is XX_gui's own, already-resolved personal best - Online? ? MAX(PB_FromServer,
 -- PersonalBestScore) : PersonalBestScore - and it stays fresh because the mute cuts below the Set
@@ -551,9 +596,77 @@ local launch_colour = tw.float_ch("MoneyFloaterCommander", "inLaunchColor")
 -- enough to match a landing to the queue entry that is waiting for it - no table reads needed.
 local particle_at = tw.float_ch("MoneyFloaterCommander", "Index_Particles")
 
+return {
+    startup_state = startup_state,
+    gameplay_state = gameplay_state,
+    paused = paused,
+    traffic_pattern = traffic_pattern,
+    car_count = car_count,
+    points = points,
+    best_match = best_match,
+    tiles_left = tiles_left,
+    bronze_at = bronze_at,
+    silver_at = silver_at,
+    gold_at = gold_at,
+    league_id = league_id,
+    scaler = scaler,
+    hits = hits,
+    is_ninja = is_ninja,
+    is_freeride = is_freeride,
+    is_mech = is_mech,
+    is_portal = is_portal,
+    perfect_ninja = perfect_ninja,
+    prevent_mono = prevent_mono,
+    type_ch = type_ch,
+    traffic_id = traffic_id,
+    current_traffic = current_traffic,
+    precalc_row = precalc_row,
+    scooping = scooping,
+    erasing = erasing,
+    chain_count = chain_count,
+    chain_curve = chain_curve,
+    match_timer = match_timer,
+    match_ticks = match_ticks,
+    personal_best = personal_best,
+    points_l = points_l,
+    points_r = points_r,
+    use_clone = use_clone,
+    update_colour = update_colour,
+    launch_money = launch_money,
+    launch_colour = launch_colour,
+    particle_at = particle_at,
+}
+end
+
+__twl_modules["palette"] = function(require, ...)
 -- ---------------------------------------------------------------------------------------------
--- Palette resolution
+-- Palette
 -- ---------------------------------------------------------------------------------------------
+--
+-- The colours the player actually sees come from XX_StartHere::FetchColorByID (#882), and there is
+-- more than one palette behind it:
+--
+--     #1533  switch (XX_gui::Color5.x + .y + .z) == 0
+--      +- 1 -> #1535  StartGroup #1542/#1538/#1534/#1530/#1526      "fallback"
+--      +- 0 -> #7157  switch SpecialPurpose::isMechMode
+--              +- 1 -> #7159  Highway::MechColor0..4                "mech"
+--              +- 0 -> #7072  switch SpecialPurpose::PortalMode?
+--                      +- 1 -> #7074  PlayerCar_Sword::PortalColor1..5   "portal"
+--                      +- 0 -> #440   XX_gui::Color1..Color5             "normal"
+--
+-- Reading a channel and getting a plausible colour is not evidence the game is using it - a
+-- Value Vector carries no "someone reads me" flag. The only way to tell a live branch from a spare
+-- is to walk the switches, which is what palette_source() does.
+--
+-- Note the reversed numbering in the normal branch (ColorID 0 -> Color5) and the extra switch on
+-- ids 2 and 3, which become GlobalMonoColor under Ninja or Freeride. Both are the game's, not a
+-- transcription slip.
+
+local colours = require("colours")
+local ch = require("channels")
+
+local COLOURS = colours.COLOURS
+local is_ninja, is_freeride, is_mech, is_portal = ch.is_ninja, ch.is_freeride, ch.is_mech, ch.is_portal
 
 -- Handles for palettes other than the normal one are created on demand. Two of those groups
 -- (PlayerCar_Sword, and Highway before a run) are not always loaded, and a handle for an absent
@@ -651,14 +764,12 @@ local function refresh_palette()
     end
 end
 
-for _, c in ipairs(COLOURS) do
-    c.colour = c.fallback
-    -- Built once rather than concatenated per frame per cell: twelve throwaway strings a frame is
-    -- twelve more than a table of six fixed rows needs.
-    c.key_total = "total:" .. c.name
-    c.key_taken = "taken:" .. c.name
+return {
+    refresh = refresh_palette,
+}
 end
 
+__twl_modules["mutes"] = function(require, ...)
 -- ---------------------------------------------------------------------------------------------
 -- What the game stops drawing for as long as this script is loaded. Each handle is kept so it can
 -- be put back with :off() without a reload.
@@ -667,93 +778,23 @@ local muted = {
     medals = tw.mute("XX_gui", "Do_LadderMedalRequirements"),
     song_name = tw.mute("XX_gui", "Do_ShowSongName"),
     -- By index on purpose: "Timer1"/"Timer2" are unique in XX_gui but say nothing, and the two are
-    -- one place apart in a handler whose name mentions neither. See the header, §3.
+    -- one place apart in a handler whose name mentions neither. See DESIGN.md §3.
     chain_bar = tw.mute("XX_gui", 3938),
     song_progress = tw.mute("XX_gui", 3970),
     -- The top strip in one cut: frame, score and the game's own "+N" text floaters.
     score = tw.mute("XX_gui", 2351),
     -- The DRAW branch of Do_ShowPersonalBest, not Do_ShowPersonalBest - #5348 carries the Freeride
-    -- autopilot trigger, and cutting here also leaves XX_gui::PB being written. Header §3.
+    -- autopilot trigger, and cutting here also leaves XX_gui::PB being written. DESIGN.md §3.
     best_popup = tw.mute("XX_gui", 5412),
     coop_scores = tw.mute("XX_gui", 3707),
 }
 
--- ---------------------------------------------------------------------------------------------
--- Run tally, counted by track row
--- ---------------------------------------------------------------------------------------------
-
-local taken = {}
-local by_route = { grid = 0, buffer = 0, erased = 0 }
--- Row ids already spent. A ghost (header §1) arrives carrying an id we have seen, which is exactly
--- what makes it identifiable.
-local seen = {}
-local powerups, ghosts = 0, 0
-
--- 0 hidden, 1 fully shown. Declared up here rather than beside the frame handler so the drawing
--- helpers below can close over it and fade themselves.
-local shown = 0
-
-local function reset_tally()
-    for _, c in ipairs(COLOURS) do
-        taken[c.id] = 0
-    end
-    by_route.grid, by_route.buffer, by_route.erased = 0, 0, 0
-    seen = {}
-    powerups, ghosts = 0, 0
+return muted
 end
 
-reset_tally()
-
--- Counts one collected block against the track row it came from. Returns whether it counted.
---
--- An id we have already spent means a ghost: a car the game birthed into a freed slot without
--- advancing the pattern cursor, so it is a duplicate of a row that is still going to spawn on its
--- own. It has no row in the denominator and must not be counted into the numerator - but it is a
--- real block the player collected, so it is reported rather than discarded silently.
-local function count_row(id, colour)
-    local bucket = BUCKET[math.floor(colour + 0.5)]
-    if bucket == nil then
-        return false
-    end
-
-    -- No usable row id - the channel has not resolved yet, or the game left -1 there. Count the
-    -- block rather than drop it: that is the old, over-counting behaviour, and losing accuracy is
-    -- the right way for a missing discriminator to degrade. Losing blocks is not.
-    if id ~= nil and id >= 0 then
-        if seen[id] then
-            ghosts = ghosts + 1
-            return false
-        end
-        seen[id] = true
-    end
-
-    taken[bucket] = (taken[bucket] or 0) + 1
-    return true
-end
-
--- Three events, and all three are needed. They are declared after the scan below is defined, at the
--- bottom of this section.
---
---   Do_ResetStats (#1)          the track is being regenerated. Called only from
---                               Do_GenerateSongStats, i.e. when a new song loads.
---
---   Do_ReseteWhiteWildBlocks    the whites, wilds and power-ups are being (re)placed over the
---   (#1156, the typo is theirs)  generated colours. Called from XX_StartHere::Do_ReturnToStart,
---                               inside its OneTime, so once per entry into a run. **This is the
---                               event that says the track is finally what the player will see**,
---                               and missing it is what made the denominators wrong: white
---                               placement uses plain RAND, so it lands somewhere different on
---                               every single run of the same song.
---
---   Do_ResetSimpleStats (#345)  the run counters are being zeroed. Called from Do_ReturnToStart
---                               too, after the OneTime above, so it is also the safe backstop for
---                               "the pattern is settled". Restarting from the pause menu fires
---                               this and NOT Do_ResetStats - the track is not regenerated - and a
---                               tracker hooked only on the latter keeps counting into the previous
---                               run's tally and sails past 100%.
-
+__twl_modules["scan"] = function(require, ...)
 -- ---------------------------------------------------------------------------------------------
--- How much traffic of each colour the track carries: walk the live pattern (header §2).
+-- How much traffic of each colour the track carries: walk the live pattern (DESIGN.md §2).
 --
 -- Spread over frames on purpose. Each row costs a cursor write, a vector read and a cursor restore,
 -- and a track can be several thousand rows - doing it in one frame would be a visible hitch at the
@@ -763,6 +804,13 @@ end
 -- alternative is blanking the table for a quarter second at every start, and on a restart the two
 -- are usually the same number anyway.
 -- ---------------------------------------------------------------------------------------------
+
+local colours = require("colours")
+local ch = require("channels")
+
+local COLOURS, BUCKET = colours.COLOURS, colours.BUCKET
+local car_count, traffic_pattern = ch.car_count, ch.traffic_pattern
+
 local ROWS_PER_FRAME = 128
 
 -- Which colour columns the table shows. Derived from the track rather than from a table of modes,
@@ -868,6 +916,93 @@ local function step_scan()
     end
 end
 
+return {
+    totals = totals,
+    begin = begin_scan,
+    step = step_scan,
+}
+end
+
+__twl_modules["tally"] = function(require, ...)
+-- ---------------------------------------------------------------------------------------------
+-- Run tally, counted by track row
+-- ---------------------------------------------------------------------------------------------
+
+local colours = require("colours")
+local ch = require("channels")
+local scan = require("scan")
+
+local COLOURS, BUCKET = colours.COLOURS, colours.BUCKET
+local type_ch, traffic_id, current_traffic, precalc_row = ch.type_ch, ch.traffic_id, ch.current_traffic, ch.precalc_row
+local scooping, erasing = ch.scooping, ch.erasing
+local begin_scan = scan.begin
+
+local taken = {}
+local by_route = { grid = 0, buffer = 0, erased = 0 }
+-- Row ids already spent. A ghost (DESIGN.md §1) arrives carrying an id we have seen, which is exactly
+-- what makes it identifiable.
+local seen = {}
+local powerups, ghosts = 0, 0
+
+local function reset_tally()
+    for _, c in ipairs(COLOURS) do
+        taken[c.id] = 0
+    end
+    by_route.grid, by_route.buffer, by_route.erased = 0, 0, 0
+    seen = {}
+    powerups, ghosts = 0, 0
+end
+
+reset_tally()
+
+-- Counts one collected block against the track row it came from. Returns whether it counted.
+--
+-- An id we have already spent means a ghost: a car the game birthed into a freed slot without
+-- advancing the pattern cursor, so it is a duplicate of a row that is still going to spawn on its
+-- own. It has no row in the denominator and must not be counted into the numerator - but it is a
+-- real block the player collected, so it is reported rather than discarded silently.
+local function count_row(id, colour)
+    local bucket = BUCKET[math.floor(colour + 0.5)]
+    if bucket == nil then
+        return false
+    end
+
+    -- No usable row id - the channel has not resolved yet, or the game left -1 there. Count the
+    -- block rather than drop it: that is the old, over-counting behaviour, and losing accuracy is
+    -- the right way for a missing discriminator to degrade. Losing blocks is not.
+    if id ~= nil and id >= 0 then
+        if seen[id] then
+            ghosts = ghosts + 1
+            return false
+        end
+        seen[id] = true
+    end
+
+    taken[bucket] = (taken[bucket] or 0) + 1
+    return true
+end
+-- Three events, and all three are needed. They are registered at the bottom of this file, where the
+-- scan they arm (scan.lua) is at hand.
+-- bottom of this section.
+--
+--   Do_ResetStats (#1)          the track is being regenerated. Called only from
+--                               Do_GenerateSongStats, i.e. when a new song loads.
+--
+--   Do_ReseteWhiteWildBlocks    the whites, wilds and power-ups are being (re)placed over the
+--   (#1156, the typo is theirs)  generated colours. Called from XX_StartHere::Do_ReturnToStart,
+--                               inside its OneTime, so once per entry into a run. **This is the
+--                               event that says the track is finally what the player will see**,
+--                               and missing it is what made the denominators wrong: white
+--                               placement uses plain RAND, so it lands somewhere different on
+--                               every single run of the same song.
+--
+--   Do_ResetSimpleStats (#345)  the run counters are being zeroed. Called from Do_ReturnToStart
+--                               too, after the OneTime above, so it is also the safe backstop for
+--                               "the pattern is settled". Restarting from the pause menu fires
+--                               this and NOT Do_ResetStats - the track is not regenerated - and a
+--                               tracker hooked only on the latter keeps counting into the previous
+--                               run's tally and sails past 100%.
+
 -- The hooks described above. A hook runs on the game's own call stack, so all it does is arm the
 -- scan; the walking happens in on_frame.
 local function run_started()
@@ -926,13 +1061,25 @@ tw.on_call("TrafficCommander", "Do_CollectQuestionBox", "after", function()
     count_row(id, colour)
 end)
 
+return {
+    taken = taken,
+    by_route = by_route,
+}
+end
+
+__twl_modules["feed"] = function(require, ...)
 -- ---------------------------------------------------------------------------------------------
--- The score feed: a queue of points in flight (header §8, §9)
+-- The score feed: a queue of points in flight (DESIGN.md §8, §9)
 --
 -- One entry per COLOUR per frame, laid out as a queue to the left of the score. Each entry lives
 -- until the last of the particles behind it has landed, which is when the game has finished adding
 -- its points.
 -- ---------------------------------------------------------------------------------------------
+
+local ch = require("channels")
+
+local points, update_colour = ch.points, ch.update_colour
+local launch_money, launch_colour, particle_at = ch.launch_money, ch.launch_colour, ch.particle_at
 
 -- Six colours is the most one collection can produce, and the queue drains as the particles land.
 -- The cap is a guard against a pathological frame, not a design parameter.
@@ -958,7 +1105,7 @@ local last_points = nil
 
 -- What the headline multiplies raw points by, published once a frame by the draw handler. A floater
 -- is frozen against it at the moment it is announced, so the number flying in is the amount the
--- total actually moves (header §10). It lives here rather than being computed on the spot because a
+-- total actually moves (DESIGN.md §10). It lives here rather than being computed on the spot because a
 -- launch happens once per collected TILE, and earned_bonus() is half a dozen channel reads.
 local live_multiplier = 1
 
@@ -1121,7 +1268,7 @@ tw.on_call("MoneyFloaterCommander", 198, "before", function()
 end)
 
 -- Everything else that moves the score: ninja ram bonuses, penalties, question boxes, boss damage.
--- The delta is measured rather than read (header §8).
+-- The delta is measured rather than read (DESIGN.md §8).
 tw.on_call("StatCollector", 153, "after", function()
     local now = points:get()
     if now == nil then
@@ -1155,197 +1302,34 @@ end)
 tw.on_call("StatCollector", "Do_ResetStats", "after", reset_score_feed)
 tw.on_call("StatCollector", "Do_ResetSimpleStats", "after", reset_score_feed)
 
--- ---------------------------------------------------------------------------------------------
--- The chain multiplier
--- ---------------------------------------------------------------------------------------------
-
--- Envelope #643's keys, lifted out of its ENV1 chunk. Kept here for two reasons: as the fallback
--- when the channel cannot be read, and as a running cross-check on the channel - an index is the
--- most fragile way to address anything, and a wrong one here would show a plausible wrong number
--- rather than failing.
-local CHAIN_KEYS = { { 0, 0.0 }, { 1, 0.5 }, { 4, 1.5 }, { 10, 2.0 }, { 20, 2.5 }, { 100, 3.0 } }
-
--- A full bar. The game divides by this same 3 to scale its own (header §4), so a rail drawn at
--- bonus/3 of its maximum is the length the player already knows how to read.
-local CHAIN_MAX = CHAIN_KEYS[#CHAIN_KEYS][2]
--- The first key worth anything: a chain of 1 is a bonus of 0.5. Below it the player has no chain,
--- which is what the drop timer's visibility hangs on.
-local CHAIN_FIRST = CHAIN_KEYS[2][2]
-
-local function chain_bonus_from_table(chain)
-    if chain <= 0 then
-        return 0
-    end
-
-    for i = 1, #CHAIN_KEYS - 1 do
-        local x0, y0 = CHAIN_KEYS[i][1], CHAIN_KEYS[i][2]
-        local x1, y1 = CHAIN_KEYS[i + 1][1], CHAIN_KEYS[i + 1][2]
-        if chain <= x1 then
-            return y0 + (y1 - y0) * (chain - x0) / (x1 - x0)
-        end
-    end
-
-    return CHAIN_KEYS[#CHAIN_KEYS][2]
+return {
+    FADE_IN = FLOATER_FADE_IN,
+    step = step_floaters,
+    -- A function rather than the table: a reset replaces the queue with a new one, and a reader
+    -- holding the old table would draw a queue nobody updates any more.
+    floaters = function()
+        return floaters
+    end,
+    -- Published once a frame by the draw handler, which is the one place the multiplier is computed.
+    set_multiplier = function(value)
+        live_multiplier = value
+    end,
+}
 end
 
--- Starts trusting the channel and stops if it ever disagrees with the curve above. Cheap - one
--- extra float read per frame - and it turns "the index drifted in a patch" from a silently wrong
--- number into a message and a correct one.
-local curve_trusted = true
-local curve_doubts = 0
-
-local function chain_bonus()
-    local chain = chain_count:get()
-    if chain == nil then
-        return nil, nil
-    end
-
-    local expected = chain_bonus_from_table(chain)
-    if not curve_trusted then
-        return expected, chain
-    end
-
-    local live = chain_curve:get()
-    if live == nil then
-        return expected, chain
-    end
-
-    -- The curve interpolates its keys with a spline, this table with straight lines, so they differ
-    -- slightly between keys. The tolerance is for that; an index pointing at an unrelated channel
-    -- misses by far more.
-    if math.abs(live - expected) > 0.35 then
-        curve_doubts = curve_doubts + 1
-        if curve_doubts > 30 then
-            curve_trusted = false
-            tw.warn("chain curve channel disagrees with the known keys - falling back to ChainCount")
-        end
-        return expected, chain
-    end
-
-    curve_doubts = 0
-    return live, chain
-end
-
--- How long until the pass that decides whether the chain survives, as the text to print and the
--- fraction of the window still to run (header §5).
---
--- Read from the game every frame rather than counted down here. The game's timer stops while blocks
--- are sliding and can be pushed backwards by Do_ResetMatchingTimer; a clock of our own would do
--- neither, and would promise time the player has not got.
-local function drop_timer()
-    local window = match_ticks:get()
-    local elapsed = match_timer:get()
-    if window == nil or elapsed == nil or window <= 0 then
-        return nil, 0
-    end
-
-    local left = window - elapsed
-    if left < 0 then
-        -- The pass fires on the frame the window is exceeded, so this is only ever a frame wide.
-        left = 0
-    elseif left > window then
-        -- Do_ResetMatchingTimer subtracts a whole window rather than clamping, which leaves the
-        -- counter negative while match collection is suppressed - during a tutorial, or under a
-        -- Hintman freeze.
-        left = window
-    end
-
-    return string.format("%.2f", left / TICKS_PER_SECOND), left / window
-end
-
--- ---------------------------------------------------------------------------------------------
--- Colour helpers
--- ---------------------------------------------------------------------------------------------
-
-local function mix(a, b, t)
-    if t <= 0 then
-        return a
-    end
-    if t >= 1 then
-        return b
-    end
-
-    local out = 0
-    local scale = 1
-    for _ = 1, 4 do
-        local ca = a % 256
-        local cb = b % 256
-        out = out + math.floor(ca + (cb - ca) * t + 0.5) * scale
-        a = math.floor(a / 256)
-        b = math.floor(b / 256)
-        scale = scale * 256
-    end
-    return out
-end
-
--- Bonus 0 (within float noise) is white; above that the colour walks the block palette, one stop
--- per envelope key. Using the key ordinal as the gradient axis rather than the bonus itself is the
--- whole point: the bonus steps are 0.5/1.0/0.5/0.5/0.5, so a gradient keyed on the bonus would
--- crawl through one band and sprint through the rest. On the ordinal axis the colour advances once
--- per tier, and the game's own curve keeps the tiers where the game put them.
-local function chain_colour(bonus)
-    if bonus < 1e-4 then
-        return WHITE
-    end
-
-    for i = 1, #CHAIN_KEYS - 1 do
-        local y0 = CHAIN_KEYS[i][2]
-        local y1 = CHAIN_KEYS[i + 1][2]
-        if bonus <= y1 then
-            local from = (i == 1) and WHITE or COLOURS[i - 1].colour
-            local to = COLOURS[i].colour
-            local span = y1 - y0
-            return mix(from, to, span > 0 and (bonus - y0) / span or 1)
-        end
-    end
-
-    return COLOURS[#CHAIN_KEYS - 1].colour
-end
-
--- ---------------------------------------------------------------------------------------------
--- Animation
--- ---------------------------------------------------------------------------------------------
-
--- A named tween. Hand it a key and where the value should be, and it answers where the value is
--- right now - restarting from wherever it had got to if the target moved mid-flight (header §6).
---
--- Keyed by string rather than handing back a handle so that the drawing code stays a straight line.
--- The alternative is a table of tween objects built alongside the layout, which is state to create,
--- find and tear down in three places instead of none.
-local ROLL_SECONDS = 0.22
-
-local rolls = {}
-
-local function roll(key, target, seconds, curve)
-    if target == nil then
-        return nil
-    end
-
-    local a = rolls[key]
-    if a == nil then
-        -- First sight of a value is not a change. Rolling up from zero the moment the widget
-        -- appears would animate the whole run's score on the frame it becomes visible.
-        rolls[key] = { v = target, from = target, to = target, t = 1 }
-        return target
-    end
-
-    if math.abs(target - a.to) > 1e-6 then
-        a.from, a.to, a.t = a.v, target, 0
-    end
-
-    if a.t < 1 then
-        a.t = math.min(1, a.t + tw.dt() / (seconds or ROLL_SECONDS))
-        a.v = a.from + (a.to - a.from) * tw.ease(curve or "cubicOut", a.t)
-    else
-        a.v = a.to
-    end
-
-    return a.v
-end
-
+__twl_modules["scoring"] = function(require, ...)
 -- ---------------------------------------------------------------------------------------------
 -- Scoring
 -- ---------------------------------------------------------------------------------------------
+
+local colours = require("colours")
+local ch = require("channels")
+local scan = require("scan")
+
+local YELLOW, RED = colours.YELLOW, colours.RED
+local league_id, is_ninja, prevent_mono, perfect_ninja = ch.league_id, ch.is_ninja, ch.prevent_mono, ch.perfect_ninja
+local scaler, best_match, hits = ch.scaler, ch.best_match, ch.hits
+local totals = scan.totals
 
 local function league()
     local id = league_id:get()
@@ -1396,7 +1380,7 @@ local function earned_bonus()
     -- Both colour bonuses are gated on !Ninja? - a Ninja gets Stealth instead, and never these.
     --
     -- The 95% test uses Achievements::YellowsHit / RedsHit over Achievements' own totals, which is a
-    -- different quantity from the de-duplicated table above (header §1). This reads what the game
+    -- different quantity from the de-duplicated table (tally.lua, DESIGN.md §1). This reads what the game
     -- will read; the table shows the truth. Where they disagree is itself worth seeing.
     if not ninja and totals.ready then
         local yellow_total = totals.by_row[YELLOW] or 0
@@ -1434,84 +1418,60 @@ local FEAT_ICON = {
     ["Mono Special"] = "feat_mono_special",
 }
 
--- ---------------------------------------------------------------------------------------------
--- Drawing
--- ---------------------------------------------------------------------------------------------
-
--- Which medal the score currently holds: 0 none, 1 bronze, 2 silver, 3 gold. The game's own test
--- (Do_CalculateMedalEarned #845) is three unordered comparisons against PointsWithGridBonus, which
--- is what the caller passes; a threshold the script could not read is skipped rather than assumed.
-local function medal_tier(score, bronze, silver, gold)
-    if gold ~= nil and gold > 0 and score >= gold then
-        return 3
-    end
-    if silver ~= nil and silver > 0 and score >= silver then
-        return 2
-    end
-    if bronze ~= nil and bronze > 0 and score >= bronze then
-        return 1
-    end
-    return 0
+return {
+    league = league,
+    earned_bonus = earned_bonus,
+    FEAT_ICON = FEAT_ICON,
+}
 end
 
--- Progress to gold, in the same language as the chain rails: a hairline, one colour, and light.
---
--- The rail carries ONE colour - the medal currently held - rather than three abutting zones. At the
--- thickness the rest of this HUD uses, three colours in a row do not read as three zones; they read
--- as a smear, which is exactly what the old bar had become. So the colour is the medal, the length
--- is the progress, and the three dots underneath are the discrete state.
---
--- The dots are indicators, not dividers. They sit at equal spacing, centred under the rail, and
--- deliberately say nothing about where the thresholds fall - putting them on the rail at their
--- score positions is what made the old bar look like a chart.
---
--- There is deliberately no overshoot indicator either. Gold is PointsWithGridBonus ==
--- GoldRequirement, so by Do_CalcSkillRating (header §7) gold is exactly 100 skill rating per league:
--- 100 casual, 200 pro, 300 elite. Anyone past gold is already reading that off the number, and a
--- second thing saying the same is a second thing to keep true.
-local function draw_medal_rail(x0, y0, x1, h, dot, gap_y, score, bronze, silver, gold, stops, track, fade)
-    local radius = h * 0.5
-    local w = x1 - x0
+__twl_modules["roll"] = function(require, ...)
+-- ---------------------------------------------------------------------------------------------
+-- Animation
+-- ---------------------------------------------------------------------------------------------
 
-    tw.hud.rect(x0, y0, x1, y0 + h, track, radius)
+-- A named tween. Hand it a key and where the value should be, and it answers where the value is
+-- right now - restarting from wherever it had got to if the target moved mid-flight (DESIGN.md §6).
+--
+-- Keyed by string rather than handing back a handle so that the drawing code stays a straight line.
+-- The alternative is a table of tween objects built alongside the layout, which is state to create,
+-- find and tear down in three places instead of none.
+local ROLL_SECONDS = 0.22
 
-    -- The tier is tweened and the colour interpolated along the stops by that rolled ordinal, so
-    -- earning a medal sweeps the rail from one metal to the next instead of switching it. Same trick
-    -- as the chain gradient: one number moving, not two colours picked per frame.
-    local tier = medal_tier(score, bronze, silver, gold)
-    local t = roll("medal_tier", tier, 0.35)
-    local lo = math.min(math.floor(t), #stops - 2)
-    local colour = mix(stops[lo + 1], stops[lo + 2], t - lo)
+local rolls = {}
 
-    if gold ~= nil and gold > 0 then
-        local fill = w * math.min(math.max(score / gold, 0), 1)
-        -- Shorter than it is thick is a dot, not a bar - the same rule the chain rails use, and for
-        -- the same reason: below that the rounding eats the shape.
-        if fill > h then
-            local c = tw.fade(colour, fade)
-            tw.hud.rect(x0, y0, x0 + fill, y0 + h, c, radius)
-            -- The glow rises with the tier, so the rail gains weight as the medals do rather than
-            -- only changing hue.
-            tw.hud.glow_rect(x0, y0, x0 + fill, y0 + h, c, radius, (0.3 + 0.2 * t) * fade)
-        end
+local function roll(key, target, seconds, curve)
+    if target == nil then
+        return nil
     end
 
-    local spacing = math.max(dot * 2.5, w * 0.1)
-    local cy = y0 + h + gap_y
-    for i, medal in ipairs(MEDALS) do
-        -- Lit is its own roll per dot rather than a slice of the tier roll: a medal lights up on its
-        -- own clock, and sharing one would make the third dot start moving when the first was won.
-        local lit = roll(DOT_KEYS[i], tier >= i and 1 or 0, 0.35)
-        local cx = x0 + w * 0.5 + spacing * (i - 2)
-        -- Unearned is the medal's own colour held down rather than a neutral, so the row reads as
-        -- three named medals waiting rather than as three anonymous pips.
-        local c = tw.fade(tw.alpha(medal, 0.16 + 0.84 * lit), fade)
-        tw.hud.rect(cx - dot * 0.5, cy, cx + dot * 0.5, cy + dot, c, dot * 0.5)
-        if lit > 0.01 then
-            tw.hud.glow_rect(cx - dot * 0.5, cy, cx + dot * 0.5, cy + dot, c, dot * 0.5, 0.75 * lit * fade)
-        end
+    local a = rolls[key]
+    if a == nil then
+        -- First sight of a value is not a change. Rolling up from zero the moment the widget
+        -- appears would animate the whole run's score on the frame it becomes visible.
+        rolls[key] = { v = target, from = target, to = target, t = 1 }
+        return target
     end
+
+    if math.abs(target - a.to) > 1e-6 then
+        a.from, a.to, a.t = a.v, target, 0
+    end
+
+    if a.t < 1 then
+        a.t = math.min(1, a.t + tw.dt() / (seconds or ROLL_SECONDS))
+        a.v = a.from + (a.to - a.from) * tw.ease(curve or "cubicOut", a.t)
+    else
+        a.v = a.to
+    end
+
+    return a.v
 end
+
+return roll
+end
+
+__twl_modules["draw.text"] = function(require, ...)
+-- Text helpers shared by the drawing code.
 
 -- A score with its thousands spaced out. Six- and seven-figure numbers are the normal case here and
 -- an unbroken run of digits is not readable at a glance, which is the only thing this number is for.
@@ -1537,124 +1497,29 @@ local function centered(x, width, y, text, colour, size, font)
     tw.hud.text(x + (width - w) * 0.5, y, text, colour, size, font)
 end
 
--- Is the player actually playing right now? nil from either channel means "could not tell", and the
--- answer to that is yes: hiding a working widget because a lookup failed is a worse failure than
--- showing it somewhere it is not wanted.
-local function in_run()
-    local state = startup_state:get()
-    local gameplay = gameplay_state:get()
-    if state == nil or gameplay == nil then
-        return true
-    end
-    if math.abs(state - gameplay) > 0.5 then
-        return false
-    end
-
-    -- Only asked once we know we are in gameplay, which is also the only time XX_PauseScreen is
-    -- certainly loaded - asking from the main menu would just accumulate "no such group" warnings.
-    local held = paused:get()
-    return (held or 0) == 0
+return {
+    grouped = grouped,
+    centered = centered,
+}
 end
 
--- Time-based rather than per-frame: the game does not run at a fixed frame rate, and a constant
--- step per frame fades at whatever speed the machine happens to reach.
-local FADE_SECONDS = 0.18
+__twl_modules["draw.colour_table"] = function(require, ...)
+-- The colour table, bottom-left: a swatch per colour the track carries, the track's total of it, and
+-- how much of it has been taken so far.
 
-tw.on_frame(function()
-    if not tw.engine_ready() then
-        return
-    end
+local scan = require("scan")
+local tally = require("tally")
+local roll = require("roll")
+local centered = require("draw.text").centered
 
+local totals, taken = scan.totals, tally.taken
 
+return function(L)
+    local fade, RULE, TEXT, DIM, FAINT = L.fade, L.RULE, L.TEXT, L.DIM, L.FAINT
+    local value_size, swatch, row_gap, row_h, cell_w = L.value_size, L.swatch, L.row_gap, L.row_h, L.cell_w
+    local sx0, margin, bottom = L.sx0, L.margin, L.bottom
 
-
-    -- Before the visibility gate: the track is generated and dressed while the loading screen is
-    -- still up, so the walk has to be allowed to run before the run starts.
-    step_scan()
-    -- Same reason, different failure: a number in flight when the player hits pause must keep
-    -- ageing, or it comes back on screen and replays a match that finished a minute ago.
-    step_floaters()
-
-    -- The one case the hooks cannot cover: this script was enabled part-way through a run, so the
-    -- events that would have armed the scan are long past.
-    if not totals.ready and not totals.running and tw.frame % 60 == 0 then
-        begin_scan()
-    end
-
-    local target = in_run() and 1 or 0
-    local step = tw.dt() / FADE_SECONDS
-    if shown < target then
-        shown = math.min(target, shown + step)
-    elseif shown > target then
-        shown = math.max(target, shown - step)
-    end
-
-    -- Fully faded out: nothing to draw, and nothing below this point should be evaluated either -
-    -- the per-frame channel reads are only worth paying for when someone can see the result.
-    if shown <= 0 then
-        return
-    end
-
-    if tw.frame % 30 == 0 then
-        refresh_palette()
-    end
-
-    -- Eased so the widget arrives and leaves with some weight instead of ramping linearly.
-    local fade = tw.ease("cubicOut", shown)
-
-    -- Everything structural comes from the overlay's theme, so the widget follows a theme change
-    -- instead of drifting out of it. Everything goes through the fade, so entering and leaving a run
-    -- dissolves the widget instead of popping it - including the block swatches, which is why those
-    -- are faded at the point of use rather than here.
-    local function themed(name, weight)
-        local colour = tw.theme(name)
-        if weight then
-            colour = tw.alpha(colour, weight)
-        end
-        return tw.fade(colour, fade)
-    end
-
-    local RULE = themed("border_subtle")
-    local TEXT = themed("text_primary")
-    local DIM = themed("text_muted")
-    local FAINT = themed("text_faint")
-    local WARN = themed("text_warning")
-    local TRACK = themed("control_track_off")
-
-    -- Tier -> rail colour, index 1 being "no medal yet". That one is the overlay's own neutral
-    -- rather than a fourth metal, so the rail starts grey and warms into bronze. Raw rather than
-    -- themed(): the rail mixes between two of these and fades the result once, and fading twice
-    -- would make the transition dip in the middle.
-    local MEDAL_STOPS = { tw.theme("text_muted"), BRONZE, SILVER, GOLD }
-
-    local base = tw.hud.font_size()
-    local screen_w = tw.hud.size()
-
-    local value_size = base * 1.15
-    local label_size = base * 0.85
-    local rating_size = base * 2.0
-    local chain_size = base * 1.6
-
-    local swatch = math.max(10, base * 0.8)
-    local row_gap = 5
-    local row_h = value_size + 6
-    local cell_w = math.max(swatch + 14, base * 2.8)
-
-    -- The medal rail is the chain rails' own thickness, on purpose: it was the one filled solid on a
-    -- screen of hairlines, and matching the thickness is most of what stops it reading as a blot.
-    local rail_h = math.max(3, base * 0.18)
-    local medal_dot = math.max(4, rail_h * 1.6)
-    local medal_gap = math.max(3, base * 0.22)
-    local medal_h = rail_h + medal_gap + medal_dot
-
-    -- The top of the safe area is deliberately not taken: the one widget that lives up there is
-    -- measured from the viewport instead, and everything else here hangs off the bottom.
-    local sx0, _, sx1, sy1 = tw.hud.safe()
-    local margin = 16
-    local bottom = sy1 - margin
-
-    -- ---- the colour table, bottom-left ------------------------------------------------------
-    -- Only the colours this track actually carries (see visible_columns): a Casual run has three,
+    -- Only the colours this track actually carries (see visible_columns in scan.lua): a Casual run has three,
     -- Pro four, Mono two, and a column of dashes for a colour that cannot appear is noise.
     local columns = totals.columns
     local table_w = cell_w * #columns
@@ -1702,39 +1567,113 @@ tw.on_frame(function()
         end
     end
 
-    -- ---- what the run is currently worth ----------------------------------------------------
-    --
-    -- One projection, three consumers: the skill rating, the score at the top, and the multiplier
-    -- the points in flight are scaled by. They used to be two different ideas of "the score" on the
-    -- same screen, and the top one was the raw figure - which made its comparison against the
-    -- personal best meaningless, because a personal best is PointsWithGridBonus (header §10).
-    local score = points:get() or 0
-    local gold = gold_at:get()
-    local mult, league_name = league()
+    L.tx, L.table_w, L.got_total, L.all_total = tx, table_w, got_total, all_total
+end
+end
 
-    local bonus, feats = earned_bonus()
-    local clean = scaler.clean:get() or 0.25
-    local grid_empty = (tiles_left:get() or -1) == 0
+__twl_modules["draw.medal_rail"] = function(require, ...)
+-- The medal rail under the skill rating: progress to gold as one hairline, and three dots for the
+-- medals held.
 
-    -- What the game would score if the run ended on this frame (header §7).
-    --
-    -- The Clean Finish bonus is not a hypothetical the player might reach: the game adds it whenever
-    -- the board is empty **at the moment it scores**, so while the board is clear it is already
-    -- theirs. Leaving it out of the headline under-reported by a fifth exactly while a good player
-    -- was holding a clean board - which is most of a good run, and the whole of the end of one.
-    local live_bonus = bonus + (grid_empty and clean or 0)
-    -- The other side of that: what it becomes if the board fills, or what it would become if it
-    -- emptied. Whichever it is, it is the figure the player is not currently on.
-    local alt_bonus = grid_empty and bonus or (bonus + clean)
+local colours = require("colours")
+local roll = require("roll")
 
-    local now_points = score * (1 + live_bonus)
-    local alt_points = score * (1 + alt_bonus)
+local MEDALS, DOT_KEYS, mix = colours.MEDALS, colours.DOT_KEYS, colours.mix
 
-    -- Published for the score feed, which runs from channel hooks and cannot reach these channels
-    -- cheaply (a launch happens once per collected TILE). Header §10.
-    live_multiplier = 1 + live_bonus
+-- Which medal the score currently holds: 0 none, 1 bronze, 2 silver, 3 gold. The game's own test
+-- (Do_CalculateMedalEarned #845) is three unordered comparisons against PointsWithGridBonus, which
+-- is what the caller passes; a threshold the script could not read is skipped rather than assumed.
+local function medal_tier(score, bronze, silver, gold)
+    if gold ~= nil and gold > 0 and score >= gold then
+        return 3
+    end
+    if silver ~= nil and silver > 0 and score >= silver then
+        return 2
+    end
+    if bronze ~= nil and bronze > 0 and score >= bronze then
+        return 1
+    end
+    return 0
+end
 
-    -- ---- skill rating and the medal bar, bottom-right ---------------------------------------
+-- Progress to gold, in the same language as the chain rails: a hairline, one colour, and light.
+--
+-- The rail carries ONE colour - the medal currently held - rather than three abutting zones. At the
+-- thickness the rest of this HUD uses, three colours in a row do not read as three zones; they read
+-- as a smear, which is exactly what the old bar had become. So the colour is the medal, the length
+-- is the progress, and the three dots underneath are the discrete state.
+--
+-- The dots are indicators, not dividers. They sit at equal spacing, centred under the rail, and
+-- deliberately say nothing about where the thresholds fall - putting them on the rail at their
+-- score positions is what made the old bar look like a chart.
+--
+-- There is deliberately no overshoot indicator either. Gold is PointsWithGridBonus ==
+-- GoldRequirement, so by Do_CalcSkillRating (DESIGN.md §7) gold is exactly 100 skill rating per league:
+-- 100 casual, 200 pro, 300 elite. Anyone past gold is already reading that off the number, and a
+-- second thing saying the same is a second thing to keep true.
+local function draw_medal_rail(x0, y0, x1, h, dot, gap_y, score, bronze, silver, gold, stops, track, fade)
+    local radius = h * 0.5
+    local w = x1 - x0
+
+    tw.hud.rect(x0, y0, x1, y0 + h, track, radius)
+
+    -- The tier is tweened and the colour interpolated along the stops by that rolled ordinal, so
+    -- earning a medal sweeps the rail from one metal to the next instead of switching it. Same trick
+    -- as the chain gradient: one number moving, not two colours picked per frame.
+    local tier = medal_tier(score, bronze, silver, gold)
+    local t = roll("medal_tier", tier, 0.35)
+    local lo = math.min(math.floor(t), #stops - 2)
+    local colour = mix(stops[lo + 1], stops[lo + 2], t - lo)
+
+    if gold ~= nil and gold > 0 then
+        local fill = w * math.min(math.max(score / gold, 0), 1)
+        -- Shorter than it is thick is a dot, not a bar - the same rule the chain rails use, and for
+        -- the same reason: below that the rounding eats the shape.
+        if fill > h then
+            local c = tw.fade(colour, fade)
+            tw.hud.rect(x0, y0, x0 + fill, y0 + h, c, radius)
+            -- The glow rises with the tier, so the rail gains weight as the medals do rather than
+            -- only changing hue.
+            tw.hud.glow_rect(x0, y0, x0 + fill, y0 + h, c, radius, (0.3 + 0.2 * t) * fade)
+        end
+    end
+
+    local spacing = math.max(dot * 2.5, w * 0.1)
+    local cy = y0 + h + gap_y
+    for i, medal in ipairs(MEDALS) do
+        -- Lit is its own roll per dot rather than a slice of the tier roll: a medal lights up on its
+        -- own clock, and sharing one would make the third dot start moving when the first was won.
+        local lit = roll(DOT_KEYS[i], tier >= i and 1 or 0, 0.35)
+        local cx = x0 + w * 0.5 + spacing * (i - 2)
+        -- Unearned is the medal's own colour held down rather than a neutral, so the row reads as
+        -- three named medals waiting rather than as three anonymous pips.
+        local c = tw.fade(tw.alpha(medal, 0.16 + 0.84 * lit), fade)
+        tw.hud.rect(cx - dot * 0.5, cy, cx + dot * 0.5, cy + dot, c, dot * 0.5)
+        if lit > 0.01 then
+            tw.hud.glow_rect(cx - dot * 0.5, cy, cx + dot * 0.5, cy + dot, c, dot * 0.5, 0.75 * lit * fade)
+        end
+    end
+end
+
+return draw_medal_rail
+end
+
+__twl_modules["draw.rating"] = function(require, ...)
+-- The skill rating and the medal rail, bottom-right (DESIGN.md §7).
+
+local ch = require("channels")
+local roll = require("roll")
+local draw_medal_rail = require("draw.medal_rail")
+
+local bronze_at, silver_at = ch.bronze_at, ch.silver_at
+
+return function(L)
+    local fade, TEXT, DIM, FAINT, WARN, TRACK, MEDAL_STOPS = L.fade, L.TEXT, L.DIM, L.FAINT, L.WARN, L.TRACK, L.MEDAL_STOPS
+    local base, label_size, rating_size = L.base, L.label_size, L.rating_size
+    local rail_h, medal_dot, medal_gap, medal_h = L.rail_h, L.medal_dot, L.medal_gap, L.medal_h
+    local sx1, margin, bottom = L.sx1, L.margin, L.bottom
+    local gold, mult, grid_empty, now_points, alt_points = L.gold, L.mult, L.grid_empty, L.now_points, L.alt_points
+
     local right_w = math.max(190, base * 14)
     local right_h = rating_size + 8 + medal_h
     local rx1 = sx1 - margin
@@ -1787,6 +1726,31 @@ tw.on_frame(function()
     draw_medal_rail(rx, bar_y, rx + right_w, rail_h, medal_dot, medal_gap, roll("medal", now_points), bronze_at:get(),
         silver_at:get(), gold, MEDAL_STOPS, TRACK, fade)
 
+    L.rx = rx
+end
+end
+
+__twl_modules["draw.score_strip"] = function(require, ...)
+-- The top strip: the projected score, personal best and the queue of points in flight
+-- (DESIGN.md §8, §9, §10).
+
+local colours = require("colours")
+local ch = require("channels")
+local feed = require("feed")
+local roll = require("roll")
+local grouped = require("draw.text").grouped
+
+local COLOUR_BY_ID, BUCKET, WHITE, AHEAD, BEHIND = colours.COLOUR_BY_ID, colours.BUCKET, colours.WHITE, colours.AHEAD, colours.BEHIND
+local personal_best, points_l, points_r, use_clone = ch.personal_best, ch.points_l, ch.points_r, ch.use_clone
+local FLOATER_FADE_IN = feed.FADE_IN
+
+return function(L)
+    local fade, TEXT, DIM, FAINT, WARN = L.fade, L.TEXT, L.DIM, L.FAINT, L.WARN
+    local base, screen_w = L.base, L.screen_w
+    local grid_empty, now_points, alt_points = L.grid_empty, L.now_points, L.alt_points
+    -- Taken once per frame: the queue is only ever replaced by a reset hook, never mid-frame.
+    local floaters = feed.floaters()
+
     -- ---- score, personal best and the points in flight, top-centre ---------------------------
     --
     -- Centred on the viewport, like the chain block at the bottom - the two are read as one column
@@ -1812,7 +1776,7 @@ tw.on_frame(function()
 
         -- The headline is the PROJECTED final score, not StatCollector::Points - the same figure the
         -- skill rating is built from, and the only one the personal best can be compared against
-        -- (header §10). It still moves when Points moves, because it is a fixed multiple of it, so
+        -- (DESIGN.md §10). It still moves when Points moves, because it is a fixed multiple of it, so
         -- the "the number lands and the total takes it" contract survives intact.
         local shown_score = roll("score", now_points, 0.45)
         local score_text = grouped(shown_score)
@@ -1934,7 +1898,7 @@ tw.on_frame(function()
                 -- What this match is worth to the headline, not what it was worth raw. The factor is
                 -- common to every point in the run - the game's scalers are all over raw Points and
                 -- never compounded - so distributing it over the numbers is exact rather than an
-                -- approximation: they still sum to the total (header §10).
+                -- approximation: they still sum to the total (DESIGN.md §10).
                 local worth = f.amount * f.mult
                 local text = (worth >= 0 and "+" or "") .. grouped(worth)
                 local fw = tw.hud.measure(text, float_size, "semibold")
@@ -1951,7 +1915,7 @@ tw.on_frame(function()
 
                 -- An unrecognised id is drawn neutral rather than guessed at: the ram bonus files
                 -- its points under colour 11 and the special-purpose path under 14, neither of which
-                -- is a block colour at all (header §8).
+                -- is a block colour at all (DESIGN.md §8).
                 local entry = f.colour_id and COLOUR_BY_ID[BUCKET[f.colour_id] or -1] or nil
                 local colour = (worth < 0) and BEHIND or (entry and entry.colour or WHITE)
 
@@ -1965,6 +1929,168 @@ tw.on_frame(function()
             end
         end
     end
+end
+end
+
+__twl_modules["chain"] = function(require, ...)
+-- ---------------------------------------------------------------------------------------------
+-- The chain multiplier
+-- ---------------------------------------------------------------------------------------------
+
+local colours = require("colours")
+local ch = require("channels")
+
+local COLOURS, WHITE, mix = colours.COLOURS, colours.WHITE, colours.mix
+local chain_count, chain_curve, match_timer, match_ticks = ch.chain_count, ch.chain_curve, ch.match_timer, ch.match_ticks
+
+-- Quest3D counts in 25ths of a second, and the game converts with a bare `/25` everywhere it wants
+-- seconds. This is that 25.
+local TICKS_PER_SECOND = 25
+
+-- Envelope #643's keys, lifted out of its ENV1 chunk. Kept here for two reasons: as the fallback
+-- when the channel cannot be read, and as a running cross-check on the channel - an index is the
+-- most fragile way to address anything, and a wrong one here would show a plausible wrong number
+-- rather than failing.
+local CHAIN_KEYS = { { 0, 0.0 }, { 1, 0.5 }, { 4, 1.5 }, { 10, 2.0 }, { 20, 2.5 }, { 100, 3.0 } }
+
+-- A full bar. The game divides by this same 3 to scale its own (DESIGN.md §4), so a rail drawn at
+-- bonus/3 of its maximum is the length the player already knows how to read.
+local CHAIN_MAX = CHAIN_KEYS[#CHAIN_KEYS][2]
+-- The first key worth anything: a chain of 1 is a bonus of 0.5. Below it the player has no chain,
+-- which is what the drop timer's visibility hangs on.
+local CHAIN_FIRST = CHAIN_KEYS[2][2]
+
+local function chain_bonus_from_table(chain)
+    if chain <= 0 then
+        return 0
+    end
+
+    for i = 1, #CHAIN_KEYS - 1 do
+        local x0, y0 = CHAIN_KEYS[i][1], CHAIN_KEYS[i][2]
+        local x1, y1 = CHAIN_KEYS[i + 1][1], CHAIN_KEYS[i + 1][2]
+        if chain <= x1 then
+            return y0 + (y1 - y0) * (chain - x0) / (x1 - x0)
+        end
+    end
+
+    return CHAIN_KEYS[#CHAIN_KEYS][2]
+end
+
+-- Starts trusting the channel and stops if it ever disagrees with the curve above. Cheap - one
+-- extra float read per frame - and it turns "the index drifted in a patch" from a silently wrong
+-- number into a message and a correct one.
+local curve_trusted = true
+local curve_doubts = 0
+
+local function chain_bonus()
+    local chain = chain_count:get()
+    if chain == nil then
+        return nil, nil
+    end
+
+    local expected = chain_bonus_from_table(chain)
+    if not curve_trusted then
+        return expected, chain
+    end
+
+    local live = chain_curve:get()
+    if live == nil then
+        return expected, chain
+    end
+
+    -- The curve interpolates its keys with a spline, this table with straight lines, so they differ
+    -- slightly between keys. The tolerance is for that; an index pointing at an unrelated channel
+    -- misses by far more.
+    if math.abs(live - expected) > 0.35 then
+        curve_doubts = curve_doubts + 1
+        if curve_doubts > 30 then
+            curve_trusted = false
+            tw.warn("chain curve channel disagrees with the known keys - falling back to ChainCount")
+        end
+        return expected, chain
+    end
+
+    curve_doubts = 0
+    return live, chain
+end
+
+-- How long until the pass that decides whether the chain survives, as the text to print and the
+-- fraction of the window still to run (DESIGN.md §5).
+--
+-- Read from the game every frame rather than counted down here. The game's timer stops while blocks
+-- are sliding and can be pushed backwards by Do_ResetMatchingTimer; a clock of our own would do
+-- neither, and would promise time the player has not got.
+local function drop_timer()
+    local window = match_ticks:get()
+    local elapsed = match_timer:get()
+    if window == nil or elapsed == nil or window <= 0 then
+        return nil, 0
+    end
+
+    local left = window - elapsed
+    if left < 0 then
+        -- The pass fires on the frame the window is exceeded, so this is only ever a frame wide.
+        left = 0
+    elseif left > window then
+        -- Do_ResetMatchingTimer subtracts a whole window rather than clamping, which leaves the
+        -- counter negative while match collection is suppressed - during a tutorial, or under a
+        -- Hintman freeze.
+        left = window
+    end
+
+    return string.format("%.2f", left / TICKS_PER_SECOND), left / window
+end
+
+-- Bonus 0 (within float noise) is white; above that the colour walks the block palette, one stop
+-- per envelope key. Using the key ordinal as the gradient axis rather than the bonus itself is the
+-- whole point: the bonus steps are 0.5/1.0/0.5/0.5/0.5, so a gradient keyed on the bonus would
+-- crawl through one band and sprint through the rest. On the ordinal axis the colour advances once
+-- per tier, and the game's own curve keeps the tiers where the game put them.
+local function chain_colour(bonus)
+    if bonus < 1e-4 then
+        return WHITE
+    end
+
+    for i = 1, #CHAIN_KEYS - 1 do
+        local y0 = CHAIN_KEYS[i][2]
+        local y1 = CHAIN_KEYS[i + 1][2]
+        if bonus <= y1 then
+            local from = (i == 1) and WHITE or COLOURS[i - 1].colour
+            local to = COLOURS[i].colour
+            local span = y1 - y0
+            return mix(from, to, span > 0 and (bonus - y0) / span or 1)
+        end
+    end
+
+    return COLOURS[#CHAIN_KEYS - 1].colour
+end
+
+return {
+    MAX = CHAIN_MAX,
+    FIRST = CHAIN_FIRST,
+    bonus = chain_bonus,
+    drop_timer = drop_timer,
+    colour = chain_colour,
+}
+end
+
+__twl_modules["draw.chain_block"] = function(require, ...)
+-- The chain multiplier, its drop timer and the feats, bottom-centre (DESIGN.md §4, §5, §6).
+
+local colours = require("colours")
+local chain = require("chain")
+local roll = require("roll")
+local FEAT_ICON = require("scoring").FEAT_ICON
+
+local WHITE = colours.WHITE
+local CHAIN_MAX, CHAIN_FIRST = chain.MAX, chain.FIRST
+local chain_bonus, drop_timer, chain_colour = chain.bonus, chain.drop_timer, chain.colour
+
+return function(L)
+    local fade, DIM = L.fade, L.DIM
+    local base, screen_w, label_size, chain_size, bottom = L.base, L.screen_w, L.label_size, L.chain_size, L.bottom
+    local tx, table_w, rx = L.tx, L.table_w, L.rx
+    local feats, grid_empty = L.feats, L.grid_empty
 
     -- ---- the chain, its drop timer and the feats, bottom-centre ------------------------------
     --
@@ -2007,7 +2133,7 @@ tw.on_frame(function()
     local avail = 2 * math.min(block_cx - free_l, free_r - block_cx)
 
     -- One tween behind the colour, the length and the printed number, so the three cannot arrive at
-    -- different times (header §6).
+    -- different times (DESIGN.md §6).
     local chain_gain = chain_bonus()
     local gain = chain_gain and roll("chain", chain_gain, 0.28) or nil
     local chain_text = gain and string.format("x%.1f", 1 + gain) or nil
@@ -2124,7 +2250,224 @@ tw.on_frame(function()
             end
         end
     end
+end
+end
 
+__twl_modules["main"] = function(require, ...)
+-- PuzzlePRO HUD - entry point.
+--
+-- Why this HUD is built the way it is - what it measures, where every number comes from, which of the
+-- game's widgets it takes over and why each of those cuts is safe - is docs/DESIGN.md, and the
+-- modules refer to it by section (DESIGN.md §N). Read it before changing anything that reads the game.
+--
+-- The order of the requires below is the order things happen in, and it is the order the script did
+-- them in when it was one file: every channel handle is created, then the game's own widgets are
+-- muted, then the hooks are registered. The last part is not cosmetic - the tally and the score feed
+-- both hook Do_ResetStats and Do_ResetSimpleStats, and two handlers on one call run in the order
+-- they were added.
+
+local ch = require("channels")
+local palette = require("palette")
+-- Required for what they do on load: the mutes go on, and the tally and the score feed hook the game.
+require("mutes")
+local scan = require("scan")
+require("tally")
+local feed = require("feed")
+local scoring = require("scoring")
+
+local draw_colour_table = require("draw.colour_table")
+local draw_rating = require("draw.rating")
+local draw_score_strip = require("draw.score_strip")
+local draw_chain_block = require("draw.chain_block")
+
+local colours = require("colours")
+local BRONZE, SILVER, GOLD = colours.BRONZE, colours.SILVER, colours.GOLD
+
+local startup_state, gameplay_state, paused = ch.startup_state, ch.gameplay_state, ch.paused
+local points, gold_at, tiles_left, scaler = ch.points, ch.gold_at, ch.tiles_left, ch.scaler
+local step_scan, begin_scan, totals = scan.step, scan.begin, scan.totals
+local step_floaters = feed.step
+local refresh_palette = palette.refresh
+local league, earned_bonus = scoring.league, scoring.earned_bonus
+
+-- 0 hidden, 1 fully shown.
+local shown = 0
+
+-- What every section of the frame draws with: sizes, theme colours, the safe area, and what the
+-- sections before it found out. One table, refilled every frame rather than rebuilt.
+local L = {}
+
+-- Is the player actually playing right now? nil from either channel means "could not tell", and the
+-- answer to that is yes: hiding a working widget because a lookup failed is a worse failure than
+-- showing it somewhere it is not wanted.
+local function in_run()
+    local state = startup_state:get()
+    local gameplay = gameplay_state:get()
+    if state == nil or gameplay == nil then
+        return true
+    end
+    if math.abs(state - gameplay) > 0.5 then
+        return false
+    end
+
+    -- Only asked once we know we are in gameplay, which is also the only time XX_PauseScreen is
+    -- certainly loaded - asking from the main menu would just accumulate "no such group" warnings.
+    local held = paused:get()
+    return (held or 0) == 0
+end
+
+-- Time-based rather than per-frame: the game does not run at a fixed frame rate, and a constant
+-- step per frame fades at whatever speed the machine happens to reach.
+local FADE_SECONDS = 0.18
+
+tw.on_frame(function()
+    if not tw.engine_ready() then
+        return
+    end
+    -- Before the visibility gate: the track is generated and dressed while the loading screen is
+    -- still up, so the walk has to be allowed to run before the run starts.
+    step_scan()
+    -- Same reason, different failure: a number in flight when the player hits pause must keep
+    -- ageing, or it comes back on screen and replays a match that finished a minute ago.
+    step_floaters()
+
+    -- The one case the hooks cannot cover: this script was enabled part-way through a run, so the
+    -- events that would have armed the scan are long past.
+    if not totals.ready and not totals.running and tw.frame % 60 == 0 then
+        begin_scan()
+    end
+
+    local target = in_run() and 1 or 0
+    local step = tw.dt() / FADE_SECONDS
+    if shown < target then
+        shown = math.min(target, shown + step)
+    elseif shown > target then
+        shown = math.max(target, shown - step)
+    end
+
+    -- Fully faded out: nothing to draw, and nothing below this point should be evaluated either -
+    -- the per-frame channel reads are only worth paying for when someone can see the result.
+    if shown <= 0 then
+        return
+    end
+
+    if tw.frame % 30 == 0 then
+        refresh_palette()
+    end
+
+    -- Eased so the widget arrives and leaves with some weight instead of ramping linearly.
+    local fade = tw.ease("cubicOut", shown)
+
+    -- Everything structural comes from the overlay's theme, so the widget follows a theme change
+    -- instead of drifting out of it. Everything goes through the fade, so entering and leaving a run
+    -- dissolves the widget instead of popping it - including the block swatches, which is why those
+    -- are faded at the point of use rather than here.
+    local function themed(name, weight)
+        local colour = tw.theme(name)
+        if weight then
+            colour = tw.alpha(colour, weight)
+        end
+        return tw.fade(colour, fade)
+    end
+
+    local RULE = themed("border_subtle")
+    local TEXT = themed("text_primary")
+    local DIM = themed("text_muted")
+    local FAINT = themed("text_faint")
+    local WARN = themed("text_warning")
+    local TRACK = themed("control_track_off")
+
+    -- Tier -> rail colour, index 1 being "no medal yet". That one is the overlay's own neutral
+    -- rather than a fourth metal, so the rail starts grey and warms into bronze. Raw rather than
+    -- themed(): the rail mixes between two of these and fades the result once, and fading twice
+    -- would make the transition dip in the middle.
+    local MEDAL_STOPS = { tw.theme("text_muted"), BRONZE, SILVER, GOLD }
+
+    local base = tw.hud.font_size()
+    local screen_w = tw.hud.size()
+
+    local value_size = base * 1.15
+    local label_size = base * 0.85
+    local rating_size = base * 2.0
+    local chain_size = base * 1.6
+
+    local swatch = math.max(10, base * 0.8)
+    local row_gap = 5
+    local row_h = value_size + 6
+    local cell_w = math.max(swatch + 14, base * 2.8)
+
+    -- The medal rail is the chain rails' own thickness, on purpose: it was the one filled solid on a
+    -- screen of hairlines, and matching the thickness is most of what stops it reading as a blot.
+    local rail_h = math.max(3, base * 0.18)
+    local medal_dot = math.max(4, rail_h * 1.6)
+    local medal_gap = math.max(3, base * 0.22)
+    local medal_h = rail_h + medal_gap + medal_dot
+
+    -- The top of the safe area is deliberately not taken: the one widget that lives up there is
+    -- measured from the viewport instead, and everything else here hangs off the bottom.
+    local sx0, _, sx1, sy1 = tw.hud.safe()
+    local margin = 16
+    local bottom = sy1 - margin
+
+    L.fade = fade
+    L.RULE, L.TEXT, L.DIM, L.FAINT, L.WARN, L.TRACK = RULE, TEXT, DIM, FAINT, WARN, TRACK
+    L.MEDAL_STOPS = MEDAL_STOPS
+    L.base, L.screen_w = base, screen_w
+    L.value_size, L.label_size, L.rating_size, L.chain_size = value_size, label_size, rating_size, chain_size
+    L.swatch, L.row_gap, L.row_h, L.cell_w = swatch, row_gap, row_h, cell_w
+    L.rail_h, L.medal_dot, L.medal_gap, L.medal_h = rail_h, medal_dot, medal_gap, medal_h
+    L.sx0, L.sx1, L.sy1, L.margin, L.bottom = sx0, sx1, sy1, margin, bottom
+
+    -- ---- the colour table, bottom-left (draw/colour_table.lua) ------------------------------
+    draw_colour_table(L)
+
+    -- ---- what the run is currently worth ----------------------------------------------------
+    --
+    -- One projection, three consumers: the skill rating, the score at the top, and the multiplier
+    -- the points in flight are scaled by. They used to be two different ideas of "the score" on the
+    -- same screen, and the top one was the raw figure - which made its comparison against the
+    -- personal best meaningless, because a personal best is PointsWithGridBonus (DESIGN.md §10).
+    local score = points:get() or 0
+    local gold = gold_at:get()
+    local mult, league_name = league()
+
+    local bonus, feats = earned_bonus()
+    local clean = scaler.clean:get() or 0.25
+    local grid_empty = (tiles_left:get() or -1) == 0
+
+    -- What the game would score if the run ended on this frame (DESIGN.md §7).
+    --
+    -- The Clean Finish bonus is not a hypothetical the player might reach: the game adds it whenever
+    -- the board is empty **at the moment it scores**, so while the board is clear it is already
+    -- theirs. Leaving it out of the headline under-reported by a fifth exactly while a good player
+    -- was holding a clean board - which is most of a good run, and the whole of the end of one.
+    local live_bonus = bonus + (grid_empty and clean or 0)
+    -- The other side of that: what it becomes if the board fills, or what it would become if it
+    -- emptied. Whichever it is, it is the figure the player is not currently on.
+    local alt_bonus = grid_empty and bonus or (bonus + clean)
+
+    local now_points = score * (1 + live_bonus)
+    local alt_points = score * (1 + alt_bonus)
+
+    -- Published for the score feed, which runs from channel hooks and cannot reach these channels
+    -- cheaply (a launch happens once per collected TILE). DESIGN.md §10.
+    feed.set_multiplier(1 + live_bonus)
+
+    L.gold, L.mult, L.feats, L.grid_empty = gold, mult, feats, grid_empty
+    L.now_points, L.alt_points = now_points, alt_points
+
+    -- ---- skill rating and the medal bar, bottom-right (draw/rating.lua) ----------------------
+    draw_rating(L)
+
+    -- ---- score, personal best and the points in flight, top-centre (draw/score_strip.lua) ----
+    draw_score_strip(L)
+
+    -- ---- the chain, its drop timer and the feats, bottom-centre (draw/chain_block.lua) -------
+    draw_chain_block(L)
+
+    -- The footer below was switched off before the script was split into modules; kept as it was.
+    -- Its names now live in L (league_name aside, which is `select(2, league())`) and in tally.
+    --
     -- -- ---- footer, above the table ------------------------------------------------------------
     -- -- The breakdown is the part the game's own counter cannot produce: how much of a run went
     -- -- through an ability rather than straight into the grid, and how many blocks the game invented.
@@ -2142,3 +2485,6 @@ tw.on_frame(function()
     -- local fh = select(2, tw.hud.measure(footer, label_size))
     -- tw.hud.text(tx, swatch_y - fh - 6, footer, FAINT, label_size)
 end)
+end
+
+require("main")

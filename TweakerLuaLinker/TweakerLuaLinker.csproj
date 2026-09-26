@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    twllink.exe - the Lua project linker for TweakerPlugin scripts (lua-engine-fix-roadmap.md §9, Ф5).
+
+    Plain net10.0, not net10.0-windows: the tool touches nothing Windows-specific, and a console app
+    that stays off the Windows desktop pack keeps the AOT surface smaller. PlatformTarget comes from
+    Directory.Build.props (x64), matching the RuntimeIdentifier below.
+
+    Nullable is enabled here against Directory.Build.props, approved by the owner (roadmap §12, Ф5a):
+    a parser and an AST are nothing but references that may be absent, and the annotations are the
+    cheap way not to meet a NullReferenceException in somebody else's project.
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <AssemblyName>twllink</AssemblyName>
+    <RootNamespace>TweakerLuaLinker</RootNamespace>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <!--
+    Publish mode. Native AOT is the goal; single-file self-contained is the fallback if Loretta
+    turns out not to survive trimming/AOT (the parser matters more than the publish mode, §9.3).
+    Pick with -p:TwPublish=aot | single.
+  -->
+  <PropertyGroup Condition="'$(TwPublish)' == 'single'">
+    <PublishSingleFile>true</PublishSingleFile>
+    <SelfContained>true</SelfContained>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TwPublish)' != 'single'">
+    <PublishAot>true</PublishAot>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Loretta.CodeAnalysis.Lua" Version="0.2.13" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="TweakerLuaLinker.Tests" />
+  </ItemGroup>
+
+  <!--
+    What a script's environment contains, generated from the plugin's prelude by
+    TweakerPlugin/harness/lua (lua-engine-fix-roadmap.md §9.8). Embedded, so a twllink checks names
+    against the API of the Tweaker it shipped with; the api command-line option overrides it.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\Docs\scripting\api.json" LogicalName="api.json" />
+  </ItemGroup>
+
+  <!--
+    Editor support a new project gets (the new command-line option), and that every build keeps current
+    in the project's .twllink folder: the tw definitions for Lua Language Server, generated from
+    api.json and api-reference.md by TweakerLuaLinker.Tests, and the schema of twproject.json.
+  -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\Docs\scripting\tw.def.lua" LogicalName="tw.def.lua" />
+    <EmbeddedResource Include="..\Docs\scripting\twproject.schema.json" LogicalName="twproject.schema.json" />
+  </ItemGroup>
+
+</Project>

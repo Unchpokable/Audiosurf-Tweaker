@@ -122,6 +122,17 @@ if (-not (Test-Path $legacyExe)) { throw "LegacyDataConverter.exe not found at $
 Copy-Item $legacyExe -Destination $tweakerOut -Force
 Write-Host "    $legacyExe -> $tweakerOut"
 
+# --- 3. twllink: the Lua project linker, Native AOT --------------------------------------------
+# As in Deploy.ps1, except that its symbols come along: a Native AOT exe is native code, and the
+# .pdb is what makes a crash in it readable.
+$linkerProj = Join-Path $repoRoot "TweakerLuaLinker\TweakerLuaLinker.csproj"
+$linkerOut = Join-Path $repoRoot "TweakerLuaLinker\bin\publish"
+Write-Host "==> Publishing twllink ($Configuration, Native AOT, with symbols)"
+dotnet publish $linkerProj -c $Configuration -p:TwPublish=aot -o $linkerOut
+if ($LASTEXITCODE -ne 0) { throw "twllink publish failed - Native AOT links with MSVC (Visual Studio's C++ workload)" }
+Copy-Item (Join-Path $linkerOut "twllink.exe"), (Join-Path $linkerOut "twllink.pdb") -Destination $tweakerOut -Force
+Write-Host "    $(Join-Path $linkerOut 'twllink.exe') (+ .pdb) -> $tweakerOut"
+
 # --- Summary ------------------------------------------------------------------------------------
 $stats = Get-ChildItem $distDir -Recurse -File | Measure-Object -Property Length -Sum
 Write-Host "`n==> Debug bundle ready at $distDir"

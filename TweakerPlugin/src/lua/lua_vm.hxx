@@ -20,6 +20,10 @@ void shutdown() noexcept;
 // Null when initialize() has not succeeded.
 [[nodiscard]] lua_State* state() noexcept;
 
+// tw.api_version, as the prelude defines it; 0 when initialize() has not succeeded. A script whose
+// `-- @api` header asks for more than this is not run (lua_registry.cxx).
+[[nodiscard]] int api_version() noexcept;
+
 // The prelude functions C calls, as the prelude's `exports` table names them.
 enum class fn {
     dispatch_frame,

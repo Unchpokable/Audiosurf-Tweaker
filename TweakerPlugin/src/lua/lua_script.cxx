@@ -71,6 +71,7 @@ void read_header(script& entry) noexcept
     entry.author.clear();
     entry.version.clear();
     entry.description.clear();
+    entry.api = 0;
 
     std::ifstream file { entry.path };
     if(!file.is_open()) {
@@ -124,6 +125,16 @@ void read_header(script& entry) noexcept
         }
         else if(key == "description") {
             entry.description.assign(value);
+        }
+        else if(key == "api") {
+            // Written by twllink from the project's "api" (lua-engine-fix-roadmap.md §9.4). Anything
+            // that is not a whole number is ignored rather than refused: a hand-written header is free
+            // text, and a typo in it should not stop a script that would otherwise run.
+            int api = 0;
+            const auto [end, ec] = std::from_chars(value.data(), value.data() + value.size(), api);
+            if(ec == std::errc {} && end == value.data() + value.size() && api > 0) {
+                entry.api = api;
+            }
         }
     }
 }

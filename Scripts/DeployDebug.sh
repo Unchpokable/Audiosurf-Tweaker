@@ -128,6 +128,19 @@ fi
 cp -f "$LEGACY_EXE" "$TWEAKER_OUT/"
 echo "    $LEGACY_EXE -> $TWEAKER_OUT"
 
+# --- 3. twllink: the Lua project linker, Native AOT ----------------------------------------------
+# As in Deploy.sh, except that its symbols come along: a Native AOT exe is native code, and the .pdb
+# is what makes a crash in it readable.
+LINKER_PROJ="$REPO_ROOT/TweakerLuaLinker/TweakerLuaLinker.csproj"
+LINKER_OUT="$REPO_ROOT/TweakerLuaLinker/bin/publish"
+echo "==> Publishing twllink ($CONFIGURATION, Native AOT, with symbols)"
+if ! dotnet publish "$LINKER_PROJ" -c "$CONFIGURATION" -p:TwPublish=aot -o "$LINKER_OUT"; then
+    echo "ERROR: twllink publish failed - Native AOT links with MSVC (Visual Studio's C++ workload)" >&2
+    exit 1
+fi
+cp -f "$LINKER_OUT/twllink.exe" "$LINKER_OUT/twllink.pdb" "$TWEAKER_OUT/"
+echo "    $LINKER_OUT/twllink.exe (+ .pdb) -> $TWEAKER_OUT"
+
 # --- Summary ---------------------------------------------------------------------------------
 FILE_COUNT="$(find "$DIST_DIR" -type f | wc -l)"
 TOTAL_SIZE_MB="$(find "$DIST_DIR" -type f -printf '%s\n' | awk '{sum+=$1} END {printf "%.1f", sum/1048576}')"

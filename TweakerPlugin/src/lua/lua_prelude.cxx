@@ -10,7 +10,7 @@ namespace
 // This is where the whole FFI story of Docs/Internal/lua-scripting.md §2.2 actually happens: every
 // call a script makes into the plugin goes through one of the ffi.cast'ed pointers below, so it
 // compiles into the trace as a direct call instead of aborting it the way a lua_CFunction would. The
-// host then deletes `ffi` from the environment (lua_vm: strip_sandbox) - the already-cast pointers
+// prelude then deletes `ffi` from the environment (tw.sandbox, the last section) - the already-cast pointers
 // keep working because they are values, not names, which is exactly the property §6 relies on to keep
 // the fast path without handing scripts arbitrary memory access.
 //
@@ -191,6 +191,14 @@ tw.frame = 0
 -- draw dispatcher and by nothing else.
 tw.draw_frame_count = 0
 
+-- The version of this API, and the one number the whole toolchain agrees on: a built script carries
+-- the version it was written against in its `-- @api` header line, and a plugin older than that
+-- refuses to run it rather than let it fail on a nil (lua_registry.cxx); harness/lua writes it into
+-- Docs/scripting/api.json, and twllink checks a project's `"api"` against that. Raise it when a name
+-- is added - names are never taken away (Docs/scripting/limits.md, "Versions and stability") - and
+-- lua_vm.cxx reads it from here, so this line is its only definition.
+tw.api_version = 1
+
 function tw.log(msg) C_log(tostring(msg)) end
 
 -- A toast in the notefeed, for something the player should see. Capped per script: a handful a
@@ -331,7 +339,7 @@ local STATUS_NO_CHANNEL, STATUS_WRONG_KIND, STATUS_UNUSABLE = 3, 4, 5
 local Channel = {}
 Channel.__index = Channel
 
-function Channel:resolve()
+function Channel:_resolve()
     local rev = C_graph_revision()
 
     if self.h ~= nil then
@@ -400,7 +408,7 @@ end
 -- the game that is active from one that is merely loaded. Read from on_tick, which runs before the
 -- graph, it is false for everything - the frame has not been evaluated yet.
 function Channel:live()
-    if not self:resolve() then return nil end
+    if not self:_resolve() then return nil end
     local v = C_live(self.h)
     if v < 0 then return nil end
     return v ~= 0
@@ -418,12 +426,12 @@ local FloatChannel = setmetatable({}, { __index = Channel })
 FloatChannel.__index = FloatChannel
 
 function FloatChannel:get()
-    if not self:resolve() then return nil end
+    if not self:_resolve() then return nil end
     return C_get(self.h)
 end
 
 function FloatChannel:set(value)
-    if not self:resolve() then return false end
+    if not self:_resolve() then return false end
     C_set(self.h, value)
     return true
 end
@@ -432,7 +440,7 @@ local TextChannel = setmetatable({}, { __index = Channel })
 TextChannel.__index = TextChannel
 
 function TextChannel:get()
-    if not self:resolve() then return nil end
+    if not self:_resolve() then return nil end
     return ffi.string(C_text(self.h))
 end
 
@@ -442,7 +450,7 @@ local VectorChannel = setmetatable({}, { __index = Channel })
 VectorChannel.__index = VectorChannel
 
 function VectorChannel:get()
-    if not self:resolve() then return nil end
+    if not self:_resolve() then return nil end
     if C_vector(self.h, vec_out) == 0 then return nil end
     return vec_out[0], vec_out[1], vec_out[2]
 end
@@ -452,7 +460,7 @@ end
 -- one is wired - so this can reach further into the graph than it looks. See
 -- Docs/scripting/channels.md.
 function VectorChannel:set(x, y, z)
-    if not self:resolve() then return false end
+    if not self:_resolve() then return false end
     C_set_vector(self.h, x, y, z)
     return true
 end
@@ -464,7 +472,7 @@ local MatrixChannel = setmetatable({}, { __index = Channel })
 MatrixChannel.__index = MatrixChannel
 
 function MatrixChannel:get()
-    if not self:resolve() then return nil end
+    if not self:_resolve() then return nil end
     if C_matrix(self.h, mat_out) == 0 then return nil end
     return mat_out[0], mat_out[1], mat_out[2], mat_out[3],
            mat_out[4], mat_out[5], mat_out[6], mat_out[7],
@@ -473,7 +481,7 @@ function MatrixChannel:get()
 end
 
 function MatrixChannel:set(first, ...)
-    if not self:resolve() then return false end
+    if not self:_resolve() then return false end
     if type(first) == "table" then
         for i = 1, 16 do mat_in[i - 1] = first[i] or 0 end
     else
@@ -521,7 +529,7 @@ local Array = {}
 Array.__index = Array
 
 function Array:get(index)
-    if not self.column:resolve() or not self.cursor:resolve() then return nil end
+    if not self.column:_resolve() or not self.cursor:_resolve() then return nil end
     return C_array_read(self.column.h, self.cursor.h, index)
 end
 
@@ -530,13 +538,13 @@ end
 -- instead of rejecting it - lengthening a table the rest of the game reads. So `false` from this
 -- means either "could not resolve" or "no such row", and both are worth checking.
 function Array:set(index, value)
-    if not self.column:resolve() or not self.cursor:resolve() then return false end
+    if not self.column:_resolve() or not self.cursor:_resolve() then return false end
     return C_array_write(self.column.h, self.cursor.h, index, value) ~= 0
 end
 
 -- Row count of the underlying table, or nil when it cannot be asked. Valid indices are 0..rows()-1.
 function Array:rows()
-    if not self.column:resolve() then return nil end
+    if not self.column:_resolve() then return nil end
     local n = C_array_rows(self.column.h)
     if n < 0 then return nil end
     return n
@@ -555,7 +563,7 @@ local VectorArray = {}
 VectorArray.__index = VectorArray
 
 function VectorArray:get(index)
-    if not self.column:resolve() or not self.cursor:resolve() then return nil end
+    if not self.column:_resolve() or not self.cursor:_resolve() then return nil end
     if C_array_vector(self.column.h, self.cursor.h, index, vec_out) == 0 then return nil end
     return vec_out[0], vec_out[1], vec_out[2]
 end
@@ -563,12 +571,12 @@ end
 -- Same contract as Array:set. Note this goes through the array type's own SetVector, which writes
 -- the row - not the component-propagating store a plain vector_ch:set performs.
 function VectorArray:set(index, x, y, z)
-    if not self.column:resolve() or not self.cursor:resolve() then return false end
+    if not self.column:_resolve() or not self.cursor:_resolve() then return false end
     return C_array_write_vec(self.column.h, self.cursor.h, index, x, y, z) ~= 0
 end
 
 function VectorArray:rows()
-    if not self.column:resolve() then return nil end
+    if not self.column:_resolve() then return nil end
     local n = C_array_rows(self.column.h)
     if n < 0 then return nil end
     return n
@@ -581,6 +589,28 @@ function tw.array_vec(group, column, cursor)
         cursor = new_handle(FloatChannel,  KIND_NUMBER, group, cursor, owner, place),
     }, VectorArray)
 end
+
+-- For tooling only: what each kind of handle answers to, and which constructor hands back which.
+-- harness/lua reads these to describe the API in Docs/scripting/api.json - the names a script can
+-- call on a handle are the functions of these tables and of what they inherit, less the ones that
+-- start with "_", which are the prelude's own (Channel:_resolve). Nothing at runtime looks.
+S.handle_types = {
+    FloatHandle = FloatChannel,
+    TextHandle = TextChannel,
+    VectorHandle = VectorChannel,
+    MatrixHandle = MatrixChannel,
+    ArrayHandle = Array,
+    VectorArrayHandle = VectorArray,
+}
+S.constructors = {
+    float_ch = "FloatHandle",
+    channel = "FloatHandle",
+    string_ch = "TextHandle",
+    vector_ch = "VectorHandle",
+    matrix_ch = "MatrixHandle",
+    array = "ArrayHandle",
+    array_vec = "VectorArrayHandle",
+}
 )LUA";
 
 // ---------------------------------------------------------------------------------------------------
@@ -1021,6 +1051,10 @@ function Mute:on()  return self:set(true)  end
 function Mute:off() return self:set(false) end
 function Mute:active() return self.id ~= nil and self.want end
 
+-- For tooling, like S.handle_types in tw.channels.
+S.handle_types.MuteHandle = Mute
+S.constructors.mute = "MuteHandle"
+
 function tw.mute(group, name)
     local owner = caller_owner()
     local m = setmetatable({ group = group, name = name, want = true, owner = owner }, Mute)
@@ -1183,12 +1217,46 @@ function exports.unload_owner(id)
 end
 )LUA";
 
+// ---------------------------------------------------------------------------------------------------
+// tw.sandbox - what a script cannot reach. Last, because every section above has already taken what
+// it needs from these names into locals: ffi for the casts, debug for tracebacks and caller places.
+//
+// It used to be C (lua_vm.cxx, strip_sandbox), with a second copy in harness/lua/ljtest that had
+// already drifted - it never removed the os fields. As prelude text there is one list, the harness
+// runs it because it runs the prelude, and what it removes is also what harness/lua writes into
+// Docs/scripting/api.json, which is how twllink knows to reject `io.open` at build time instead of a
+// script finding out at runtime (lua-engine-fix-roadmap.md §9.8, Ф5b).
+//
+// Why each name goes is in Docs/scripting/limits.md, "What is not in the environment". The list is
+// not a security boundary and does not pretend to be one - it keeps honest mistakes survivable.
+// ---------------------------------------------------------------------------------------------------
+constexpr std::string_view k_sandbox = R"LUA(
+local S = ...
+
+local GLOBALS = {
+    "ffi", "io", "package", "require", "dofile", "loadfile", "load", "loadstring", "debug", "jit",
+    "newproxy", "collectgarbage",
+}
+local OS_FIELDS = { "execute", "remove", "rename", "tmpname", "exit", "getenv", "setlocale" }
+
+for _, name in ipairs(GLOBALS) do
+    _G[name] = nil
+end
+for _, name in ipairs(OS_FIELDS) do
+    os[name] = nil
+end
+
+-- For tooling only (harness/lua reads it to describe the environment); nothing at runtime looks.
+S.sandbox = { globals = GLOBALS, os = OS_FIELDS }
+)LUA";
+
 const tw::lua::prelude::section k_sections[] = {
     { "=tw.abi", k_abi },
     { "=tw.core", k_core },
     { "=tw.channels", k_channels },
     { "=tw.hud", k_hud },
     { "=tw.callbacks", k_callbacks },
+    { "=tw.sandbox", k_sandbox },
 };
 } // namespace
 

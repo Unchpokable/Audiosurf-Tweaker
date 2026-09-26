@@ -21,12 +21,45 @@ std::string_view first_line(std::string_view text) noexcept
     return end == std::string_view::npos ? text : text.substr(0, end);
 }
 
+// The .map beside a bundled script (lua_linemap.hxx), read with the script rather than with its header:
+// a rebuild replaces both, and the next run is when the new pair is looked at. Neither outcome here
+// stops the script loading - a missing or unusable map only means bundle positions in its messages.
+void load_map(tw::lua::script& script) noexcept
+{
+    std::string detail;
+    switch(tw::lua::load_line_map(script.path, script.map, detail)) {
+    case tw::lua::line_map_status::absent:
+    case tw::lua::line_map_status::loaded:
+        return;
+    case tw::lua::line_map_status::malformed:
+        tw::lua::diag::report(script.id, tw::lua::diag::level::warn, "map",
+            std::format("{}.map is unusable ({}) - positions are shown as lines of the bundle", script.file, detail));
+        return;
+    case tw::lua::line_map_status::stale:
+        tw::lua::diag::report(script.id, tw::lua::diag::level::info, "map",
+            std::format("{}.map is ignored: {} - positions are shown as lines of this file", script.file, detail));
+        return;
+    }
+}
+
 // Runs one script's file from disk, from a clean slate. The body's failure is the script's own - a
 // `failed` flag and a record in its diagnostics - never the layer's.
 bool run(tw::lua::script& script) noexcept
 {
     tw::lua::reset_health(script);
     tw::lua::diag::clear(script.id);
+    load_map(script);
+
+    // Built against a newer API than this plugin has: its first use of a name added since would fail
+    // with a message about a nil, which says nothing about the actual problem. Saying which version it
+    // needs is what the header's `@api` line is for (lua-engine-fix-roadmap.md §9.5).
+    if(script.api > tw::lua::vm::api_version()) {
+        script.failed = true;
+        script.error = std::format(
+            "needs scripting API {} - this Tweaker has API {}; update the Tweaker to run it", script.api, tw::lua::vm::api_version());
+        tw::lua::diag::report(script.id, tw::lua::diag::level::error, "load", script.error);
+        return false;
+    }
 
     std::string error;
     if(tw::lua::vm::run_file(script.path, script.id, error)) {
@@ -36,7 +69,8 @@ bool run(tw::lua::script& script) noexcept
     }
 
     script.failed = true;
-    script.error.assign(first_line(error));
+    std::string mapped;
+    script.error.assign(first_line(tw::lua::map_positions(script.map, script.file, error, mapped) ? mapped : error));
     tw::lua::diag::report(script.id, tw::lua::diag::level::error, "load", error);
     return false;
 }

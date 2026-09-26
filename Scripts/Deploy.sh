@@ -158,6 +158,22 @@ fi
 cp -f "$LEGACY_EXE" "$TWEAKER_OUT/"
 echo "    $LEGACY_EXE -> $TWEAKER_OUT"
 
+# --- 3. twllink: the Lua project linker, Native AOT ----------------------------------------------
+# One self-contained exe with no runtime to install (Docs/Internal/lua-engine-fix-roadmap.md §9.2,
+# §9.9). It goes beside TweakerUI.exe, which is what will run it for its script tools, and it is what
+# a script author types into a terminal. Not part of PluginPayload/ - it is a tool of the host, and
+# the game never sees it. Published into its own folder and only the exe is taken: Native AOT leaves
+# ~16 MB of symbols next to it.
+LINKER_PROJ="$REPO_ROOT/TweakerLuaLinker/TweakerLuaLinker.csproj"
+LINKER_OUT="$REPO_ROOT/TweakerLuaLinker/bin/publish"
+echo "==> Publishing twllink ($CONFIGURATION, Native AOT)"
+if ! dotnet publish "$LINKER_PROJ" -c "$CONFIGURATION" -p:TwPublish=aot -o "$LINKER_OUT"; then
+    echo "ERROR: twllink publish failed - Native AOT links with MSVC (Visual Studio's C++ workload)" >&2
+    exit 1
+fi
+cp -f "$LINKER_OUT/twllink.exe" "$TWEAKER_OUT/"
+echo "    $LINKER_OUT/twllink.exe -> $TWEAKER_OUT"
+
 # --- Summary ---------------------------------------------------------------------------------
 FILE_COUNT="$(find "$DIST_DIR" -type f | wc -l)"
 TOTAL_SIZE_MB="$(find "$DIST_DIR" -type f -printf '%s\n' | awk '{sum+=$1} END {printf "%.1f", sum/1048576}')"

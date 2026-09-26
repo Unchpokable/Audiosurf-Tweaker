@@ -7,6 +7,12 @@ Everything lives in the global table `tw`. It is already there; there is no `req
 Throughout: `group` is a group name (string), `name` is a channel name (string) **or** a channel
 index (number).
 
+The same list, for your editor: [`tw.def.lua`](tw.def.lua) gives Lua Language Server every name
+here with its parameters and its description, so `tw.*` completes as you type and a misspelt name is
+underlined. A project made with `twllink --new` is already set up for it — see
+[Projects § Your editor](authoring.md#your-editor). Both files are generated from what the plugin
+really contains, and checked against each other whenever the Tweaker is built.
+
 ---
 
 ## Lifecycle
@@ -179,7 +185,10 @@ Every valid name for `tw.ease`, sorted. Currently: `linear`, `quadIn/Out/InOut`,
 Create a handle for a numeric, text, vector or matrix channel. Cheap; never fails; does not touch the game.
 Resolution happens on first use and is retried until it succeeds.
 
-`tw.channel` is a deprecated alias for `tw.float_ch`.
+### `tw.channel(group, name)` → handle *(deprecated)*
+
+The old name of `tw.float_ch`, kept so scripts written before the typed accessors still run. New code
+should say `tw.float_ch`.
 
 ### `handle:get()`
 
@@ -526,6 +535,14 @@ Use `tw.ready()` to decide whether to act. This is here for diagnostics.
 Every channel group currently loaded, as `"<pool name> | <file>"`. The answer to "why will my group
 not resolve".
 
+### `tw.api_version` → number
+
+The version of this API: `1` today, raised whenever a name is added (names are never taken away). A
+script can use it to adapt to an older Tweaker. A script built with `twllink` also records the version
+it was written against in its header (`-- @api`), and a Tweaker older than that refuses to run it
+rather than let it fail on a missing name — see
+[Projects § Checks at build time](authoring.md#checks-at-build-time).
+
 ---
 
 ## Script header annotations
@@ -537,9 +554,12 @@ Read from the first comment block **without running the file**. All optional.
 -- @author      Who wrote it
 -- @version     Any string
 -- @description One line, shown in the Scripts tab
+-- @api         The tw.api_version the script needs (written by twllink)
 ```
 
-Scanning stops at the first line that is neither blank nor a comment.
+Scanning stops at the first line that is neither blank nor a comment. A script whose `@api` is higher
+than this Tweaker's `tw.api_version` is not run: its row in the Scripts tab says which version it
+needs.
 
 ---
 

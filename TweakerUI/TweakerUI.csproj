@@ -196,9 +196,14 @@
 		    files because the plugin scans the game's Scripts\ folder non-recursively: anything a
 		    developer does want loaded, they drop in flat, and it stays theirs - not in the payload
 		    means not in the manifest, so Tweaker never claims or deletes it (§6.3).
+
+		    A script built by twllink from a project (assets\script-projects\) ships with its .lua.map,
+		    which lets the plugin report errors against the project's own files instead of the bundle's
+		    lines (lua-engine-fix-roadmap.md §9.6). The projects themselves never ship - only what they
+		    were built into.
 		-->
 		<ItemGroup>
-			<TweakerPluginScripts Include="$(TweakerPluginSourceDir)\assets\scripts\*.lua" />
+			<TweakerPluginScripts Include="$(TweakerPluginSourceDir)\assets\scripts\*.lua;$(TweakerPluginSourceDir)\assets\scripts\*.lua.map" />
 			<TweakerPluginSkyboxes Include="$(SkyboxSourceDir)\**\*"
 			                       Exclude="$(SkyboxSourceDir)\dev\**\*;$(SkyboxSourceDir)\*.md" />
 		</ItemGroup>

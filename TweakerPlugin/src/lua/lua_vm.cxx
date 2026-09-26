@@ -15,6 +15,9 @@ namespace
 {
 lua_State* g_lua = nullptr;
 int g_traceback_ref = LUA_NOREF;
+
+// tw.api_version, read once the prelude has run (it is the only place the number is written down).
+int g_api_version = 0;
 std::string g_last_error;
 
 // Registry references to the prelude's exports, indexed by vm::fn.
@@ -122,46 +125,6 @@ const entry_point k_entry_points[] = {
 
 #undef TW_LUA_ENTRY
 
-// Everything a script must not reach. Runs after the prelude, which is the only code that
-// legitimately needs `ffi`, `require` and `debug`.
-//
-// This is the "good enough for a first cut" version of Docs/Internal/lua-scripting.md §6: it removes
-// the obvious capabilities, but it is not a hardened sandbox, and loading a script is still an act
-// of trust in its author.
-void strip_sandbox(lua_State* lua) noexcept
-{
-    static constexpr const char* k_globals_to_remove[] = {
-        "ffi",       // the whole point of §6 - already cast into closures, no longer nameable
-        "io",        //
-        "package",   //
-        "require",   //
-        "dofile",    //
-        "loadfile",  //
-        "load",      //
-        "loadstring",//
-        "debug",     // captured by the prelude and for tracebacks before this runs
-        "jit",       // jit.util is a memory-inspection surface; nothing here needs the rest
-        "newproxy",  //
-        "collectgarbage",
-    };
-
-    for(const char* name : k_globals_to_remove) {
-        lua_pushnil(lua);
-        lua_setglobal(lua, name);
-    }
-
-    // os keeps clock/time/date and loses the rest.
-    lua_getglobal(lua, "os");
-    if(lua_istable(lua, -1)) {
-        static constexpr const char* k_os_fields_to_remove[] = { "execute", "remove", "rename", "tmpname", "exit", "getenv", "setlocale" };
-        for(const char* field : k_os_fields_to_remove) {
-            lua_pushnil(lua);
-            lua_setfield(lua, -2, field);
-        }
-    }
-    lua_pop(lua, 1);
-}
-
 // Runs every prelude section against one private table, which arrives holding the entry points and
 // leaves holding the exports. Leaves nothing on the stack either way.
 bool run_prelude(lua_State* lua) noexcept
@@ -254,7 +217,7 @@ bool initialize() noexcept
 
     luaL_openlibs(lua);
 
-    // Capture debug.traceback before strip_sandbox() removes the table it lives in - error reports
+    // Capture debug.traceback before the prelude's sandbox section removes the table it lives in - error reports
     // without a traceback are much harder to act on, and the script never needs the capability.
     lua_getglobal(lua, "debug");
     if(lua_istable(lua, -1)) {
@@ -275,7 +238,12 @@ bool initialize() noexcept
         return false;
     }
 
-    strip_sandbox(lua);
+    // The sandbox is the prelude's last section now (lua_prelude.cxx, tw.sandbox), so it has already
+    // run. What is left to take from the prelude is the version it declares - its only definition.
+    lua_getglobal(lua, "tw");
+    lua_getfield(lua, -1, "api_version");
+    g_api_version = static_cast<int>(lua_tointeger(lua, -1));
+    lua_pop(lua, 2);
 
     g_lua = lua;
     return true;
@@ -296,6 +264,11 @@ void shutdown() noexcept
 lua_State* state() noexcept
 {
     return g_lua;
+}
+
+int api_version() noexcept
+{
+    return g_lua != nullptr ? g_api_version : 0;
 }
 
 bool push(fn which) noexcept

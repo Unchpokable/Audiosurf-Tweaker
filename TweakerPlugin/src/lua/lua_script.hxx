@@ -8,6 +8,9 @@
 // its own time budget, its own suspension - and one script's bad frame is nobody else's business.
 //
 // Everything here runs on the engine/render thread and only there (lua-scripting.md §7).
+
+#include "lua/lua_linemap.hxx"
+
 namespace tw::lua
 {
 // Which callback a script is running. Shared with the prelude (the K_* constants in lua_prelude.cxx)
@@ -68,10 +71,15 @@ struct script {
     std::string author;
     std::string version;
     std::string description;
+    int api = 0; // `-- @api N` from the header, written by twllink; 0 for a script that does not say
 
     bool enabled = false;
     bool failed = false; // the last load attempt errored - `error` says how
     std::string error;   // first line only; the traceback is in its diagnostics
+
+    // Present for a script twllink built from a project (lua_linemap.hxx); reloaded on every run, so
+    // a rebuilt bundle and its new map arrive together.
+    line_map map;
 
     script_health health;
 };

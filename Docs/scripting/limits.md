@@ -137,7 +137,9 @@ Find out what depends on a node before you take it away.
 
 ## What is not in the environment
 
-These are removed after the plugin's own setup runs and before any script loads:
+These are removed after the plugin's own setup runs and before any script loads. In a
+[project](authoring.md), `twllink` reports any use of them as a build error (TW0301), with the file
+and the line:
 
 | Removed | Why |
 |---|---|

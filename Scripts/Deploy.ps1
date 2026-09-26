@@ -153,6 +153,20 @@ if (-not (Test-Path $legacyExe)) { throw "LegacyDataConverter.exe not found at $
 Copy-Item $legacyExe -Destination $tweakerOut -Force
 Write-Host "    $legacyExe -> $tweakerOut"
 
+# --- 3. twllink: the Lua project linker, Native AOT --------------------------------------------
+# One self-contained exe with no runtime to install (Docs/Internal/lua-engine-fix-roadmap.md §9.2,
+# §9.9). It goes beside TweakerUI.exe, which is what will run it for its script tools, and it is what
+# a script author types into a terminal. Not part of PluginPayload\ - it is a tool of the host, and
+# the game never sees it. Published into its own folder and only the exe is taken: Native AOT leaves
+# ~16 MB of symbols next to it.
+$linkerProj = Join-Path $repoRoot "TweakerLuaLinker\TweakerLuaLinker.csproj"
+$linkerOut = Join-Path $repoRoot "TweakerLuaLinker\bin\publish"
+Write-Host "==> Publishing twllink ($Configuration, Native AOT)"
+dotnet publish $linkerProj -c $Configuration -p:TwPublish=aot -o $linkerOut
+if ($LASTEXITCODE -ne 0) { throw "twllink publish failed - Native AOT links with MSVC (Visual Studio's C++ workload)" }
+Copy-Item (Join-Path $linkerOut "twllink.exe") -Destination $tweakerOut -Force
+Write-Host "    $(Join-Path $linkerOut 'twllink.exe') -> $tweakerOut"
+
 # --- Summary ------------------------------------------------------------------------------------
 $stats = Get-ChildItem $distDir -Recurse -File | Measure-Object -Property Length -Sum
 Write-Host "`n==> Bundle ready at $distDir"

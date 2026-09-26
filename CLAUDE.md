@@ -36,9 +36,15 @@ Audiosurf Tweaker — сторонний инструмент для игры Au
 **Пользовательская** документация по скриптовому API (в отличие от всего вышеперечисленного —
 на английском, для тех, кто пишет скрипты и делится ими) — `Docs/scripting.md` и `Docs/scripting/`:
 getting-started, game-model (как устроен граф каналов игры и как в нём искать), channels, hooks,
-drawing, api-reference, limits, examples (разобранные скрипты из `assets/scripts/dev/`). При
-изменении публичного API `tw.*` обновлять их обязательно — `api-reference.md` перечисляет каждую
-функцию поимённо.
+drawing, api-reference, limits, examples (разобранные скрипты из `assets/scripts/dev/`), authoring
+(проекты и `twllink`). При изменении публичного API `tw.*` обновлять их обязательно — `api-reference.md`
+перечисляет каждую функцию поимённо, и с Ф5b это **проверяется**: три списка имён — пролог,
+`Docs/scripting/api.json`, `api-reference.md` — сверяют `ljtest` и `TweakerLuaLinker.Tests`, а
+`Docs/scripting/tw.def.lua` (определения для LuaLS) генерируется из двух последних. Порядок после
+правки API в прологе: поднять `tw.api_version` (в `tw.core`), если имя **добавлено**; прогнать `ljtest`
+с `TW_API_UPDATE=1` (переписывает `api.json`); дописать `api-reference.md`; прогнать
+`TweakerLuaLinker.Tests` с `TWLLINK_UPDATE_DEFS=1` (переписывает `tw.def.lua`); пересобрать `twllink`
+(оба файла в него вшиты). Закоммитить всё вместе.
 
 Второй такой же набор — по **формату неба** `.sky`, для тех, кто делает свои скайбоксы:
 `Docs/skyboxes.md` и `Docs/skyboxes/`: getting-started, manifest (`Config.json` целиком), shaders
@@ -86,7 +92,7 @@ clouds (спрайтовый слой, `place()`/`fill()`), limits (цена, з
 
 ## Устройство решения
 
-9 проектов в `Audiosurf SkinChanger.sln`, три платформенных слоя снизу вверх:
+10 проектов в `Audiosurf SkinChanger.sln`, три платформенных слоя снизу вверх:
 
 - **`TweakerCore`** — модельный/файловый слой без UI-зависимостей: формат скинов (zip +
   `manifest.json` + PNG), цветовые пресеты, `FolderChecker` (дрейф папки текстур), кэш превью.
@@ -117,7 +123,26 @@ clouds (спрайтовый слой, `place()`/`fill()`), limits (цена, з
   раздел ниже). Собирается аналогично `ASBridge`, но **best-effort**: неудачная сборка (нет
   DirectX/Quest3D SDK, ImGui или Detours submodule) не ломает сборку остального решения.
 - **`Installer`** — COM-интероп для ярлыков, собирается только полным MSBuild (не `dotnet build`).
-- Тесты (NUnit): `TweakerCore.Tests`, `QuickPlayerCore.Tests`, `AudiosurfInterface.Tests`.
+- **`TweakerLuaLinker`** (`twllink.exe`) — компоновщик Lua-проектов для скриптов `TweakerPlugin`:
+  модули и `require` на входе, один файл для `Scripts\` на выходе (`lua-engine-fix-roadmap.md` §9,
+  Ф5). Разбор Lua — `Loretta.CodeAnalysis.Lua`. `net10.0` (не `-windows`), `Nullable=enable` —
+  намеренные отступления от `Directory.Build.props`, обоснованы в `.csproj`. Публикуется Native AOT
+  (`-p:TwPublish=aot`, по умолчанию) или, запасным путём, `PublishSingleFile` (`-p:TwPublish=single`);
+  **из-под агента** AOT-линковка падает на `vswhere.exe`, пока не снята
+  `NoDefaultCurrentDirectoryInExePath` (`env -u ...`). `Project/` — `twproject.json`, `Linking/` —
+  граф `require`, строки модулей, бандл и карта (карта пишется **во время** вывода, а не считается),
+  `Diagnostics/` — коды `TWxxxx` (номера не переиспользуются, пользовательская таблица —
+  `Docs/scripting/authoring.md`), `Cli.cs` — контракт командной строки (коды возврата 0/1/2/3, `--json`,
+  `--install`/`--game` через `AUDIOSURF_DIR`, `--watch`, `--new <template> <dir>`, `--api`). `Api/` —
+  `api.json` (вшит; что есть в окружении скрипта), разбор `api-reference.md`, генератор `tw.def.lua`;
+  `Linking/ApiChecker` — проверки TW03xx (песочница, имена `tw.*`, запись в `tw`, глобалы) по `api.json`;
+  `Project/Scaffold` — шаблоны `--new` и папка `.twllink/` проекта (копии `tw.def.lua` и схемы
+  манифеста, освежаются каждой сборкой). Пользовательская сторона — `Docs/scripting/authoring.md`;
+  проект и решения — `lua-engine-fix-roadmap.md` §9 и §12, Ф5.
+- Тесты (NUnit): `TweakerCore.Tests`, `QuickPlayerCore.Tests`, `AudiosurfInterface.Tests`,
+  `TweakerLuaLinker.Tests` (последний гоняет бандлы через `minilua.exe` из сборки LuaJIT плагина и
+  пропускает эти тесты, если плагин не собран; `ShippedProjectsTests` там же сверяет поставляемые
+  собранные скрипты с их проектами).
 
 **Почему так** (детали и обоснование — `Docs/Internal/overview.md`): игра — внешний процесс, а не
 библиотека, поэтому весь Win32/`WM_COPYDATA` изолирован в `asbridge`, а не встроен P/Invoke-ом в
@@ -161,6 +186,7 @@ NUnit, на проект:
 dotnet test TweakerCore.Tests/TweakerCore.Tests.csproj
 dotnet test QuickPlayerCore.Tests/QuickPlayerCore.Tests.csproj
 dotnet test AudiosurfInterface.Tests/AudiosurfInterface.Tests.csproj
+dotnet test TweakerLuaLinker.Tests/TweakerLuaLinker.Tests.csproj
 
 # один тест:
 dotnet test TweakerCore.Tests/TweakerCore.Tests.csproj --filter "FullyQualifiedName~ClassName.MethodName"
@@ -195,6 +221,14 @@ SkiaSharp/HarfBuzzSharp), чтобы можно было приаттачить�
 открыть и править). Правило отбора одно на оба: **подпапка `dev/` в бандл не попадает** — там пробы API и
 инструменты разработки. Игровую папку `Scripts\` плагин сканирует нерекурсивно, поэтому пробу, нужную в
 игре, кладут туда плоско руками; она остаётся файлом пользователя и в манифест не попадает.
+
+**Скрипты-проекты.** Часть скриптов в `assets/scripts/` не пишется руками, а собирается `twllink` из
+проекта в `TweakerPlugin/assets/script-projects/<sub>/<проект>/` в `assets/scripts/<sub>/` — сейчас
+`puzzlepro_hud` и `dev/map_probe`. Собранный `.lua` и его `.lua.map` лежат в репозитории, поставка
+берёт оба (`CopyTweakerPlugin`). **Правится проект, не собранный файл**: после правки модуля
+`twllink --project <проект> --out <assets/scripts/...>`; забытая пересборка роняет
+`TweakerLuaLinker.Tests` (`ShippedProjectsTests`). `twllink.exe` (Native AOT) публикуется всеми
+четырьмя скриптами деплоя в `/distr/TweakerUI/`, в `PluginPayload\` не входит.
 
 Скрипты есть в двух видах и поддерживаются оба: `.ps1` (PowerShell) и `.sh` (Git Bash). Правишь один —
 правь парный, иначе они разъезжаются молча.
@@ -335,8 +369,11 @@ src/lua/          — LuaJIT-скриптинг поверх src/engine/ (сво
                     ErrorRecovery-guard'ом на весь диспетч), lua_vm (lua_State, песочница и
                     ЕДИНСТВЕННЫЙ список C-точек входа k_entry_points — ПО ИМЕНИ, не по позиции;
                     пролог сверяет имена в обе стороны и не стартует при расхождении), lua_prelude
-                    (Lua-половина слоя текстом, пять секций-чанков tw.abi/core/channels/hud/callbacks;
-                    ljtest читает их из этого файла), api/api_core|api_channels|api_hooks|api_hud
+                    (Lua-половина слоя текстом, шесть секций-чанков tw.abi/core/channels/hud/callbacks/
+                    sandbox — песочница с Ф5b это ПОСЛЕДНЯЯ СЕКЦИЯ ПРОЛОГА, а не C; ljtest читает их
+                    из этого файла; tw.api_version задан в tw.core и больше нигде, lua_vm читает его
+                    оттуда; имена с "_" — приватные для пролога и в api.json не попадают; S.handle_types
+                    / S.constructors / S.sandbox — только для инструментов), api/api_core|api_channels|api_hooks|api_hud
                     (extern "C" ABI, который скрипт зовёт через FFI — НЕ lua_CFunction, см.
                     lua-scripting.md §2.2; хендл канала в Lua — это channel_ref в куче, которым
                     владеет Lua-объект через ffi.gc → tw_ref_free), lua_registry (скрипты из
@@ -347,7 +384,10 @@ src/lua/          — LuaJIT-скриптинг поверх src/engine/ (сво
                     кадров или >4 мс/кадр 120 кадров подряд → приостановка, у приостановленного
                     мьюты сняты; колбэки скриптов НЕ зовутся, пока engine_state не скажет ready),
                     lua_diag (дедуплицирующий приёмник: запись на (скрипт, место, форма), ошибки в
-                    ленту раз и только в ready, лимит ленты на скрипт), lua_config (какие
+                    ленту раз и только в ready, лимит ленты на скрипт; позиции собранного скрипта
+                    переписывает в позиции его модулей ДО ключа записи), lua_linemap (.lua.map от
+                    twllink: разбор, сверка хэша бандла — карта рядом с поправленным руками скриптом
+                    отвергается, а не врёт; грузится на каждом запуске скрипта в lua_registry), lua_config (какие
                     скрипты выключены, TweakerStuff\Config\scripts.cfg — только исключения, плюс
                     engine.settle_frames / engine.settle_ms — окно отстоя для engine_state, и save()
                     их сохраняет), lua_ui (вкладка Scripts, регистрируется через
@@ -412,12 +452,13 @@ cmake --build --preset smoke         # smoke_test: визуальный Win32+Op
 диспетчера, и иначе сломанный скрипт проходил бы молча; `shimtest` — настоящий
 `channel_shim.cxx` плюс проверка соглашения о вызове `SetVector`; `arraytest` — настоящий
 `engine/family/fam_table.cxx` против поддельных каналов; `famtest` — все семейства, по секции на
-каждое, с мутационной проверкой). Слой движка — `harness/lifecycle/lifetest`:
+каждое, с мутационной проверкой; `TW_LJTEST_TRACE=<файл>` пишет каждый вызов HUD-заглушки `ljtest` в
+файл — так бандл сверяется с исходником побайтно, см. `lua-engine-fix-roadmap.md` §12, Ф5). Слой движка — `harness/lifecycle/lifetest`:
 настоящие `engine_groups.cxx`, `engine_state.cxx` и `channel_shim.cxx` против поддельного движка, а
 заглушка `detour::attach` **запоминает адрес хук-функции**, поэтому «игра выгрузила группу» в сюите —
 это вызов настоящего тела хука. Планировщик — `harness/sched/schedtest`: настоящие `lua_sched.cxx`,
 `lua_diag.cxx`, `lua_script.cxx` против заглушек (бюджеты ошибок и времени — последнее настоящим
-временем, ~1 с; дедупликация, маршруты в ленту). Правишь `src/lua/*`, `src/engine/*` или `assets/scripts/*` — прогони. Часть требует собранного плагина: они
+временем, ~1 с; дедупликация, маршруты в ленту; `lua_linemap.cxx` и путь карты через `diag::report`). Правишь `src/lua/*`, `src/engine/*` или `assets/scripts/*` — прогони. Часть требует собранного плагина: они
 линкуются с `build/x86-release/luajit.lib`.
 
 **`TweakerPlugin/harness/` при этом в `.gitignore`** (строка 12) — каталог не в репозитории, правки

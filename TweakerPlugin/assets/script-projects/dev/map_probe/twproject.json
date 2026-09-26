@@ -1,0 +1,13 @@
+{
+  "format": 1,
+  "id": "map_probe",
+  "name": "Map probe",
+  "author": "Audiosurf Tweaker",
+  "version": "1.0.0",
+  "description": "Dev probe for Ф5: a bundled script that errors on purpose, to show errors pointing at its modules. Not for players.",
+  "api": 1,
+
+  // Strip on purpose: comments taken out with their lines is the case where a map that was merely
+  // "one entry per module" would point at the wrong line. See src/main.lua for what to look for.
+  "build": { "comments": "strip" }
+}
