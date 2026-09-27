@@ -1,12 +1,13 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="using:TweakerUI.Core">
 
     <!-- ============================================================================
     Tweaker / Command and Control (stage 4.5) - no mockup for this tab, ported "on the eye"
     from the donor Tweaker.xaml (checkboxes + plain buttons + a log TextBox) reusing this app's
     own established visual language instead: card sections, the Skin Changer's toggle-switch
-    pattern (TWSwitch mirrors SCSwitch) with StreamGeometry icons in place of CheckBoxes, kept
-    in its own file per the same per-module scoping as SkinChangerStyles.axaml/CCCard. "TW"
+    pattern (the shared Switch) with StreamGeometry icons in place of CheckBoxes, kept
+    in its own file per the same per-module scoping as SkinChangerStyles.axaml. "TW"
     prefix; accent colors flow through Themes/AccentColors.axaml (2026-07-13 consistency pass).
     ============================================================================ -->
 
@@ -29,38 +30,8 @@
 
     </Styles.Resources>
 
-    <!-- Section cards - same tokens as SCCard/CCCard, duplicated under this file's own prefix. -->
-    <Style Selector="Border.TWCard">
-        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
-        <Setter Property="Padding" Value="18,14"/>
-    </Style>
-
-    <Style Selector="TextBlock.TWCardTitle">
-        <Setter Property="FontSize" Value="18"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-    </Style>
-
-    <!-- Tweak toggle rows -->
-    <Style Selector="Border.TWToggleRow">
-        <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="Padding" Value="8,7"/>
-        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.15"/>
-            </Transitions>
-        </Setter>
-    </Style>
-    <!-- This was #FFF4F2FC - a hand-picked wash that turned out to compute almost exactly to
-    AccentPrimaryColor at 10% opacity (i.e. AccentHoverBrush), not an independent neutral gray -
-    reclassified accordingly rather than filed under NeutralColors.axaml. -->
-    <Style Selector="Border.TWToggleRow:pointerover">
-        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
-    </Style>
+    <!-- Cards, card titles, toggle rows/labels, switches and the icon button are the shared ones from
+    SharedStyles.axaml (the log clear button is IconButton.Danger). What follows is Tweaker's own. -->
 
     <Style Selector="Path.TWToggleIcon">
         <Setter Property="Stroke" Value="{DynamicResource TextGlyphMutedBrush}"/>
@@ -70,17 +41,12 @@
         <Setter Property="Fill" Value="Transparent"/>
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Stroke" Duration="0:0:0.2"/>
+                <core:CrossfadeBrushTransition Property="Stroke" Duration="0:0:0.2"/>
             </Transitions>
         </Setter>
     </Style>
-    <Style Selector="Border.TWToggleRow.On Path.TWToggleIcon">
+    <Style Selector="Border.ToggleRow.On Path.TWToggleIcon">
         <Setter Property="Stroke" Value="{DynamicResource AccentPrimaryBrush}"/>
-    </Style>
-
-    <Style Selector="TextBlock.TWToggleLabel">
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
     </Style>
 
     <!-- "QP" marker on a tweak row that Quick Player is temporarily overriding. Deliberately the same
@@ -90,7 +56,7 @@
         <Setter Property="CornerRadius" Value="4"/>
         <Setter Property="Padding" Value="5,1"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
-        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="BorderBrush" Value="{DynamicResource AccentSecondaryBrush}"/>
     </Style>
@@ -99,20 +65,6 @@
         <Setter Property="FontSize" Value="10"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Foreground" Value="{DynamicResource AccentSecondaryBrush}"/>
-    </Style>
-
-    <Style Selector="ToggleButton.TWSwitch">
-        <Setter Property="Template" Value="{StaticResource AccentSwitchTemplate}"/>
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="0"/>
-        <Setter Property="Cursor" Value="Hand"/>
-    </Style>
-    <Style Selector="ToggleButton.TWSwitch:checked /template/ Border#Track">
-        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
-    </Style>
-    <Style Selector="ToggleButton.TWSwitch:checked /template/ Border#Thumb">
-        <Setter Property="Margin" Value="16,0,0,0"/>
     </Style>
 
     <!-- Commands list -->
@@ -134,26 +86,6 @@
     </Style>
     <Style Selector="Button.TWCommandButton:disabled">
         <Setter Property="Opacity" Value="0.45"/>
-    </Style>
-
-    <!-- Logs card header + clear button -->
-    <Style Selector="Button.TWIconButton">
-        <Setter Property="Width" Value="28"/>
-        <Setter Property="Height" Value="28"/>
-        <!-- Zero-alpha version of the danger hover below, not Transparent: BrushTransition moves R/G/B
-        and A independently, so fading from black-at-zero-alpha to a red tint smudges through grey on
-        the way. See SurfaceHoverGhostBrush in NeutralColors.axaml. -->
-        <Setter Property="Background" Value="#00D03C3C"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="CornerRadius" Value="6"/>
-        <Setter Property="Padding" Value="0"/>
-        <Setter Property="HorizontalContentAlignment" Value="Center"/>
-        <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
-    </Style>
-    <Style Selector="Button.TWIconButton:pointerover">
-        <Setter Property="Background" Value="#1AD03C3C"/>
     </Style>
 
     <!-- Console - dark panel, deliberately distinct from the light cards so it reads as a

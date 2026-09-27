@@ -28,6 +28,13 @@ namespace TweakerUI.ViewModels
             TweakerVM = new TweakerViewModel();
             QuickPlayerVM = new QuickPlayerViewModel();
             SettingsVM = new SettingViewModel();
+            // Fast Previews changes what Skin Changer holds in memory, not just a flag it reads later -
+            // the switch has to reach it (the flag alone left the two out of step, KnownBugs #5).
+            SettingsVM.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(SettingViewModel.IsFastPreview))
+                    SkinChangerVM.SetFastPreview(SettingsVM.IsFastPreview);
+            };
 
             currentView = SkinChangerVM;
 

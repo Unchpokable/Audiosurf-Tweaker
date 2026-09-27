@@ -1,13 +1,14 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="using:TweakerUI.Core">
 
     <!-- ============================================================================
     QuickPlayer (Фаза 5) - no mockup this time, laid out from the user's verbal description and
     iterated visually from there. "QP" prefix, own file per the established per-module scoping
     (SC/TW/ST/CC/SB). Reuses established fixes rather than rediscovering them: ListBoxItem/TextBox
     need their own full ControlTemplate or the FluentTheme default paints selection/focus straight
-    on a template-internal part and wins over a plain Setter (see SkinChangerStyles.axaml's
-    SCSkinListItemTemplate / SettingsStyles.axaml's STTextBoxTemplate for the original diagnosis).
+    on a template-internal part and wins over a plain Setter (see SharedControlTemplates.axaml's
+    FlatListItemTemplate / FlatTextBoxTemplate for the original diagnosis).
     ============================================================================ -->
 
     <Styles.Resources>
@@ -35,7 +36,7 @@
         <StreamGeometry x:Key="IconQPChevronDown">M1 1L6 6L11 1</StreamGeometry>
 
         <!-- Playback modes, one glyph each (the transport bar has no room for six text chips - see
-        Border.QPTransportBar's comment). Unlike the four transport glyphs above these are stroke
+        the Transport bar comment). Unlike the four transport glyphs above these are stroke
         outlines on the same 24-unit box as IconQPRemove/IconQPCoverPlaceholder, and they are drawn
         with Stretch="Uniform", so the bounding-box-origin problem those four had does not apply -
         Uniform normalizes the geometry's own bounds before rendering.
@@ -63,95 +64,14 @@
         <StreamGeometry x:Key="IconQPModeRepeatOne">M17 2L21 6L17 10 M3 11v-1a4 4 0 0 1 4-4h14 M7 22L3 18L7 14 M21 13v1a4 4 0 0 1-4 4H3 M10.5 10.5L12 9.5v5</StreamGeometry>
         <StreamGeometry x:Key="IconQPModeShuffle">M16 3h5v5 M4 20L21 3 M21 16v5h-5 M15 15l6 6 M4 4l5 5</StreamGeometry>
         <StreamGeometry x:Key="IconQPModeShuffleLoop">M17 2L21 6L17 10 M3 11v-1a4 4 0 0 1 4-4h14 M7 22L3 18L7 14 M21 13v1a4 4 0 0 1-4 4H3 M9.5 9.5L14.5 14.5 M14.5 9.5L9.5 14.5</StreamGeometry>
-
-        <!-- Own template - see file header note. Used for both the playlist sidebar and the queue. -->
-        <ControlTemplate x:Key="QPListItemTemplate" TargetType="ListBoxItem">
-            <Border Name="PART_Border"
-                    Background="{TemplateBinding Background}"
-                    CornerRadius="{TemplateBinding CornerRadius}">
-                <Border.Transitions>
-                    <Transitions>
-                        <BrushTransition Property="Background" Duration="0:0:0.2"/>
-                    </Transitions>
-                </Border.Transitions>
-                <ContentPresenter Content="{TemplateBinding Content}"
-                                   ContentTemplate="{TemplateBinding ContentTemplate}"
-                                   Padding="{TemplateBinding Padding}"
-                                   HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                   VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
-            </Border>
-        </ControlTemplate>
-
-        <ControlTemplate x:Key="QPParamInputTemplate" TargetType="TextBox">
-            <Border Name="PART_Border"
-                    Background="{TemplateBinding Background}"
-                    BorderBrush="{TemplateBinding BorderBrush}"
-                    BorderThickness="{TemplateBinding BorderThickness}"
-                    CornerRadius="{TemplateBinding CornerRadius}"
-                    Padding="{TemplateBinding Padding}">
-                <Border.Transitions>
-                    <Transitions>
-                        <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
-                    </Transitions>
-                </Border.Transitions>
-                <TextPresenter Name="PART_TextPresenter"
-                               Text="{TemplateBinding Text, Mode=TwoWay}"
-                               CaretIndex="{TemplateBinding CaretIndex}"
-                               SelectionStart="{TemplateBinding SelectionStart}"
-                               SelectionEnd="{TemplateBinding SelectionEnd}"
-                               TextAlignment="Center"
-                               TextWrapping="NoWrap"
-                               SelectionBrush="{DynamicResource AccentSelectionBrush}"
-                               SelectionForegroundBrush="{DynamicResource TextOnAccentBrush}"
-                               CaretBrush="{TemplateBinding CaretBrush}"
-                               VerticalAlignment="Center"/>
-            </Border>
-        </ControlTemplate>
-
-        <ControlTemplate x:Key="QPRenameInputTemplate" TargetType="TextBox">
-            <Border Name="PART_Border"
-                    Background="{TemplateBinding Background}"
-                    BorderBrush="{TemplateBinding BorderBrush}"
-                    BorderThickness="{TemplateBinding BorderThickness}"
-                    CornerRadius="{TemplateBinding CornerRadius}"
-                    Padding="{TemplateBinding Padding}">
-                <Border.Transitions>
-                    <Transitions>
-                        <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
-                    </Transitions>
-                </Border.Transitions>
-                <TextPresenter Name="PART_TextPresenter"
-                               Text="{TemplateBinding Text, Mode=TwoWay}"
-                               CaretIndex="{TemplateBinding CaretIndex}"
-                               SelectionStart="{TemplateBinding SelectionStart}"
-                               SelectionEnd="{TemplateBinding SelectionEnd}"
-                               TextAlignment="Left"
-                               TextWrapping="NoWrap"
-                               SelectionBrush="{DynamicResource AccentSelectionBrush}"
-                               SelectionForegroundBrush="{DynamicResource TextOnAccentBrush}"
-                               CaretBrush="{TemplateBinding CaretBrush}"
-                               VerticalAlignment="Center"/>
-            </Border>
-        </ControlTemplate>
     </Styles.Resources>
 
-    <!-- Cards -->
-    <Style Selector="Border.QPCard">
-        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
-        <Setter Property="Padding" Value="16,12"/>
-    </Style>
-    <!-- Tinted band, same tokens as Skin Changer's Custom Installation panel (SCGamePanelCard) under
-    this module's own prefix. Deliberately not the neutral QPCard/QPTransportBar surface: with three
-    stacked bands on the page, one of them being accent-tinted is what keeps the page from reading as a
-    single flat slab, and it marks the character picker as a setting rather than as content. -->
+    <!-- Cards, switches, the empty-state text, the icon buttons and the list item template are the shared
+    ones (SharedStyles.axaml, SharedControlTemplates.axaml). The page is three stacked bands: the queue
+    card (Card), the transport bar (Card Uniform) and the character picker (Card Tinted) - one of them
+    accent-tinted is what keeps the page from reading as a single flat slab, and it marks the character
+    picker as a setting rather than as content. -->
     <Style Selector="Border.QPCharacterPanel">
-        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
         <!-- No padding of its own any more: the panel is a header row plus a collapsible body now, and
         the header has to be clickable edge to edge (a padded panel would leave a dead 16px frame the
         pointer falls into), so the inset moves onto Button.QPCharacterHeader and
@@ -167,7 +87,7 @@
     The whole row is one Button rather than a chevron-sized hit target: a summary row that reads as
     "current value + Change" is expected to respond anywhere along it. -->
     <Style Selector="Button.QPCharacterHeader">
-        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="12"/>
         <Setter Property="Padding" Value="16,10"/>
@@ -258,29 +178,16 @@
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Foreground" Value="{DynamicResource TextSubtleBrush}"/>
     </Style>
-    <Style Selector="TextBlock.QPEmptyState">
-        <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
-        <Setter Property="FontSize" Value="13.5"/>
-        <Setter Property="HorizontalAlignment" Value="Center"/>
-        <Setter Property="VerticalAlignment" Value="Center"/>
-        <Setter Property="TextAlignment" Value="Center"/>
-    </Style>
 
-    <!-- Small icon buttons: add playlist, add tracks, remove playlist -->
-    <Style Selector="Button.QPIconButton">
+    <!-- IconButton sizes: add playlist, add tracks, remove playlist; the per-playlist rename trigger. -->
+    <Style Selector="Button.IconButton.QPIconButton">
         <Setter Property="Width" Value="30"/>
         <Setter Property="Height" Value="30"/>
-        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
-        <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="7"/>
-        <Setter Property="Padding" Value="0"/>
-        <Setter Property="HorizontalContentAlignment" Value="Center"/>
-        <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
     </Style>
-    <Style Selector="Button.QPIconButton:pointerover">
-        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
+    <Style Selector="Button.IconButton.QPRowIconButton">
+        <Setter Property="Width" Value="24"/>
+        <Setter Property="Height" Value="24"/>
     </Style>
 
     <!-- Playlist sidebar -->
@@ -296,7 +203,7 @@
         <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-        <Setter Property="Template" Value="{StaticResource QPListItemTemplate}"/>
+        <Setter Property="Template" Value="{StaticResource FlatListItemTemplate}"/>
     </Style>
     <Style Selector="ListBox.QPPlaylistList ListBoxItem:pointerover">
         <Setter Property="Background" Value="{DynamicResource SurfaceRowHoverBrush}"/>
@@ -329,24 +236,7 @@
         <Setter Property="CornerRadius" Value="5"/>
         <Setter Property="Padding" Value="6,3"/>
         <Setter Property="MinHeight" Value="0"/>
-        <Setter Property="Cursor" Value="IBeam"/>
-        <Setter Property="Template" Value="{StaticResource QPRenameInputTemplate}"/>
-    </Style>
-    <!-- Small row-level icon button, e.g. the per-playlist rename trigger. -->
-    <Style Selector="Button.QPRowIconButton">
-        <Setter Property="Width" Value="24"/>
-        <Setter Property="Height" Value="24"/>
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="CornerRadius" Value="6"/>
-        <Setter Property="Padding" Value="0"/>
-        <Setter Property="HorizontalContentAlignment" Value="Center"/>
-        <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
-    </Style>
-    <Style Selector="Button.QPRowIconButton:pointerover">
-        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
+        <Setter Property="Template" Value="{StaticResource FlatTextBoxTemplate}"/>
     </Style>
 
     <!-- Queue -->
@@ -362,7 +252,7 @@
         <Setter Property="Background" Value="{DynamicResource SurfaceRowBrush}"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-        <Setter Property="Template" Value="{StaticResource QPListItemTemplate}"/>
+        <Setter Property="Template" Value="{StaticResource FlatListItemTemplate}"/>
     </Style>
     <Style Selector="ListBox.QPQueueList ListBoxItem:pointerover">
         <Setter Property="Background" Value="{DynamicResource SurfaceRowHoverBrush}"/>
@@ -488,10 +378,6 @@
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
     </Style>
-    <!-- Opaque danger tier rather than the translucent #1FDC3C3C this faded to before: the resting
-    fill above is opaque and has to stay that way (see its comment), and an opaque -> translucent
-    transition moves hue and alpha together, which flashes. See SurfaceHoverGhostBrush in
-    NeutralColors.axaml. -->
     <Style Selector="Button.QPTrackRemoveButton:pointerover">
         <Setter Property="Background" Value="{DynamicResource SurfaceDangerHoverBrush}"/>
     </Style>
@@ -510,16 +396,10 @@
     Fuckups/playback_control_tight.png).
     Horizontal padding is 16 rather than the mockup's 20 to buy part of that 17px of headroom back;
     the trims that bought the rest are the divider margins and the glyph pills' padding. If anything in
-    here grows, re-measure before assuming it still fits. -->
-    <Style Selector="Border.QPTransportBar">
-        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
-        <Setter Property="Padding" Value="16"/>
-    </Style>
+    here grows, re-measure before assuming it still fits. The bar itself is "Card Uniform" in the markup
+    (16px all round, SharedStyles.axaml). -->
     <!-- Sizes/radii/fill are the mockup's (36 and 44, 7 and 8, an opaque soft-grey resting fill
-    rather than the transparent AccentGhost these had before). The glyphs are muted, not accent,
+    rather than the transparent one these had before). The glyphs are muted, not accent,
     unlike every other icon button in the app: on this bar the accent is what marks Play, and three
     accent-stroked arrows beside it flatten that out.
     VerticalAlignment matters here specifically: these sit in a horizontal StackPanel next to
@@ -549,13 +429,7 @@
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
     </Style>
-    <!-- Opaque, and that is the constraint, not the colour choice: the resting fill is opaque
-    (SurfaceBadge, above) and BrushTransition interpolates R/G/B/A independently, so fading to a
-    translucent accent tint would move hue AND alpha at once and flash a stronger, more saturated
-    accent partway through than the one it lands on - see SurfaceHoverGhostBrush in
-    NeutralColors.axaml for the full rule. That rules out AccentHoverBrush here, unlike
-    QPIconButton/QPRowIconButton which rest on AccentGhostBrush and so only move alpha.
-    SurfaceRowHover is the neutral tier that separates from SurfaceBadge in both themes - darker in
+    <!-- SurfaceRowHover is the neutral tier that separates from SurfaceBadge in both themes - darker in
     Light (#E2E2E2 under #F1F2F5), lighter in Dark (#32353B over #2F3238) - i.e. further from the
     card either way. -->
     <Style Selector="Button.QPTransportButton:pointerover">
@@ -635,8 +509,8 @@
                         VerticalAlignment="Stretch">
                     <Border.Transitions>
                         <Transitions>
-                            <BrushTransition Property="Background" Duration="0:0:0.15"/>
-                            <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
+                            <core:CrossfadeBrushTransition Property="Background" Duration="0:0:0.15"/>
+                            <core:CrossfadeBrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
                         </Transitions>
                     </Border.Transitions>
                     <StackPanel Spacing="2" HorizontalAlignment="Stretch" VerticalAlignment="Center">
@@ -646,7 +520,7 @@
                               StrokeLineCap="Round" StrokeJoin="Round" Fill="Transparent">
                             <Path.Transitions>
                                 <Transitions>
-                                    <BrushTransition Property="Stroke" Duration="0:0:0.15"/>
+                                    <core:CrossfadeBrushTransition Property="Stroke" Duration="0:0:0.15"/>
                                 </Transitions>
                             </Path.Transitions>
                         </Path>
@@ -677,14 +551,8 @@
     what stops that from recurring.)
     Borderless and 5px-radius now rather than a bordered 7px chip on its own fill: the enclosing track
     is what groups the pair, and a border inside a border reads as two nested controls.
-    Resting Background is the TRACK's own colour rather than any kind of transparent. The pill is a
-    direct child of Border.QPSegmentTrack, so painting it SurfaceMuted is pixel-identical to being
-    see-through - but it makes every transition out of the resting state (to SurfaceElevated on hover,
-    to AccentPrimary on check) opaque-to-opaque, so only hue moves. Resting on AccentGhostBrush, which
-    is what this did first, starts the interpolation on the ACCENT hue at zero alpha: fading from that
-    to a neutral grey ramps alpha up while the hue is still teal, and the pill visibly flashes accent
-    before settling grey (user-reported 2026-08-13). See SurfaceHoverGhostBrush in NeutralColors.axaml
-    for the general rule. -->
+    Resting Background is the track's own colour: the pill is a direct child of Border.QPSegmentTrack,
+    so painting it SurfaceMuted is pixel-identical to being see-through. -->
     <Style Selector="RadioButton.QPSegmentButton">
         <Setter Property="Background" Value="{DynamicResource SurfaceMutedBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextSubtleBrush}"/>
@@ -700,7 +568,7 @@
                         Padding="{TemplateBinding Padding}">
                     <Border.Transitions>
                         <Transitions>
-                            <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                            <core:CrossfadeBrushTransition Property="Background" Duration="0:0:0.15"/>
                         </Transitions>
                     </Border.Transitions>
                     <ContentPresenter Content="{TemplateBinding Content}"
@@ -739,7 +607,7 @@
 
     <!-- Glyph pill - the six playback modes. Same well/pill/accent language as QPSegmentButton, but
     the label is a glyph, because six words do not fit on this bar at the window's minimum width (see
-    Border.QPTransportBar). The mode's NAME therefore lives in the tooltip
+    the Transport bar comment). The mode's NAME therefore lives in the tooltip
     (PlaybackModeOptionViewModel.Tooltip), which is why that property exists at all.
     Which glyph comes from the mode itself via a class, the same token -> class -> Data route the
     status bar uses (MainWindow.axaml's Border.SBChip + StatusBarStyles.axaml's icon selectors) -
@@ -750,7 +618,7 @@
         <Setter Property="Background" Value="{DynamicResource SurfaceMutedBrush}"/>
         <Setter Property="Foreground" Value="{DynamicResource TextSubtleBrush}"/>
         <!-- 6, not 7: six pills means every horizontal pixel here costs six, and the row has to clear
-        the narrowest window (see Border.QPTransportBar). 16px of glyph still leaves 6 a side. -->
+        the narrowest window (see the Transport bar comment). 16px of glyph still leaves 6 a side. -->
         <Setter Property="Padding" Value="6,5"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Template">
@@ -761,7 +629,7 @@
                         Padding="{TemplateBinding Padding}">
                     <Border.Transitions>
                         <Transitions>
-                            <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                            <core:CrossfadeBrushTransition Property="Background" Duration="0:0:0.15"/>
                         </Transitions>
                     </Border.Transitions>
                     <Path Name="Glyph" Width="16" Height="16" Stretch="Uniform"
@@ -770,7 +638,7 @@
                           HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Path.Transitions>
                             <Transitions>
-                                <BrushTransition Property="Stroke" Duration="0:0:0.15"/>
+                                <core:CrossfadeBrushTransition Property="Stroke" Duration="0:0:0.15"/>
                             </Transitions>
                         </Path.Transitions>
                     </Path>
@@ -813,21 +681,6 @@
     </Style>
     <Style Selector="RadioButton.QPSegmentIconButton.ShuffleLoop /template/ Path#Glyph">
         <Setter Property="Data" Value="{StaticResource IconQPModeShuffleLoop}"/>
-    </Style>
-
-    <!-- Shared toggle switch, same shape as TWSwitch/STSwitch under this module's own prefix. -->
-    <Style Selector="ToggleButton.QPSwitch">
-        <Setter Property="Template" Value="{StaticResource AccentSwitchTemplate}"/>
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="0"/>
-        <Setter Property="Cursor" Value="Hand"/>
-    </Style>
-    <Style Selector="ToggleButton.QPSwitch:checked /template/ Border#Track">
-        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
-    </Style>
-    <Style Selector="ToggleButton.QPSwitch:checked /template/ Border#Thumb">
-        <Setter Property="Margin" Value="16,0,0,0"/>
     </Style>
 
     <!-- Right-click track menu (Flyout content, not MenuItem-based - needs toggles/text inputs,
@@ -880,7 +733,8 @@
         <Setter Property="FontSize" Value="12.5"/>
         <Setter Property="MinHeight" Value="0"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="Template" Value="{StaticResource QPParamInputTemplate}"/>
+        <Setter Property="TextAlignment" Value="Center"/>
+        <Setter Property="Template" Value="{StaticResource FlatTextBoxTemplate}"/>
     </Style>
     <Style Selector="TextBox.QPParamInput:pointerover /template/ Border#PART_Border">
         <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>

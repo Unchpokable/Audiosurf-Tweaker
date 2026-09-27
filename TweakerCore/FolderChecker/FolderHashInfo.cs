@@ -99,13 +99,28 @@ namespace TweakerCore.FolderChecker
             return folderInfo != null;
         }
 
+        public static bool IsStateFile(string file) => Path.GetExtension(file) == StateFileExtension;
+
+        // Follows a rename of the skin the saved state is named after. Only the name changes: the
+        // hashes stay as they were, so a folder that has drifted since the snapshot stays drifted
+        // instead of being silently re-blessed under the new name.
+        public static bool TryRenameState(string path, string oldName, string newName)
+        {
+            if (!TryFind(path, out var state) || state.StateName != oldName)
+                return false;
+
+            state.StateName = newName;
+            state.Save(path);
+            return true;
+        }
+
         public static FolderHashInfo Create(string path, string stateName = "default")
         {
             var hashes = new List<byte[]>();
 
             foreach (var file in Directory.EnumerateFiles(path))
             {
-                if (Path.GetExtension(file) == StateFileExtension)
+                if (IsStateFile(file))
                     continue;
 
                 using (var stream = File.OpenRead(file))

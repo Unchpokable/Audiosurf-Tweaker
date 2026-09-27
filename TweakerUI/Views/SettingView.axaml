@@ -11,24 +11,24 @@
             <StackPanel Spacing="14">
 
                 <!-- Appearance -->
-                <Border Classes="STCard">
+                <Border Classes="Card Roomy">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Appearance" Classes="STCardTitle" Margin="0,0,0,8"/>
+                        <TextBlock Text="Appearance" Classes="CardTitle" Margin="0,0,0,8"/>
 
-                        <Border Classes="STToggleRow"
+                        <Border Classes="ToggleRow"
                                 ToolTip.Tip="Switch the app's color theme - takes effect immediately, no restart needed">
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Text="Dark theme" Classes="STToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsDarkTheme, Mode=TwoWay}"/>
+                                <TextBlock Text="Dark theme" Classes="ToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="Switch" IsChecked="{Binding IsDarkTheme, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
                     </StackPanel>
                 </Border>
 
                 <!-- Paths -->
-                <Border Classes="STCard">
+                <Border Classes="Card Roomy">
                     <StackPanel Spacing="14">
-                        <TextBlock Text="Paths" Classes="STCardTitle"/>
+                        <TextBlock Text="Paths" Classes="CardTitle"/>
                         <StackPanel>
                             <TextBlock Text="Path to Audiosurf textures" Classes="STFieldLabel"/>
                             <Grid ColumnDefinitions="*,Auto">
@@ -47,64 +47,64 @@
                 </Border>
 
                 <!-- Skin Changer -->
-                <Border Classes="STCard">
+                <Border Classes="Card Roomy">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Skin Changer" Classes="STCardTitle" Margin="0,0,0,8"/>
+                        <TextBlock Text="Skin Changer" Classes="CardTitle" Margin="0,0,0,8"/>
 
-                        <Border Classes="STToggleRow"
+                        <Border Classes="ToggleRow"
                                 ToolTip.Tip="Force the game to reload textures after skin installation - no need to restart the track in-game to see changes">
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Text="Hot reload" Classes="STToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsHotReload, Mode=TwoWay}"/>
+                                <TextBlock Text="Hot reload" Classes="ToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="Switch" IsChecked="{Binding IsHotReload, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
 
-                        <Border Classes="STToggleRow"
+                        <Border Classes="ToggleRow"
                                 ToolTip.Tip="Compare checksums of the game's textures folder at startup, to catch unsaved changes before they're overwritten">
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Text="Control game's textures folder content" Classes="STToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsShouldCheckTextures, Mode=TwoWay}"/>
+                                <TextBlock Text="Control game's textures folder content" Classes="ToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="Switch" IsChecked="{Binding IsShouldCheckTextures, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
 
-                        <Border Classes="STToggleRow STNested" IsEnabled="{Binding IsShouldCheckTextures}"
+                        <Border Classes="ToggleRow STNested" IsEnabled="{Binding IsShouldCheckTextures}"
                                 ToolTip.Tip="Refuse to install a skin while the game's textures folder content is unsaved">
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Text="Safety installation" Classes="STToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsShouldUseSafetyInstallation, Mode=TwoWay}"/>
+                                <TextBlock Text="Safety installation" Classes="ToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="Switch" IsChecked="{Binding IsShouldUseSafetyInstallation, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
 
-                        <Border Classes="STToggleRow"
-                                ToolTip.Tip="Decode a skin's screenshots up front instead of when you select it - faster browsing, more memory used">
+                        <Border Classes="ToggleRow"
+                                ToolTip.Tip="Keep every skin's screenshots in memory: selecting a skin is instant, and hovering a skin shows its preview. Costs about 1.6 MB of memory per screenshot - around 100 MB for twenty skins">
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Text="Fast preview" Classes="STToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsFastPreview, Mode=TwoWay}"/>
+                                <TextBlock Text="Fast preview" Classes="ToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="Switch" IsChecked="{Binding IsFastPreview, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
                     </StackPanel>
                 </Border>
 
                 <!-- In-game plugin -->
-                <Border Classes="STCard">
+                <Border Classes="Card Roomy">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="In-game plugin" Classes="STCardTitle" Margin="0,0,0,2"/>
+                        <TextBlock Text="In-game plugin" Classes="CardTitle" Margin="0,0,0,2"/>
                         <TextBlock Classes="STToggleHint" Margin="2,0,0,8"
                                    Text="Puts TweakerPlugin into the game, where it draws the overlay, replaces the skybox and runs scripts. The game loads it by itself at startup - Tweaker does not have to be running."/>
 
-                        <Border Classes="STToggleRow"
+                        <Border Classes="ToggleRow"
                                 ToolTip.Tip="Copies the plugin into the game's engine\channels folder, or takes it back out. Your skyboxes, scripts and configs are never removed">
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Text="[Experimental] Install the plugin into Audiosurf" Classes="STToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsPluginInstalled, Mode=TwoWay}"/>
+                                <TextBlock Text="[Experimental] Install the plugin into Audiosurf" Classes="ToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="Switch" IsChecked="{Binding IsPluginInstalled, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
 
-                        <Border Classes="STToggleRow STNested" IsEnabled="{Binding IsPluginInstalled}"
+                        <Border Classes="ToggleRow STNested" IsEnabled="{Binding IsPluginInstalled}"
                                 ToolTip.Tip="Off disconnects the overlay from Tweaker right away: skyboxes and scripts keep running in the game, but the overlay's Skins, Tweaks and Player tabs go offline">
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Text="Connect the in-game overlay to Tweaker" Classes="STToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsOverlaySyncEnabled, Mode=TwoWay}"/>
+                                <TextBlock Text="Connect the in-game overlay to Tweaker" Classes="ToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="Switch" IsChecked="{Binding IsOverlaySyncEnabled, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
 
@@ -113,33 +113,33 @@
                 </Border>
 
                 <!-- Textures Watcher -->
-                <Border Classes="STCard">
+                <Border Classes="Card Roomy">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Textures Watcher" Classes="STCardTitle" Margin="0,0,0,2"/>
+                        <TextBlock Text="Textures Watcher" Classes="CardTitle" Margin="0,0,0,2"/>
                         <TextBlock Classes="STToggleHint" Margin="2,0,0,8"
                                    Text="Tracks the game's textures folder and notifies the game about changes in real time. Only active while Audiosurf is connected."/>
 
-                        <Border Classes="STToggleRow"
+                        <Border Classes="ToggleRow"
                                 ToolTip.Tip="Watch the game's textures folder and notify the game about changes in real time">
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Text="Enabled" Classes="STToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsWatcherActive, Mode=TwoWay}"/>
+                                <TextBlock Text="Enabled" Classes="ToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="Switch" IsChecked="{Binding IsWatcherActive, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
 
-                        <Border Classes="STToggleRow STNested" IsEnabled="{Binding IsWatcherActive}"
+                        <Border Classes="ToggleRow STNested" IsEnabled="{Binding IsWatcherActive}"
                                 ToolTip.Tip="Store every change to the textures folder in a temporary skin file">
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Text="Store textures in temp file" Classes="STToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsShouldStoreTextures, Mode=TwoWay}"/>
+                                <TextBlock Text="Store textures in temp file" Classes="ToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="Switch" IsChecked="{Binding IsShouldStoreTextures, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
 
-                        <Border Classes="STToggleRow STNested" IsEnabled="{Binding IsWatcherActive}"
+                        <Border Classes="ToggleRow STNested" IsEnabled="{Binding IsWatcherActive}"
                                 ToolTip.Tip="Use a custom temp file instead of the default Storage/temp.tasp">
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Text="Override temp file" Classes="STToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsTempFileOverrided, Mode=TwoWay}"/>
+                                <TextBlock Text="Override temp file" Classes="ToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="Switch" IsChecked="{Binding IsTempFileOverrided, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
 
@@ -157,23 +157,23 @@
                 </Border>
 
                 <!-- Notifications -->
-                <Border Classes="STCard">
+                <Border Classes="Card Roomy">
                     <StackPanel Spacing="2">
-                        <TextBlock Text="Notifications" Classes="STCardTitle" Margin="0,0,0,8"/>
+                        <TextBlock Text="Notifications" Classes="CardTitle" Margin="0,0,0,8"/>
 
-                        <Border Classes="STToggleRow"
+                        <Border Classes="ToggleRow"
                                 ToolTip.Tip="Send Windows notifications after actions complete, instead of the app's own colored popups">
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Text="Use UWP notifications" Classes="STToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsUWPNotificationsAllowed, Mode=TwoWay}"/>
+                                <TextBlock Text="Use UWP notifications" Classes="ToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="Switch" IsChecked="{Binding IsUWPNotificationsAllowed, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
 
-                        <Border Classes="STToggleRow STNested" IsEnabled="{Binding IsUWPNotificationsAllowed}"
+                        <Border Classes="ToggleRow STNested" IsEnabled="{Binding IsUWPNotificationsAllowed}"
                                 ToolTip.Tip="Show UWP notifications but suppress the system notification sound">
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Text="Mute UWP notifications" Classes="STToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Grid.Column="1" Classes="STSwitch" IsChecked="{Binding IsUWPNotificationSilent, Mode=TwoWay}"/>
+                                <TextBlock Text="Mute UWP notifications" Classes="ToggleLabel" VerticalAlignment="Center"/>
+                                <ToggleButton Grid.Column="1" Classes="Switch" IsChecked="{Binding IsUWPNotificationSilent, Mode=TwoWay}"/>
                             </Grid>
                         </Border>
                     </StackPanel>

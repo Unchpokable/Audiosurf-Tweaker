@@ -1,51 +1,10 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="using:TweakerUI.Core">
 
     <Styles.Resources>
         <!-- Bridge status row's reset button (see Button.IconResetButton below). -->
         <StreamGeometry x:Key="IconReset">M1 4v6h6 M3.51 15a9 9 0 1 0 2.13-9.36L1 10</StreamGeometry>
-
-        <!-- Fully retemplated rather than styled through Setters: FluentTheme's built-in TextBox
-        template draws its own accent-colored focus ring on a template-internal part that a plain
-        Setter can't reach, which produced a thick, badly-placed focus outline. Owning the whole
-        template means the only focus feedback is the BorderBrush swap in the Style below - thin
-        and intentional. Shared by TextBox.CCNameInput and TextBox.CCHexInput. -->
-        <!-- No ScrollViewer: these fields are short (name/hex), never wrap, and the ScrollViewer's
-        viewport layout was fighting TextPresenter's own vertical centering and selection-highlight
-        positioning (text and its selection box were rendering low and slightly offset from each
-        other). TextPresenter alone, directly in the padded Border, centers correctly on its own. -->
-        <ControlTemplate x:Key="CCTextBoxTemplate" TargetType="TextBox">
-            <Border Name="PART_Border"
-                    Background="{TemplateBinding Background}"
-                    BorderBrush="{TemplateBinding BorderBrush}"
-                    BorderThickness="{TemplateBinding BorderThickness}"
-                    CornerRadius="{TemplateBinding CornerRadius}"
-                    Padding="{TemplateBinding Padding}">
-                <Border.Transitions>
-                    <Transitions>
-                        <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
-                    </Transitions>
-                </Border.Transitions>
-                <Panel>
-                    <TextBlock Name="PART_Watermark"
-                               Opacity="0.5"
-                               Text="{TemplateBinding Watermark}"
-                               VerticalAlignment="Center"
-                               IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
-                    <TextPresenter Name="PART_TextPresenter"
-                                   Text="{TemplateBinding Text, Mode=TwoWay}"
-                                   CaretIndex="{TemplateBinding CaretIndex}"
-                                   SelectionStart="{TemplateBinding SelectionStart}"
-                                   SelectionEnd="{TemplateBinding SelectionEnd}"
-                                   TextAlignment="{TemplateBinding TextAlignment}"
-                                   TextWrapping="NoWrap"
-                                   SelectionBrush="{DynamicResource AccentSelectionBrush}"
-                                   SelectionForegroundBrush="{DynamicResource TextOnAccentBrush}"
-                                   CaretBrush="{TemplateBinding CaretBrush}"
-                                   VerticalAlignment="Center"/>
-                </Panel>
-            </Border>
-        </ControlTemplate>
     </Styles.Resources>
 
     <!-- Custom window chrome buttons (minimize/maximize/close) hosted in MainWindow's own title bar,
@@ -53,10 +12,7 @@
     <Style Selector="Button.TitleBarButton">
         <Setter Property="Width" Value="44"/>
         <Setter Property="Height" Value="35"/>
-        <!-- Zero-alpha SurfaceHover, not Transparent - Transparent's RGB is black, and BrushTransition
-        would ramp that up alongside alpha and darken the button before it lightens. See
-        SurfaceHoverGhostBrush in NeutralColors.axaml. -->
-        <Setter Property="Background" Value="{DynamicResource SurfaceHoverGhostBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="0"/>
         <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
@@ -67,12 +23,6 @@
     </Style>
     <Style Selector="Button.TitleBarButton:pointerover">
         <Setter Property="Background" Value="{DynamicResource SurfaceHoverBrush}"/>
-    </Style>
-    <!-- Close fades to red, not to the neutral hover, so it needs its own zero-alpha resting value in
-    that hue - otherwise it inherits TitleBarButton's grey ghost above and the transition moves hue and
-    alpha at once. -->
-    <Style Selector="Button.TitleBarButtonClose">
-        <Setter Property="Background" Value="#00E81123"/>
     </Style>
     <Style Selector="Button.TitleBarButtonClose:pointerover">
         <Setter Property="Background" Value="#FFE81123"/>
@@ -102,7 +52,7 @@
                             Margin="0,6">
                         <Border.Transitions>
                             <Transitions>
-                                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                                <core:CrossfadeBrushTransition Property="Background" Duration="0:0:0.15"/>
                             </Transitions>
                         </Border.Transitions>
                     </Border>
@@ -116,7 +66,7 @@
                                       FontWeight="{TemplateBinding FontWeight}">
                         <ContentPresenter.Transitions>
                             <Transitions>
-                                <BrushTransition Property="Foreground" Duration="0:0:0.15"/>
+                                <core:CrossfadeBrushTransition Property="Foreground" Duration="0:0:0.15"/>
                             </Transitions>
                         </ContentPresenter.Transitions>
                     </ContentPresenter>
@@ -138,9 +88,7 @@
     <!-- Bridge connection controls: the real Audiosurf Tweaker palette is white-and-purple, not gray -
     this matches the old UnderscoredButton style almost exactly. -->
     <Style Selector="Button.UnderscoredButton">
-        <!-- Zero-alpha version of the hover fill below - see SurfaceHoverGhostBrush in
-        NeutralColors.axaml for why this is not Transparent. -->
-        <Setter Property="Background" Value="#00D1F7FF"/>
+        <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Height" Value="36"/>
@@ -151,7 +99,7 @@
                 <Border Name="Root" Background="{TemplateBinding Background}" CornerRadius="6">
                     <Border.Transitions>
                         <Transitions>
-                            <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                            <core:CrossfadeBrushTransition Property="Background" Duration="0:0:0.15"/>
                         </Transitions>
                     </Border.Transitions>
                     <Grid RowDefinitions="*,3">
@@ -189,9 +137,7 @@
     <Style Selector="Button.IconResetButton">
         <Setter Property="Width" Value="26"/>
         <Setter Property="Height" Value="26"/>
-        <!-- AccentGhost, not Transparent: it fades in to AccentHoverBrush, so it has to rest on the
-        same hue at zero alpha or the transition moves hue and alpha together. -->
-        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="7"/>
@@ -216,22 +162,9 @@
     through the same three centralized resources instead of picking its own by eye.
     ============================================================================ -->
 
-    <Style Selector="Border.CCCard">
-        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
-        <Setter Property="Padding" Value="16,12"/>
-    </Style>
-    <Style Selector="Border.CCCardPad20">
-        <Setter Property="Padding" Value="16"/>
-    </Style>
+    <!-- Cards (the palette list, the editor, the save bar, the game panel) are the shared Card /
+    Card Uniform / Card Tinted from SharedStyles.axaml; the palette list only adds its stretch. -->
     <Style Selector="Border.CCListCard">
-        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
-        <Setter Property="Padding" Value="16"/>
         <Setter Property="VerticalAlignment" Value="Stretch"/>
     </Style>
 
@@ -286,8 +219,7 @@
         <Setter Property="CornerRadius" Value="7"/>
         <Setter Property="Padding" Value="10,7"/>
         <Setter Property="MinHeight" Value="0"/>
-        <Setter Property="Cursor" Value="IBeam"/>
-        <Setter Property="Template" Value="{StaticResource CCTextBoxTemplate}"/>
+        <Setter Property="Template" Value="{StaticResource FlatTextBoxTemplate}"/>
     </Style>
     <Style Selector="TextBox.CCNameInput:pointerover">
         <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
@@ -307,8 +239,7 @@
         <Setter Property="CornerRadius" Value="6"/>
         <Setter Property="Padding" Value="8,6"/>
         <Setter Property="MinHeight" Value="0"/>
-        <Setter Property="Cursor" Value="IBeam"/>
-        <Setter Property="Template" Value="{StaticResource CCTextBoxTemplate}"/>
+        <Setter Property="Template" Value="{StaticResource FlatTextBoxTemplate}"/>
     </Style>
     <Style Selector="TextBox.CCHexInput:pointerover">
         <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
@@ -340,7 +271,7 @@
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Foreground" Duration="0:0:0.2"/>
+                <core:CrossfadeBrushTransition Property="Foreground" Duration="0:0:0.2"/>
             </Transitions>
         </Setter>
     </Style>
@@ -349,7 +280,7 @@
     </Style>
 
     <Style Selector="Button.CCPaletteRow">
-        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Padding" Value="0"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
         <Setter Property="Cursor" Value="Hand"/>
@@ -358,7 +289,7 @@
                 <Border Name="Root" Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="1" CornerRadius="9">
                     <Border.Transitions>
                         <Transitions>
-                            <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                            <core:CrossfadeBrushTransition Property="Background" Duration="0:0:0.15"/>
                         </Transitions>
                     </Border.Transitions>
                     <ContentPresenter Content="{TemplateBinding Content}" Margin="12,10"/>
@@ -375,7 +306,7 @@
     </Style>
 
     <Style Selector="Button.CCNewPalette">
-        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
         <Setter Property="FontSize" Value="13.5"/>
         <Setter Property="FontWeight" Value="Medium"/>
@@ -411,8 +342,9 @@
     vertical room for little benefit on a desktop window - same recognizability at a fraction of the
     height. Selection uses an accent border + soft glow rather than a background box, echoing the
     text-color-only selection language used for NavItem. -->
+    <!-- No Width: the chip fills its column of the five-column grid in the view, so the row follows the
+    card's width (it used to be a fixed 96px, left-clustered in a wide window). -->
     <Style Selector="Border.CCSwatchChip">
-        <Setter Property="Width" Value="96"/>
         <Setter Property="Height" Value="52"/>
         <Setter Property="CornerRadius" Value="10"/>
         <Setter Property="BorderBrush" Value="#14000000"/>
@@ -424,7 +356,7 @@
         <Setter Property="BoxShadow" Value="0 1 3 0 #0F000000"/>
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="BorderBrush" Duration="0:0:0.2"/>
+                <core:CrossfadeBrushTransition Property="BorderBrush" Duration="0:0:0.2"/>
             </Transitions>
         </Setter>
     </Style>
@@ -438,7 +370,7 @@
         <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Foreground" Duration="0:0:0.2"/>
+                <core:CrossfadeBrushTransition Property="Foreground" Duration="0:0:0.2"/>
             </Transitions>
         </Setter>
     </Style>
@@ -466,8 +398,7 @@
         <Setter Property="Padding" Value="3"/>
     </Style>
     <Style Selector="Button.CCTab">
-        <!-- Zero-alpha SurfaceHover - see SurfaceHoverGhostBrush in NeutralColors.axaml. -->
-        <Setter Property="Background" Value="{DynamicResource SurfaceHoverGhostBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
@@ -487,20 +418,6 @@
         <Setter Property="Background" Value="{DynamicResource SurfaceElevatedBrush}"/>
     </Style>
 
-    <Style Selector="Border.CCSaveBar">
-        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
-        <Setter Property="Padding" Value="16,12"/>
-    </Style>
-    <Style Selector="Border.CCGamePanel">
-        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
-        <Setter Property="Padding" Value="16,14"/>
-    </Style>
     <Style Selector="TextBlock.CCGamePanelTitle">
         <Setter Property="FontSize" Value="14"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
@@ -511,8 +428,8 @@
     AccentButtonGradientBrush (not the decorative AccentGradientBrush) - the two coincide in Light but
     diverge in Dark, where the CTA needs its own richer/darker gradient pair for text readability -
     see AccentColors.axaml's own comments. Own template (FlatButtonTemplate) so the gradient itself
-    never actually needs to change value at :pointerover/:pressed (a LinearGradientBrush can't be
-    smoothly cross-faded by BrushTransition anyway) - Opacity dimming alone is the animated feedback,
+    never actually needs to change value at :pointerover/:pressed (fading a gradient into a different
+    one is not something any brush transition does well) - Opacity dimming alone is the animated feedback,
     and now it's the ONLY thing touching the button, not fighting FluentTheme's own un-transitioned
     hover highlight the way it silently was before owning the template. -->
     <Style Selector="Button.CCGradientButton">
@@ -555,7 +472,7 @@
     </Style>
 
     <Style Selector="Button.CCGhost">
-        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="8"/>
@@ -570,8 +487,7 @@
     </Style>
 
     <Style Selector="Button.CCDiscard">
-        <!-- Zero-alpha SurfaceHover - see SurfaceHoverGhostBrush in NeutralColors.axaml. -->
-        <Setter Property="Background" Value="{DynamicResource SurfaceHoverGhostBrush}"/>
+        <Setter Property="Background" Value="Transparent"/>
         <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
         <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="CornerRadius" Value="7"/>

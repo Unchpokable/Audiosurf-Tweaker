@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Headless Avalonia stand for TweakerUI: renders the real styles/views out of the BUILT TweakerUI.dll.
+       Not part of the .sln on purpose - it depends on TweakerUI's build output, not on its project.
+       Build TweakerUI first (dotnet build TweakerUI/TweakerUI.csproj). See README.md. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <UiBin>$(MSBuildThisFileDirectory)..\..\TweakerUI\bin\x64\Debug\net10.0-windows10.0.19041.0</UiBin>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Versions must match TweakerUI.csproj. -->
+    <PackageReference Include="Avalonia" Version="12.0.5" />
+    <PackageReference Include="Avalonia.Headless" Version="12.0.5" />
+    <PackageReference Include="Avalonia.Skia" Version="12.0.5" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.5" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.5" />
+    <PackageReference Include="Avalonia.Markup.Xaml.Loader" Version="12.0.5" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
+    <PackageReference Include="SkiaSharp" Version="4.150.0" />
+    <Reference Include="TweakerUI"><HintPath>$(UiBin)\TweakerUI.dll</HintPath></Reference>
+    <Reference Include="TweakerCore"><HintPath>$(UiBin)\TweakerCore.dll</HintPath></Reference>
+    <Reference Include="QuickPlayerCore"><HintPath>$(UiBin)\QuickPlayerCore.dll</HintPath></Reference>
+    <Reference Include="AudiosurfInterface"><HintPath>$(UiBin)\AudiosurfInterface.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

@@ -3,13 +3,12 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Media.Imaging;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using SkiaSharp;
 using TweakerCore;
 using TweakerCore.Engine;
 using TweakerUI.Core;
-using TweakerUI.Core.Utils;
 using TweakerUI.Services;
 using TweakerUI.ViewModels;
 
@@ -21,16 +20,12 @@ namespace TweakerUI.Models
     // icon straight from a shared Geometry resource in Styles.axaml instead of a per-card property.
     public partial class SkinCard : ObservableObject
     {
-        public SkinCard(AudiosurfSkinExtended skin, string pathToOrigin, SkinChangerViewModel root = null)
+        // Name and file only - screenshots are never decoded here (see Screenshots).
+        public SkinCard(string name, string pathToOrigin, SkinChangerViewModel root = null)
         {
             _root = root;
-            AssignSkin(skin, pathToOrigin);
-        }
-
-        internal SkinCard(LoadedSkinData skin, SkinChangerViewModel root = null)
-        {
-            _root = root;
-            AssignSkin(skin);
+            Name = name;
+            _pathToOriginFile = pathToOrigin;
         }
 
         private readonly SkinChangerViewModel _root;
@@ -39,8 +34,17 @@ namespace TweakerUI.Models
         [ObservableProperty]
         private string name;
 
+        // Non-null only in Fast Previews mode: filled in the background by SkinChangerViewModel after the
+        // list loads or when the mode is switched on, dropped (and disposed) when it's switched off.
+        // Whoever shows screenshots checks this, not the setting - the two only agree once a runtime
+        // switch has finished filling/clearing every card.
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(Cover))]
         private ObservableCollection<InteractableScreenshot> screenshots;
+
+        // Hover preview on the card (the WPF version's ToolTip, restored). Null outside Fast Previews
+        // mode, which also disables the tooltip - it never touches the disk.
+        public Bitmap Cover => Screenshots?.FirstOrDefault()?.Image;
 
         [ObservableProperty]
         private bool renameActive;
@@ -50,37 +54,12 @@ namespace TweakerUI.Models
         [ObservableProperty]
         private string newName;
 
-        public bool UseFastPreview => SettingsProvider.UseFastPreview;
-
         public string InstallTooltip => "Clear Installation";
         public string ExportCopyTooltip => "Export copy of this skin";
         public string RenameTooltip => "Rename this skin";
         public string RemoveTooltip => "Remove this skin";
 
         public string PathToOrigin => _pathToOriginFile;
-
-        private void AssignSkin(AudiosurfSkinExtended skin, string pathToOrigin)
-        {
-            if (skin == null) return;
-
-            _pathToOriginFile = pathToOrigin;
-            Name = skin.Name;
-            if (UseFastPreview)
-                Screenshots = new ObservableCollection<InteractableScreenshot>(
-                    (skin.Previews?.Group ?? System.Array.Empty<NamedBitmap>())
-                    .Select(screenshot => new InteractableScreenshot(((SKBitmap)screenshot).Rescale(860, 440).ToAvaloniaBitmap())));
-        }
-
-        private void AssignSkin(LoadedSkinData skin)
-        {
-            if (skin == null) return;
-
-            _pathToOriginFile = skin.PathToOriginFile;
-            Name = skin.Name;
-            if (UseFastPreview)
-                Screenshots = new ObservableCollection<InteractableScreenshot>(
-                    skin.Screenshots.Select(x => new InteractableScreenshot(x.ToAvaloniaBitmap())));
-        }
 
         [RelayCommand]
         private void Install() => _root?.InstallSkin(_pathToOriginFile, SettingsProvider.GameTexturesPath, forced: true, clearInstall: true);
@@ -98,62 +77,67 @@ namespace TweakerUI.Models
         [RelayCommand]
         private async Task ApplyRename()
         {
+            if (_renameInProgress)
+                return;
+
             var oldName = Name;
-            var newName = NewName;
-            RenameActive = false;
+            var newName = NewName?.Trim();
 
-            if (string.IsNullOrWhiteSpace(newName) || newName == oldName)
-                return;
-
-            var skinObject = SkinPackager.Decompile(_pathToOriginFile);
-            if (skinObject == null)
-                return;
-
-            skinObject.Name = newName;
-            var newFile = Path.Combine(SkinChangerViewModel.SkinsRootPath, newName + EnvironmentalVeriables.ActualSkinExtention);
-            var oldFile = _pathToOriginFile;
-
-            // Name/_pathToOriginFile are only committed below once the file operations actually
-            // succeed - previously they were updated optimistically up front, so a failed compile or a
-            // locked/undeletable old file left the card pointing at a file that didn't exist on disk.
-            var success = await Task.Run(() =>
+            if (string.IsNullOrEmpty(newName) || newName == oldName)
             {
-                try
-                {
-                    if (!SkinPackager.CompileToPath(skinObject, SkinChangerViewModel.SkinsRootPath))
-                        return false;
+                RenameActive = false;
+                return;
+            }
 
-                    File.Delete(oldFile);
+            // Validation failures keep rename mode open, so the user can fix the name instead of
+            // retyping it from scratch.
+            if (newName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            {
+                ApplicationNotificationManager.Manager.ShowError("Rename failed", $"\"{newName}\" contains characters that can't be used in a file name.");
+                return;
+            }
 
-                    var cacheDir = SkinChangerViewModel.AppDirectory;
-                    if (LoadingCache.TryFind(cacheDir, out LoadingCache cache))
-                    {
-                        cache.Data.RemoveAll(x => x.Name == oldName);
-                        cache.Data.Add(new LoadedSkinData(skinObject, newFile));
-                        cache.Serialize(cacheDir);
-                        Utils.DisposeAndClear(cache);
-                    }
+            // The skin stays in its own folder - skins from the additional skins folder used to be
+            // silently moved into Skins\ by a rename.
+            var oldFile = _pathToOriginFile;
+            var newFile = Path.Combine(Path.GetDirectoryName(oldFile), newName + EnvironmentalVeriables.ActualSkinExtention);
+            var samePath = string.Equals(Path.GetFullPath(oldFile), Path.GetFullPath(newFile), StringComparison.OrdinalIgnoreCase);
 
-                    return true;
-                }
-                catch
-                {
-                    return false;
-                }
-            });
+            // The name is what the overlay and the installed-skin state identify a skin by, and an
+            // existing file would simply be overwritten - both used to turn two skins into one.
+            if ((!samePath && File.Exists(newFile)) || (_root?.Skins.Any(c => c != this && c.Name == newName) ?? false))
+            {
+                ApplicationNotificationManager.Manager.ShowError("Rename failed", $"A skin named \"{newName}\" already exists.");
+                return;
+            }
 
-            Utils.DisposeAndClear(skinObject);
+            // Name is shown right away and rolled back on failure; _pathToOriginFile is committed only
+            // on success, so the card never points at a file that isn't on disk.
+            RenameActive = false;
+            Name = newName;
+            _renameInProgress = true;
+
+            bool success;
+            using (StatusService.Manager.Begin(StatusToken.DiskProcess, "Skin Changer", $"Renaming \"{oldName}\" to \"{newName}\"..."))
+            {
+                success = await Task.Run(() => SkinPackager.RenameSkin(oldFile, newName, newFile));
+            }
+
+            _renameInProgress = false;
 
             if (success)
             {
-                Name = newName;
                 _pathToOriginFile = newFile;
+                _root?.OnSkinRenamed(oldName, newName);
             }
             else
             {
+                Name = oldName;
                 ApplicationNotificationManager.Manager.ShowError("Rename failed", $"Could not rename skin \"{oldName}\" to \"{newName}\". The skin file on disk was left unchanged.");
             }
         }
+
+        private bool _renameInProgress;
 
         [RelayCommand]
         private async Task ExportCopy()

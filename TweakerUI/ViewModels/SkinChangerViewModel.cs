@@ -9,7 +9,6 @@ using Avalonia.Threading;
 using AudiosurfInterface;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using SkiaSharp;
 using TweakerCore;
 using TweakerCore.Engine;
 using TweakerCore.FolderChecker;
@@ -29,25 +28,9 @@ namespace TweakerUI.ViewModels
     // "Edit on Disk" mode is dropped entirely - not part of this revival (see roadmap Phase 4.3 notes).
     public partial class SkinChangerViewModel : ViewModelBase
     {
-        // Path.GetDirectoryName(Environment.ProcessPath), NOT AppContext.BaseDirectory and NOT a bare
-        // relative "Skins" literal - both of the latter broke under Deploy.ps1's self-contained
-        // single-file publish, confirmed by adding the logging below and reading it back:
-        //   SkinsRootPath='C:\Users\...\AppData\Local\Temp\.net\TweakerUI\<hash>\Skins' (exists=False)
-        // A relative "Skins" path resolves against the process's current working directory, not the
-        // exe's own folder - those only coincide by accident (e.g. double-clicking from the same
-        // folder), which is what made the app's behavior depend on launch method/CWD instead of where
-        // the exe actually lives. Switching to AppContext.BaseDirectory looked like the fix (it's the
-        // commonly-cited single-file-safe alternative to Assembly.Location) but is ALSO wrong here:
-        // Deploy.ps1 publishes with IncludeNativeLibrariesForSelfExtract/IncludeAllContentForSelfExtract
-        // (needed so SkiaSharp/HarfBuzzSharp's native assets can run at all from inside a single-file
-        // bundle), and once content self-extraction is enabled, AppContext.BaseDirectory reports the
-        // %TEMP%\.net\TweakerUI\<hash>\ extraction folder, not the folder containing TweakerUI.exe.
-        // Environment.ProcessPath is unaffected by self-extraction - it's the actual apphost .exe's own
-        // path in every publish mode - confirmed by ConfigurationManager.ExePath (already on
-        // Environment.ProcessPath) correctly landing TweakerUI.exe.config next to the real exe under
-        // the exact same single-file bundle.
-        internal static readonly string AppDirectory = Path.GetDirectoryName(Environment.ProcessPath);
-        internal static readonly string SkinsRootPath = Path.Combine(AppDirectory, "Skins");
+        // Why the exe's own folder and why resolved this way - see AppPaths.
+        internal static readonly string AppDirectory = AppPaths.AppDirectory;
+        internal static readonly string SkinsRootPath = AppPaths.InAppDirectory("Skins");
 
         public SkinChangerViewModel()
         {
@@ -61,7 +44,7 @@ namespace TweakerUI.ViewModels
             Skins = new ObservableCollection<SkinCard>();
             // Single hook for the overlay's SKIN_LIST sync, rather than patching every Skins.Add/Remove
             // call site across this file - catches Add/Remove/Reset alike.
-            Skins.CollectionChanged += (_, _) => OverlayHelper.PushSkinList(Skins.Select(c => c.Name));
+            Skins.CollectionChanged += (_, _) => PushSkinListToOverlay();
 
             if (EnvironmentChecker.CheckEnvironment(SettingsProvider.GameTexturesPath, out FolderHashInfo state))
                 CurrentInstalledSkinRaw = state.StateName;
@@ -69,13 +52,41 @@ namespace TweakerUI.ViewModels
             OverlayHelper.OverlayReady += (_, _) => PushOverlaySnapshot();
             OverlayHelper.SkinRequested += OnOverlaySkinRequested;
 
-            _ = LoadSkinsAsync(rebuildCache: false);
+            _ = LoadSkinsAsync();
         }
 
         private void PushOverlaySnapshot()
         {
-            OverlayHelper.PushSkinList(Skins.Select(c => c.Name));
+            PushSkinListToOverlay();
             OverlayHelper.PushCurrentSkin(CurrentInstalledSkinRaw);
+        }
+
+        private void PushSkinListToOverlay() => OverlayHelper.PushSkinList(Skins.Select(c => c.Name));
+
+        // Called by SkinCard once a rename is on disk. Skins.CollectionChanged doesn't see a card renamed
+        // in place, and the installed-skin state is keyed by name - renaming the current skin used to
+        // leave the tab (and the overlay) showing the old name, or "Unsaved" after the next restart's
+        // lookup. Names are unique across cards (SkinCard.ApplyRename refuses a taken one), which is
+        // what makes matching by name sound here.
+        internal void OnSkinRenamed(string oldName, string newName)
+        {
+            PushSkinListToOverlay();
+
+            var texturesPath = SettingsProvider.GameTexturesPath;
+            if (!string.IsNullOrEmpty(texturesPath) && Directory.Exists(texturesPath))
+            {
+                try
+                {
+                    FolderHashInfo.TryRenameState(texturesPath, oldName, newName);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log("SkinChanger.Rename", $"Failed to carry the rename '{oldName}' -> '{newName}' over to the folder state in '{texturesPath}': {ex}");
+                }
+            }
+
+            if (CurrentInstalledSkinRaw == oldName)
+                CurrentInstalledSkinRaw = newName;
         }
 
         // Reverse-sync (Docs/Internal/overlay-protocol.md, NOTIFY_SKIN): the user pressed "Apply" on
@@ -97,15 +108,20 @@ namespace TweakerUI.ViewModels
 
         public ObservableCollection<InteractableScreenshot> SelectedItemScreenshots => _selectedScreenshots;
 
-        // No caching (deliberately - the app already sits around 200MB resident, holding decoded
-        // screenshot bitmaps for every skin on top of that isn't worth it), so re-selecting a skin
-        // always re-decodes. These skeleton placeholder counts match the mockup's own
-        // hint-placeholder-count values and just give the reload something to look at instead of a
-        // blank list while it's in flight.
+        // By default only the selected skin's screenshots are in memory - re-selecting a skin reads them
+        // from its archive again (the screenshots only, SkinPackager.ReadPreviews: a skin's textures, 4k
+        // skyspheres included, stay packed until it's installed). Fast Previews is the opt-in opposite -
+        // every skin's screenshots pre-decoded, see SetFastPreview. These skeleton placeholder counts match
+        // the mockup's own hint-placeholder-count values and just give the reload something to look at
+        // instead of a blank list while it's in flight.
         public IReadOnlyList<int> ScreenshotPlaceholders { get; } = Enumerable.Range(0, 4).ToList();
         public IReadOnlyList<int> SkinPlaceholders { get; } = Enumerable.Range(0, 5).ToList();
 
         private readonly ObservableCollection<InteractableScreenshot> _selectedScreenshots = new();
+
+        // Whether _selectedScreenshots were read for the selection alone (and are disposed when it moves
+        // on) or are the selected card's own Fast Previews set (which the card keeps).
+        private bool _selectionOwnsScreenshots;
 
         [ObservableProperty]
         private SkinCard selectedItem;
@@ -177,7 +193,7 @@ namespace TweakerUI.ViewModels
                 }
                 if (!File.Exists(pathToOrigin))
                 {
-                    ApplicationNotificationManager.Manager.ShowError("Installation error", $"Given path does not exist: {pathToOrigin}\nIt may be caused by corrupted skins cache. Please rebuild skins cache and try again");
+                    ApplicationNotificationManager.Manager.ShowError("Installation error", $"Given path does not exist: {pathToOrigin}\nThe skin file may have been moved or deleted. Reload the skins list and try again");
                     return;
                 }
 
@@ -226,24 +242,13 @@ namespace TweakerUI.ViewModels
                 return;
 
             Skins.Remove(target);
+            ReleaseCardScreenshots(new[] { target });
 
             if (!await ApplicationNotificationManager.Manager.AskForAction("Remove Skin", "Do you want to remove file too?"))
                 return;
 
             using (StatusService.Manager.Begin(StatusToken.DiskProcess, "Skin Changer", $"Removing {target.Name}..."))
-            {
-                await Task.Run(() =>
-                {
-                    File.Delete(target.PathToOrigin);
-                    var cacheDir = AppDirectory;
-                    if (LoadingCache.TryFind(cacheDir, out LoadingCache cache))
-                    {
-                        cache.Data.RemoveAll(x => x.Name == target.Name);
-                        cache.Serialize(cacheDir);
-                        Utils.DisposeAndClear(cache);
-                    }
-                });
-            }
+                await Task.Run(() => File.Delete(target.PathToOrigin));
             ApplicationNotificationManager.Manager.ShowInformation("", "Operation completed");
         }
 
@@ -273,8 +278,10 @@ namespace TweakerUI.ViewModels
 
         private async Task AddNewSkinAsync(string path)
         {
-            var skin = await Task.Run(() => SkinPackager.Decompile(path));
-            if (skin == null)
+            // The manifest is all that's read: it tells a skin from any other file and gives the card its
+            // name. Decoding the whole skin here (as this used to) cost up to ~200 MB of pixels for nothing.
+            var name = await Task.Run(() => SkinPackager.ReadName(path));
+            if (name == null)
             {
                 ApplicationNotificationManager.Manager.ShowError("Error", "Given file is not an Audiosurf Tweaker skin");
                 return;
@@ -283,39 +290,29 @@ namespace TweakerUI.ViewModels
             var newPath = Path.Combine(SkinsRootPath, Path.GetFileName(path));
             if (File.Exists(newPath))
             {
-                if (await ApplicationNotificationManager.Manager.AskForAction("Skin Exists", "Given skin already in skins list. Do you want to overwrite it?"))
-                {
-                    File.Delete(newPath);
-                    var existing = Skins.FirstOrDefault(card => card.Name == skin.Name);
-                    if (existing != null)
-                        Skins.Remove(existing);
-                }
-                else
-                {
-                    skin.Dispose();
+                if (!await ApplicationNotificationManager.Manager.AskForAction("Skin Exists", "Given skin already in skins list. Do you want to overwrite it?"))
                     return;
+
+                File.Delete(newPath);
+                var existing = Skins.FirstOrDefault(card => card.Name == name);
+                if (existing != null)
+                {
+                    Skins.Remove(existing);
+                    ReleaseCardScreenshots(new[] { existing });
                 }
             }
 
             await Task.Run(() => File.Move(path, newPath));
 
-            var card = new SkinCard(skin, newPath, this);
+            var card = new SkinCard(name, newPath, this);
             Skins.Add(card);
             SelectedItem = card;
-
-            var cacheDir = AppDirectory;
-            await Task.Run(() =>
-            {
-                if (LoadingCache.TryFind(cacheDir, out LoadingCache cache))
-                {
-                    cache.Data.Add(new LoadedSkinData(skin, newPath));
-                    cache.Serialize(cacheDir);
-                }
-                Utils.DisposeAndClear(cache, skin);
-            });
+            FillFastPreviewsIfEnabled();
 
             ApplicationNotificationManager.Manager.ShowInformation("", "Operation completed!");
         }
+
+        private const string ExportedSkinBaseName = "New exported skin";
 
         [RelayCommand]
         private async Task ImportFromGame()
@@ -323,45 +320,77 @@ namespace TweakerUI.ViewModels
             // SkinPackager.CreateSkinFromFolder calls Directory.GetFiles on this path unguarded - an
             // unset/missing game textures folder threw straight out of the background Task and crashed
             // the app instead of showing a normal error.
-            if (string.IsNullOrEmpty(SettingsProvider.GameTexturesPath) || !Directory.Exists(SettingsProvider.GameTexturesPath))
+            var texturesPath = SettingsProvider.GameTexturesPath;
+            if (string.IsNullOrEmpty(texturesPath) || !Directory.Exists(texturesPath))
             {
                 ApplicationNotificationManager.Manager.ShowError("Import error", "Game textures folder does not exist. Check that 'Path to game textures' setting is valid, then try again");
                 return;
             }
 
-            var skin = await Task.Run(() => SkinPackager.CreateSkinFromFolder(SettingsProvider.GameTexturesPath));
-            if (skin == null)
+            // A fixed name used to overwrite the previous export (and drop its card) if it hadn't been
+            // renamed yet.
+            var name = ExportedSkinBaseName;
+            for (var i = 2; File.Exists(ExportedSkinFile(name)) || Skins.Any(c => c.Name == name); i++)
+                name = $"{ExportedSkinBaseName} ({i})";
+            var file = ExportedSkinFile(name);
+
+            // The card only appears once its file is fully on disk: it enters rename mode right away, and
+            // a rename started while the archive was still being written ran against a missing/partial file.
+            SkinCard card = null;
+            var stateSaved = false;
+            using (StatusService.Manager.Begin(StatusToken.DiskProcess, "Skin Changer", "Exporting current textures..."))
+            {
+                (card, stateSaved) = await Task.Run(() => ExportTextures(texturesPath, name, file));
+            }
+
+            if (card == null)
             {
                 ApplicationNotificationManager.Manager.ShowError("Error", "Something went wrong when packing your current texture set. Check application settings and game textures folder");
                 return;
             }
 
-            skin.Name = "New exported skin";
-            var source = Path.Combine(SkinsRootPath, skin.Name + EnvironmentalVeriables.ActualSkinExtention);
+            // The exported textures ARE the installed set now - without this the tab kept saying "Unsaved"
+            // and the next install warned about losing textures that had just been saved.
+            if (stateSaved)
+                CurrentInstalledSkinRaw = name;
 
-            var card = new SkinCard(skin, source, this);
-            var existing = Skins.FirstOrDefault(c => c.PathToOrigin.Equals(card.PathToOrigin, StringComparison.OrdinalIgnoreCase));
-            if (existing != null)
-                Skins.Remove(existing);
             Skins.Add(card);
-
-            card.EnableRenameCommand.Execute(null);
-
-            await Task.Run(() =>
-            {
-                SkinPackager.CompileToPath(skin, SkinsRootPath);
-                Utils.DisposeAndClear(skin);
-            });
-
             SelectedItem = card;
+            FillFastPreviewsIfEnabled();
+            card.EnableRenameCommand.Execute(null);
+        }
+
+        private static string ExportedSkinFile(string name) => Path.Combine(SkinsRootPath, name + EnvironmentalVeriables.ActualSkinExtention);
+
+        private (SkinCard card, bool stateSaved) ExportTextures(string texturesPath, string name, string file)
+        {
+            using var skin = SkinPackager.CreateSkinFromFolder(texturesPath);
+            if (skin == null)
+                return (null, false);
+
+            skin.Name = name;
+            // Hashed right after reading, so the snapshot describes exactly what went into the skin.
+            var state = FolderHashInfo.Create(texturesPath, name);
+
+            if (!SkinPackager.CompileToFile(skin, file))
+                return (null, false);
+
+            var stateSaved = false;
+            try
+            {
+                state.Save(texturesPath);
+                stateSaved = true;
+            }
+            catch (Exception ex)
+            {
+                Logger.Log("SkinChanger.Export", $"Exported '{file}' but could not save the folder state to '{texturesPath}': {ex}");
+            }
+
+            return (new SkinCard(name, file, this), stateSaved);
         }
 
         [RelayCommand]
-        private async Task ReloadSkins()
-        {
-            Skins.Clear();
-            await LoadSkinsAsync(rebuildCache: true);
-        }
+        private Task ReloadSkins() => LoadSkinsAsync();
 
         [RelayCommand]
         private async Task RemoveSelected() => await RemoveSkin(SelectedItem);
@@ -379,8 +408,8 @@ namespace TweakerUI.ViewModels
 
             if (!File.Exists(SelectedItem.PathToOrigin))
             {
-                ApplicationNotificationManager.Manager.ShowWarning("Cache error", "A cache read-write error occurred. Skins will be reloaded");
-                _ = LoadSkinsAsync(rebuildCache: true);
+                ApplicationNotificationManager.Manager.ShowWarning("Skin file not found", "The skin file is no longer where it was loaded from. Skins will be reloaded");
+                _ = LoadSkinsAsync();
                 return;
             }
 
@@ -426,31 +455,60 @@ namespace TweakerUI.ViewModels
                     Dispatcher.UIThread.Post(() => CurrentInstalledSkinRaw = state.StateName);
                 }
 
+                // Dispose frees the decoded textures' native pixels right here - no collection needed (a
+                // forced GC.Collect used to follow, and freed nothing Dispose hadn't).
                 string installedSkinName = skin.Name;
                 skin.Dispose();
-                GC.Collect();
 
                 return installedSkinName;
             });
         }
 
-        private async Task LoadSkinsAsync(bool rebuildCache)
+        // The list is built from each archive's manifest.json alone - tens of milliseconds for a folder of
+        // skins. It used to decode every skin in full (1.7 GB of pixels for 18 skins) or, to avoid that, keep
+        // load.cache: a 36 MB JSON of base64 screenshots whose parsing alone left 128+ MB of pooled buffers
+        // behind for the life of the process (Docs/Internal/avalonia-pitfalls.md, §6), and which every rename,
+        // removal, export and import had to decode and re-encode in full.
+        // A load started while another is still reading (a reload triggered by a missing file mid-load) makes
+        // the earlier one's result stale - without this both cleared the list and then both filled it.
+        private int _loadGeneration;
+
+        private async Task LoadSkinsAsync()
         {
+            var load = ++_loadGeneration;
             LoadingVisible = true;
             ReloadButtonUnlocked = false;
 
+            // A fill still running belongs to the list being replaced.
+            _fastPreviewGeneration++;
+            ReleaseCardScreenshots(Skins);
+            Skins.Clear();
+
             using (var status = StatusService.Manager.Begin(StatusToken.DiskProcess, "Skin Changer", "Loading skins..."))
-                await Task.Run(() => LoadSkinsCoreAsync(rebuildCache, status));
+            {
+                var cards = await Task.Run(() => ReadSkinCards(status));
+                if (load != _loadGeneration)
+                    return;
+
+                TotalSkinsToLoad = cards.Count;
+                CurrentLoadStep = 0;
+                foreach (var card in cards)
+                {
+                    Skins.Add(card);
+                    CurrentLoadStep++;
+                }
+            }
 
             LoadingVisible = false;
             ReloadButtonUnlocked = true;
+            FillFastPreviewsIfEnabled();
         }
 
-        private async Task LoadSkinsCoreAsync(bool rebuildCache, StatusHandle status)
+        private List<SkinCard> ReadSkinCards(StatusHandle status)
         {
             var skinsRootExists = Directory.Exists(SkinsRootPath);
             // AppContext.BaseDirectory and Environment.CurrentDirectory are logged purely for
-            // comparison, not used for path resolution (see AppDirectory/SkinsRootPath comment above) -
+            // comparison, not used for path resolution (see AppPaths) -
             // AppContext.BaseDirectory in particular pointed at a %TEMP%\.net\... self-extraction folder
             // under Deploy.ps1's single-file publish, which is exactly what this line's own output
             // caught the first time this was diagnosed.
@@ -459,95 +517,28 @@ namespace TweakerUI.ViewModels
                 $"AppContext.BaseDirectory='{AppContext.BaseDirectory}'; Environment.CurrentDirectory='{Environment.CurrentDirectory}'; " +
                 $"AdditionalSkinsFolderPath='{SettingsProvider.SkinsFolderPath}' (exists={Directory.Exists(SettingsProvider.SkinsFolderPath)})");
 
+            DeleteLegacyLoadingCache();
+
+            var cards = new List<SkinCard>();
             if (!skinsRootExists)
             {
-                await Dispatcher.UIThread.InvokeAsync(() => ApplicationNotificationManager.Manager.ShowError("File system error", "Root skins directory not found. Unable to load"));
-                return;
+                Dispatcher.UIThread.Post(() => ApplicationNotificationManager.Manager.ShowError("File system error", "Root skins directory not found. Unable to load"));
+                return cards;
             }
 
             var files = CollectSkinFiles();
-            var cacheDir = AppDirectory;
-            Logger.Log("SkinChanger.LoadSkins", $"Collected {files.Count} skin file(s) from '{SkinsRootPath}' (+ additional folder if configured); cacheDir='{cacheDir}'");
-
-            if (!rebuildCache && LoadingCache.TryFind(cacheDir, out LoadingCache cache) &&
-                UnorderedSequenceEquals(files, cache.Data.Select(x => x.PathToOriginFile).ToList()))
-            {
-                await LoadSkinsFromCacheAsync(cache, status);
-            }
-            else
-            {
-                await LoadSkinsFullAsync(files, cacheDir, status);
-            }
-        }
-
-        private async Task LoadSkinsFromCacheAsync(LoadingCache cache, StatusHandle status)
-        {
-            await Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                TotalSkinsToLoad = cache.Data.Count;
-                CurrentLoadStep = 0;
-            });
-
-            var total = cache.Data.Count;
-            var i = 0;
-            foreach (var cachedSkin in cache.Data.OrderBy(x => x?.Name))
-            {
-                if (cachedSkin == null)
-                {
-                    await Dispatcher.UIThread.InvokeAsync(() => ApplicationNotificationManager.Manager.ShowError("", "Cache error occurred. Skins will be loaded from source files"));
-                    await LoadSkinsFullAsync(CollectSkinFiles(), AppDirectory, status);
-                    return;
-                }
-
-                i++;
-                status.Update($"Loading {cachedSkin.Name} ({i}/{total})...");
-
-                var card = new SkinCard(cachedSkin, this);
-                await Dispatcher.UIThread.InvokeAsync(() =>
-                {
-                    Skins.Add(card);
-                    CurrentLoadStep++;
-                });
-            }
-
-            Utils.DisposeAndClear(cache);
-        }
-
-        private async Task LoadSkinsFullAsync(List<string> files, string cacheDir, StatusHandle status)
-        {
-            await Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                Skins.Clear();
-                TotalSkinsToLoad = files.Count;
-                CurrentLoadStep = 0;
-            });
+            Logger.Log("SkinChanger.LoadSkins", $"Collected {files.Count} skin file(s) from '{SkinsRootPath}' (+ additional folder if configured)");
 
             void OnConversionStarted(string path) => status.Update(StatusToken.DiskProcess, $"Converting legacy skin {Path.GetFileName(path)}...");
             LegacyConverter.ConversionStarted += OnConversionStarted;
-
-            var cache = new LoadingCache();
             try
             {
-                var total = files.Count;
-                var i = 0;
-                foreach (var file in files)
+                for (var i = 0; i < files.Count; i++)
                 {
-                    i++;
-                    status.Update($"Loading {Path.GetFileName(file)} ({i}/{total})...");
-
-                    var skin = SkinPackager.Decompile(file);
-                    if (skin == null)
-                        continue;
-
-                    cache.Data.Add(new LoadedSkinData(skin, file));
-                    var card = new SkinCard(skin, file, this);
-                    skin.Dispose();
-
-                    await Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        Skins.Add(card);
-                        CurrentLoadStep++;
-                    });
+                    status.Update($"Loading {Path.GetFileName(files[i])} ({i + 1}/{files.Count})...");
+                    var name = SkinPackager.ReadName(files[i]);
+                    if (name != null)
+                        cards.Add(new SkinCard(name, files[i], this));
                 }
             }
             finally
@@ -555,8 +546,20 @@ namespace TweakerUI.ViewModels
                 LegacyConverter.ConversionStarted -= OnConversionStarted;
             }
 
-            cache.Serialize(cacheDir);
-            Utils.DisposeAndClear(cache);
+            return cards.OrderBy(c => c.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
+        }
+
+        // Left next to the exe by every version before the cache was dropped; nothing reads it any more.
+        private static void DeleteLegacyLoadingCache()
+        {
+            try
+            {
+                File.Delete(Path.Combine(AppDirectory, "load.cache"));
+            }
+            catch (Exception ex)
+            {
+                Logger.Log("SkinChanger.LoadSkins", $"Could not delete the obsolete load.cache: {ex.Message}");
+            }
         }
 
         private static List<string> CollectSkinFiles()
@@ -567,53 +570,149 @@ namespace TweakerUI.ViewModels
             return files;
         }
 
-        private static bool UnorderedSequenceEquals(List<string> a, List<string> b)
-        {
-            if (a.Count != b.Count)
-                return false;
-            return a.OrderBy(x => x).SequenceEqual(b.OrderBy(x => x));
-        }
+        // Bumped by every refresh, so a read that finishes after the selection has moved on (or after a
+        // newer read for the same card) knows it lost - comparing paths let two reads for the same card,
+        // A -> B -> A, both land in the panel.
+        private int _screenshotsRequest;
 
         private async Task RefreshSelectedScreenshotsAsync(SkinCard item)
         {
-            _selectedScreenshots.Clear();
+            var request = ++_screenshotsRequest;
+            ClearSelectedScreenshots();
             if (item == null)
             {
                 IsLoadingScreenshots = false;
                 return;
             }
 
-            if (SettingsProvider.UseFastPreview)
+            // What the card holds decides, not the current value of the Fast Previews setting: right
+            // after a runtime switch the two disagree until SetFastPreview has filled/cleared every card,
+            // and asking the setting used to show nothing at all for cards loaded before it was turned on.
+            if (item.Screenshots != null)
             {
-                // Already decoded up front when the card was created - nothing to wait on.
                 IsLoadingScreenshots = false;
-                if (item.Screenshots != null)
-                    foreach (var s in item.Screenshots)
-                        _selectedScreenshots.Add(s);
+                foreach (var s in item.Screenshots)
+                    _selectedScreenshots.Add(s);
                 return;
             }
 
             IsLoadingScreenshots = true;
             var path = item.PathToOrigin;
-            var bitmaps = await Task.Run(() => LoadSkinScreenshots(path));
-            if (SelectedItem?.PathToOrigin != path)
-                return; // selection changed while loading - a newer call owns IsLoadingScreenshots now
-
-            foreach (var bitmap in bitmaps)
+            var screenshots = await Task.Run(() => ReadScreenshots(path));
+            if (request != _screenshotsRequest)
             {
-                _selectedScreenshots.Add(new InteractableScreenshot(bitmap.ToAvaloniaBitmap()));
-                bitmap.Dispose();
+                // A newer call owns the panel (and IsLoadingScreenshots) now.
+                foreach (var s in screenshots)
+                    s.Dispose();
+                return;
             }
+
+            foreach (var s in screenshots)
+                _selectedScreenshots.Add(s);
+            _selectionOwnsScreenshots = true;
             IsLoadingScreenshots = false;
         }
 
-        private static List<SKBitmap> LoadSkinScreenshots(string pathToSkin)
+        // Takes the panel's screenshots off screen, then disposes them if they were the selection's own.
+        // In that order: disposing a bitmap an Image still draws throws on its next redraw (pitfalls §6).
+        private void ClearSelectedScreenshots()
         {
-            using var skin = SkinPackager.Decompile(pathToSkin);
-            if (skin?.Previews == null)
-                return new List<SKBitmap>();
-
-            return skin.Previews.Group.Select(screenshot => ((SKBitmap)screenshot).Rescale(860, 440)).ToList();
+            var owned = _selectionOwnsScreenshots ? _selectedScreenshots.ToList() : null;
+            _selectedScreenshots.Clear();
+            _selectionOwnsScreenshots = false;
+            owned?.ForEach(s => s.Dispose());
         }
+
+        // Drops the Fast Previews screenshots of the given cards and disposes them. The panel may be showing
+        // one of these very sets (Fast Previews shares the card's own) - it's cleared first, same reason as
+        // above; nulling Screenshots releases the card's hover tooltip (Cover) the same way.
+        private void ReleaseCardScreenshots(IEnumerable<SkinCard> cards)
+        {
+            var dropped = new List<InteractableScreenshot>();
+            foreach (var card in cards)
+            {
+                if (card.Screenshots == null)
+                    continue;
+                dropped.AddRange(card.Screenshots);
+                card.Screenshots = null;
+            }
+
+            if (dropped.Count == 0)
+                return;
+
+            if (!_selectionOwnsScreenshots && _selectedScreenshots.Any(dropped.Contains))
+                _selectedScreenshots.Clear();
+            foreach (var s in dropped)
+                s.Dispose();
+        }
+
+        // Fast Previews is a pre-cache, not a lazy one: with it on, every screenshot of every skin is in
+        // memory from the moment the list is loaded, so selecting a card and the hover preview never
+        // touch the disk - instant response, paid for in memory (~1.5 MB per screenshot). Filled in the
+        // background from the archives (screenshots only) after the list loads, and switched at runtime
+        // from Settings (via MainWindowViewModel): on fills every card that doesn't have them yet, off
+        // drops and disposes them all. The generation counter lets a later switch or reload abandon a
+        // fill still in flight.
+        private int _fastPreviewGeneration;
+
+        internal void SetFastPreview(bool enabled)
+        {
+            var generation = ++_fastPreviewGeneration;
+            if (enabled)
+            {
+                _ = FillFastPreviewsAsync(generation);
+                return;
+            }
+
+            ReleaseCardScreenshots(Skins);
+
+            // The selected card may have been showing its dropped set - reload it the normal way.
+            _ = RefreshSelectedScreenshotsAsync(SelectedItem);
+        }
+
+        // For a card added to a list that is already filled (import, export). Joins the running generation
+        // rather than starting a new one, so a fill still in progress isn't abandoned for it; whichever
+        // fill reaches a card first gives it its screenshots.
+        private void FillFastPreviewsIfEnabled()
+        {
+            if (SettingsProvider.UseFastPreview)
+                _ = FillFastPreviewsAsync(_fastPreviewGeneration);
+        }
+
+        private async Task FillFastPreviewsAsync(int generation)
+        {
+            var cards = Skins.Where(c => c.Screenshots == null).ToList();
+            if (cards.Count == 0)
+                return;
+
+            using var status = StatusService.Manager.Begin(StatusToken.DiskProcess, "Skin Changer", "Preparing fast previews...");
+            for (var i = 0; i < cards.Count; i++)
+            {
+                if (generation != _fastPreviewGeneration)
+                    return;
+
+                var card = cards[i];
+                var path = card.PathToOrigin;
+                status.Update($"Preparing fast previews ({i + 1}/{cards.Count})...");
+
+                var screenshots = await Task.Run(() => ReadScreenshots(path));
+
+                // Switched off or reloaded meanwhile, the card got its screenshots from another fill, or it
+                // was removed from the list.
+                if (generation != _fastPreviewGeneration || card.Screenshots != null || !Skins.Contains(card))
+                {
+                    foreach (var s in screenshots)
+                        s.Dispose();
+                    if (generation != _fastPreviewGeneration)
+                        return;
+                    continue;
+                }
+
+                card.Screenshots = new ObservableCollection<InteractableScreenshot>(screenshots);
+            }
+        }
+
+        private static List<InteractableScreenshot> ReadScreenshots(string pathToSkin) =>
+            SkinPackager.ReadPreviews(pathToSkin, bitmap => new InteractableScreenshot(bitmap.ToScreenshot()));
     }
 }

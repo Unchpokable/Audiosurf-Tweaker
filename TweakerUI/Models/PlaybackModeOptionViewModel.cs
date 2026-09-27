@@ -35,7 +35,7 @@ namespace TweakerUI.Models
         /// <summary>
         /// What the chip actually shows on hover. The name has to be in here because the chip itself is
         /// a glyph, not a word - six words do not fit on the transport bar at the window's minimum width
-        /// (see Border.QPTransportBar in QuickPlayerStyles.axaml). <see cref="DisplayName"/> stays
+        /// (see the Transport bar comment in QuickPlayerStyles.axaml). <see cref="DisplayName"/> stays
         /// separate so the row can go back to text without unpicking this.
         /// </summary>
         public string Tooltip => DisplayName + "\n" + Hint;

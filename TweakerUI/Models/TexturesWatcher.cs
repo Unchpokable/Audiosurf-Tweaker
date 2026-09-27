@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using TweakerCore.Engine;
+using TweakerCore.FolderChecker;
 using TweakerUI.Core;
 
 namespace TweakerUI.Models
@@ -66,6 +67,12 @@ namespace TweakerUI.Models
         private void OnWatcherTriggered(object sender, FileSystemEventArgs e)
         {
             if (!AllowRaisingEvents)
+                return;
+
+            // current.hinf is the Tweaker's own bookkeeping (installed skin name + folder snapshot), not a
+            // texture - exporting or renaming the current skin rewrites it, and reacting would make the game
+            // reload textures that didn't change. Checked before the throttle so it doesn't eat the window.
+            if (FolderHashInfo.IsStateFile(e.FullPath))
                 return;
 
             if ((DateTime.Now - _lastTrigger).TotalMilliseconds <= 200) // avoid spamming on multi-file operations

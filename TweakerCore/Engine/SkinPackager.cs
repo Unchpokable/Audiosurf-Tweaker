@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using SkiaSharp;
@@ -49,12 +50,12 @@ namespace TweakerCore.Engine
             }
         }
 
+        // Decodes EVERY texture of the skin - a 4k skysphere alone is 64 MB of pixels. Only for what needs
+        // the whole skin (install, export); the Skin Changer list and its screenshots have ReadName and
+        // ReadPreviews.
         public static AudiosurfSkinExtended Decompile(string path)
         {
-            if (!File.Exists(path))
-                return null;
-
-            if (new[] { Env.LegacySkinExtention, Env.ActualSkinExtention }.All(ext => !ext.Equals(Path.GetExtension(path), StringComparison.OrdinalIgnoreCase)))
+            if (!IsSkinFile(path))
                 return null;
 
             try
@@ -71,6 +72,145 @@ namespace TweakerCore.Engine
             }
         }
 
+
+        // The skin's name and nothing else: reads manifest.json only. Also what tells a skin file from any
+        // other file - null for anything that isn't one. Legacy files are converted in place first, same as
+        // Decompile.
+        public static string ReadName(string path)
+        {
+            if (!IsSkinFile(path))
+                return null;
+
+            try
+            {
+                if (!IsZipArchive(path) && !LegacyConverter.TryConvert(path))
+                    return null;
+
+                using (var archive = ZipFile.OpenRead(path))
+                    return ReadManifest(archive)?.Name;
+            }
+            catch (Exception ex)
+            {
+                OperationFailed?.Invoke($"Failed to read skin name from '{path}'", ex);
+                return null;
+            }
+        }
+
+        // Decodes the preview screenshots only - none of the skin's textures - one at a time: each is handed
+        // to convert and disposed right after, so at most one full-size screenshot is decoded at any moment.
+        // Whatever convert returns is the caller's to own (and dispose). An entry that fails to decode is
+        // skipped.
+        public static List<T> ReadPreviews<T>(string path, Func<SKBitmap, T> convert)
+        {
+            var result = new List<T>();
+            if (!IsSkinFile(path))
+                return result;
+
+            try
+            {
+                if (!IsZipArchive(path) && !LegacyConverter.TryConvert(path))
+                    return result;
+
+                using (var archive = ZipFile.OpenRead(path))
+                {
+                    var manifest = ReadManifest(archive);
+                    foreach (var fileName in manifest?.Previews ?? new List<string>())
+                    {
+                        using (var bitmap = DecodeEntry(archive, fileName))
+                        {
+                            if (bitmap != null)
+                                result.Add(convert(bitmap));
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                OperationFailed?.Invoke($"Failed to read screenshots from '{path}'", ex);
+            }
+
+            return result;
+        }
+
+
+        // Renames a skin without decoding it: only manifest.json is rewritten, every texture entry is
+        // carried over as its original compressed bytes (ZipArchiveMode.Update never recompresses an
+        // entry nobody opened). The old Decompile + CompileToPath route re-encoded every texture - seconds
+        // of work for one string, plus a generational quality loss on the JPEG rings each time.
+        // The new file is fully written before the old one is touched, so a failure midway leaves the
+        // original skin intact. The caller is responsible for newFile not belonging to another skin.
+        public static bool RenameSkin(string file, string newName, string newFile)
+        {
+            var tempFile = newFile + ".renaming";
+            try
+            {
+                if (!IsZipArchive(file) && !LegacyConverter.TryConvert(file))
+                    return false;
+
+                File.Copy(file, tempFile, overwrite: true);
+                using (var archive = ZipFile.Open(tempFile, ZipArchiveMode.Update))
+                {
+                    var manifestEntry = archive.GetEntry(ManifestEntryName);
+                    if (manifestEntry == null)
+                        throw new InvalidDataException($"'{file}' has no {ManifestEntryName}");
+
+                    SkinManifest manifest;
+                    using (var entryStream = manifestEntry.Open())
+                    using (var reader = new StreamReader(entryStream, Encoding.UTF8))
+                    {
+                        manifest = JsonSerializer.Deserialize<SkinManifest>(reader.ReadToEnd());
+                    }
+
+                    manifest.Name = newName;
+                    manifestEntry.Delete();
+
+                    var newEntry = archive.CreateEntry(ManifestEntryName, CompressionLevel.Optimal);
+                    using (var entryStream = newEntry.Open())
+                    using (var writer = new StreamWriter(entryStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
+                    {
+                        writer.Write(JsonSerializer.Serialize(manifest, _jsonOptions));
+                    }
+                }
+
+                // Same path (the file name didn't follow the skin name, or only the case changed):
+                // the old file has to go first, there is no other way to free the name.
+                if (string.Equals(Path.GetFullPath(file), Path.GetFullPath(newFile), StringComparison.OrdinalIgnoreCase))
+                {
+                    File.Delete(file);
+                    File.Move(tempFile, newFile);
+                }
+                else
+                {
+                    File.Move(tempFile, newFile);
+                    try
+                    {
+                        File.Delete(file);
+                    }
+                    catch
+                    {
+                        // Old file is locked: undo, otherwise the skin now exists twice under two names.
+                        File.Delete(newFile);
+                        throw;
+                    }
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                OperationFailed?.Invoke($"Failed to rename skin '{file}' to '{newName}'", ex);
+                try
+                {
+                    if (File.Exists(tempFile))
+                        File.Delete(tempFile);
+                }
+                catch
+                {
+                    // best-effort cleanup, the original failure is what gets reported
+                }
+                return false;
+            }
+        }
 
         public static AudiosurfSkinExtended CreateSkinFromFolder(string path)
         {
@@ -129,6 +269,25 @@ namespace TweakerCore.Engine
         }
 
         #region New archive format (zip + manifest.json)
+
+        private static bool IsSkinFile(string path)
+        {
+            return File.Exists(path)
+                && new[] { Env.LegacySkinExtention, Env.ActualSkinExtention }.Any(ext => ext.Equals(Path.GetExtension(path), StringComparison.OrdinalIgnoreCase));
+        }
+
+        private static SkinManifest ReadManifest(ZipArchive archive)
+        {
+            var manifestEntry = archive.GetEntry(ManifestEntryName);
+            if (manifestEntry == null)
+                return null;
+
+            using (var entryStream = manifestEntry.Open())
+            using (var reader = new StreamReader(entryStream, Encoding.UTF8))
+            {
+                return JsonSerializer.Deserialize<SkinManifest>(reader.ReadToEnd());
+            }
+        }
 
         private static bool IsZipArchive(string path)
         {
@@ -215,16 +374,9 @@ namespace TweakerCore.Engine
             using (var filestream = new FileStream(file, FileMode.Open, FileAccess.Read))
             using (var archive = new ZipArchive(filestream, ZipArchiveMode.Read))
             {
-                var manifestEntry = archive.GetEntry(ManifestEntryName);
-                if (manifestEntry == null)
+                var manifest = ReadManifest(archive);
+                if (manifest == null)
                     return null;
-
-                SkinManifest manifest;
-                using (var entryStream = manifestEntry.Open())
-                using (var reader = new StreamReader(entryStream, Encoding.UTF8))
-                {
-                    manifest = JsonSerializer.Deserialize<SkinManifest>(reader.ReadToEnd());
-                }
 
                 return new AudiosurfSkinExtended
                 {
@@ -262,19 +414,39 @@ namespace TweakerCore.Engine
 
         private static NamedBitmap ReadBitmap(ZipArchive archive, string fileName)
         {
+            var bitmap = DecodeEntry(archive, fileName);
+            return bitmap == null ? null : new NamedBitmap(fileName, bitmap);
+        }
+
+        // The compressed bytes go straight into native memory (SKData), sized exactly from the entry, through
+        // a buffer small enough to stay off the large object heap: the old copy into a MemoryStream put every
+        // texture on the managed LOH, doubled on each growth - tens of MB of garbage per skin that the GC only
+        // reclaims on a full collection, and whose committed memory the process then kept.
+        // Not SKData.Create(Stream, length): on a stream that can't seek - which a zip entry's is - it
+        // returns null, silently, for anything past a few KB (Docs/Internal/avalonia-pitfalls.md, §6).
+        private static SKBitmap DecodeEntry(ZipArchive archive, string fileName)
+        {
             if (string.IsNullOrEmpty(fileName))
                 return null;
 
             var entry = archive.GetEntry(TexturesEntryPrefix + fileName);
-            if (entry == null)
+            if (entry == null || entry.Length == 0 || entry.Length > int.MaxValue)
                 return null;
 
+            var length = (int)entry.Length;
             using (var entryStream = entry.Open())
-            using (var memory = new MemoryStream())
+            using (var data = SKData.Create(length))
             {
-                entryStream.CopyTo(memory);
-                memory.Position = 0;
-                return new NamedBitmap(fileName, SKBitmap.Decode(memory));
+                var buffer = new byte[64 * 1024];
+                var filled = 0;
+                int read;
+                while (filled < length && (read = entryStream.Read(buffer, 0, Math.Min(buffer.Length, length - filled))) > 0)
+                {
+                    Marshal.Copy(buffer, 0, data.Data + filled, read);
+                    filled += read;
+                }
+
+                return filled == length ? SKBitmap.Decode(data) : null;
             }
         }
 

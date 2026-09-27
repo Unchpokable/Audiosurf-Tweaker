@@ -74,10 +74,6 @@
 
                 <!-- Active module -->
                 <ContentControl Grid.Column="1" Content="{Binding CurrentView}"/>
-
-                <!-- Resize grip -->
-                <Panel Grid.Column="1" Width="16" Height="16" HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                       Background="Transparent" Cursor="BottomRightCorner" PointerPressed="OnResizeGripPointerPressed"/>
             </Grid>
 
             <!-- Status bar - app-wide, multi-source (TweakerUI.Core.StatusService). Collapsed entirely
@@ -108,6 +104,12 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </Border>
+
+            <!-- Resize grip. Spans the content row AND the status bar row, and comes after the status bar so
+                 it is drawn and hit-tested on top of it: in the content row alone it rode up above the bar
+                 whenever the bar appeared, leaving the window's actual corner dead. -->
+            <Panel Grid.Row="1" Grid.RowSpan="2" Width="16" Height="16" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                   Background="Transparent" Cursor="BottomRightCorner" PointerPressed="OnResizeGripPointerPressed"/>
         </Grid>
     </Border>
 </Window>

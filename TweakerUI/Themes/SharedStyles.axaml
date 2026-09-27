@@ -1,0 +1,119 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="using:TweakerUI.Core">
+
+    <!-- ============================================================================
+    Building blocks shared by every tab (KnownBugs #6, stage 2). Each of these used to exist once per
+    module under the module's own prefix (SCCard/STCard/TWCard/QPCard/CCCard, four identical switches,
+    two identical toggle rows, five icon buttons that differed only in size) - copies that had already
+    started to drift apart. Unprefixed on purpose: a class without a module prefix means "the same
+    thing everywhere"; a module file keeps only what genuinely belongs to that module, and a module
+    class on top of a shared one is a modifier (Classes="IconButton QPIconButton" = shared button,
+    Quick Player's size).
+    Included in App.axaml after the Fluent theme and before every module file, so a module modifier
+    defined later wins over the base here. Inside this file the same holds - Avalonia resolves two
+    active styles setting one property by ORDER, not by selector specificity, which is why every
+    modifier below comes after its base.
+    ============================================================================ -->
+
+    <!-- Cards: the section surface every tab is built from. -->
+    <Style Selector="Border.Card">
+        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="12"/>
+        <Setter Property="Padding" Value="16,12"/>
+    </Style>
+    <!-- Settings/Tweaker: form-like pages with a title per card get a little more air. -->
+    <Style Selector="Border.Card.Roomy">
+        <Setter Property="Padding" Value="18,14"/>
+    </Style>
+    <Style Selector="Border.Card.Uniform">
+        <Setter Property="Padding" Value="16"/>
+    </Style>
+    <!-- Accent-tinted band: marks a card as a setting rather than content (Custom Installation,
+    game panel, default character), and keeps a page of stacked cards from reading as one slab. -->
+    <Style Selector="Border.Card.Tinted">
+        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/>
+        <Setter Property="Padding" Value="16,14"/>
+    </Style>
+
+    <Style Selector="TextBlock.CardTitle">
+        <Setter Property="FontSize" Value="18"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+    </Style>
+
+    <!-- Placeholder text in an empty list/panel. -->
+    <Style Selector="TextBlock.EmptyState">
+        <Setter Property="FontSize" Value="13.5"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="TextAlignment" Value="Center"/>
+    </Style>
+
+    <!-- On/off switch (AccentSwitchTemplate in AccentColors.axaml). -->
+    <Style Selector="ToggleButton.Switch">
+        <Setter Property="Template" Value="{StaticResource AccentSwitchTemplate}"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style Selector="ToggleButton.Switch:checked /template/ Border#Track">
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
+    </Style>
+    <Style Selector="ToggleButton.Switch:checked /template/ Border#Thumb">
+        <Setter Property="Margin" Value="16,0,0,0"/>
+    </Style>
+
+    <!-- Label + switch row with an accent wash on hover (Settings, Tweaker). A disabled row is dimmed
+    rather than hidden, so a dependent option reads as "off because its parent is off". -->
+    <Style Selector="Border.ToggleRow">
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="8,7"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <core:CrossfadeBrushTransition Property="Background" Duration="0:0:0.15"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Border.ToggleRow:pointerover">
+        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
+    </Style>
+    <Style Selector="Border.ToggleRow:disabled">
+        <Setter Property="Opacity" Value="0.5"/>
+    </Style>
+    <Style Selector="TextBlock.ToggleLabel">
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+    </Style>
+
+    <!-- Square icon-only button. 28px by default; a module modifier sets another size. Danger fades to
+    red instead of the accent (destructive actions: remove a skin, clear the log). -->
+    <Style Selector="Button.IconButton">
+        <Setter Property="Width" Value="28"/>
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="HorizontalContentAlignment" Value="Center"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
+    </Style>
+    <Style Selector="Button.IconButton:pointerover">
+        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
+    </Style>
+    <Style Selector="Button.IconButton.Danger:pointerover">
+        <Setter Property="Background" Value="#1FDC3C3C"/>
+    </Style>
+    <Style Selector="Button.IconButton:disabled">
+        <Setter Property="Opacity" Value="0.4"/>
+    </Style>
+
+</Styles>

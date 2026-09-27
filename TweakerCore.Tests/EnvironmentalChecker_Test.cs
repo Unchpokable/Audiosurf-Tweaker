@@ -45,6 +45,48 @@ namespace TweakerCore.Tests
         }
 
         [Test]
+        public void TryRenameState_MatchingName_RenamesAndKeepsHashes()
+        {
+            File.WriteAllText(Path.Combine(TestFolderPath, "tiles.png"), "tiles");
+            FolderHashInfo.Create(TestFolderPath, "Old").Save(TestFolderPath);
+
+            Assert.IsTrue(FolderHashInfo.TryRenameState(TestFolderPath, "Old", "New"));
+
+            Assert.IsTrue(EnvironmentChecker.CheckEnvironment(TestFolderPath, out FolderHashInfo state));
+            Assert.AreEqual("New", state.StateName);
+        }
+
+        [Test]
+        public void TryRenameState_DriftedFolder_StaysDrifted()
+        {
+            File.WriteAllText(Path.Combine(TestFolderPath, "tiles.png"), "tiles");
+            FolderHashInfo.Create(TestFolderPath, "Old").Save(TestFolderPath);
+            File.WriteAllText(Path.Combine(TestFolderPath, "tiles.png"), "edited by hand");
+
+            Assert.IsTrue(FolderHashInfo.TryRenameState(TestFolderPath, "Old", "New"));
+
+            Assert.IsFalse(EnvironmentChecker.CheckEnvironment(TestFolderPath, out FolderHashInfo state));
+            Assert.AreEqual("New", state.StateName);
+        }
+
+        [Test]
+        public void TryRenameState_OtherName_LeavesStateAlone()
+        {
+            FolderHashInfo.Create(TestFolderPath, "Installed").Save(TestFolderPath);
+
+            Assert.IsFalse(FolderHashInfo.TryRenameState(TestFolderPath, "Some other skin", "New"));
+
+            Assert.IsTrue(FolderHashInfo.TryFind(TestFolderPath, out FolderHashInfo state));
+            Assert.AreEqual("Installed", state.StateName);
+        }
+
+        [Test]
+        public void TryRenameState_NoState_ReturnsFalse()
+        {
+            Assert.IsFalse(FolderHashInfo.TryRenameState(TestFolderPath, "Old", "New"));
+        }
+
+        [Test]
         [Repeat(10)]
         public void EnvironmentalCheckerCanDetectChangerViaHINFFile()
         {

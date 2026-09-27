@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
@@ -16,7 +17,9 @@ namespace TweakerUI.ViewModels
 {
     public partial class ColorsConfiguratorViewModel : ViewModelBase
     {
-        public static readonly string PaletteContainerFilename = "palettes";
+        // Next to TweakerUI.exe. Was a bare "palettes", i.e. relative to the working directory - a
+        // shortcut with another "Start in" folder made every palette vanish (see AppPaths).
+        public static readonly string PaletteContainerFilename = AppPaths.InAppDirectory("palettes");
 
         private static readonly (ASColors Role, string Name)[] RoleOrder =
         {
@@ -40,23 +43,38 @@ namespace TweakerUI.ViewModels
             }
 
             if (existing.ColorPalettes.Count == 0)
-            {
-                existing.Add(new ColorPalette
-                {
-                    Name = "New Palette",
-                    Purple = Colors.Purple,
-                    Blue = Colors.Blue,
-                    Green = Colors.Lime,
-                    Yellow = Colors.Yellow,
-                    Red = Colors.Red,
-                });
-            }
+                existing.Add(CreateDefaultPalette());
 
-            Palettes = new ObservableCollection<ColorPalette>(existing.ColorPalettes.Select(p => new ColorPalette(p)).OrderBy(p => p.Name));
-            PaletteDynamicLoadContainer.Save(existing, PaletteContainerFilename);
+            // Every palette needs its own Id in memory AND on disk - storage finds a palette to replace or
+            // remove by Id. Prints older than the Id field (Guid.Empty) get a fresh one in the ColorPalette
+            // constructor, and two copies of one imported .palette file shared theirs; both only ever
+            // existed in memory, so Remove found nothing on disk (the palette came back on the next start)
+            // and Replace appended a duplicate. The container is rebuilt from what was loaded and saved
+            // below, which is what writes the settled Ids back.
+            var loaded = existing.ColorPalettes.Select(p => new ColorPalette(p)).ToList();
+            var seenIds = new HashSet<Guid>();
+            foreach (var palette in loaded)
+                if (!seenIds.Add(palette.Id))
+                    palette.Id = Guid.NewGuid();
+
+            Palettes = new ObservableCollection<ColorPalette>(loaded.OrderBy(p => p.Name));
+            var settled = new PaletteDynamicLoadContainer();
+            foreach (var palette in Palettes)
+                settled.Add(palette);
+            PaletteDynamicLoadContainer.Save(settled, PaletteContainerFilename);
 
             SelectPalette(Palettes.FirstOrDefault());
         }
+
+        private static ColorPalette CreateDefaultPalette() => new ColorPalette
+        {
+            Name = "New Palette",
+            Purple = Colors.Purple,
+            Blue = Colors.Blue,
+            Green = Colors.Lime,
+            Yellow = Colors.Yellow,
+            Red = Colors.Red,
+        };
 
         public ObservableCollection<ColorPalette> Palettes { get; }
         public ObservableCollection<SwatchEditState> Swatches { get; }
@@ -136,15 +154,7 @@ namespace TweakerUI.ViewModels
         [RelayCommand]
         private async Task NewPalette()
         {
-            var palette = new ColorPalette
-            {
-                Name = "New Palette",
-                Purple = Colors.Purple,
-                Blue = Colors.Blue,
-                Green = Colors.Lime,
-                Yellow = Colors.Yellow,
-                Red = Colors.Red,
-            };
+            var palette = CreateDefaultPalette();
             Palettes.Add(palette);
             SelectPalette(palette);
 
@@ -216,12 +226,23 @@ namespace TweakerUI.ViewModels
             if (!Palettes.Contains(EditedPalette))
                 return;
 
-            if (!PaletteDynamicLoadContainer.Remove(EditedPalette, PaletteContainerFilename))
+            var removed = EditedPalette;
+            if (!await Task.Run(() => PaletteDynamicLoadContainer.Remove(removed, PaletteContainerFilename)))
                 await ApplicationNotificationManager.Manager.ShowImportantInfo("Cache error", "Error while writing cached palette storage. Changes will not be saved");
 
-            var removedIdx = Palettes.IndexOf(EditedPalette);
-            Palettes.Remove(EditedPalette);
-            SelectPalette(Palettes.Count > 0 ? Palettes[Math.Min(removedIdx, Palettes.Count - 1)] : null);
+            var removedIdx = Palettes.IndexOf(removed);
+            Palettes.Remove(removed);
+
+            // Never leave the editor without a palette: SelectPalette(null) is a no-op, so removing the
+            // last one used to leave EditedPalette pointing at the deleted palette. Same fallback as a
+            // first run with empty storage.
+            if (Palettes.Count == 0)
+            {
+                await NewPalette();
+                return;
+            }
+
+            SelectPalette(Palettes[Math.Min(removedIdx, Palettes.Count - 1)]);
         }
 
         [RelayCommand]
@@ -279,7 +300,7 @@ namespace TweakerUI.ViewModels
         }
 
         [RelayCommand]
-        private void SaveCurrentFromGame()
+        private async Task SaveCurrentFromGame()
         {
             if (string.IsNullOrEmpty(SettingsProvider.GameTexturesPath) || !Directory.Exists(SettingsProvider.GameTexturesPath))
             {
@@ -302,8 +323,10 @@ namespace TweakerUI.ViewModels
             var palette = presenter.ExportPalette();
             palette.Name = "My custom palette";
             Palettes.Add(palette);
-            PaletteDynamicLoadContainer.Add(palette, PaletteContainerFilename);
             SelectPalette(palette);
+
+            if (!await Task.Run(() => PaletteDynamicLoadContainer.Add(palette, PaletteContainerFilename)))
+                await ApplicationNotificationManager.Manager.ShowImportantInfo("Cache error", "Error while writing cached palette storage. Changes will not be saved");
         }
 
         [RelayCommand]
@@ -336,10 +359,19 @@ namespace TweakerUI.ViewModels
                 return;
             }
 
+            // A .palette file carries the Id of the palette it was exported from: importing it twice, or
+            // back into the app it came from, would give two palettes one Id - and removing either would
+            // remove both from storage.
+            palette.Id = Guid.NewGuid();
             Palettes.Add(palette);
-            PaletteDynamicLoadContainer.Add(palette, PaletteContainerFilename);
-            ApplicationNotificationManager.Manager.ShowInformation("", "Operation completed!");
             SelectPalette(palette);
+
+            if (!await Task.Run(() => PaletteDynamicLoadContainer.Add(palette, PaletteContainerFilename)))
+            {
+                await ApplicationNotificationManager.Manager.ShowImportantInfo("Cache error", "Error while writing cached palette storage. Changes will not be saved");
+                return;
+            }
+            ApplicationNotificationManager.Manager.ShowInformation("", "Operation completed!");
         }
     }
 }

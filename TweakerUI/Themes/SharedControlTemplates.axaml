@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:core="using:TweakerUI.Core">
 
     <!-- ============================================================================
     Root cause investigation (2026-07-14): the user reported hover/press animations on
@@ -14,9 +15,9 @@
     - so it wins over ANY plain `Setter Property="Background"` on the Button itself,
     unconditionally, the instant a pseudo-class activates, snapping without a transition
     and completely discarding whatever we set at the Button level. This is the exact
-    same class of bug already diagnosed once for TextBox's focus ring (CCTextBoxTemplate)
-    and for ListBoxItem's selection color (SCSkinListItemTemplate in SkinChangerStyles.
-    axaml) - both already fixed by owning the whole template. Every custom Button class
+    same class of bug already diagnosed once for TextBox's focus ring (FlatTextBoxTemplate below)
+    and for ListBoxItem's selection color (FlatListItemTemplate below,
+    formerly SkinChangerStyles.axaml) - both already fixed by owning the whole template. Every custom Button class
     in this app that wasn't already fully retemplated (CCPaletteRow/UnderscoredButton/
     NavItem were, and were never actually broken) had this same latent bug; it only
     surfaced now because nobody had exercised :pointerover/:pressed by hand before.
@@ -24,7 +25,7 @@
     FlatButtonTemplate below is the fix, centralized once instead of copy-pasted per
     button class (the user's own complaint about near-duplicate template blocks scattered
     file-to-file) - a plain Border+ContentPresenter with every color-ish property routed
-    through TemplateBinding and BrushTransitions baked in on the properties that actually
+    through TemplateBinding and CrossfadeBrushTransitions baked in on the properties that actually
     render, so any Style consuming it just needs Background/BorderBrush/Foreground Setters
     per pseudo-class - no per-class Transitions or template boilerplate required anymore.
     Merged into Application.Resources (see App.axaml) alongside NeutralColors.axaml/
@@ -40,8 +41,8 @@
                 CornerRadius="{TemplateBinding CornerRadius}">
             <Border.Transitions>
                 <Transitions>
-                    <BrushTransition Property="Background" Duration="0:0:0.15"/>
-                    <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
+                    <core:CrossfadeBrushTransition Property="Background" Duration="0:0:0.15"/>
+                    <core:CrossfadeBrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
                 </Transitions>
             </Border.Transitions>
             <ContentPresenter Content="{TemplateBinding Content}"
@@ -52,10 +53,89 @@
                                VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}">
                 <ContentPresenter.Transitions>
                     <Transitions>
-                        <BrushTransition Property="Foreground" Duration="0:0:0.15"/>
+                        <core:CrossfadeBrushTransition Property="Foreground" Duration="0:0:0.15"/>
                     </Transitions>
                 </ContentPresenter.Transitions>
             </ContentPresenter>
+        </Border>
+    </ControlTemplate>
+
+    <!-- ListBoxItem for every list in the app (skins, playlists, queue) - replaced two identical
+    per-module copies. Owned whole for the same reason again: the stock ListBoxItem theme paints its
+    :selected/:pointerover backgrounds on its own template-internal ContentPresenter, in the Fluent
+    accent (a blue unrelated to either app palette), and a Background Setter on the ListBoxItem loses
+    that fight. With this template the consuming style's Background Setters are the only thing painting
+    the row, in either theme. -->
+    <ControlTemplate x:Key="FlatListItemTemplate" TargetType="ListBoxItem">
+        <Border Name="PART_Border"
+                Background="{TemplateBinding Background}"
+                CornerRadius="{TemplateBinding CornerRadius}">
+            <Border.Transitions>
+                <Transitions>
+                    <core:CrossfadeBrushTransition Property="Background" Duration="0:0:0.2"/>
+                </Transitions>
+            </Border.Transitions>
+            <ContentPresenter Content="{TemplateBinding Content}"
+                               ContentTemplate="{TemplateBinding ContentTemplate}"
+                               Padding="{TemplateBinding Padding}"
+                               HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+                               VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
+        </Border>
+    </ControlTemplate>
+
+    <!-- The one TextBox template for every custom text field in the app (CCNameInput, CCHexInput,
+    STPathBox, SCRenameInput, QPRenameInput, QPParamInput) - it replaced five near-identical per-module
+    copies. Owned whole for the same reason as FlatButtonTemplate: FluentTheme's TextBox paints its
+    focus ring and an opaque selection on template-internal parts a plain Setter can't reach. Only
+    feedback left is the BorderBrush, which consuming styles set per pseudo-class
+    (`:focus /template/ Border#PART_Border` etc.) - keep the PART_Border name.
+
+    PART_ScrollViewer is NOT optional. TextBox clamps a mouse drag to the TextPresenter's own bounds,
+    so without a ScrollViewer a text wider than the field has its tail unreachable - neither the mouse
+    nor the caret can get there, and nothing scrolls (Docs/Internal/avalonia-pitfalls.md, TextBox).
+    VerticalScrollBarVisibility must stay Disabled: with the default Auto the viewport measures the
+    presenter at infinite height and the text stops being vertically centered - that is what got the
+    ScrollViewer removed from the old per-module copies in the first place.
+
+    Cursor lives here and not in the consuming styles: when each style set it itself, two of six
+    forgot to (STPathBox, QPParamInput kept the arrow). Cursor is an inherited property, so the whole
+    field gets it from PART_Border. -->
+    <ControlTemplate x:Key="FlatTextBoxTemplate" TargetType="TextBox">
+        <Border Name="PART_Border"
+                Cursor="IBeam"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{TemplateBinding Padding}">
+            <Border.Transitions>
+                <Transitions>
+                    <core:CrossfadeBrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
+                </Transitions>
+            </Border.Transitions>
+            <ScrollViewer Name="PART_ScrollViewer"
+                          HorizontalScrollBarVisibility="Hidden"
+                          VerticalScrollBarVisibility="Disabled">
+                <Panel>
+                    <TextBlock Name="PART_Placeholder"
+                               Opacity="0.5"
+                               Text="{TemplateBinding PlaceholderText}"
+                               TextAlignment="{TemplateBinding TextAlignment}"
+                               VerticalAlignment="Center"
+                               IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                    <TextPresenter Name="PART_TextPresenter"
+                                   Text="{TemplateBinding Text, Mode=TwoWay}"
+                                   CaretIndex="{TemplateBinding CaretIndex}"
+                                   SelectionStart="{TemplateBinding SelectionStart}"
+                                   SelectionEnd="{TemplateBinding SelectionEnd}"
+                                   TextAlignment="{TemplateBinding TextAlignment}"
+                                   TextWrapping="NoWrap"
+                                   SelectionBrush="{DynamicResource AccentSelectionBrush}"
+                                   SelectionForegroundBrush="{DynamicResource TextOnAccentBrush}"
+                                   CaretBrush="{TemplateBinding CaretBrush}"
+                                   VerticalAlignment="Center"/>
+                </Panel>
+            </ScrollViewer>
         </Border>
     </ControlTemplate>
 

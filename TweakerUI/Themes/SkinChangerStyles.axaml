@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="using:TweakerUI.Core">
 
     <!-- ============================================================================
     Skin Changer (stage 4.3) - ported from the "Audiosurf Tweaker" Claude Design mockup.
@@ -27,123 +28,14 @@
         <StreamGeometry x:Key="IconTile">M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z</StreamGeometry>
         <StreamGeometry x:Key="IconHits">M12 2l1.7 5.1L19 9l-5.3 1.9L12 16l-1.7-5.1L5 9l5.3-1.9z</StreamGeometry>
         <StreamGeometry x:Key="IconParticles">M5 5h3v3H5zM16 4h2.4v2.4H16zM11 10l1.4 4.2L16.6 16l-4.2 1.4L11 21.6 9.6 17.4 5.4 16l4.2-1.4z</StreamGeometry>
-
-        <!-- Self-contained rename field template, deliberately not sharing Color Configurator's
-        CCTextBoxTemplate - keeping this file's resources local avoids reaching into another
-        module's stylesheet for something this small. -->
-        <ControlTemplate x:Key="SCRenameInputTemplate" TargetType="TextBox">
-            <Border Name="PART_Border"
-                    Background="{TemplateBinding Background}"
-                    BorderBrush="{TemplateBinding BorderBrush}"
-                    BorderThickness="{TemplateBinding BorderThickness}"
-                    CornerRadius="{TemplateBinding CornerRadius}"
-                    Padding="{TemplateBinding Padding}">
-                <Border.Transitions>
-                    <Transitions>
-                        <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
-                    </Transitions>
-                </Border.Transitions>
-                <TextPresenter Name="PART_TextPresenter"
-                               Text="{TemplateBinding Text, Mode=TwoWay}"
-                               CaretIndex="{TemplateBinding CaretIndex}"
-                               SelectionStart="{TemplateBinding SelectionStart}"
-                               SelectionEnd="{TemplateBinding SelectionEnd}"
-                               TextAlignment="{TemplateBinding TextAlignment}"
-                               TextWrapping="NoWrap"
-                               SelectionBrush="{DynamicResource AccentSelectionBrush}"
-                               SelectionForegroundBrush="{DynamicResource TextOnAccentBrush}"
-                               CaretBrush="{TemplateBinding CaretBrush}"
-                               VerticalAlignment="Center"/>
-            </Border>
-        </ControlTemplate>
-
-        <!-- Own template, not the FluentTheme default: the stock ListBoxItem ControlTheme paints its
-        :selected/:pointerover backgrounds directly on its own template-internal ContentPresenter, tied
-        to the FluentTheme accent (a blue that has nothing to do with either app palette) - a plain
-        Background Setter on the ListBoxItem itself loses that fight the same way TextBox's focus ring
-        did (see CCTextBoxTemplate). Owning the whole template means our own Background Setters/
-        Transitions are the only thing painting this row, in either theme. -->
-        <ControlTemplate x:Key="SCSkinListItemTemplate" TargetType="ListBoxItem">
-            <Border Name="PART_Border"
-                    Background="{TemplateBinding Background}"
-                    CornerRadius="{TemplateBinding CornerRadius}">
-                <Border.Transitions>
-                    <Transitions>
-                        <BrushTransition Property="Background" Duration="0:0:0.2"/>
-                    </Transitions>
-                </Border.Transitions>
-                <ContentPresenter Content="{TemplateBinding Content}"
-                                   ContentTemplate="{TemplateBinding ContentTemplate}"
-                                   Padding="{TemplateBinding Padding}"
-                                   HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                   VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"/>
-            </Border>
-        </ControlTemplate>
     </Styles.Resources>
 
-    <!-- Section cards - visual consistency pass with Color Configurator's own CCCard/CCGamePanel
-    (same tokens, kept under the SC prefix rather than reused directly, per this module's own
-    file-scoping). Applied to the top bar, skins list, screenshots panel and Custom Installation. -->
-    <Style Selector="Border.SCCard">
-        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
-        <Setter Property="Padding" Value="16,12"/>
-    </Style>
-    <Style Selector="Border.SCGamePanelCard">
-        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
-        <Setter Property="Padding" Value="16,14"/>
-    </Style>
-
-    <!-- Left icon rail (Add / Import from Game / Refresh) -->
-    <Style Selector="Button.SCIconButton">
+    <!-- Cards, switches, the empty-state text and the icon buttons are the shared ones from SharedStyles.axaml
+    (skin rows use the plain 28px IconButton, Remove is IconButton.Danger). Only the left rail's size is
+    this tab's own. -->
+    <Style Selector="Button.IconButton.SCRailButton">
         <Setter Property="Width" Value="34"/>
         <Setter Property="Height" Value="34"/>
-        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="CornerRadius" Value="6"/>
-        <Setter Property="Padding" Value="0"/>
-        <Setter Property="HorizontalContentAlignment" Value="Center"/>
-        <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
-    </Style>
-    <Style Selector="Button.SCIconButton:pointerover">
-        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
-    </Style>
-    <Style Selector="Button.SCIconButton:disabled">
-        <Setter Property="Opacity" Value="0.4"/>
-    </Style>
-
-    <!-- Per-skin-row action buttons (Install / Export / Rename / Delete) -->
-    <Style Selector="Button.SCRowIconButton">
-        <Setter Property="Width" Value="28"/>
-        <Setter Property="Height" Value="28"/>
-        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="CornerRadius" Value="6"/>
-        <Setter Property="Padding" Value="0"/>
-        <Setter Property="HorizontalContentAlignment" Value="Center"/>
-        <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
-    </Style>
-    <Style Selector="Button.SCRowIconButton:pointerover">
-        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
-    </Style>
-    <!-- Its own resting value, overriding SCRowIconButton's AccentGhostBrush above: this variant fades
-    to red, and starting the transition on the accent hue would move hue and alpha at once - the button
-    flashes teal/purple before it reddens. Zero-alpha red is just as invisible at rest. See
-    SurfaceHoverGhostBrush in NeutralColors.axaml for the rule. -->
-    <Style Selector="Button.SCRowIconButton.Danger">
-        <Setter Property="Background" Value="#00DC3C3C"/>
-    </Style>
-    <Style Selector="Button.SCRowIconButton.Danger:pointerover">
-        <Setter Property="Background" Value="#1FDC3C3C"/>
     </Style>
 
     <!-- Skins list -->
@@ -159,7 +51,7 @@
         <Setter Property="Background" Value="{DynamicResource SurfaceRowBrush}"/>
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-        <Setter Property="Template" Value="{StaticResource SCSkinListItemTemplate}"/>
+        <Setter Property="Template" Value="{StaticResource FlatListItemTemplate}"/>
     </Style>
     <Style Selector="ListBox.SCSkinsList ListBoxItem:pointerover">
         <Setter Property="Background" Value="{DynamicResource SurfaceRowHoverBrush}"/>
@@ -176,6 +68,13 @@
     <Style Selector="TextBlock.SCSkinName">
         <Setter Property="FontSize" Value="15"/>
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+    </Style>
+
+    <!-- Card hover preview (Fast Previews mode). FluentTheme caps every ToolTip at MaxWidth 320
+    (ToolTipContentMaxWidth) - a 640px screenshot would be squeezed to half size without lifting it. -->
+    <Style Selector="ToolTip.SCCoverTip">
+        <Setter Property="MaxWidth" Value="Infinity"/>
+        <Setter Property="Padding" Value="4"/>
     </Style>
 
     <!-- Loading placeholders: no screenshot/skin-list caching (deliberately, to keep memory down), so
@@ -212,8 +111,7 @@
         <Setter Property="CornerRadius" Value="5"/>
         <Setter Property="Padding" Value="6,3"/>
         <Setter Property="MinHeight" Value="0"/>
-        <Setter Property="Cursor" Value="IBeam"/>
-        <Setter Property="Template" Value="{StaticResource SCRenameInputTemplate}"/>
+        <Setter Property="Template" Value="{StaticResource FlatTextBoxTemplate}"/>
     </Style>
 
     <!-- Top bar -->
@@ -243,12 +141,6 @@
         <Setter Property="CornerRadius" Value="6"/>
         <Setter Property="Background" Value="{DynamicResource SurfaceSkeletonBrush}"/>
     </Style>
-    <Style Selector="TextBlock.SCEmptyState">
-        <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
-        <Setter Property="HorizontalAlignment" Value="Center"/>
-        <Setter Property="VerticalAlignment" Value="Center"/>
-    </Style>
 
     <!-- Custom Installation bar -->
     <Style Selector="TextBlock.SCSectionTitle">
@@ -257,25 +149,11 @@
         <Setter Property="HorizontalAlignment" Value="Center"/>
     </Style>
 
-    <Style Selector="ToggleButton.SCSwitch">
-        <Setter Property="Template" Value="{StaticResource AccentSwitchTemplate}"/>
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="0"/>
-        <Setter Property="Cursor" Value="Hand"/>
-    </Style>
-    <Style Selector="ToggleButton.SCSwitch:checked /template/ Border#Track">
-        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
-    </Style>
-    <Style Selector="ToggleButton.SCSwitch:checked /template/ Border#Thumb">
-        <Setter Property="Margin" Value="16,0,0,0"/>
-    </Style>
-
     <Style Selector="Path.SCToggleIcon">
         <Setter Property="Fill" Value="{DynamicResource TextGlyphMutedBrush}"/>
         <Setter Property="Transitions">
             <Transitions>
-                <BrushTransition Property="Fill" Duration="0:0:0.2"/>
+                <core:CrossfadeBrushTransition Property="Fill" Duration="0:0:0.2"/>
             </Transitions>
         </Setter>
     </Style>

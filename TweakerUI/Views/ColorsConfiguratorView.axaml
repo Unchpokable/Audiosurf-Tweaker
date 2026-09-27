@@ -27,7 +27,7 @@
         <!-- LEFT: palette list + game sync (game-wide color sync isn't really about editing one
         palette, so it sits under the list instead of in the editor column). -->
         <Grid Grid.Column="0" RowDefinitions="*,Auto">
-            <Border Grid.Row="0" Classes="CCListCard">
+            <Border Grid.Row="0" Classes="Card Uniform CCListCard">
                 <Grid RowDefinitions="Auto,*,Auto">
                     <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
                         <TextBlock Grid.Column="0" Classes="CCHeading" Text="Palettes" VerticalAlignment="Center"/>
@@ -77,7 +77,7 @@
                 </Grid>
             </Border>
 
-            <Border Grid.Row="1" Classes="CCGamePanel" Margin="0,12,0,0">
+            <Border Grid.Row="1" Classes="Card Tinted" Margin="0,12,0,0">
                 <StackPanel Spacing="8">
                     <TextBlock Classes="CCGamePanelTitle" Text="Game Sync"/>
                     <Button Classes="CCGradientButton" Content="Apply Selected" HorizontalAlignment="Stretch"
@@ -101,10 +101,18 @@
         <ScrollViewer Grid.Column="2">
         <controls:AdaptiveStackPanel MinSpacing="2" MaxSpacing="128">
 
-                <!-- name + preview strip -->
-                <Border Classes="CCCard">
+                <!-- name + preview strip. Delete sits here, next to the name, because this card is what says
+                which palette is open; not on the list rows, which are Buttons themselves. -->
+                <Border Classes="Card">
                     <StackPanel Spacing="8">
-                        <TextBox Classes="CCNameInput" Text="{Binding PaletteNameInput, Mode=TwoWay}"/>
+                        <Grid ColumnDefinitions="*,8,Auto">
+                            <TextBox Grid.Column="0" Classes="CCNameInput" Text="{Binding PaletteNameInput, Mode=TwoWay}"/>
+                            <Button Grid.Column="2" Classes="IconButton Danger" VerticalAlignment="Center"
+                                    Command="{Binding RemoveSelectedPaletteCommand}" ToolTip.Tip="Delete this palette">
+                                <Path Data="{StaticResource IconDelete}" Width="14" Height="14" Stretch="Uniform"
+                                      Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                            </Button>
+                        </Grid>
                         <Border CornerRadius="6" ClipToBounds="True" Height="12">
                             <Grid ColumnDefinitions="*,*,*,*,*">
                                 <Border Grid.Column="0" Background="{Binding PurpleSwatch.Brush}"/>
@@ -118,21 +126,25 @@
                 </Border>
 
                 <!-- core 5 colors -->
-                <Border Classes="CCCard">
+                <Border Classes="Card">
                     <StackPanel Spacing="10">
                         <Grid ColumnDefinitions="*,Auto">
                             <TextBlock Grid.Column="0" Classes="CCSubHeading" Text="Palette Colors" VerticalAlignment="Center"/>
                             <Button Grid.Column="1" Classes="CCNegative" Content="⇄ Invert" Command="{Binding MakeNegativeCommand}"/>
                         </Grid>
-                        <ItemsControl ItemsSource="{Binding Swatches}">
+                        <!-- Five equal columns that follow the card's width, always one row. Was a WrapPanel of
+                        fixed 96px chips: left-clustered with an empty right half in a wide window, and
+                        broken into 3+2 rows at the window's minimum width. The -6 margin cancels the
+                        items' own 6px gutters at the card's edges. -->
+                        <ItemsControl ItemsSource="{Binding Swatches}" Margin="-6,0">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <WrapPanel Orientation="Horizontal"/>
+                                    <UniformGrid Columns="5"/>
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="models:SwatchEditState">
-                                    <StackPanel Spacing="6" HorizontalAlignment="Center" Margin="0,0,12,0">
+                                    <StackPanel Spacing="6" Margin="6,0">
                                         <Border Classes="CCSwatchChip" Classes.Selected="{Binding IsSelected}"
                                                 Background="{Binding Brush}" PointerPressed="OnSwatchPointerPressed"/>
                                         <TextBlock Classes="CCSwatchLabel" Classes.Selected="{Binding IsSelected}"
@@ -145,21 +157,25 @@
                 </Border>
 
                 <!-- color editor -->
-                <Border Classes="CCCard CCCardPad20">
+                <Border Classes="Card Uniform">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
                             <TextBlock Classes="CCEditingLabel" Text="Editing: "/>
                             <TextBlock Classes="CCEditingLabel" Text="{Binding CurrentSwatch.Name}" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}"/>
                         </StackPanel>
 
-                        <WrapPanel Orientation="Horizontal">
-                            <Border Classes="CCWheelWrap" Margin="0,0,20,12">
+                        <!-- Wheel | controls, the controls taking all the width the wheel leaves. Below
+                        EditorWideLayoutMinWidth (code-behind) the controls move under the wheel instead -
+                        what the WrapPanel this replaced did, minus its fixed 300px controls column. -->
+                        <Grid x:Name="EditorLayout" ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto"
+                              SizeChanged="OnEditorLayoutSizeChanged">
+                            <Border Grid.Column="0" Grid.Row="0" Classes="CCWheelWrap" Margin="0,0,20,12" HorizontalAlignment="Left" VerticalAlignment="Top">
                                 <controls:HsvWheel Hue="{Binding CurrentSwatch.Hue, Mode=TwoWay}"
                                                     Saturation="{Binding CurrentSwatch.Saturation, Mode=TwoWay}"
                                                     Value="{Binding CurrentSwatch.Value, Mode=TwoWay}"/>
                             </Border>
 
-                            <StackPanel Spacing="10" Width="300" Margin="0,0,0,12">
+                            <StackPanel x:Name="EditorControls" Grid.Column="1" Grid.Row="0" Spacing="10" Margin="0,0,0,12">
                                 <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
                                     <Border Classes="CCCurrentColorBox" Background="{Binding CurrentSwatch.Brush}"/>
                                     <StackPanel Spacing="4">
@@ -254,12 +270,12 @@
                                     </Grid>
                                 </StackPanel>
                             </StackPanel>
-                        </WrapPanel>
+                        </Grid>
                     </StackPanel>
                 </Border>
 
                 <!-- save bar -->
-                <Border Classes="CCSaveBar">
+                <Border Classes="Card">
                     <WrapPanel>
                         <Button Classes="CCSecondary" Content="Save as New" Margin="0,0,8,8" Command="{Binding SaveAsNewCommand}"/>
                         <Button Classes="CCGradientButton" Content="Apply Changes" Margin="0,0,8,8" Command="{Binding ApplyChangesCommand}"/>

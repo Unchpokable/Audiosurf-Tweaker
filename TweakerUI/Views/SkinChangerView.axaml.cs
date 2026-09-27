@@ -1,10 +1,10 @@
 using System.Linq;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
 using TweakerUI.Models;
 using TweakerUI.ViewModels;
 
@@ -35,25 +35,29 @@ namespace TweakerUI.Views
                 vm.HandleFileDrop(files);
         }
 
-        // Not bound as a Command like the other row buttons: entering rename mode also needs to move
-        // keyboard focus into the now-visible TextBox, which only a code-behind click handler can do
-        // (same reasoning as HsvWheel/GradientSlider's explicit Focus() calls in 4.2).
-        private void OnRenameClick(object sender, RoutedEventArgs e)
+        // Rename mode is entered from two places - the row's rename button and "export current
+        // textures", which drops the new card straight into it - so the field focuses itself when it
+        // appears instead of the button doing it. Two hooks, because the ListBox virtualizes: a card
+        // already on screen flips IsVisible false -> true, while a card realized with RenameActive
+        // already set (a fresh export added below the fold) starts visible and never gets that change.
+        private void OnRenameInputPropertyChanged(object sender, AvaloniaPropertyChangedEventArgs e)
         {
-            if (sender is not Button button || button.DataContext is not SkinCard card)
-                return;
+            if (e.Property == Visual.IsVisibleProperty && e.NewValue is true && sender is TextBox textBox)
+                FocusRenameInput(textBox);
+        }
 
-            card.EnableRenameCommand.Execute(null);
+        private void OnRenameInputLoaded(object sender, RoutedEventArgs e)
+        {
+            if (sender is TextBox { IsVisible: true } textBox)
+                FocusRenameInput(textBox);
+        }
 
+        private static void FocusRenameInput(TextBox textBox)
+        {
             Dispatcher.UIThread.Post(() =>
             {
-                var textBox = button.FindAncestorOfType<Grid>()?
-                    .GetVisualDescendants()
-                    .OfType<TextBox>()
-                    .FirstOrDefault(t => t.Classes.Contains("SCRenameInput"));
-
-                textBox?.Focus();
-                textBox?.SelectAll();
+                textBox.Focus();
+                textBox.SelectAll();
             }, DispatcherPriority.Loaded);
         }
 
@@ -61,6 +65,19 @@ namespace TweakerUI.Views
         {
             if (sender is Control control && control.DataContext is InteractableScreenshot screenshot)
                 screenshot.ShowBigPictureCommand.Execute(null);
+        }
+
+        // Not a ListBox.KeyBinding: Avalonia runs KeyBindings of the focused element's ancestors BEFORE
+        // the focused element sees the key, so a Delete binding here fired while typing in a card's
+        // rename TextBox and removed the skin instead of a character. A bubbling KeyDown handler comes
+        // after the TextBox, which marks Delete handled (Docs/Internal/avalonia-pitfalls.md, §3).
+        private void OnSkinsListKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key != Key.Delete || e.KeyModifiers != KeyModifiers.None || DataContext is not SkinChangerViewModel vm)
+                return;
+
+            vm.RemoveSelectedCommand.Execute(null);
+            e.Handled = true;
         }
 
         private void OnRenameKeyDown(object sender, KeyEventArgs e)

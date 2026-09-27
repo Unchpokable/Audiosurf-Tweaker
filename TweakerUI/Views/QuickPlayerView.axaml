@@ -35,20 +35,20 @@
             <!-- Playlists (left) | Queue (right) -->
             <Grid Grid.Row="0" ColumnDefinitions="240,14,*">
 
-                <Border Grid.Column="0" Classes="QPCard">
+                <Border Grid.Column="0" Classes="Card">
                     <Grid RowDefinitions="Auto,*">
                         <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" Margin="0,0,0,10">
                             <TextBlock Grid.Column="0" Text="Playlists" Classes="QPCardTitle" VerticalAlignment="Center"/>
-                            <Button Grid.Column="1" Classes="QPIconButton" Command="{Binding NewPlaylistCommand}" ToolTip.Tip="New playlist">
+                            <Button Grid.Column="1" Classes="IconButton QPIconButton" Command="{Binding NewPlaylistCommand}" ToolTip.Tip="New playlist">
                                 <Path Data="{StaticResource IconQPAdd}" Width="14" Height="14" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="2.2" StrokeLineCap="Round"/>
                             </Button>
-                            <Button Grid.Column="2" Classes="QPIconButton" Margin="4,0,0,0" Command="{Binding RemovePlaylistCommand}"
+                            <Button Grid.Column="2" Classes="IconButton QPIconButton" Margin="4,0,0,0" Command="{Binding RemovePlaylistCommand}"
                                     IsEnabled="{Binding SelectedPlaylistRow, Converter={StaticResource IsNotNullConverter}}" ToolTip.Tip="Delete selected playlist">
                                 <Path Data="{StaticResource IconQPRemove}" Width="14" Height="14" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="1.9" StrokeLineCap="Round" StrokeJoin="Round"/>
                             </Button>
                         </Grid>
 
-                        <TextBlock Grid.Row="1" Text="No playlists yet - create one to get started" Classes="QPEmptyState"
+                        <TextBlock Grid.Row="1" Text="No playlists yet - create one to get started" Classes="EmptyState"
                                    IsVisible="{Binding !Playlists.Count}"/>
 
                         <ListBox Grid.Row="1" Classes="QPPlaylistList" ItemsSource="{Binding Playlists}"
@@ -62,7 +62,7 @@
                                         </StackPanel>
                                         <TextBox Grid.Column="0" Classes="QPRenameInput" Text="{Binding NewName, Mode=TwoWay}"
                                                  IsVisible="{Binding RenameActive}" VerticalAlignment="Center" KeyDown="OnPlaylistRenameKeyDown"/>
-                                        <Button Grid.Column="1" Classes="QPRowIconButton" IsVisible="{Binding !RenameActive}"
+                                        <Button Grid.Column="1" Classes="IconButton QPRowIconButton" IsVisible="{Binding !RenameActive}"
                                                 Click="OnPlaylistRenameClick" ToolTip.Tip="Rename playlist">
                                             <Path Data="{StaticResource IconQPRename}" Width="13" Height="13" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="1.8" StrokeLineCap="Round" StrokeJoin="Round"/>
                                         </Button>
@@ -73,17 +73,17 @@
                     </Grid>
                 </Border>
 
-                <Border Grid.Column="2" Classes="QPCard">
+                <Border Grid.Column="2" Classes="Card">
                     <Grid RowDefinitions="Auto,*">
                         <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
                             <TextBlock Grid.Column="0" Text="{Binding SelectedPlaylistRow.Name}" Classes="QPCardTitle" VerticalAlignment="Center"/>
-                            <Button Grid.Column="1" Classes="QPIconButton" Command="{Binding AddTracksCommand}"
+                            <Button Grid.Column="1" Classes="IconButton QPIconButton" Command="{Binding AddTracksCommand}"
                                     IsEnabled="{Binding SelectedPlaylistRow, Converter={StaticResource IsNotNullConverter}}" ToolTip.Tip="Add tracks">
                                 <Path Data="{StaticResource IconQPAdd}" Width="14" Height="14" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="2.2" StrokeLineCap="Round"/>
                             </Button>
                         </Grid>
 
-                        <TextBlock Grid.Row="1" Text="Select or create a playlist to see its queue" Classes="QPEmptyState"
+                        <TextBlock Grid.Row="1" Text="Select or create a playlist to see its queue" Classes="EmptyState"
                                    IsVisible="{Binding SelectedPlaylistRow, Converter={StaticResource IsNullConverter}}"/>
 
                         <!-- The ListBox is deliberately inside a ScrollViewer rather than scrolling
@@ -103,7 +103,7 @@
                                                                 <TextBlock Text="Character" Classes="QPMenuSectionTitle First"/>
                                                                 <Grid ColumnDefinitions="*,Auto" Classes="QPMenuRow">
                                                                     <TextBlock Grid.Column="0" Text="Override default character" Classes="QPMenuLabel"/>
-                                                                    <ToggleButton Grid.Column="1" Classes="QPSwitch" IsChecked="{Binding OverrideCharacterEnabled, Mode=TwoWay}"/>
+                                                                    <ToggleButton Grid.Column="1" Classes="Switch" IsChecked="{Binding OverrideCharacterEnabled, Mode=TwoWay}"/>
                                                                 </Grid>
                                                                 <ItemsControl ItemsSource="{Binding CharacterOptions}" IsVisible="{Binding OverrideCharacterEnabled}" Margin="0,4,0,0">
                                                                     <ItemsControl.ItemsPanel>
@@ -129,7 +129,7 @@
                                                                                 <TextBlock Grid.Column="0" Text="{Binding Label}" Classes="QPMenuLabel" Margin="0,0,10,0"/>
                                                                                 <TextBox Grid.Column="1" Classes="QPParamInput" Text="{Binding ParameterText, Mode=TwoWay}"
                                                                                          IsVisible="{Binding HasParameter}" PlaceholderText="#" Margin="6,0,12,0"/>
-                                                                                <ToggleButton Grid.Column="2" Classes="QPSwitch" IsChecked="{Binding IsEnabled, Mode=TwoWay}"/>
+                                                                                <ToggleButton Grid.Column="2" Classes="Switch" IsChecked="{Binding IsEnabled, Mode=TwoWay}"/>
                                                                             </Grid>
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
@@ -141,7 +141,7 @@
                                                                         <DataTemplate x:DataType="models:ModOptionViewModel">
                                                                             <Grid ColumnDefinitions="*,Auto" Classes="QPMenuRow">
                                                                                 <TextBlock Grid.Column="0" Text="{Binding Label}" Classes="QPMenuLabel"/>
-                                                                                <ToggleButton Grid.Column="1" Classes="QPSwitch" IsChecked="{Binding IsEnabled, Mode=TwoWay}"/>
+                                                                                <ToggleButton Grid.Column="1" Classes="Switch" IsChecked="{Binding IsEnabled, Mode=TwoWay}"/>
                                                                             </Grid>
                                                                         </DataTemplate>
                                                                     </ItemsControl.ItemTemplate>
@@ -227,7 +227,7 @@
             capped rather than stretched edge to edge (which would turn every chip into a wide flat bar),
             and no caption - the names are the game's own character list and anyone who plays Audiosurf
             reads the grid for what it is without a row of text saying so. -->
-            <Border Grid.Row="2" Classes="QPCharacterPanel">
+            <Border Grid.Row="2" Classes="Card Tinted QPCharacterPanel">
                 <StackPanel>
                     <Button Classes="QPCharacterHeader" Classes.Expanded="{Binding IsCharacterPickerExpanded}"
                             Command="{Binding ToggleCharacterPickerCommand}"
@@ -280,7 +280,7 @@
             Star columns rather than a WrapPanel (which was the first attempt) because with glyph pills
             the row does fit at MinWidth=1000, so there is nothing left to wrap - and a WrapPanel cannot
             distribute leftover width, which is the actual problem. -->
-            <Border Grid.Row="4" Classes="QPTransportBar">
+            <Border Grid.Row="4" Classes="Card Uniform">
                 <Grid ColumnDefinitions="Auto,*,Auto,*,Auto,*,Auto,*,Auto">
                     <!-- Fixed-height Grid keeps the four buttons' own bounds aligned with each
                     other (see the row-alignment fix). Icons are wrapped in Viewbox rather than

@@ -13,7 +13,7 @@
     in 4.2 (unmargined edge-to-edge Border for the background, inset Grid for content) to avoid the
     Windows 11 DWM corner-rounding artifact found there. The mockup's own status bar is dropped - it
     moves to the shared app shell later, not owned by this tab anymore (see roadmap Phase 4.3 notes).
-    Every section is wrapped in a light Border.SCCard (or the purple-tinted SCGamePanelCard for Custom
+    Every section is wrapped in a light Card (or the accent-tinted Card Tinted for Custom
     Installation) to match Color Configurator's card language - the mockup itself didn't have this, but
     it reads as flat/disconnected without it once placed next to the rest of the app. -->
     <Border Background="{DynamicResource AppBackgroundBrush}">
@@ -21,7 +21,7 @@
 
             <!-- Top bar. The left side is a deliberately empty spacer, matching the mockup's own empty
             flex:1 div - status text belongs to the shared app-wide status bar, not this tab. -->
-            <Border Grid.Row="0" Classes="SCCard" Margin="0,0,0,14">
+            <Border Grid.Row="0" Classes="Card" Margin="0,0,0,14">
                 <Grid ColumnDefinitions="*,Auto">
                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="Currently installed: " Classes="SCTopBarLabel"/>
@@ -39,16 +39,16 @@
                 <!-- Icon rail lives inside this card now (not floating on the page background to its
                 left) - a standalone rail next to the card left a visible gap in the app's otherwise
                 consistent card language, per direct feedback. -->
-                <Border Grid.Column="0" Classes="SCCard" Padding="10">
+                <Border Grid.Column="0" Classes="Card" Padding="10">
                     <Grid ColumnDefinitions="40,10,*">
                         <StackPanel Grid.Column="0" Spacing="6">
-                            <Button Classes="SCIconButton" Command="{Binding AddNewSkinCommand}" ToolTip.Tip="Add new .askin package">
+                            <Button Classes="IconButton SCRailButton" Command="{Binding AddNewSkinCommand}" ToolTip.Tip="Add new .askin package">
                                 <Path Data="{StaticResource IconAdd}" Width="16" Height="16" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="2.3" StrokeLineCap="Round"/>
                             </Button>
-                            <Button Classes="SCIconButton" Command="{Binding ImportFromGameCommand}" ToolTip.Tip="Package your currently installed textures as a new skin">
+                            <Button Classes="IconButton SCRailButton" Command="{Binding ImportFromGameCommand}" ToolTip.Tip="Package your currently installed textures as a new skin">
                                 <Path Data="{StaticResource IconImportGame}" Width="16" Height="16" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="2.1" StrokeLineCap="Round" StrokeJoin="Round"/>
                             </Button>
-                            <Button Classes="SCIconButton" Command="{Binding ReloadSkinsCommand}" IsEnabled="{Binding ReloadButtonUnlocked}" ToolTip.Tip="Reload skins from disk">
+                            <Button Classes="IconButton SCRailButton" Command="{Binding ReloadSkinsCommand}" IsEnabled="{Binding ReloadButtonUnlocked}" ToolTip.Tip="Reload skins from disk">
                                 <Path Data="{StaticResource IconRefresh}" Width="16" Height="16" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="2.1" StrokeLineCap="Round" StrokeJoin="Round"/>
                             </Button>
                         </StackPanel>
@@ -65,40 +65,52 @@
                             </ItemsControl>
                             <ListBox x:Name="SkinsListBox" Classes="SCSkinsList" IsVisible="{Binding !LoadingVisible}"
                                      ItemsSource="{Binding Skins}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
-                                     DragDrop.AllowDrop="True">
-                                <ListBox.KeyBindings>
-                                    <KeyBinding Gesture="Delete" Command="{Binding RemoveSelectedCommand}"/>
-                                </ListBox.KeyBindings>
+                                     DragDrop.AllowDrop="True" KeyDown="OnSkinsListKeyDown">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate x:DataType="models:SkinCard">
-                                        <!-- No hover popup preview here - deliberately dropped. It would need
-                                        each card's screenshot decoded up front (fast-preview mode) to have
-                                        anything to show, which contradicts the "no screenshot caching" call
-                                        made to keep the app's memory footprint down. -->
-                                        <Grid ColumnDefinitions="34,14,*" Margin="10,10,14,10">
-                                            <Button Grid.Column="0" Classes="SCRowIconButton" Command="{Binding InstallCommand}"
-                                                    ToolTip.Tip="{Binding InstallTooltip}" VerticalAlignment="Center">
-                                                <Path Data="{StaticResource IconInstall}" Width="17" Height="17" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
-                                            </Button>
-                                            <Grid Grid.Column="2" RowDefinitions="Auto,Auto">
-                                                <Panel Grid.Row="0" HorizontalAlignment="Left">
-                                                    <TextBlock Text="{Binding Name}" Classes="SCSkinName" IsVisible="{Binding !RenameActive}" TextTrimming="CharacterEllipsis"/>
-                                                    <TextBox Text="{Binding NewName, Mode=TwoWay}" Classes="SCRenameInput" IsVisible="{Binding RenameActive}"
-                                                             KeyDown="OnRenameKeyDown" MinWidth="160"/>
-                                                </Panel>
-                                                <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="-7,6,0,0" Spacing="4">
-                                                    <Button Classes="SCRowIconButton" Command="{Binding ExportCopyCommand}" ToolTip.Tip="{Binding ExportCopyTooltip}">
-                                                        <Path Data="{StaticResource IconExport}" Width="13" Height="13" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
-                                                    </Button>
-                                                    <Button Classes="SCRowIconButton" Click="OnRenameClick" ToolTip.Tip="{Binding RenameTooltip}">
-                                                        <Path Data="{StaticResource IconRename}" Width="13" Height="13" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
-                                                    </Button>
-                                                    <Button Classes="SCRowIconButton Danger" Command="{Binding RemoveCommand}" ToolTip.Tip="{Binding RemoveTooltip}">
-                                                        <Path Data="{StaticResource IconDelete}" Width="13" Height="13" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
-                                                    </Button>
-                                                </StackPanel>
+                                        <!-- Hover preview of the skin's first screenshot, restored from the WPF
+                                        version (lvItemSkin.xaml): a Fast Previews feature - Cover is null
+                                        outside that mode, which switches the tooltip off, so it never reads the
+                                        disk. On a Transparent-background Border with Padding rather than on the
+                                        Grid with a Margin, so the whole card area is hit-testable.
+                                        ToolTip.ServiceEnabled is INHERITED, and the tooltip service gives up at
+                                        the first ancestor that has it off - so the inner Grid switches it back on,
+                                        or the row buttons would lose their own tooltips whenever Fast Previews is
+                                        off (Docs/Internal/avalonia-pitfalls.md, §4). -->
+                                        <Border Background="Transparent" Padding="10,10,14,10"
+                                                ToolTip.ShowDelay="1000"
+                                                ToolTip.ServiceEnabled="{Binding Cover, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                            <ToolTip.Tip>
+                                                <ToolTip Classes="SCCoverTip">
+                                                    <Image Source="{Binding Cover}" Width="640" Height="360" Stretch="Uniform"/>
+                                                </ToolTip>
+                                            </ToolTip.Tip>
+                                            <Grid ColumnDefinitions="34,14,*" ToolTip.ServiceEnabled="True">
+                                                <Button Grid.Column="0" Classes="IconButton" Command="{Binding InstallCommand}"
+                                                        ToolTip.Tip="{Binding InstallTooltip}" VerticalAlignment="Center">
+                                                    <Path Data="{StaticResource IconInstall}" Width="17" Height="17" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                                                </Button>
+                                                <Grid Grid.Column="2" RowDefinitions="Auto,Auto">
+                                                    <Panel Grid.Row="0" HorizontalAlignment="Left">
+                                                        <TextBlock Text="{Binding Name}" Classes="SCSkinName" IsVisible="{Binding !RenameActive}" TextTrimming="CharacterEllipsis"/>
+                                                        <TextBox Text="{Binding NewName, Mode=TwoWay}" Classes="SCRenameInput" IsVisible="{Binding RenameActive}"
+                                                                 KeyDown="OnRenameKeyDown" MinWidth="160"
+                                                                 Loaded="OnRenameInputLoaded" PropertyChanged="OnRenameInputPropertyChanged"/>
+                                                    </Panel>
+                                                    <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="-7,6,0,0" Spacing="4">
+                                                        <Button Classes="IconButton" Command="{Binding ExportCopyCommand}" ToolTip.Tip="{Binding ExportCopyTooltip}">
+                                                            <Path Data="{StaticResource IconExport}" Width="13" Height="13" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                                                        </Button>
+                                                        <Button Classes="IconButton" Command="{Binding EnableRenameCommand}" ToolTip.Tip="{Binding RenameTooltip}">
+                                                            <Path Data="{StaticResource IconRename}" Width="13" Height="13" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                                                        </Button>
+                                                        <Button Classes="IconButton Danger" Command="{Binding RemoveCommand}" ToolTip.Tip="{Binding RemoveTooltip}">
+                                                            <Path Data="{StaticResource IconDelete}" Width="13" Height="13" Stretch="Uniform" Stroke="{DynamicResource AccentPrimaryBrush}" StrokeThickness="2.2" StrokeLineCap="Round" StrokeJoin="Round"/>
+                                                        </Button>
+                                                    </StackPanel>
+                                                </Grid>
                                             </Grid>
-                                        </Grid>
+                                        </Border>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
@@ -106,11 +118,11 @@
                     </Grid>
                 </Border>
 
-                <Border Grid.Column="2" Classes="SCCard">
+                <Border Grid.Column="2" Classes="Card">
                     <Grid RowDefinitions="Auto,*">
                         <TextBlock Grid.Row="0" Text="Screenshots" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextSubtleBrush}" Margin="0,0,0,10"/>
                         <Grid Grid.Row="1">
-                            <TextBlock Text="Select a skin to see its screenshots" Classes="SCEmptyState" IsVisible="{Binding !HasSelection}"/>
+                            <TextBlock Text="Select a skin to see its screenshots" Classes="EmptyState" IsVisible="{Binding !HasSelection}"/>
                             <ScrollViewer IsVisible="{Binding HasSelection}">
                                 <Grid>
                                     <!-- No screenshot caching (deliberately - see SkinChangerViewModel), so
@@ -158,7 +170,7 @@
             </Grid>
 
             <!-- Custom Installation -->
-            <Border Grid.Row="2" Classes="SCGamePanelCard">
+            <Border Grid.Row="2" Classes="Card Tinted">
                 <Grid RowDefinitions="Auto,Auto,Auto">
                     <TextBlock Grid.Row="0" Text="Custom Installation" Classes="SCSectionTitle" Margin="0,0,0,10"/>
 
@@ -167,7 +179,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="7" Margin="18,0">
                                 <Path Classes="SCToggleIcon" Data="{StaticResource IconSky}" Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"/>
                                 <TextBlock Text="Skyspheres" Classes="SCToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Classes="SCSwitch" IsChecked="{Binding ShouldInstallSkyspheres, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                <ToggleButton Classes="Switch" IsChecked="{Binding ShouldInstallSkyspheres, Mode=TwoWay}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Border>
                         <Border Classes="SCToggleDivider"/>
@@ -175,7 +187,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="7" Margin="18,0">
                                 <Path Classes="SCToggleIcon" Data="{StaticResource IconRings}" Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"/>
                                 <TextBlock Text="Rings" Classes="SCToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Classes="SCSwitch" IsChecked="{Binding ShouldInstallRings, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                <ToggleButton Classes="Switch" IsChecked="{Binding ShouldInstallRings, Mode=TwoWay}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Border>
                         <Border Classes="SCToggleDivider"/>
@@ -183,7 +195,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="7" Margin="18,0">
                                 <Path Classes="SCToggleIcon" Data="{StaticResource IconTile}" Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"/>
                                 <TextBlock Text="Tileset" Classes="SCToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Classes="SCSwitch" IsChecked="{Binding ShouldInstallTileset, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                <ToggleButton Classes="Switch" IsChecked="{Binding ShouldInstallTileset, Mode=TwoWay}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Border>
                         <Border Classes="SCToggleDivider"/>
@@ -191,7 +203,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="7" Margin="18,0">
                                 <Path Classes="SCToggleIcon" Data="{StaticResource IconHits}" Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"/>
                                 <TextBlock Text="Hits" Classes="SCToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Classes="SCSwitch" IsChecked="{Binding ShouldInstallHits, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                <ToggleButton Classes="Switch" IsChecked="{Binding ShouldInstallHits, Mode=TwoWay}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Border>
                         <Border Classes="SCToggleDivider"/>
@@ -199,7 +211,7 @@
                             <StackPanel Orientation="Horizontal" Spacing="7" Margin="18,0">
                                 <Path Classes="SCToggleIcon" Data="{StaticResource IconParticles}" Width="15" Height="15" Stretch="Uniform" VerticalAlignment="Center"/>
                                 <TextBlock Text="Particles" Classes="SCToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Classes="SCSwitch" IsChecked="{Binding ShouldInstallParticles, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                <ToggleButton Classes="Switch" IsChecked="{Binding ShouldInstallParticles, Mode=TwoWay}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Border>
                     </StackPanel>

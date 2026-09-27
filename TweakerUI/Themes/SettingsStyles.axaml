@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="using:TweakerUI.Core">
 
     <!-- ============================================================================
     Settings (stage 4.6) - no mockup, laid out "on the eye" like Tweaker's Command and Control tab:
@@ -13,103 +14,22 @@
     without a clear referent.
     ============================================================================ -->
 
-    <Styles.Resources>
-        <!-- Fully retemplated, same fix as Color Configurator's CCTextBoxTemplate: FluentTheme's
-        built-in TextBox template draws its own thick accent-colored focus ring and a harsh, fully
-        opaque selection highlight on template-internal parts that plain Setters can't reach or
-        override. Owning the whole template instead makes the only feedback the thin BorderBrush
-        swap in the Style below (with a transition, unlike the default's instant snap) and a soft
-        translucent SelectionBrush that doesn't blot out the text underneath it. No ScrollViewer -
-        these fields don't wrap; TextPresenter centers correctly on its own directly in the Border. -->
-        <ControlTemplate x:Key="STTextBoxTemplate" TargetType="TextBox">
-            <Border Name="PART_Border"
-                    Background="{TemplateBinding Background}"
-                    BorderBrush="{TemplateBinding BorderBrush}"
-                    BorderThickness="{TemplateBinding BorderThickness}"
-                    CornerRadius="{TemplateBinding CornerRadius}"
-                    Padding="{TemplateBinding Padding}">
-                <Border.Transitions>
-                    <Transitions>
-                        <BrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
-                    </Transitions>
-                </Border.Transitions>
-                <TextPresenter Name="PART_TextPresenter"
-                               Text="{TemplateBinding Text, Mode=TwoWay}"
-                               CaretIndex="{TemplateBinding CaretIndex}"
-                               SelectionStart="{TemplateBinding SelectionStart}"
-                               SelectionEnd="{TemplateBinding SelectionEnd}"
-                               TextAlignment="{TemplateBinding TextAlignment}"
-                               TextWrapping="NoWrap"
-                               SelectionBrush="{DynamicResource AccentSelectionBrush}"
-                               SelectionForegroundBrush="{DynamicResource TextOnAccentBrush}"
-                               CaretBrush="{TemplateBinding CaretBrush}"
-                               VerticalAlignment="Center"/>
-            </Border>
-        </ControlTemplate>
+    <!-- Cards, card titles, toggle rows/labels and switches are the shared ones from SharedStyles.axaml.
+    What follows is Settings' own. -->
 
-    </Styles.Resources>
-
-    <Style Selector="Border.STCard">
-        <Setter Property="Background" Value="{DynamicResource SurfaceBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="12"/>
-        <Setter Property="Padding" Value="18,14"/>
-    </Style>
-
-    <Style Selector="TextBlock.STCardTitle">
-        <Setter Property="FontSize" Value="18"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-    </Style>
-
-    <!-- Toggle rows -->
-    <Style Selector="Border.STToggleRow">
-        <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="Padding" Value="8,7"/>
-        <Setter Property="Background" Value="{DynamicResource AccentGhostBrush}"/>
-        <Setter Property="Transitions">
-            <Transitions>
-                <BrushTransition Property="Background" Duration="0:0:0.15"/>
-            </Transitions>
-        </Setter>
-    </Style>
-    <Style Selector="Border.STToggleRow:pointerover">
-        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
-    </Style>
     <!-- Sub-toggles that only make sense when a parent switch is on (e.g. Safety installation under
-    Control textures folder, or the two Watcher sub-options) - indented and dimmed instead of hidden,
-    so the dependency reads as "off because the parent is off" rather than vanishing entirely. -->
-    <Style Selector="Border.STToggleRow.STNested">
+    Control textures folder, or the two Watcher sub-options) - indented, and dimmed by ToggleRow's own
+    :disabled style instead of hidden, so the dependency reads as "off because the parent is off"
+    rather than vanishing entirely. -->
+    <Style Selector="Border.ToggleRow.STNested">
         <Setter Property="Margin" Value="22,0,0,0"/>
     </Style>
-    <Style Selector="Border.STToggleRow:disabled">
-        <Setter Property="Opacity" Value="0.5"/>
-    </Style>
 
-    <Style Selector="TextBlock.STToggleLabel">
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
-    </Style>
     <Style Selector="TextBlock.STToggleHint">
         <Setter Property="FontSize" Value="12"/>
         <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
         <Setter Property="Margin" Value="0,2,0,0"/>
         <Setter Property="TextWrapping" Value="Wrap"/>
-    </Style>
-
-    <Style Selector="ToggleButton.STSwitch">
-        <Setter Property="Template" Value="{StaticResource AccentSwitchTemplate}"/>
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="0"/>
-        <Setter Property="Cursor" Value="Hand"/>
-    </Style>
-    <Style Selector="ToggleButton.STSwitch:checked /template/ Border#Track">
-        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
-    </Style>
-    <Style Selector="ToggleButton.STSwitch:checked /template/ Border#Thumb">
-        <Setter Property="Margin" Value="16,0,0,0"/>
     </Style>
 
     <!-- Path/file rows -->
@@ -133,7 +53,7 @@
         <Setter Property="FontSize" Value="13.5"/>
         <Setter Property="MinHeight" Value="0"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="Template" Value="{StaticResource STTextBoxTemplate}"/>
+        <Setter Property="Template" Value="{StaticResource FlatTextBoxTemplate}"/>
     </Style>
     <Style Selector="TextBox.STPathBox:pointerover /template/ Border#PART_Border">
         <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>

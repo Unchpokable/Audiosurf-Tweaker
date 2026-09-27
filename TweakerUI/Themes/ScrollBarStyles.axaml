@@ -1,5 +1,6 @@
 <Styles xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="using:TweakerUI.Core">
 
     <!-- ============================================================================
     Slim accent scrollbar (2026-07-14, fixed 2026-07-15) - replaces FluentTheme's default
@@ -22,7 +23,7 @@
        ScrollBar's whole Template is replaced below with a plain fixed-width Track (no expand
        state, no page-arrow buttons - modern slim scrollbars don't need click-arrows, matches the
        already-established "own the whole template" approach from FlatButtonTemplate/
-       SCSkinListItemTemplate/CCTextBoxTemplate for the same reason: FluentTheme's per-state
+       FlatListItemTemplate/FlatTextBoxTemplate for the same reason: FluentTheme's per-state
        Setters target template-internal parts and can't be reliably overridden piecemeal).
     3. (Found 2026-07-15, reported as "accent color applies inconsistently / animation resets at
        random moments / everywhere else just plain gray with no animation".) The first pass at #2
@@ -57,7 +58,7 @@
        when the attached property resolves on the ListBox and when its own Template's
        TemplateBinding first reads it). Rather than keep chasing that indirection, applied this
        project's own established fallback for exactly this situation (see point 2's own reasoning,
-       and CCTextBoxTemplate/FlatButtonTemplate/SCSkinListItemTemplate elsewhere): own the WHOLE
+       and FlatTextBoxTemplate/FlatButtonTemplate/FlatListItemTemplate elsewhere): own the WHOLE
        `{x:Type ListBox}` ControlTheme too, hardcoding `AllowAutoHide="False"` as a literal value
        directly on `PART_ScrollViewer` instead of forwarding it through any binding at all - removes
        the indirection instead of trying to win it. The attached-property Style below is left in
@@ -84,7 +85,7 @@
                             CornerRadius="{TemplateBinding CornerRadius}">
                         <Border.Transitions>
                             <Transitions>
-                                <BrushTransition Property="Background" Duration="0:0:0.15"/>
+                                <core:CrossfadeBrushTransition Property="Background" Duration="0:0:0.15"/>
                             </Transitions>
                         </Border.Transitions>
                     </Border>

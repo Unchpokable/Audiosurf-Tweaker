@@ -1,5 +1,6 @@
 <ResourceDictionary xmlns="https://github.com/avaloniaui"
-                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:core="using:TweakerUI.Core">
 
     <!-- ============================================================================
     Centralized accent palette (visual consistency pass, 2026-07-13). Before this, every module's
@@ -44,7 +45,10 @@
     endpoints happened to share the exact same Color and only differed in the ignored Opacity attribute
     - see AccentSoftBrush vs AccentHoverBrush vs AccentPressedBrush, all built off the same hue). Baking
     the intended alpha directly into Color's own alpha digits makes BrushTransition's naive channel
-    interpolation land on the actually-correct value throughout, not just at rest. -->
+    interpolation land on the actually-correct value throughout, not just at rest.
+    (Since KnownBugs #6 the app no longer uses BrushTransition at all - CrossfadeBrushTransition folds
+    Brush.Opacity into alpha itself. The tiers stay baked: one form for every tier, and no Opacity
+    attribute for a future change to forget about.) -->
 
     <!-- Baked-alpha reference table (rounded to the nearest hex digit, alpha = Opacity*255):
     Light: Primary=#7A4FC7, Secondary=#A97FD6 - 5%=0D 10%=1A 18%=2E 30%=4D 36%=5C 45%=73
@@ -62,13 +66,6 @@
             <SolidColorBrush x:Key="AccentPressedBrush" Color="#2E7A4FC7"/>
             <SolidColorBrush x:Key="AccentBorderBrush" Color="#4DA97FD6"/>
             <SolidColorBrush x:Key="AccentSelectedBrush" Color="#737A4FC7"/>
-            <!-- Zero-alpha version of Primary's own hue (not a generic "Transparent") - used as the
-            resting Background for controls that fade IN to an accent tint on hover (ToggleRow/CCGhost).
-            Transitioning from literal Transparent (#00000000) to a tinted brush still ramps R/G/B up
-            from zero at the same time as alpha, which reads as a dull gray/black smudge passing through
-            before the real hue "arrives" - starting from the same hue at 0 alpha keeps R/G/B constant
-            for the whole transition, so only alpha visibly ramps, i.e. a clean fade-in of the tint. -->
-            <SolidColorBrush x:Key="AccentGhostBrush" Color="#007A4FC7"/>
 
             <!-- Scrollbar thumb tiers (Фаза 4.7 follow-up, 2026-07-14) - same baked-alpha
             technique as the tiers above, own tokens rather than reusing e.g. AccentSelectedBrush
@@ -116,8 +113,6 @@
             (Skin Changer's selected skin row, a role this Color-Configurator-only mockup doesn't cover),
             same opacity fraction as Light, re-based on the dark accent hue. -->
             <SolidColorBrush x:Key="AccentSelectedBrush" Color="#732DD4BF"/>
-            <!-- See Light's own comment - same zero-alpha-same-hue reasoning, dark accent hue. -->
-            <SolidColorBrush x:Key="AccentGhostBrush" Color="#002DD4BF"/>
 
             <!-- See Light's own comment - same tiers, dark accent hue. -->
             <SolidColorBrush x:Key="AccentScrollThumbBrush" Color="#4D2DD4BF"/>
@@ -161,7 +156,7 @@
             <Border Name="Track" CornerRadius="9" Background="{DynamicResource ControlTrackOffBrush}">
                 <Border.Transitions>
                     <Transitions>
-                        <BrushTransition Property="Background" Duration="0:0:0.2"/>
+                        <core:CrossfadeBrushTransition Property="Background" Duration="0:0:0.2"/>
                     </Transitions>
                 </Border.Transitions>
             </Border>

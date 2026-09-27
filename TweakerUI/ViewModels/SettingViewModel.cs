@@ -177,10 +177,11 @@ namespace TweakerUI.ViewModels
             ApplySettings();
         }
 
-        // Trades memory for speed: eagerly decodes a skin card's screenshots when its data loads
-        // instead of on selection. Off by default - decode-on-selection (with skeleton placeholders
-        // while it loads) is the tested/default path; this only changes behavior for skins loaded or
-        // reloaded after the toggle flips, no restart needed.
+        // Pre-cache, trading memory (several hundred MB) for an instant Skin Changer: every skin's
+        // screenshots are decoded when the list loads, so selecting a card and the hover preview never
+        // touch the disk. Off by default - decode-on-selection (with skeleton placeholders while it
+        // loads) is the default path. No restart needed: MainWindowViewModel forwards the switch to
+        // SkinChangerViewModel.SetFastPreview, which fills or drops every loaded card's screenshots.
         [ObservableProperty]
         private bool isFastPreview;
 

@@ -2,35 +2,11 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
 
 namespace TweakerUI.Core.Utils
 {
     public static class Utils
     {
-        /// <summary>
-        /// Disposes the given objects and, a second later, forces a full collection.
-        ///
-        /// Forcing the GC by hand is normally a smell; here it is deliberate. Everything handed to
-        /// this method owns SkiaSharp bitmaps, whose pixel buffers are unmanaged - the GC sees a
-        /// handful of tiny wrappers and no reason to hurry, so freed skin textures sat on hundreds of
-        /// megabytes for minutes at a time. Delayed and off the calling thread so a collection never
-        /// lands inside the operation that triggered it. Fire-and-forget by design - there is nothing
-        /// for a caller to await or react to.
-        /// </summary>
-        public static void DisposeAndClear(params IDisposable[] disposables)
-        {
-            foreach (var disposable in disposables)
-                disposable?.Dispose();
-
-            _ = Task.Delay(1000).ContinueWith(_ =>
-            {
-                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, false, true);
-                GC.WaitForPendingFinalizers();
-                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, false, true);
-            });
-        }
-
         public static void Cmd(string command)
         {
             try
