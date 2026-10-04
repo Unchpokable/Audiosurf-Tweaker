@@ -4,12 +4,14 @@
 //
 // Everything else lives in the pieces this puts together (lua-engine-fix-roadmap.md §3.3):
 //
-//   lua_vm        the LuaJIT state, the prelude, the sandbox, the one list of C entry points
-//   lua_prelude   the Lua half - `tw` itself, handles, registration, the dispatch loops
-//   lua_registry  the scripts in Scripts\, switching them on and off
+//   lua_vm        the LuaJIT state, the prelude run, tw.api_version, the one list of C entry points
+//   lua_prelude   the Lua half - `tw` itself, handles, registration, the dispatch loops, the sandbox
+//   lua_registry  the scripts in Scripts\, switching them on and off, rescanning the folder
+//   lua_remote    the host's SCRIPT_* commands (a mailbox drained in draw_frame) and state changes back
 //   lua_script    one script: its header and its health
 //   lua_sched     when callbacks run, per-script isolation, the error and time budgets
 //   lua_diag      what the layer has to say about a script, deduplicated and routed
+//   lua_linemap   a bundled script's .lua.map: bundle positions back to the project's files
 //   api/*         the C ABI the prelude binds, one file per area
 //   lua_ui        the Scripts tab
 //

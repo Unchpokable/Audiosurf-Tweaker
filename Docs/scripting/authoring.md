@@ -7,8 +7,9 @@ game is not small. `puzzlepro_hud.lua` was one file of 2 100 lines; it is now 17
 each, and what the game loads is still one file.
 
 The tool that turns a folder of modules into that one file is **`twllink`** — the Tweaker's Lua
-linker. It ships with the Tweaker, as `twllink.exe` next to `TweakerUI.exe`, and needs nothing
-installed to run.
+linker. It ships with the Tweaker, as `twllink.exe` in the `DevTools\Binaries\` folder next to
+`TweakerUI.exe`, and needs nothing installed to run. To type `twllink` in a terminal, put that folder
+on your `PATH`.
 
 Nothing about the game side changes. The plugin never learns there were several files: what it loads
 is ordinary Lua, the same as a script written by hand, with the same rights and the same limits.
@@ -65,8 +66,8 @@ my_hud/
 
 Two names are fixed, on purpose:
 
-- **`twproject.json`** is how a folder is recognised as a project — by `twllink`, and by the
-  Tweaker's script tools.
+- **`twproject.json`** is how a folder is recognised as a project — by `twllink` now, and by the
+  Tweaker's own script tools once it has them.
 - **`src/main.lua`** is where the script starts. There is no setting for it, the same way a C program
   has no setting for `main`.
 
@@ -210,8 +211,7 @@ tells the plugin where each line came from. Files are only rewritten when their 
 | `--out <file.lua or folder\>` | Write somewhere other than `build/`. The map goes next to the script. |
 | `--install` | Also copy the script and its map into the game — see [Installing](#installing). |
 | `--game <folder>` | The Audiosurf folder for `--install`. |
-| `--watch` | Build, then build again every time a file of the project changes. |
-| `--json` | Print the result as JSON instead of text — for tools. With `--watch`, one line per build. |
+| `--json` | Print the result as JSON instead of text — for tools. |
 | `--api <api.json>` | Check against another description of the API than the one `twllink` came with. |
 | `--new <template> <folder>` | Create a project — see [Starting a project](#starting-a-project). |
 | `--version`, `--help` | |
@@ -236,17 +236,8 @@ By hand works just as well: copy both files. The script runs without the map; th
 its errors readable. Then press **Reload** on the script's row in the Scripts tab — or switch it off
 and on — and the game runs the new version.
 
-### Watching
-
-```
-twllink --watch --install
-```
-
-builds, installs, and then does both again every time you save a file of the project, until Ctrl+C.
-It waits until the folder has been quiet for a moment, so an editor that saves in several writes
-causes one build. What it writes itself (`build/`, `.twllink/`) does not count as a change.
-
-The game does not reload a script on its own: after a rebuild, press **Reload** on its row.
+`twllink` builds once per run and does not watch your files: after a change, run it again. Most
+editors can run a command on save if you want that.
 
 ## Checks at build time
 

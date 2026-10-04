@@ -14,4 +14,22 @@
     <ProjectReference Include="..\TweakerCore\TweakerCore.csproj" />
   </ItemGroup>
 
+  <!--
+    The real twllink for TwllinkTests: TweakerCore.Scripting.Twllink is only a client of its command line, and
+    a client is best tested against the thing it talks to. Built and copied into twllink\ of the test output
+    the same way TweakerUI.csproj puts it into DevTools\Binaries\ (see CopyTwllink there).
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\TweakerLuaLinker\TweakerLuaLinker.csproj"
+                      ReferenceOutputAssembly="false"
+                      OutputItemType="TwllinkBuildOutput" />
+  </ItemGroup>
+
+  <Target Name="CopyTwllink" AfterTargets="Build">
+    <ItemGroup>
+      <TwllinkFiles Include="%(TwllinkBuildOutput.RootDir)%(TwllinkBuildOutput.Directory)*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(TwllinkFiles)" DestinationFolder="$(OutDir)twllink\" SkipUnchangedFiles="true" />
+  </Target>
+
 </Project>

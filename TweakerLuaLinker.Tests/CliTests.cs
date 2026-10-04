@@ -94,7 +94,8 @@ namespace TweakerLuaLinker.Tests
         [TestCase("--api")]
         [TestCase("--game", "somewhere")]
         [TestCase("--new", "hud")]
-        [TestCase("--new", "hud", "dir", "--watch")]
+        [TestCase("--new", "hud", "dir", "--json")]
+        [TestCase("--watch")]
         [TestCase("--api", "no-such-api.json")]
         public void BadCommandLineExitsTwo(params string[] arguments)
         {

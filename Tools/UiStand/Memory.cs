@@ -241,7 +241,7 @@ static class TabLeak
             .GetProperty("GameTexturesPath", BindingFlags.Static | BindingFlags.NonPublic).SetValue(null, textures);
 
         var vms = new List<object>();
-        foreach (var t in new[] { "SkinChangerViewModel", "ColorsConfiguratorViewModel", "TweakerViewModel", "QuickPlayerViewModel", "SettingViewModel" })
+        foreach (var t in new[] { "SkinChangerViewModel", "ColorsConfiguratorViewModel", "TweakerViewModel", "QuickPlayerViewModel", "ScriptsViewModel", "ScriptDevViewModel", "SettingViewModel" })
         {
             try { vms.Add(Activator.CreateInstance(typeof(SkinChangerViewModel).Assembly.GetType("TweakerUI.ViewModels." + t))); }
             catch (Exception ex) { Console.WriteLine($"{t}: {ex.GetBaseException().Message}"); }

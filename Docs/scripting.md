@@ -40,7 +40,7 @@ Read these in order the first time. After that they stand alone.
 | **[Reacting and intercepting](scripting/hooks.md)** | Running code when the game does something, and stopping the game from doing it. |
 | **[Drawing](scripting/drawing.md)** | The HUD API: text, shapes, measurement, colours, and laying out against the overlay. |
 | **[Worked examples](scripting/examples.md)** | Three probes written to answer a question about the game, annotated. Not shipped with the plugin — copy one in when you want it. |
-| **[Projects: scripts made of many files](scripting/authoring.md)** | When one file stops being enough: `twllink --new`, modules and `require`, an editor that knows the API, checks at build time, installing and watching, and errors that point at your own files. |
+| **[Projects: scripts made of many files](scripting/authoring.md)** | When one file stops being enough: `twllink --new`, modules and `require`, an editor that knows the API, checks at build time, installing, and errors that point at your own files. |
 | **[API reference](scripting/api-reference.md)** | Every function, in one place. |
 | **[Limits, safety and performance](scripting/limits.md)** | What the environment deliberately cannot do, what it costs, and the rules that keep a script from ruining the game. |
 

@@ -8,6 +8,7 @@
 #include "lua/lua_config.hxx"
 #include "lua/lua_diag.hxx"
 #include "lua/lua_registry.hxx"
+#include "lua/lua_remote.hxx"
 #include "lua/lua_sched.hxx"
 #include "lua/lua_vm.hxx"
 
@@ -97,6 +98,10 @@ void shutdown() noexcept
 
 void draw_frame() noexcept
 {
+    // The host's commands first, before any script draws - see lua_remote.hxx. Also where whatever
+    // changed since the last frame (a click on the Scripts tab, a suspension) goes out to the host.
+    tw::lua::remote::pump();
+
     if(tw::lua::vm::state() == nullptr) [[unlikely]] {
         return;
     }

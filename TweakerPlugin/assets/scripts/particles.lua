@@ -62,13 +62,13 @@
 -- does, this costs one vector write per spawned particle - and particles are spawned per collision,
 -- not per frame, so the cost is small and bounded by how hard you are playing.
 
-local GROUP  = "Debris.cgr"
-local COLUMN = 47  -- Debris: Color, Array Vector
-local CURSOR = 15  -- Index_Debris
-local WRITER = 48  -- Set Vector that fills the row
+local GROUP   = "Debris.cgr"
+local COLUMN  = 47 -- Debris: Color, Array Vector
+local CURSOR  = 15 -- Index_Debris
+local WRITER  = 48 -- Set Vector that fills the row
 
-local colors = tw.array_vec(GROUP, COLUMN, CURSOR)
-local cursor = tw.float_ch(GROUP, CURSOR)
+local colors  = tw.array_vec(GROUP, COLUMN, CURSOR)
+local cursor  = tw.float_ch(GROUP, CURSOR)
 
 -- Counters, so that "is this doing anything" has an answer that does not depend on squinting at
 -- particles. Writes that were refused are counted separately, because the two failures mean
@@ -76,7 +76,7 @@ local cursor = tw.float_ch(GROUP, CURSOR)
 -- simply never being called means the hook did not attach.
 local written = 0
 local refused = 0
-local calls = 0
+local calls   = 0
 
 tw.on_call(GROUP, WRITER, "after", function()
     calls = calls + 1
@@ -90,27 +90,4 @@ tw.on_call(GROUP, WRITER, "after", function()
     else
         refused = refused + 1
     end
-end)
-
--- One line, bottom-centre, only while something is actually happening.
---
--- Centred rather than corner-anchored on purpose: every other shipped script computes "somewhere
--- uncluttered" the same way and lands in the same place - the bottom-left block already holds
--- _groups.lua and vecwrite.lua, and two scripts sharing an anchor draw straight through each other.
--- This is a mistake this project has made once already.
---
--- Also deliberately not a per-frame readout of the last value written: a number that changes every
--- frame blurs into an unreadable smear at high frame rates. Totals stay legible.
-tw.on_frame(function()
-    if calls == 0 then return end
-
-    local x0, _, x1, y1 = tw.hud.safe()
-
-    local rows = colors:rows()
-    local text = string.format("PARTICLES  untinted %d / %d%s   table %s", written, calls,
-        refused > 0 and string.format("  (%d refused)", refused) or "",
-        rows and tostring(rows) or "?")
-
-    local w, h = tw.hud.measure(text)
-    tw.hud.text((x0 + x1) * 0.5 - w * 0.5, y1 - h - 24, text, tw.theme("text_muted"))
 end)

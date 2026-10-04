@@ -85,6 +85,7 @@ audiosurfHandle.OverlayMessageReceived += (_, payload) => { /* пришёл L3-p
 | `NOTIFY_TWEAK` | plugin → host | `<TweakName> <true\|false>` | Пользователь щёлкнул твик прямо в оверлее — просьба хосту применить это состояние. |
 | `NOTIFY_SKIN` | plugin → host | `<name>` (percent-encoded) | Пользователь нажал «Apply» на выбранном скине в оверлее — просьба хосту установить его. |
 | `QP_*` | обе стороны | см. `Docs/Internal/overlay-quickplayer.md` | Quick Player: каталог плейлистов, состав, очередь, транспорт, правки трека. |
+| `SCRIPT_*` | обе стороны | см. `Docs/Internal/overlay-scripts.md` | **Протокол 2, реализован с обеих сторон (03.10.2026).** Скрипты: вкл/выкл, перезагрузка, пересканирование `Scripts\` из TweakerUI; плагин сообщает об изменениях состояния скриптов. |
 
 **`QP_*` — отдельное семейство, описанное в `Docs/Internal/overlay-quickplayer.md`.** Оно живёт
 поверх ровно этого же L1/L2 и ничего в них не меняет. Диспетчеризация обеих сторон устроена

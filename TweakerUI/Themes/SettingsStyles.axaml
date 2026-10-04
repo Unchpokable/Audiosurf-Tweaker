@@ -38,47 +38,9 @@
         <Setter Property="Foreground" Value="{DynamicResource TextSubtleBrush}"/>
         <Setter Property="Margin" Value="2,0,0,4"/>
     </Style>
-    <Style Selector="TextBox.STPathBox">
-        <!-- Medium rather than the default Regular weight - Inter at Regular/13.5px read as thin
-        and slightly harsh against the field's light background (per direct feedback); Medium is
-        still clearly a "field", not a heading, but renders smoother at this size. -->
-        <Setter Property="FontWeight" Value="Medium"/>
-        <Setter Property="Background" Value="{DynamicResource SurfaceSoftBrush}"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
-        <Setter Property="CaretBrush" Value="{DynamicResource TextSecondaryBrush}"/>
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
-        <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="Padding" Value="10,8"/>
-        <Setter Property="FontSize" Value="13.5"/>
-        <Setter Property="MinHeight" Value="0"/>
-        <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="Template" Value="{StaticResource FlatTextBoxTemplate}"/>
-    </Style>
-    <Style Selector="TextBox.STPathBox:pointerover /template/ Border#PART_Border">
-        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
-    </Style>
-    <Style Selector="TextBox.STPathBox:focus /template/ Border#PART_Border">
-        <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
-    </Style>
-    <Style Selector="Button.STBrowseButton">
-        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
-        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="FontSize" Value="13.5"/>
-        <Setter Property="Padding" Value="14,8"/>
+    <!-- The field and the button are the shared TextField and ActionButton; only the gap between them is Settings'. -->
+    <Style Selector="Button.ActionButton.STBrowseButton">
         <Setter Property="Margin" Value="8,0,0,0"/>
-        <Setter Property="VerticalAlignment" Value="Stretch"/>
-        <Setter Property="VerticalContentAlignment" Value="Center"/>
-        <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
-    </Style>
-    <Style Selector="Button.STBrowseButton:pointerover">
-        <Setter Property="Background" Value="{DynamicResource AccentPressedBrush}"/>
-    </Style>
-    <Style Selector="Button.STBrowseButton:disabled">
-        <Setter Property="Opacity" Value="0.5"/>
     </Style>
 
 </Styles>

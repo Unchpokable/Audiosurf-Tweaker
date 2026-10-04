@@ -38,6 +38,7 @@ enum class script_state {
     suspended, // it ran out of error or time budget; its hooks are inert until Resume or Reload
     waiting,   // running, but held: the game is not up, or a hook's group is not loaded yet
     running,
+    missing, // the file is gone from Scripts\ - found out by a rescan; the record stays, ids do not shift
 };
 
 [[nodiscard]] const char* state_name(script_state state) noexcept;
@@ -74,7 +75,8 @@ struct script {
     int api = 0; // `-- @api N` from the header, written by twllink; 0 for a script that does not say
 
     bool enabled = false;
-    bool failed = false; // the last load attempt errored - `error` says how
+    bool missing = false; // the file was not there at the last rescan; never enabled, never failed while set
+    bool failed = false;  // the last load attempt errored - `error` says how
     std::string error;   // first line only; the traceback is in its diagnostics
 
     // Present for a script twllink built from a project (lua_linemap.hxx); reloaded on every run, so

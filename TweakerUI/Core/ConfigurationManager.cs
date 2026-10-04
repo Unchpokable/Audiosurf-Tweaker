@@ -61,6 +61,7 @@ namespace TweakerUI.Core
             Bind("UWPNotificationSilent", true, () => Settings.IsUWPNotificationSilent, v => Settings.IsUWPNotificationSilent = v),
             Bind("DarkTheme", false, () => Settings.IsDarkTheme, v => Settings.IsDarkTheme = v),
             Bind("SyncOverlayWithTweaker", true, () => Settings.SyncOverlayWithTweaker, v => Settings.SyncOverlayWithTweaker = v),
+            Bind("ScriptEditor", "", () => Settings.ScriptEditor, v => Settings.ScriptEditor = v),
         };
 
         // Keys that used to be written here and no longer are. Their values are not carried anywhere - the

@@ -10,6 +10,7 @@
 #include "ipc/overlay_ipc.hxx"
 
 #include "lua/lua_host.hxx"
+#include "lua/lua_remote.hxx"
 
 #include "plugin/diagnostics.hxx"
 
@@ -107,6 +108,7 @@ void initialize() noexcept
 
     tw::ui::pending_actions::set_send_backend(&tw::ipc::send_overlay_command);
     tw::ui::qp::set_send_backend(&tw::ipc::send_overlay_command);
+    tw::lua::remote::set_link(&tw::ipc::send_overlay_command, &tw::ipc::host_present);
 
     tw::ipc::initialize();
 }

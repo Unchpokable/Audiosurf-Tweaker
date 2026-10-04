@@ -1,10 +1,6 @@
 using System;
-using System.Diagnostics;
 using System.IO;
-using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 
 using NUnit.Framework;
 
@@ -14,7 +10,7 @@ using TweakerLuaLinker.Project;
 
 namespace TweakerLuaLinker.Tests
 {
-    /// <summary>The authoring side of the command line (Ф5b): --new, --install, --api, --watch.</summary>
+    /// <summary>The authoring side of the command line (Ф5b): --new, --install, --api.</summary>
     [TestFixture]
     public class ToolingTests
     {
@@ -37,34 +33,6 @@ namespace TweakerLuaLinker.Tests
                 catch (IOException)
                 {
                 }
-            }
-        }
-
-        /// <summary>StringWriter that --watch can write to from its thread while the test reads.</summary>
-        private sealed class LockedWriter : StringWriter
-        {
-            public override void Write(char value)
-            {
-                lock (this)
-                    base.Write(value);
-            }
-
-            public override void Write(string? value)
-            {
-                lock (this)
-                    base.Write(value);
-            }
-
-            public override void Write(char[] buffer, int index, int count)
-            {
-                lock (this)
-                    base.Write(buffer, index, count);
-            }
-
-            public string Snapshot()
-            {
-                lock (this)
-                    return ToString();
             }
         }
 
@@ -212,53 +180,6 @@ namespace TweakerLuaLinker.Tests
             var (code, output, _) = Run(project.Root, "--api", api);
             Assert.That(code, Is.EqualTo(Cli.ExitBuildFailed));
             Assert.That(output, Does.Contain(DiagnosticCodes.UnknownTwName));
-        }
-
-        [Test]
-        public void WatchRebuildsOnAChangeAndStopsWhenCancelled()
-        {
-            using var project = new TestProject().Main("local x = 1\n");
-            var stdout = new LockedWriter();
-            using var cancel = new CancellationTokenSource();
-            var watching = Task.Run(() => Cli.Run(new[] { "--watch" }, stdout, new StringWriter(), project.Root, cancel.Token));
-
-            WaitFor(() => Count(stdout.Snapshot(), "twllink: demo") == 1, "the first build");
-
-            // Nothing changed: no rebuild. (Reading src/ for a build raises a "changed" on the folder
-            // itself, which once caused exactly this - a second build after every build.)
-            Thread.Sleep(Cli.WatchSettle * 4);
-            Assert.That(Count(stdout.Snapshot(), "twllink: demo"), Is.EqualTo(1), stdout.Snapshot());
-
-            project.Main("local x = 2\n");
-            WaitFor(() => Count(stdout.Snapshot(), "twllink: demo") == 2, "a rebuild after the change");
-            Assert.That(File.ReadAllText(Path.Combine(project.Root, "build", "demo.lua")), Does.Contain("local x = 2"));
-
-            // Its own output is not a change: the rebuild wrote build/ and must not trigger another.
-            Thread.Sleep(Cli.WatchSettle * 4);
-            Assert.That(Count(stdout.Snapshot(), "twllink: demo"), Is.EqualTo(2));
-
-            cancel.Cancel();
-            Assert.That(watching.Wait(TimeSpan.FromSeconds(10)), Is.True, "Ctrl+C ends the watch");
-            Assert.That(watching.Result, Is.EqualTo(Cli.ExitSuccess));
-        }
-
-        private static int Count(string text, string what)
-        {
-            var n = 0;
-            for (var at = text.IndexOf(what, StringComparison.Ordinal); at >= 0; at = text.IndexOf(what, at + 1, StringComparison.Ordinal))
-                n++;
-            return n;
-        }
-
-        private static void WaitFor(Func<bool> condition, string what)
-        {
-            var clock = Stopwatch.StartNew();
-            while (!condition())
-            {
-                if (clock.Elapsed > TimeSpan.FromSeconds(10))
-                    Assert.Fail($"timed out waiting for {what}");
-                Thread.Sleep(20);
-            }
         }
     }
 }

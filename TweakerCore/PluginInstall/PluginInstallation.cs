@@ -236,6 +236,85 @@ namespace TweakerCore.PluginInstall
             return report;
         }
 
+        /// <summary>Manifest-path folder of the bundled scripts: "TweakerStuff/Scripts/".</summary>
+        public const string ScriptsRelativeFolder = StuffFolderName + "/" + ScriptsFolderName + "/";
+        public const string ScriptsFolderName = "Scripts";
+
+        public static string ScriptsPath(string engineDirectory)
+        {
+            return Path.Combine(engineDirectory, StuffFolderName, ScriptsFolderName);
+        }
+
+        /// <summary>
+        /// "Restore bundled scripts" (Docs/Internal/script-manager-roadmap.md §5, п. 9): puts the bundle's scripts
+        /// back as the bundle has them - <paramref name="scriptFileNames"/> only ("foo.lua", which takes its
+        /// "foo.lua.map" along), or every one when null. Nothing outside the Scripts folder is touched: this is
+        /// not an update, the plugin stays whatever version it is.
+        ///
+        /// The same table as <see cref="Install"/> with one row changed: a shipped script the user deleted comes
+        /// back, because bringing it back is what was asked. An edited one is still moved to ".old" first - the
+        /// rule this module exists to keep does not bend for a button, however clearly the button was labelled.
+        ///
+        /// Unlike Install this is safe with the game running: the plugin reads a script's file only when it loads
+        /// it, which is also why twllink --install may write there at any time.
+        /// </summary>
+        public static PluginInstallReport RestoreScripts(string engineDirectory, string payloadDirectory, IEnumerable<string> scriptFileNames = null)
+        {
+            var report = new PluginInstallReport();
+
+            if (!IsValidEngineFolder(engineDirectory))
+            {
+                report.Errors.Add(new PluginInstallError(null, "'" + engineDirectory + "' is not the game's engine folder."));
+                return report;
+            }
+
+            var payloadScripts = string.IsNullOrWhiteSpace(payloadDirectory) ? null : Path.Combine(payloadDirectory, StuffFolderName, ScriptsFolderName);
+            if (payloadScripts == null || !Directory.Exists(payloadScripts))
+            {
+                report.Errors.Add(new PluginInstallError(null, "The plugin bundle '" + payloadDirectory + "' carries no scripts."));
+                return report;
+            }
+
+            HashSet<string> wanted = null;
+            if (scriptFileNames != null)
+            {
+                wanted = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                foreach (var name in scriptFileNames)
+                {
+                    wanted.Add(name);
+                    wanted.Add(name + ".map");
+                }
+            }
+
+            var manifest = PluginDeployManifest.Load(engineDirectory);
+
+            foreach (var payloadFile in Directory.EnumerateFiles(payloadScripts))
+            {
+                var fileName = Path.GetFileName(payloadFile);
+                if (wanted != null && !wanted.Contains(fileName))
+                    continue;
+
+                var relativePath = ScriptsRelativeFolder + fileName;
+                try
+                {
+                    var targetPath = Path.Combine(engineDirectory, ToFileSystemPath(relativePath));
+                    var payloadHash = HashFile(payloadFile);
+                    var decision = Decide(targetPath, payloadFile, relativePath, payloadHash, manifest);
+                    if (decision == FileDecision.SkipDeleted)
+                        decision = FileDecision.Add;
+                    Apply(decision, targetPath, payloadFile, relativePath, payloadHash, manifest, report);
+                }
+                catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException)
+                {
+                    report.Errors.Add(new PluginInstallError(relativePath, exception.Message));
+                }
+            }
+
+            SaveManifest(engineDirectory, manifest, report);
+
+            return report;
+        }
+
         /// <summary>
         /// Takes the plugin out of the game: the DLL and its manifest entry, nothing else. TweakerStuff stays
         /// exactly as it is - skyboxes, scripts and configs are the user's data, and removing the plugin is not a
@@ -345,8 +424,19 @@ namespace TweakerCore.PluginInstall
         {
             var targetPath = Path.Combine(engineDirectory, ToFileSystemPath(relativePath));
             var payloadHash = HashFile(payloadFile);
+            Apply(Decide(targetPath, payloadFile, relativePath, payloadHash, manifest), targetPath, payloadFile, relativePath, payloadHash, manifest, report);
+        }
 
-            switch (Decide(targetPath, payloadFile, relativePath, payloadHash, manifest))
+        private static void Apply(
+            FileDecision decision,
+            string targetPath,
+            string payloadFile,
+            string relativePath,
+            string payloadHash,
+            PluginDeployManifest manifest,
+            PluginInstallReport report)
+        {
+            switch (decision)
             {
                 case FileDecision.SkipDeleted:
                     report.SkippedDeleted.Add(relativePath);
@@ -470,12 +560,12 @@ namespace TweakerCore.PluginInstall
             return relativePath.Replace('/', Path.DirectorySeparatorChar);
         }
 
-        private static bool HashesEqual(string left, string right)
+        internal static bool HashesEqual(string left, string right)
         {
             return left != null && right != null && string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
         }
 
-        private static string HashFile(string path)
+        internal static string HashFile(string path)
         {
             using (var stream = File.OpenRead(path))
                 return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();

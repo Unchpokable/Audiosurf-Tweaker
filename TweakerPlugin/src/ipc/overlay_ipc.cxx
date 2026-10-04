@@ -4,6 +4,8 @@
 
 #include "framework/wndproc_hub.hxx"
 
+#include "lua/lua_remote.hxx"
+
 #include "plugin/boot_log.hxx"
 #include "plugin/diagnostics.hxx"
 #include "plugin/globals.hxx"
@@ -28,7 +30,9 @@ constexpr std::size_t k_max_fixed_op_tokens = 3;
 
 // Bumped on every incompatible change to the L3 grammar. Travels in HANDSHAKE_ACK, and a host expecting a
 // different number treats the handshake as failed (Docs/Internal/plugin-offline-mode.md §5.2).
-constexpr int k_protocol_version = 1;
+//
+// 2: the SCRIPT_* ops (Docs/Internal/overlay-scripts.md).
+constexpr int k_protocol_version = 2;
 
 // Whether Audiosurf Tweaker is connected, and the bridge window it talks through
 // (Docs/Internal/plugin-offline-mode.md §4.5).
@@ -262,6 +266,13 @@ void handle_tw_ovl_op(std::string_view payload)
         return;
     }
 
+    // The scripts' family, the same way (Docs/Internal/overlay-scripts.md). Parsed and posted there, not
+    // carried out: switching a script on runs it, and that is the engine thread's job (lua_remote.hxx).
+    if(op.starts_with("SCRIPT_")) {
+        tw::lua::remote::handle_op(op, rest);
+        return;
+    }
+
     if(op == "HANDSHAKE_BEGIN") {
         std::size_t token_count = 0;
         const auto tokens = split_fixed_tokens(rest, token_count);
@@ -305,6 +316,10 @@ void handle_tw_ovl_op(std::string_view payload)
         std::array<char, 96> ack;
         const auto written = std::format_to_n(ack.data(), ack.size(), "HANDSHAKE_ACK {} {} {}", TW_PLUGIN_VERSION, k_protocol_version, load_mode());
         send_payload_to_bridge(std::string_view { ack.data(), static_cast<std::size_t>(written.out - ack.data()) });
+
+        // After the ACK, from the engine thread on its next overlay frame: the state of every script, so the
+        // host starts from what is actually running rather than from scripts.cfg.
+        tw::lua::remote::request_sync();
         return;
     }
 

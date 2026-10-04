@@ -133,13 +133,15 @@ echo "    $LEGACY_EXE -> $TWEAKER_OUT"
 # is what makes a crash in it readable.
 LINKER_PROJ="$REPO_ROOT/TweakerLuaLinker/TweakerLuaLinker.csproj"
 LINKER_OUT="$REPO_ROOT/TweakerLuaLinker/bin/publish"
+DEVTOOLS_OUT="$TWEAKER_OUT/DevTools/Binaries"
 echo "==> Publishing twllink ($CONFIGURATION, Native AOT, with symbols)"
 if ! dotnet publish "$LINKER_PROJ" -c "$CONFIGURATION" -p:TwPublish=aot -o "$LINKER_OUT"; then
     echo "ERROR: twllink publish failed - Native AOT links with MSVC (Visual Studio's C++ workload)" >&2
     exit 1
 fi
-cp -f "$LINKER_OUT/twllink.exe" "$LINKER_OUT/twllink.pdb" "$TWEAKER_OUT/"
-echo "    $LINKER_OUT/twllink.exe (+ .pdb) -> $TWEAKER_OUT"
+mkdir -p "$DEVTOOLS_OUT"
+cp -f "$LINKER_OUT/twllink.exe" "$LINKER_OUT/twllink.pdb" "$DEVTOOLS_OUT/"
+echo "    $LINKER_OUT/twllink.exe (+ .pdb) -> $DEVTOOLS_OUT"
 
 # --- Summary ---------------------------------------------------------------------------------
 FILE_COUNT="$(find "$DIST_DIR" -type f | wc -l)"

@@ -58,6 +58,8 @@ const char* state_name(script_state state) noexcept
         return "waiting";
     case script_state::running:
         return "running";
+    case script_state::missing:
+        return "missing";
     }
 
     return "";

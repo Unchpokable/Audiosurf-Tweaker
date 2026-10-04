@@ -90,6 +90,10 @@ void suspend(tw::lua::script& script, std::string reason) noexcept
     health.over_hard = 0;
 
     tw::lua::diag::report(script.id, tw::lua::diag::level::fatal, "suspended", "suspended - " + health.reason);
+
+    // Only a mark: this can be the middle of a hooked channel call. Telling the host is lua_remote's,
+    // from the overlay frame (overlay-scripts.md, "Потоки в плагине").
+    tw::lua::registry::changed();
 }
 
 void count_error(tw::lua::script& script, std::string_view error) noexcept
@@ -427,6 +431,7 @@ bool resume(int owner) noexcept
     script->health.errors = errors;
 
     tw::lua::diag::report(owner, tw::lua::diag::level::info, "resume", "resumed from the Scripts tab");
+    tw::lua::registry::changed();
     return true;
 }
 

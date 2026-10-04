@@ -1,0 +1,104 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:TweakerUI.ViewModels"
+             xmlns:models="clr-namespace:TweakerUI.Models"
+             x:Class="TweakerUI.Views.ScriptsView"
+             x:DataType="vm:ScriptsViewModel">
+
+    <!-- The scripts in the game (script-manager-roadmap.md, С3). Laid out in the app's card vocabulary:
+    a tinted notice when something stands in the way, then one card with the list. -->
+    <Border Background="{DynamicResource AppBackgroundBrush}">
+        <Grid Margin="20" RowDefinitions="Auto,*">
+
+            <Border Grid.Row="0" Classes="Card Tinted" Margin="0,0,0,14" IsVisible="{Binding HasNotice}">
+                <TextBlock Classes="SMNotice" Text="{Binding Notice}"/>
+            </Border>
+
+            <Border Grid.Row="1" Classes="Card Roomy">
+                <Grid RowDefinitions="Auto,*">
+                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12">
+                            <TextBlock Text="Scripts" Classes="CardTitle" VerticalAlignment="Center"/>
+                            <TextBlock Classes="SMSummary" Text="{Binding Summary}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                            <Button Classes="IconButton" Command="{Binding RestoreAllCommand}"
+                                    ToolTip.Tip="Restore bundled scripts - put back the ones you deleted or edited">
+                                <Path Classes="SMIcon" Data="{StaticResource IconReset}"/>
+                            </Button>
+                            <Button Classes="IconButton" Command="{Binding OpenFolderCommand}" ToolTip.Tip="Open the game's Scripts folder">
+                                <Path Classes="SMIcon" Data="{StaticResource IconFolder}"/>
+                            </Button>
+                            <Button Classes="IconButton" Command="{Binding RefreshCommand}" ToolTip.Tip="Read the Scripts folder again - and, with the game connected, have the game look at it again too">
+                                <Path Classes="SMIcon" Data="{StaticResource IconRefresh}"/>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock Grid.Row="1" Classes="EmptyState" TextWrapping="Wrap" MaxWidth="460"
+                               Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}"/>
+
+                    <ScrollViewer Grid.Row="1" IsVisible="{Binding !IsEmpty}" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl ItemsSource="{Binding Scripts}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="models:ScriptRowViewModel">
+                                    <Border Classes="SMRow" Classes.Missing="{Binding IsMissing}">
+                                        <Grid ColumnDefinitions="*,Auto,Auto">
+                                            <StackPanel Grid.Column="0" Classes="SMText" Margin="0,0,12,0">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Classes="SMTitle" Text="{Binding Title}"/>
+                                                    <Border Classes="SMBadge Bundled" IsVisible="{Binding IsBundled}"
+                                                            ToolTip.Tip="Comes with Tweaker, unchanged. Plugin updates keep it current.">
+                                                        <TextBlock Text="Bundled"/>
+                                                    </Border>
+                                                    <Border Classes="SMBadge Edited" IsVisible="{Binding IsEdited}"
+                                                            ToolTip.Tip="Comes with Tweaker and was changed since. The next plugin update keeps your version as a .old copy and puts the bundled one back.">
+                                                        <TextBlock Text="Bundled, edited"/>
+                                                    </Border>
+                                                    <Border Classes="SMBadge" IsVisible="{Binding IsUsers}"
+                                                            ToolTip.Tip="Not from Tweaker - yours, or built and installed from a project. Updates never touch it.">
+                                                        <TextBlock Text="Yours"/>
+                                                    </Border>
+                                                    <Border Classes="SMBadge" IsVisible="{Binding IsProjectBuild}" ToolTip.Tip="{Binding ProjectBuildHint}">
+                                                        <TextBlock Text="Project build"/>
+                                                    </Border>
+                                                    <Border Classes="SMBadge Missing" IsVisible="{Binding IsMissing}"
+                                                            ToolTip.Tip="Comes with Tweaker but is not in the game - deleted, or never installed. Restore puts it back.">
+                                                        <TextBlock Text="Not installed"/>
+                                                    </Border>
+                                                </StackPanel>
+                                                <TextBlock Classes="SMSubtitle" Text="{Binding Subtitle}"/>
+                                                <TextBlock Classes="SMDescription" Text="{Binding Description}" IsVisible="{Binding HasDescription}"/>
+                                                <TextBlock Classes="SMLive" Classes.Failed="{Binding LiveFailed}" Classes.Suspended="{Binding LiveSuspended}"
+                                                           Text="{Binding LiveText}" IsVisible="{Binding HasLiveText}"/>
+                                                <TextBlock Classes="SMBackups" Text="{Binding BackupsText}" IsVisible="{Binding HasBackups}"
+                                                           ToolTip.Tip="{Binding BackupsHint}"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" Margin="0,0,12,0">
+                                                <Button Classes="IconButton" Command="{Binding RestoreCommand}" IsVisible="{Binding CanRestore}"
+                                                        ToolTip.Tip="{Binding RestoreHint}">
+                                                    <Path Classes="SMIcon" Data="{StaticResource IconReset}"/>
+                                                </Button>
+                                                <Button Classes="IconButton" Command="{Binding ShowInFolderCommand}" IsVisible="{Binding !IsMissing}"
+                                                        ToolTip.Tip="Show the file in Explorer">
+                                                    <Path Classes="SMIcon" Data="{StaticResource IconFolder}"/>
+                                                </Button>
+                                            </StackPanel>
+
+                                            <ToggleButton Grid.Column="2" Classes="Switch" VerticalAlignment="Center"
+                                                          IsChecked="{Binding Enabled, Mode=TwoWay}"
+                                                          IsEnabled="{Binding CanToggle}"
+                                                          IsVisible="{Binding !IsMissing}"
+                                                          ToolTip.Tip="Run this script in the game"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

@@ -27,6 +27,8 @@ namespace TweakerUI.ViewModels
             ColorsVM = new ColorsConfiguratorViewModel();
             TweakerVM = new TweakerViewModel();
             QuickPlayerVM = new QuickPlayerViewModel();
+            ScriptsVM = new ScriptsViewModel();
+            ScriptDevVM = new ScriptDevViewModel();
             SettingsVM = new SettingViewModel();
             // Fast Previews changes what Skin Changer holds in memory, not just a flag it reads later -
             // the switch has to reach it (the flag alone left the two out of step, KnownBugs #5).
@@ -42,6 +44,7 @@ namespace TweakerUI.ViewModels
             _asHandle.StateChanged += OnAudiosurfStateChanged;
 
             OverlayHelper.Initialize();
+            ScriptsOverlayBridge.Initialize();
             OverlayHelper.LinkStateChanged += OnPluginStateChanged;
             PluginService.Changed += OnPluginStateChanged;
         }
@@ -50,10 +53,20 @@ namespace TweakerUI.ViewModels
         public ColorsConfiguratorViewModel ColorsVM { get; }
         public TweakerViewModel TweakerVM { get; }
         public QuickPlayerViewModel QuickPlayerVM { get; }
+        public ScriptsViewModel ScriptsVM { get; }
+        public ScriptDevViewModel ScriptDevVM { get; }
         public SettingViewModel SettingsVM { get; }
 
         [ObservableProperty]
         private ViewModelBase currentView;
+
+        // The Scripts tab watches the game folder and polls for the game only while it is on screen; Script Dev
+        // re-reads its project list when shown (its rebuild-on-save watcher is the user's switch, not the tab's).
+        partial void OnCurrentViewChanged(ViewModelBase value)
+        {
+            ScriptsVM.SetActive(value == ScriptsVM);
+            ScriptDevVM.SetActive(value == ScriptDevVM);
+        }
 
         public string AudiosurfStatusMessage => _asHandle.StateMessage;
 
@@ -79,6 +92,12 @@ namespace TweakerUI.ViewModels
         private void ShowQuickPlayer() => CurrentView = QuickPlayerVM;
 
         [RelayCommand]
+        private void ShowScripts() => CurrentView = ScriptsVM;
+
+        [RelayCommand]
+        private void ShowScriptDev() => CurrentView = ScriptDevVM;
+
+        [RelayCommand]
         private void ShowSettings() => CurrentView = SettingsVM;
 
         // ReinitializeWndProcMessageService disposes the old bridge connection synchronously (up to a
@@ -102,6 +121,8 @@ namespace TweakerUI.ViewModels
             OverlayHelper.LinkStateChanged -= OnPluginStateChanged;
             PluginService.Changed -= OnPluginStateChanged;
             QuickPlayerVM.Dispose();
+            ScriptsVM.Dispose();
+            ScriptDevVM.Dispose();
         }
 
         private void OnAudiosurfStateChanged(object sender, EventArgs e)

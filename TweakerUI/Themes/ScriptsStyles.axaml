@@ -1,0 +1,241 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="using:TweakerUI.Core">
+
+    <!-- ============================================================================
+    Scripts tab (Docs/Internal/script-manager-roadmap.md, С3). "SM" - script manager; the Script Dev tab
+    (С4) shares this file. Cards, the card title, the switch, the empty-state text and the icon buttons
+    are the shared ones from SharedStyles.axaml; what follows is only this tab's own: the script row and
+    its origin badges.
+    ============================================================================ -->
+
+    <Styles.Resources>
+        <StreamGeometry x:Key="IconFolder">M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z</StreamGeometry>
+    </Styles.Resources>
+
+    <Style Selector="Path.SMIcon">
+        <Setter Property="Stroke" Value="{DynamicResource AccentPrimaryBrush}"/>
+        <Setter Property="StrokeThickness" Value="2"/>
+        <Setter Property="StrokeLineCap" Value="Round"/>
+        <Setter Property="StrokeJoin" Value="Round"/>
+        <Setter Property="Fill" Value="Transparent"/>
+        <Setter Property="Stretch" Value="Uniform"/>
+        <Setter Property="Width" Value="16"/>
+        <Setter Property="Height" Value="16"/>
+    </Style>
+
+    <Style Selector="TextBlock.SMSummary">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+    </Style>
+
+    <Style Selector="TextBlock.SMNotice">
+        <Setter Property="FontSize" Value="13.5"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+    <!-- One script. The same surface as a skin row, without the hover wash: a row is not clickable as a
+    whole here - the switch and the buttons on it are. -->
+    <Style Selector="Border.SMRow">
+        <Setter Property="Background" Value="{DynamicResource SurfaceRowBrush}"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="14,10"/>
+        <Setter Property="Margin" Value="0,0,0,8"/>
+    </Style>
+    <!-- The shared Switch has no disabled look of its own - elsewhere a ToggleRow dims the whole row instead.
+    Here the row stays readable and only the switch fades: locked while the game runs, not switched off. -->
+    <Style Selector="Border.SMRow ToggleButton.Switch:disabled">
+        <Setter Property="Opacity" Value="0.4"/>
+    </Style>
+    <!-- A bundled script that is not on disk: listed so it can be restored, its text dimmed so it does not read
+    as installed. Only the text - the restore button is the one thing to do on that row. -->
+    <Style Selector="Border.SMRow.Missing StackPanel.SMText">
+        <Setter Property="Opacity" Value="0.55"/>
+    </Style>
+
+    <Style Selector="TextBlock.SMTitle">
+        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="TextBlock.SMSubtitle">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="Margin" Value="0,2,0,0"/>
+    </Style>
+    <Style Selector="TextBlock.SMDescription">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="Margin" Value="0,6,0,0"/>
+    </Style>
+    <Style Selector="TextBlock.SMBackups">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
+        <Setter Property="Margin" Value="0,4,0,0"/>
+        <Setter Property="HorizontalAlignment" Value="Left"/>
+    </Style>
+
+    <!-- What the running game says about the script (С5b): only when there is something to say. Failed and
+    suspended in the colours the overlay's own row uses for them; waiting for a confirmation, muted. -->
+    <Style Selector="TextBlock.SMLive">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="Margin" Value="0,6,0,0"/>
+    </Style>
+    <Style Selector="TextBlock.SMLive.Failed">
+        <Setter Property="Foreground" Value="#FFB0413C"/>
+    </Style>
+    <Style Selector="TextBlock.SMLive.Suspended">
+        <Setter Property="Foreground" Value="#FFD39A2C"/>
+    </Style>
+
+    <!-- Where a script came from. Outlined, like the Tweaker tab's QP marker, so a row full of them stays
+    quiet; the colour says whose the script is. -->
+    <Style Selector="Border.SMBadge">
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="6,1"/>
+        <Setter Property="Margin" Value="8,0,0,0"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
+    </Style>
+    <Style Selector="Border.SMBadge > TextBlock">
+        <Setter Property="FontSize" Value="10.5"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+    </Style>
+    <Style Selector="Border.SMBadge.Bundled">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
+    </Style>
+    <Style Selector="Border.SMBadge.Bundled > TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}"/>
+    </Style>
+    <Style Selector="Border.SMBadge.Edited">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentSecondaryBrush}"/>
+    </Style>
+    <Style Selector="Border.SMBadge.Edited > TextBlock">
+        <Setter Property="Foreground" Value="{DynamicResource AccentSecondaryBrush}"/>
+    </Style>
+    <Style Selector="Border.SMBadge.Missing">
+        <Setter Property="BorderBrush" Value="#FFB0413C"/>
+    </Style>
+    <Style Selector="Border.SMBadge.Missing > TextBlock">
+        <Setter Property="Foreground" Value="#FFB0413C"/>
+    </Style>
+
+    <!-- ============================================================================
+    Script Dev (С4). The project list is the shared RowList; its row content, the build status and the
+    diagnostics below are this tab's.
+    ============================================================================ -->
+
+    <Style Selector="StackPanel.SMProjectRow">
+        <Setter Property="Margin" Value="12,9"/>
+    </Style>
+    <Style Selector="StackPanel.SMEditorRow">
+        <Setter Property="Margin" Value="12,7"/>
+    </Style>
+    <Style Selector="TextBlock.SMProjectTitle">
+        <Setter Property="FontSize" Value="14.5"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <Style Selector="TextBlock.SMPath">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
+        <Setter Property="TextTrimming" Value="PathSegmentEllipsis"/>
+        <Setter Property="Margin" Value="0,2,0,0"/>
+    </Style>
+    <Style Selector="TextBlock.SMProblem">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="#FFB0413C"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="Margin" Value="0,3,0,0"/>
+    </Style>
+
+    <!-- Red on the accent selection is unreadable in the dark theme; on a selected row the text goes plain and
+    stays at full strength. -->
+    <Style Selector="ListBox.RowList ListBoxItem:selected TextBlock.SMProblem">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+    </Style>
+    <!-- Same for the faint path under a selected editor: faint on the accent wash is not there at all. -->
+    <Style Selector="ListBox.RowList ListBoxItem:selected TextBlock.SMPath">
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+    </Style>
+
+    <Style Selector="TextBlock.SMFieldLabel">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSubtleBrush}"/>
+        <Setter Property="Margin" Value="2,0,0,4"/>
+    </Style>
+    <Style Selector="TextBlock.SMHint">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <!-- ".lua" after the id field: the id is the file name, and showing the extension says so without a word. -->
+    <Style Selector="TextBlock.SMFileSuffix">
+        <Setter Property="FontSize" Value="13.5"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Margin" Value="8,0,2,0"/>
+    </Style>
+    <!-- A consequence to know before saving, not an error. -->
+    <Style Selector="TextBlock.SMWarning">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="#FFD39A2C"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="Margin" Value="0,2,0,0"/>
+    </Style>
+
+    <!-- Build status line: the result of the last build, coloured by how it went. -->
+    <Style Selector="TextBlock.SMBuildStatus">
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.SMBuildStatus.Succeeded">
+        <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.SMBuildStatus.Failed">
+        <Setter Property="Foreground" Value="#FFB0413C"/>
+    </Style>
+
+    <!-- One diagnostic: a severity mark, where, the code, what. Double-click opens the place in the editor. -->
+    <Style Selector="Border.SMDiagnostic">
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceRowBrush}"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="10,6"/>
+        <Setter Property="Margin" Value="0,0,0,4"/>
+    </Style>
+    <Style Selector="Ellipse.SMSeverity">
+        <Setter Property="Width" Value="8"/>
+        <Setter Property="Height" Value="8"/>
+        <Setter Property="Fill" Value="#FFD39A2C"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Ellipse.SMSeverity.Error">
+        <Setter Property="Fill" Value="#FFB0413C"/>
+    </Style>
+    <Style Selector="TextBlock.SMLocation">
+        <Setter Property="FontFamily" Value="Consolas, Cascadia Mono, monospace"/>
+        <Setter Property="FontSize" Value="12.5"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.SMCode">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.SMMessage">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+</Styles>

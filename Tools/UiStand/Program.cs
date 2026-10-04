@@ -27,7 +27,7 @@ class App : Application
         foreach (var d in new[] { "NeutralColors", "AccentColors", "SharedControlTemplates" })
             Resources.MergedDictionaries.Add(new ResourceInclude(new Uri("avares://TweakerUI/")) { Source = new Uri($"avares://TweakerUI/Themes/{d}.axaml") });
         Styles.Add(new FluentTheme());
-        foreach (var s in new[] { "ScrollBarStyles", "SharedStyles", "Styles", "SkinChangerStyles", "TweakerStyles", "SettingsStyles", "StatusBarStyles", "QuickPlayerStyles" })
+        foreach (var s in new[] { "ScrollBarStyles", "SharedStyles", "Styles", "SkinChangerStyles", "TweakerStyles", "SettingsStyles", "StatusBarStyles", "QuickPlayerStyles", "ScriptsStyles" })
             Styles.Add(new StyleInclude(new Uri("avares://TweakerUI/")) { Source = new Uri($"avares://TweakerUI/Themes/{s}.axaml") });
     }
 }
@@ -39,7 +39,7 @@ static class Program
     {
         if (args.Length == 0)
         {
-            Console.WriteLine("modes: shoot <dir> | compare <dirA> <dirB> | diffmap <a.png> <b.png> <out.png> | transitions | colors <dir> | mem [fast] [rounds=N] [cycles=N] | tabs");
+            Console.WriteLine("modes: shoot <dir> | compare <dirA> <dirB> | diffmap <a.png> <b.png> <out.png> | transitions | colors <dir> | mem [fast] [rounds=N] [cycles=N] | tabs | scripts <dir> | scriptdev <dir> | readme <dir>");
             return 2;
         }
 
@@ -60,6 +60,9 @@ static class Program
             case "colors": Snapshots.ColorsTab(args[1]); return 0;
             case "mem": Memory.Run(args); return 0;
             case "tabs": TabLeak.Run(); return 0;
+            case "scripts": return ScriptsTab.Run(args[1]);
+            case "scriptdev": return ScriptDevTab.Run(args[1]);
+            case "readme": return ReadmeShots.Run(args[1]);
             default: Console.WriteLine($"unknown mode {args[0]}"); return 2;
         }
     }
@@ -87,12 +90,12 @@ static class Snapshots
         ("icon-sc-rail", "<Button Classes='IconButton SCRailButton'><Path Data='M0 0L10 10M10 0L0 10' Stroke='Gray' StrokeThickness='2' Width='12' Height='12'/></Button>", new[] { "rest", "pointerover" }),
         ("icon-qp", "<Button Classes='IconButton QPIconButton'><Path Data='M0 0L10 10M10 0L0 10' Stroke='Gray' StrokeThickness='2' Width='12' Height='12'/></Button>", new[] { "rest", "pointerover" }),
         ("icon-qp-row", "<Button Classes='IconButton QPRowIconButton'><Path Data='M0 0L10 10M10 0L0 10' Stroke='Gray' StrokeThickness='2' Width='12' Height='12'/></Button>", new[] { "rest", "pointerover" }),
-        ("list-sc", "<ListBox Classes='SCSkinsList' Width='260'><ListBoxItem Name='t' Height='40'>Item</ListBoxItem><ListBoxItem>Other</ListBoxItem></ListBox>", new[] { "rest", "pointerover", "selected" }),
+        ("list-sc", "<ListBox Classes='RowList' Width='260'><ListBoxItem Name='t' Height='40'>Item</ListBoxItem><ListBoxItem>Other</ListBoxItem></ListBox>", new[] { "rest", "pointerover", "selected" }),
         ("list-qp-playlist", "<ListBox Classes='QPPlaylistList' Width='260'><ListBoxItem Name='t' Height='40'>Item</ListBoxItem><ListBoxItem>Other</ListBoxItem></ListBox>", new[] { "rest", "pointerover", "selected" }),
         ("list-qp-queue", "<ListBox Classes='QPQueueList' Width='260'><ListBoxItem Name='t' Height='40'>Item</ListBoxItem><ListBoxItem>Other</ListBoxItem></ListBox>", new[] { "rest", "pointerover", "selected" }),
     };
 
-    static readonly string[] Views = { "SkinChangerView", "ColorsConfiguratorView", "TweakerView", "QuickPlayerView", "SettingView" };
+    static readonly string[] Views = { "SkinChangerView", "ColorsConfiguratorView", "TweakerView", "QuickPlayerView", "ScriptsView", "ScriptDevView", "SettingView" };
 
     // Headless animation clocks don't advance reliably (a transition can sit at its first frame forever),
     // and Avalonia 12 keeps IClock/ClockBase internal, so there is no manual clock to drive instead. Dropping
@@ -306,7 +309,7 @@ static class Transitions
         var buttons = new[]
         {
             "CCDiscard", "CCGhost", "CCGradientButton", "CCNegative", "CCNewPalette", "CCPaletteRow", "CCPaletteRow Selected", "CCSecondary",
-            "CCTab", "IconResetButton", "QPCharacterHeader", "QPTrackRemoveButton", "QPTransportButton", "SCSegment", "STBrowseButton",
+            "CCTab", "IconResetButton", "QPCharacterHeader", "QPTrackRemoveButton", "QPTransportButton", "SCSegment", "ActionButton", "ActionButton STBrowseButton",
             "TWCommandButton", "TitleBarButton", "TitleBarButton TitleBarButtonClose", "UnderscoredButton",
             "IconButton", "IconButton Danger", "IconButton SCRailButton", "IconButton QPIconButton", "IconButton QPRowIconButton",
         };
@@ -316,7 +319,7 @@ static class Transitions
         cases.Add(("ToggleButton.Switch", "<ToggleButton Name='t' Classes='Switch'/>", new[] { "pointerover", "checked" }));
         foreach (var b in new[] { "NavItem", "QPCharacterButton", "QPSegmentButton", "QPSegmentIconButton" })
             cases.Add(($"RadioButton.{b}", $"<RadioButton Name='t' Classes='{b}' Content='Label' Width='160' Height='36'/>", new[] { "pointerover", "checked" }));
-        foreach (var l in new[] { "QPPlaylistList", "QPQueueList", "SCSkinsList" })
+        foreach (var l in new[] { "QPPlaylistList", "QPQueueList", "RowList" })
             cases.Add(($"ListBox.{l} item", $"<ListBox Classes='{l}' Width='250'><ListBoxItem Name='t' Height='40'>Item</ListBoxItem><ListBoxItem>Other</ListBoxItem></ListBox>", new[] { "pointerover", "selected" }));
         cases.Add(("Border.ToggleRow", "<Border Name='t' Classes='ToggleRow' Width='250' Height='40'><TextBlock Text='Row'/></Border>", new[] { "pointerover" }));
 

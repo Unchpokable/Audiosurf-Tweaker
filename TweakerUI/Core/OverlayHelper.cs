@@ -43,8 +43,9 @@ namespace TweakerUI.Core
         /// The L3 grammar this build speaks. The plugin sends its own in HANDSHAKE_ACK; a mismatch is a failed
         /// handshake, not a degraded one - both sides would otherwise keep talking past each other in a protocol
         /// neither fully implements. Plugin side: k_protocol_version in src/ipc/overlay_ipc.cxx.
+        /// 2: the SCRIPT_* ops (Docs/Internal/overlay-scripts.md).
         /// </summary>
-        private const int ExpectedProtocolVersion = 1;
+        private const int ExpectedProtocolVersion = 2;
 
         // Must match TweakerPlugin's presence::claim() (src/plugin/presence.cxx) exactly, including the
         // deliberate absence of any version or path component - the point is that a newer host can still
@@ -106,6 +107,13 @@ namespace TweakerUI.Core
         /// the two halves would drift apart.
         /// </summary>
         internal static event EventHandler<string> QuickPlayerRequested;
+
+        /// <summary>
+        /// A SCRIPT_* op arrived (Docs/Internal/overlay-scripts.md), verbatim, on the bridge's thread. Same reasoning
+        /// as QuickPlayerRequested: the grammar is TweakerCore.Scripting.ScriptWire's, and the state it describes is
+        /// ScriptsOverlayBridge's.
+        /// </summary>
+        internal static event EventHandler<string> ScriptsMessageReceived;
 
         internal static PluginLinkState LinkState
         {
@@ -236,6 +244,19 @@ namespace TweakerUI.Core
                 return;
 
             AudiosurfHandle.Instance.OverlayCommand(opLine);
+        }
+
+        /// <summary>
+        /// Sends one already-formatted SCRIPT_* op line. Returns false when there is no connected plugin to send it
+        /// to - the caller decides what that means (a switch that cannot be confirmed must not pretend it was sent).
+        /// </summary>
+        internal static bool SendScripts(string opLine)
+        {
+            if (!IsReady || string.IsNullOrEmpty(opLine))
+                return false;
+
+            AudiosurfHandle.Instance.OverlayCommand(opLine);
+            return true;
         }
 
         private static bool IsReady
@@ -701,7 +722,13 @@ namespace TweakerUI.Core
             }
 
             if (content.StartsWith(QuickPlayerNotifyPrefix, StringComparison.Ordinal))
+            {
                 QuickPlayerRequested?.Invoke(null, content);
+                return;
+            }
+
+            if (content.StartsWith(TweakerCore.Scripting.ScriptWire.Prefix, StringComparison.Ordinal))
+                ScriptsMessageReceived?.Invoke(null, content);
         }
 
         /// <summary>

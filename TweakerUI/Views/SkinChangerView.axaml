@@ -63,7 +63,7 @@
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                            <ListBox x:Name="SkinsListBox" Classes="SCSkinsList" IsVisible="{Binding !LoadingVisible}"
+                            <ListBox x:Name="SkinsListBox" Classes="RowList" IsVisible="{Binding !LoadingVisible}"
                                      ItemsSource="{Binding Skins}" SelectedItem="{Binding SelectedItem, Mode=TwoWay}"
                                      DragDrop.AllowDrop="True" KeyDown="OnSkinsListKeyDown">
                                 <ListBox.ItemTemplate>

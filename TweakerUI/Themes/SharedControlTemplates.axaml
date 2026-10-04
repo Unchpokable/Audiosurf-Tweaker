@@ -139,4 +139,50 @@
         </Border>
     </ControlTemplate>
 
+    <!-- The wrapping sibling of FlatTextBoxTemplate, for text that is one value but not one short line (Script
+    Dev's description). Same parts and names, so the same :pointerover/:focus styles reach it. The differences
+    are exactly the two FlatTextBoxTemplate's comment forbids for a single line, and why they are right here:
+    the text wraps instead of scrolling sideways, and the ScrollViewer scrolls vertically - the field grows with
+    its text up to the MaxHeight its style sets, and scrolls past that. Text and placeholder sit at the top, not
+    centred: centring is what a single line needs, and a growing field has nothing to centre in. -->
+    <ControlTemplate x:Key="FlatTextAreaTemplate" TargetType="TextBox">
+        <Border Name="PART_Border"
+                Cursor="IBeam"
+                Background="{TemplateBinding Background}"
+                BorderBrush="{TemplateBinding BorderBrush}"
+                BorderThickness="{TemplateBinding BorderThickness}"
+                CornerRadius="{TemplateBinding CornerRadius}"
+                Padding="{TemplateBinding Padding}">
+            <Border.Transitions>
+                <Transitions>
+                    <core:CrossfadeBrushTransition Property="BorderBrush" Duration="0:0:0.15"/>
+                </Transitions>
+            </Border.Transitions>
+            <ScrollViewer Name="PART_ScrollViewer"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
+                <Panel>
+                    <TextBlock Name="PART_Placeholder"
+                               Opacity="0.5"
+                               Text="{TemplateBinding PlaceholderText}"
+                               TextAlignment="{TemplateBinding TextAlignment}"
+                               TextWrapping="Wrap"
+                               VerticalAlignment="Top"
+                               IsVisible="{TemplateBinding Text, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                    <TextPresenter Name="PART_TextPresenter"
+                                   Text="{TemplateBinding Text, Mode=TwoWay}"
+                                   CaretIndex="{TemplateBinding CaretIndex}"
+                                   SelectionStart="{TemplateBinding SelectionStart}"
+                                   SelectionEnd="{TemplateBinding SelectionEnd}"
+                                   TextAlignment="{TemplateBinding TextAlignment}"
+                                   TextWrapping="Wrap"
+                                   SelectionBrush="{DynamicResource AccentSelectionBrush}"
+                                   SelectionForegroundBrush="{DynamicResource TextOnAccentBrush}"
+                                   CaretBrush="{TemplateBinding CaretBrush}"
+                                   VerticalAlignment="Top"/>
+                </Panel>
+            </ScrollViewer>
+        </Border>
+    </ControlTemplate>
+
 </ResourceDictionary>

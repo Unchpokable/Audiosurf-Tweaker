@@ -116,4 +116,90 @@
         <Setter Property="Opacity" Value="0.4"/>
     </Style>
 
+    <!-- Selectable list of rows (Skin Changer's skins, Script Dev's projects): each item a rounded row surface,
+    hover darkens it, selection is the accent wash. Was Skin Changer's SCSkinsList. -->
+    <Style Selector="ListBox.RowList">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="Padding" Value="0"/>
+    </Style>
+    <Style Selector="ListBox.RowList ListBoxItem">
+        <Setter Property="Padding" Value="0"/>
+        <Setter Property="Margin" Value="0,0,0,8"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceRowBrush}"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+        <Setter Property="Template" Value="{StaticResource FlatListItemTemplate}"/>
+    </Style>
+    <Style Selector="ListBox.RowList ListBoxItem:pointerover">
+        <Setter Property="Background" Value="{DynamicResource SurfaceRowHoverBrush}"/>
+    </Style>
+    <!-- The skin mockup's own literal #B7C3F7 read as too bright/blue against real skin data - shifted
+    toward the app's purple accent family and toned down a notch. -->
+    <Style Selector="ListBox.RowList ListBoxItem:selected">
+        <Setter Property="Background" Value="{DynamicResource AccentSelectedBrush}"/>
+    </Style>
+    <Style Selector="ListBox.RowList ListBoxItem:selected:pointerover">
+        <Setter Property="Background" Value="{DynamicResource AccentSelectedBrush}"/>
+    </Style>
+
+    <!-- Text button in the accent wash: Settings' Browse…/Select…, Script Dev's Build/Create. Was Settings'
+    STBrowseButton until a second tab needed it; the margin Settings puts between it and its path field stays
+    there as a modifier. -->
+    <Style Selector="Button.ActionButton">
+        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="FontSize" Value="13.5"/>
+        <Setter Property="Padding" Value="14,8"/>
+        <Setter Property="VerticalAlignment" Value="Stretch"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template" Value="{StaticResource FlatButtonTemplate}"/>
+    </Style>
+    <Style Selector="Button.ActionButton:pointerover">
+        <Setter Property="Background" Value="{DynamicResource AccentPressedBrush}"/>
+    </Style>
+    <Style Selector="Button.ActionButton:disabled">
+        <Setter Property="Opacity" Value="0.5"/>
+    </Style>
+
+    <!-- Single-line text field (FlatTextBoxTemplate - see avalonia-pitfalls.md §2 before writing another).
+    Was Settings' STPathBox; the path fields there and Script Dev's inputs are this. -->
+    <Style Selector="TextBox.TextField">
+        <!-- Medium rather than the default Regular weight - Inter at Regular/13.5px read as thin
+        and slightly harsh against the field's light background (per direct feedback); Medium is
+        still clearly a "field", not a heading, but renders smoother at this size. -->
+        <Setter Property="FontWeight" Value="Medium"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceSoftBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource TextSecondaryBrush}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Padding" Value="10,8"/>
+        <Setter Property="FontSize" Value="13.5"/>
+        <Setter Property="MinHeight" Value="0"/>
+        <Setter Property="VerticalContentAlignment" Value="Center"/>
+        <Setter Property="Template" Value="{StaticResource FlatTextBoxTemplate}"/>
+    </Style>
+    <!-- Modifier: a TextField whose text wraps and grows with it, to about ten lines, then scrolls
+    (FlatTextAreaTemplate). Enter still does not make a new line - the value is one line of text, only shown
+    over several; a field whose value may truly hold line breaks sets AcceptsReturn itself. -->
+    <Style Selector="TextBox.TextField.TextArea">
+        <Setter Property="Template" Value="{StaticResource FlatTextAreaTemplate}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="AcceptsReturn" Value="False"/>
+        <Setter Property="VerticalContentAlignment" Value="Top"/>
+        <Setter Property="MaxHeight" Value="200"/>
+    </Style>
+    <Style Selector="TextBox.TextField:pointerover /template/ Border#PART_Border">
+        <Setter Property="BorderBrush" Value="{DynamicResource BorderStrongBrush}"/>
+    </Style>
+    <Style Selector="TextBox.TextField:focus /template/ Border#PART_Border">
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
+    </Style>
+
 </Styles>

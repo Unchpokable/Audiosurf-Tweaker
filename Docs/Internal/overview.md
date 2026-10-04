@@ -119,6 +119,14 @@ Tweaker состоит из трёх долгоживущих процессов
 
 **Skybox Replacer** (`TweakerPlugin/src/skybox/`, см. `Docs/Internal/skybox-replacer.md`) — подмена скайсферы игры на cube map — работает на живой игре и давно вышел за рамки прототипа: процедурные (шейдерные) небеса, сменные пакеты `.sky` (каталог или zip), спрайтовый геометрический слой, музыкальный интерфейс, вкладка Skybox в оверлее с панелью параметров и горячей перезагрузкой. Настройки — `TweakerStuff\SkyboxReplacer\module.json`, пакеты — `Skyboxes\`, пользовательская документация формата — `Docs/skyboxes.md`.
 
+**Lua-скрипты** (`TweakerPlugin/src/lua/`, проект — `Docs/Internal/lua-scripting.md`, путь от прототипа к
+инструменту — `Docs/Internal/lua-engine-fix-roadmap.md`, закрыт 27.09.2026) — работают на живой игре: скрипты
+ждут загрузки игры, падение или тормоза одного скрипта изолированы (приостановка, диагностика во вкладке
+Scripts оверлея), скрипты собираются из проектов компоновщиком `twllink` (`TweakerLuaLinker/`, поставляется
+в `DevTools\Binaries\` рядом с `TweakerUI.exe`) с проверками по фактическому API плагина. Пользовательская документация —
+`Docs/scripting.md`. **Не хватает стороны хоста**: в TweakerUI нет модуля управления скриптами и проектами —
+это следующая работа, `Docs/Internal/script-manager-roadmap.md`.
+
 Не реализовано (сознательно вне объёма): `MusicBrainzCoverArtProvider` (есть только интерфейс-заготовка `ICoverArtProvider`), автообновление приложения (референс-код есть в теге `archive/beta-alt-design-updater`, но на WPF — портировать as-is не имеет смысла), транспорт Quick Player во внутриигровом оверлее (очередь для него уже доступна — `PlaybackController.GetUpcoming`/`GetRecent`/`PlaybackOrderChanged`, см. Фазу 6 в `roadmap.md`).
 
 Server Swapper и Discord Rich Presence отменены и удалены — первый не даёт ничего сверх официального установщика единственного альтернативного сервера, второй был нефункциональной заготовкой.

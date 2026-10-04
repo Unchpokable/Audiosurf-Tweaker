@@ -1,0 +1,272 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:TweakerUI.ViewModels"
+             xmlns:models="clr-namespace:TweakerUI.Models"
+             xmlns:scripting="clr-namespace:TweakerCore.Scripting;assembly=TweakerCore"
+             x:Class="TweakerUI.Views.ScriptDevView"
+             x:DataType="vm:ScriptDevViewModel">
+
+    <!-- Script projects (script-manager-roadmap.md, С4): the list and the editor on the left; on the right the
+    selected project (its details, or a form editing them) or the new-project form. -->
+    <Border Background="{DynamicResource AppBackgroundBrush}">
+        <Grid Margin="20" RowDefinitions="Auto,*">
+
+            <Border Grid.Row="0" Classes="Card Tinted" Margin="0,0,0,14" IsVisible="{Binding HasNotice}">
+                <TextBlock Classes="SMNotice" Text="{Binding Notice}"/>
+            </Border>
+
+            <Grid Grid.Row="1" ColumnDefinitions="300,14,*">
+
+                <Grid Grid.Column="0" RowDefinitions="*,14,Auto">
+                    <!-- Projects -->
+                    <Border Grid.Row="0" Classes="Card Roomy">
+                        <Grid RowDefinitions="Auto,*">
+                            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,12">
+                                <TextBlock Grid.Column="0" Text="Projects" Classes="CardTitle" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                    <Button Classes="IconButton" Command="{Binding StartCreateCommand}" ToolTip.Tip="New project">
+                                        <Path Classes="SMIcon" Data="{StaticResource IconAdd}"/>
+                                    </Button>
+                                    <Button Classes="IconButton" Command="{Binding OpenExistingCommand}" ToolTip.Tip="Open a folder as a project - it stays where it is and is remembered here">
+                                        <Path Classes="SMIcon" Data="{StaticResource IconFolder}"/>
+                                    </Button>
+                                    <Button Classes="IconButton" Command="{Binding RefreshCommand}" ToolTip.Tip="Read the project list again">
+                                        <Path Classes="SMIcon" Data="{StaticResource IconRefresh}"/>
+                                    </Button>
+                                </StackPanel>
+                            </Grid>
+
+                            <TextBlock Grid.Row="1" Classes="EmptyState" TextWrapping="Wrap" MaxWidth="240" IsVisible="{Binding !HasProjects}"
+                                       Text="No projects yet. Create one with +, or open a folder that has a twproject.json."/>
+
+                            <ListBox Grid.Row="1" Classes="RowList" IsVisible="{Binding HasProjects}"
+                                     ItemsSource="{Binding Projects}" SelectedItem="{Binding Selected, Mode=TwoWay}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="models:ScriptProjectRowViewModel">
+                                        <StackPanel Classes="SMProjectRow">
+                                            <TextBlock Classes="SMProjectTitle" Text="{Binding Title}"/>
+                                            <TextBlock Classes="SMSubtitle" Text="{Binding Subtitle}"/>
+                                            <TextBlock Classes="SMProblem" Text="{Binding ShortProblem}" IsVisible="{Binding HasProblem}"/>
+                                            <TextBlock Classes="SMProblem" Text="Folder not found" IsVisible="{Binding IsMissing}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+
+                    <!-- Editor: the installed ones Tweaker found; the choice is remembered. -->
+                    <Border Grid.Row="2" Classes="Card Roomy">
+                        <StackPanel>
+                            <TextBlock Text="Editor" Classes="CardTitle" Margin="0,0,0,10"/>
+                            <TextBlock Classes="SMHint" IsVisible="{Binding !HasEditors}"
+                                       Text="No supported editor found. Tweaker looks for Visual Studio Code, Cursor, Sublime Text, Notepad++, Vim and Neovim."/>
+                            <ListBox Classes="RowList" IsVisible="{Binding HasEditors}"
+                                     ItemsSource="{Binding Editors}" SelectedItem="{Binding SelectedEditor, Mode=TwoWay}">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="scripting:ScriptEditor">
+                                        <StackPanel Classes="SMEditorRow" ToolTip.Tip="{Binding ExecutablePath}">
+                                            <TextBlock Classes="SMProjectTitle" Text="{Binding Name}"/>
+                                            <TextBlock Classes="SMPath" Text="{Binding ExecutablePath}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                            <TextBlock Classes="SMHint" Margin="0,2,0,0" IsVisible="{Binding HasEditors}"
+                                       Text="Opened with twllink on its PATH, so the editor's terminal can run it."/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Border Grid.Column="2" Classes="Card Roomy">
+                    <Panel>
+                        <TextBlock Classes="EmptyState" IsVisible="{Binding ShowNothingSelected}"
+                                   Text="Select a project on the left, or create one with +."/>
+
+                        <!-- New project -->
+                        <Grid IsVisible="{Binding IsCreating}" RowDefinitions="Auto,*">
+                            <!-- Create/Cancel in the heading: the form is taller than the smallest window, and the buttons
+                            must not be below the fold. -->
+                            <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+                                <TextBlock Grid.Column="0" Classes="CardTitle" Text="New project" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                    <Button Classes="ActionButton" Content="Create" Command="{Binding CreateCommand}"/>
+                                    <Button Classes="ActionButton" Content="Cancel" Command="{Binding CancelCreateCommand}"/>
+                                </StackPanel>
+                            </Grid>
+                            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Spacing="4" MaxWidth="560" HorizontalAlignment="Left">
+
+                                    <TextBlock Classes="SMFieldLabel" Text="Name"/>
+                                    <TextBox Classes="TextField" Text="{Binding NewName, Mode=TwoWay}" PlaceholderText="My HUD"/>
+                                    <TextBlock Classes="SMProblem" Text="{Binding NewNameProblem}" IsVisible="{Binding NewNameProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    <TextBlock Classes="SMHint" Text="What the Scripts tabs show. Any text on one line."/>
+
+                                    <TextBlock Classes="SMFieldLabel" Text="Script file (id)" Margin="2,12,0,4"/>
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBox Grid.Column="0" Classes="TextField" Text="{Binding NewId, Mode=TwoWay}" PlaceholderText="my_hud"/>
+                                        <TextBlock Grid.Column="1" Classes="SMFileSuffix" Text=".lua"/>
+                                    </Grid>
+                                    <TextBlock Classes="SMProblem" Text="{Binding NewIdProblem}" IsVisible="{Binding NewIdProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    <TextBlock Classes="SMHint"
+                                               Text="The script's file name in the game. The plugin tells scripts apart by it, so it is lowercase: no two spellings of one name. Follows the name until you change it."/>
+
+                                    <TextBlock Classes="SMFieldLabel" Text="Description (optional) - wraps as you type, saved as one line" Margin="2,12,0,4"/>
+                                    <TextBox Classes="TextField TextArea" Text="{Binding NewDescription, Mode=TwoWay}" PlaceholderText="What it does, and anything a player should know before switching it on."/>
+
+                                    <TextBlock Classes="SMFieldLabel" Text="Start from" Margin="2,12,0,4"/>
+                                    <ListBox Classes="RowList" ItemsSource="{Binding Templates}" SelectedItem="{Binding NewTemplate, Mode=TwoWay}">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate x:DataType="models:ProjectTemplate">
+                                                <StackPanel Classes="SMEditorRow">
+                                                    <TextBlock Classes="SMProjectTitle" Text="{Binding Title}"/>
+                                                    <TextBlock Classes="SMSubtitle" Text="{Binding Hint}" TextWrapping="Wrap"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+
+                                    <TextBlock Classes="SMProblem" Text="{Binding CreateProblem}" IsVisible="{Binding CreateProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    <TextBlock Classes="SMHint" Text="{Binding NewProjectFolderHint}" Margin="0,4,0,0"/>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Grid>
+
+                        <!-- The selected project -->
+                        <Grid IsVisible="{Binding ShowDetails}" RowDefinitions="Auto,Auto,Auto,*">
+                            <!-- Details, or the form editing them -->
+                            <StackPanel Grid.Row="0" IsVisible="{Binding !IsEditing}">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Classes="CardTitle" Text="{Binding Selected.Title}" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Classes="SMSubtitle" Text="{Binding Selected.Subtitle}"/>
+                                        <TextBlock Classes="SMPath" Text="{Binding Selected.Root}" ToolTip.Tip="{Binding Selected.Root}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Top">
+                                        <Button Classes="IconButton" Command="{Binding StartEditCommand}" ToolTip.Tip="Edit the name, id, version, author and description">
+                                            <Path Classes="SMIcon" Data="{StaticResource IconRename}"/>
+                                        </Button>
+                                        <Button Classes="IconButton" Command="{Binding OpenProjectFolderCommand}" ToolTip.Tip="Open the project folder">
+                                            <Path Classes="SMIcon" Data="{StaticResource IconFolder}"/>
+                                        </Button>
+                                        <Button Classes="IconButton Danger" Command="{Binding ForgetCommand}" IsVisible="{Binding Selected.IsRemembered}"
+                                                ToolTip.Tip="Remove from this list - the folder and its files stay where they are">
+                                            <Path Classes="SMIcon" Stroke="#FFB0413C" Data="M6 6l12 12 M18 6L6 18"/>
+                                        </Button>
+                                        <Button Classes="IconButton Danger" Command="{Binding DeleteProjectCommand}"
+                                                ToolTip.Tip="Delete the project - its folder goes to the Recycle Bin">
+                                            <Path Classes="SMIcon" Stroke="#FFB0413C" Data="{StaticResource IconDelete}"/>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Classes="SMDescription" Text="{Binding Selected.Description}" IsVisible="{Binding Selected.HasDescription}"/>
+                                <TextBlock Classes="SMProblem" Text="{Binding Selected.Problem}" IsVisible="{Binding Selected.HasProblem}"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Row="0" IsVisible="{Binding IsEditing}" Spacing="4">
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,6">
+                                    <TextBlock Grid.Column="0" Classes="CardTitle" Text="Edit project" VerticalAlignment="Center"/>
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                        <Button Classes="ActionButton" Content="Save" Command="{Binding SaveEditCommand}"/>
+                                        <Button Classes="ActionButton" Content="Cancel" Command="{Binding CancelEditCommand}"/>
+                                    </StackPanel>
+                                </Grid>
+                                <Grid ColumnDefinitions="*,14,*">
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Classes="SMFieldLabel" Text="Name"/>
+                                        <TextBox Classes="TextField" Text="{Binding EditName, Mode=TwoWay}"/>
+                                        <TextBlock Classes="SMProblem" Text="{Binding EditNameProblem}" IsVisible="{Binding EditNameProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Classes="SMFieldLabel" Text="Script file (id)"/>
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBox Grid.Column="0" Classes="TextField" Text="{Binding EditId, Mode=TwoWay}"/>
+                                            <TextBlock Grid.Column="1" Classes="SMFileSuffix" Text=".lua"/>
+                                        </Grid>
+                                        <TextBlock Classes="SMProblem" Text="{Binding EditIdProblem}" IsVisible="{Binding EditIdProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Classes="SMWarning" Text="{Binding IdChangeWarning}" IsVisible="{Binding IdChangeWarning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                <Grid ColumnDefinitions="*,14,*" Margin="0,6,0,0">
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Classes="SMFieldLabel" Text="Author"/>
+                                        <TextBox Classes="TextField" Text="{Binding EditAuthor, Mode=TwoWay}"/>
+                                        <TextBlock Classes="SMProblem" Text="{Binding EditAuthorProblem}" IsVisible="{Binding EditAuthorProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Classes="SMFieldLabel" Text="Version"/>
+                                        <TextBox Classes="TextField" Text="{Binding EditVersion, Mode=TwoWay}"/>
+                                        <TextBlock Classes="SMProblem" Text="{Binding EditVersionProblem}" IsVisible="{Binding EditVersionProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Classes="SMFieldLabel" Text="Description - wraps as you type, saved as one line" Margin="2,6,0,4"/>
+                                <TextBox Classes="TextField TextArea" Text="{Binding EditDescription, Mode=TwoWay}"/>
+                                <TextBlock Classes="SMProblem" Text="{Binding EditDescriptionProblem}" IsVisible="{Binding EditDescriptionProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                <TextBlock Classes="SMHint" Margin="0,4,0,0"
+                                           Text="Saved into twproject.json - only these fields change; comments and everything else in the file stay as they are."/>
+                            </StackPanel>
+
+                            <!-- Actions -->
+                            <Border Grid.Row="1" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,1" Margin="0,14,0,12" Padding="0,12">
+                                <StackPanel Spacing="10">
+                                    <WrapPanel Orientation="Horizontal">
+                                        <Button Classes="ActionButton" Content="Build" Margin="0,0,8,0" Command="{Binding BuildCommand}"
+                                                ToolTip.Tip="Build into the project's build folder"/>
+                                        <Button Classes="ActionButton" Content="Build and install" Margin="0,0,8,0" Command="{Binding InstallCommand}"
+                                                ToolTip.Tip="{Binding InstallHint}"/>
+                                        <Button Classes="ActionButton" Margin="0,0,8,0" Content="{Binding OpenInEditorText}" Command="{Binding OpenInEditorCommand}"
+                                                ToolTip.Tip="Open the project folder in the editor chosen on the left"/>
+                                    </WrapPanel>
+                                    <WrapPanel Orientation="Horizontal">
+                                        <Border Classes="ToggleRow" Margin="0,0,16,0">
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <ToggleButton Classes="Switch" VerticalAlignment="Center" IsChecked="{Binding RebuildOnSave, Mode=TwoWay}"/>
+                                                <TextBlock Classes="ToggleLabel" Text="Rebuild on save" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Classes="ToggleRow" IsEnabled="{Binding RebuildOnSave}">
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <ToggleButton Classes="Switch" VerticalAlignment="Center" IsChecked="{Binding InstallOnRebuild, Mode=TwoWay}"/>
+                                                <TextBlock Classes="ToggleLabel" Text="and install into the game" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Last build -->
+                            <StackPanel Grid.Row="2" Spacing="3" Margin="0,0,0,10">
+                                <TextBlock Classes="SMBuildStatus" Classes.Succeeded="{Binding Selected.Succeeded}" Classes.Failed="{Binding Selected.Failed}"
+                                           Text="{Binding Selected.BuildStatus}" TextWrapping="Wrap"/>
+                                <TextBlock Classes="SMHint" Text="{Binding Selected.BuildDetail}" IsVisible="{Binding Selected.BuildDetail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                <TextBlock Classes="SMHint" Text="Not built in this session yet." IsVisible="{Binding Selected.BuildStatus, Converter={x:Static StringConverters.IsNullOrEmpty}}"/>
+                            </StackPanel>
+
+                            <ScrollViewer Grid.Row="3" IsVisible="{Binding Selected.HasDiagnostics}" HorizontalScrollBarVisibility="Disabled">
+                                <ItemsControl ItemsSource="{Binding Selected.Diagnostics}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="models:DiagnosticRowViewModel">
+                                            <Border Classes="SMDiagnostic" DoubleTapped="OnDiagnosticDoubleTapped"
+                                                    ToolTip.Tip="Double-click to open this place in the editor">
+                                                <Grid ColumnDefinitions="Auto,*">
+                                                    <Ellipse Grid.Column="0" Classes="SMSeverity" Classes.Error="{Binding IsError}" VerticalAlignment="Top" Margin="0,6,10,0"/>
+                                                    <StackPanel Grid.Column="1">
+                                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                                            <TextBlock Classes="SMLocation" Text="{Binding Location}"/>
+                                                            <TextBlock Classes="SMCode" Text="{Binding Code}" VerticalAlignment="Center"/>
+                                                        </StackPanel>
+                                                        <TextBlock Classes="SMMessage" Text="{Binding Message}"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+                    </Panel>
+                </Border>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

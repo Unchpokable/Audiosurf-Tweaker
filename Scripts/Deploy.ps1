@@ -155,17 +155,19 @@ Write-Host "    $legacyExe -> $tweakerOut"
 
 # --- 3. twllink: the Lua project linker, Native AOT --------------------------------------------
 # One self-contained exe with no runtime to install (Docs/Internal/lua-engine-fix-roadmap.md §9.2,
-# §9.9). It goes beside TweakerUI.exe, which is what will run it for its script tools, and it is what
-# a script author types into a terminal. Not part of PluginPayload\ - it is a tool of the host, and
-# the game never sees it. Published into its own folder and only the exe is taken: Native AOT leaves
-# ~16 MB of symbols next to it.
+# §9.9). It goes to DevTools\Binaries\ beside TweakerUI.exe - the folder the Script Dev tab runs it from
+# and puts on an editor's PATH (Docs/Internal/script-manager-roadmap.md §5, С1). Not part of
+# PluginPayload\ - it is a tool of the host, and the game never sees it. Published into its own
+# folder and only the exe is taken: Native AOT leaves ~16 MB of symbols next to it.
 $linkerProj = Join-Path $repoRoot "TweakerLuaLinker\TweakerLuaLinker.csproj"
 $linkerOut = Join-Path $repoRoot "TweakerLuaLinker\bin\publish"
+$devToolsOut = Join-Path $tweakerOut "DevTools\Binaries"
 Write-Host "==> Publishing twllink ($Configuration, Native AOT)"
 dotnet publish $linkerProj -c $Configuration -p:TwPublish=aot -o $linkerOut
 if ($LASTEXITCODE -ne 0) { throw "twllink publish failed - Native AOT links with MSVC (Visual Studio's C++ workload)" }
-Copy-Item (Join-Path $linkerOut "twllink.exe") -Destination $tweakerOut -Force
-Write-Host "    $(Join-Path $linkerOut 'twllink.exe') -> $tweakerOut"
+New-Item -ItemType Directory -Force -Path $devToolsOut | Out-Null
+Copy-Item (Join-Path $linkerOut "twllink.exe") -Destination $devToolsOut -Force
+Write-Host "    $(Join-Path $linkerOut 'twllink.exe') -> $devToolsOut"
 
 # --- Summary ------------------------------------------------------------------------------------
 $stats = Get-ChildItem $distDir -Recurse -File | Measure-Object -Property Length -Sum

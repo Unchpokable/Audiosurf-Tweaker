@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
 
 using TweakerLuaLinker.Api;
 using TweakerLuaLinker.Diagnostics;
@@ -25,12 +24,9 @@ namespace TweakerLuaLinker
         public const int ExitUsage = 2;
         public const int ExitInternal = 3;
 
-        /// <summary>How long a folder has to be quiet before --watch rebuilds: one save is often several writes.</summary>
-        public static readonly TimeSpan WatchSettle = TimeSpan.FromMilliseconds(200);
-
         private const string Usage =
             "usage: twllink [--project <dir|twproject.json>] [--out <file.lua|dir>] [--install [--game <dir>]]\n" +
-            "               [--watch] [--json] [--api <api.json>]\n" +
+            "               [--json] [--api <api.json>]\n" +
             "       twllink --new <template> <dir>\n" +
             "\n" +
             "  Builds a script project into one .lua file for engine\\TweakerStuff\\Scripts\\, plus a\n" +
@@ -40,8 +36,7 @@ namespace TweakerLuaLinker
             "  --out       where to write the script (default: <project>/build/<id>.lua)\n" +
             "  --install   also copy the script and its map into the game's Scripts folder\n" +
             "  --game      the Audiosurf folder for --install (default: the AUDIOSURF_DIR variable)\n" +
-            "  --watch     build, then build again whenever a file of the project changes (Ctrl+C stops)\n" +
-            "  --json      print the result as JSON instead of text (with --watch: one line per build)\n" +
+            "  --json      print the result as JSON instead of text\n" +
             "  --api       check against this api.json instead of the one twllink was built with\n" +
             "  --new       create a project in <dir> from a template: hud, hook or empty\n" +
             "  --version   print the twllink version\n" +
@@ -58,10 +53,9 @@ namespace TweakerLuaLinker
             public string? NewDirectory;
             public bool Json;
             public bool Install;
-            public bool Watch;
         }
 
-        public static int Run(string[] args, TextWriter stdout, TextWriter stderr, string currentDirectory, CancellationToken cancel = default)
+        public static int Run(string[] args, TextWriter stdout, TextWriter stderr, string currentDirectory)
         {
             var options = new Options();
             for (var i = 0; i < args.Length; i++)
@@ -96,9 +90,6 @@ namespace TweakerLuaLinker
                     case "--install":
                         options.Install = true;
                         break;
-                    case "--watch":
-                        options.Watch = true;
-                        break;
                     case "--help":
                     case "-h":
                     case "/?":
@@ -114,7 +105,7 @@ namespace TweakerLuaLinker
 
             if (options.NewTemplate != null)
             {
-                if (options.Project != null || options.Out != null || options.Install || options.Watch || options.Json)
+                if (options.Project != null || options.Out != null || options.Install || options.Json)
                     return UsageError(stderr, "--new creates a project and does nothing else - build it with a second command");
                 return New(options, stdout, stderr, currentDirectory);
             }
@@ -139,10 +130,7 @@ namespace TweakerLuaLinker
                 }
             }
 
-            if (options.Watch)
-                return Watch(options, projectRoot, api, stdout, currentDirectory, cancel);
-
-            return Build(options, projectRoot, api, stdout, currentDirectory, indented: true);
+            return Build(options, projectRoot, api, stdout, currentDirectory);
         }
 
         private static bool TakeValue(string[] args, ref int i, out string value)
@@ -230,11 +218,11 @@ namespace TweakerLuaLinker
             public string? Installed;
         }
 
-        private static int Build(Options options, string projectRoot, ApiDescription? api, TextWriter stdout, string currentDirectory, bool indented)
+        private static int Build(Options options, string projectRoot, ApiDescription? api, TextWriter stdout, string currentDirectory)
         {
             var outcome = BuildOnce(options, projectRoot, api, currentDirectory);
             if (options.Json)
-                WriteJson(stdout, projectRoot, outcome, indented);
+                WriteJson(stdout, projectRoot, outcome);
             else
                 WriteHuman(stdout, projectRoot, currentDirectory, outcome);
             return outcome.Output != null && (!options.Install || outcome.Installed != null) ? ExitSuccess : ExitBuildFailed;
@@ -290,8 +278,8 @@ namespace TweakerLuaLinker
         }
 
         /// <summary>
-        /// Leaves an unchanged file alone - including its timestamp, which is what anything watching the game's
-        /// Scripts\ folder (or --watch itself) would react to.
+        /// Leaves an unchanged file alone - including its timestamp, which is what anything watching the project
+        /// or the game's Scripts\ folder (TweakerUI) would react to.
         /// </summary>
         private static void WriteIfChanged(string path, string text)
         {
@@ -299,91 +287,6 @@ namespace TweakerLuaLinker
             if (File.Exists(path) && File.ReadAllBytes(path).AsSpan().SequenceEqual(bytes))
                 return;
             File.WriteAllBytes(path, bytes);
-        }
-
-        // --- watching -------------------------------------------------------------------------------------
-
-        private static int Watch(Options options, string projectRoot, ApiDescription? api, TextWriter stdout, string currentDirectory, CancellationToken cancel)
-        {
-            using var changed = new ManualResetEventSlim(false);
-            using var watcher = new FileSystemWatcher(projectRoot)
-            {
-                IncludeSubdirectories = true,
-                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite | NotifyFilters.Size,
-            };
-
-            // Filled by this thread and read by the watcher's: a concurrent set, as a dictionary.
-            var outputs = new System.Collections.Concurrent.ConcurrentDictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-            string? seen = null;
-            void OnChange(string path)
-            {
-                if (Ignored(projectRoot, path, outputs))
-                    return;
-                Volatile.Write(ref seen, path);
-                changed.Set();
-            }
-            // "Changed" on a folder is its metadata - the build reading the files in it is enough to raise
-            // one. What changed inside arrives as events of its own.
-            watcher.Changed += (_, e) =>
-            {
-                if (!Directory.Exists(e.FullPath))
-                    OnChange(e.FullPath);
-            };
-            watcher.Created += (_, e) => OnChange(e.FullPath);
-            watcher.Deleted += (_, e) => OnChange(e.FullPath);
-            watcher.Renamed += (_, e) => OnChange(e.FullPath);
-            watcher.EnableRaisingEvents = true;
-
-            if (!options.Json)
-                stdout.WriteLine($"twllink: watching {Path.GetRelativePath(currentDirectory, projectRoot).Replace('\\', '/')} - Ctrl+C to stop");
-
-            while (!cancel.IsCancellationRequested)
-            {
-                var outcome = BuildOnce(options, projectRoot, api, currentDirectory);
-                if (outcome.Output != null)
-                {
-                    outputs[outcome.Output] = true;
-                    outputs[outcome.Map!] = true;
-                }
-                if (options.Json)
-                    WriteJson(stdout, projectRoot, outcome, indented: false);
-                else
-                    WriteHuman(stdout, projectRoot, currentDirectory, outcome);
-                stdout.Flush();
-
-                try
-                {
-                    changed.Wait(cancel);
-                    // Settle: rebuild once the folder has been quiet for a moment, not on the first write.
-                    do
-                    {
-                        changed.Reset();
-                    }
-                    while (changed.Wait(WatchSettle, cancel));
-                }
-                catch (OperationCanceledException)
-                {
-                    break;
-                }
-
-                if (!options.Json)
-                {
-                    var what = Volatile.Read(ref seen);
-                    var shown = what == null ? "" : " (" + Path.GetRelativePath(projectRoot, what).Replace('\\', '/') + ")";
-                    stdout.WriteLine($"-- {DateTime.Now:HH:mm:ss} change seen{shown}, rebuilding");
-                }
-            }
-            return ExitSuccess;
-        }
-
-        /// <summary>What the build itself writes, and what editors keep beside the sources.</summary>
-        private static bool Ignored(string projectRoot, string path, System.Collections.Concurrent.ConcurrentDictionary<string, bool> outputs)
-        {
-            if (outputs.ContainsKey(path))
-                return true;
-            var relative = Path.GetRelativePath(projectRoot, path).Replace('\\', '/');
-            var first = relative.Split('/')[0];
-            return first is "build" or Scaffold.ToolingFolder or ".git" or ".vscode" or ".vs";
         }
 
         // --- output ---------------------------------------------------------------------------------------
@@ -428,12 +331,12 @@ namespace TweakerLuaLinker
             }
         }
 
-        private static void WriteJson(TextWriter stdout, string projectRoot, Outcome outcome, bool indented)
+        private static void WriteJson(TextWriter stdout, string projectRoot, Outcome outcome)
         {
             var result = outcome.Result;
             var diagnostics = outcome.Diagnostics;
             using var stream = new MemoryStream();
-            using (var json = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = indented }))
+            using (var json = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true }))
             {
                 json.WriteStartObject();
                 json.WriteString("twllink", Linker.ToolVersion);

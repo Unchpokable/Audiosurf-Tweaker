@@ -168,7 +168,7 @@
         above. Identical to the real one (src/Avalonia.Themes.Fluent/Controls/ListBox.xaml, 12.0.5)
         except AllowAutoHide is a literal "False" on PART_ScrollViewer instead of
         "{TemplateBinding (ScrollViewer.AllowAutoHide)}" - no attached-property forwarding left to
-        get wrong. Only ListBox.SCSkinsList (Skin Changer) uses ListBox anywhere in this app today,
+        get wrong. Only ListBox.RowList (Skin Changer, Script Dev) uses ListBox anywhere in this app today,
         but this lives here rather than SkinChangerStyles.axaml so any future ListBox usage gets the
         fix for free, matching this file's own "zero per-view opt-in" design. -->
         <ControlTheme x:Key="{x:Type ListBox}" TargetType="ListBox">

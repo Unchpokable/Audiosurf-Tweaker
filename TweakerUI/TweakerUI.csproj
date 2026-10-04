@@ -52,6 +52,40 @@
   </ItemGroup>
 
 	<!--
+	    twllink, the Lua project linker the Script Dev tab drives as a child process
+	    (Docs/Internal/script-manager-roadmap.md, С1). A tool beside the app, not a library: the reference
+	    only orders the build and hands back where the linker's output is (TwllinkBuildOutput), and
+	    nothing of it enters TweakerUI's own references.
+
+	    What this puts in DevTools\Binaries\ is a plain framework-dependent build - twllink.exe plus its
+	    dlls, running on the .NET a developer already has. The Native AOT single file a user gets is made
+	    by the deploy scripts, which publish the linker separately and put it in the same place: an AOT
+	    publish on every dotnet build would cost tens of seconds and require MSVC.
+
+	    The global properties a self-contained single-file publish of TweakerUI sets would otherwise flow
+	    into the linker's build too, so they are removed from the reference. _IsPublishing among them is
+	    not optional: with it, the linker's PublishAot turns its plain build self-contained, and the whole
+	    runtime lands in DevTools\Binaries\ beside it.
+	-->
+	<ItemGroup>
+		<ProjectReference Include="..\TweakerLuaLinker\TweakerLuaLinker.csproj"
+		                  ReferenceOutputAssembly="false"
+		                  OutputItemType="TwllinkBuildOutput"
+		                  GlobalPropertiesToRemove="_IsPublishing;SelfContained;PublishSingleFile;IncludeNativeLibrariesForSelfExtract;IncludeAllContentForSelfExtract;DebugType;CopyOutputSymbolsToPublishDirectory" />
+	</ItemGroup>
+
+	<!--
+	    Top level only: the linker needs nothing from a subfolder, and its output folder is also where a
+	    Native AOT publish without -o leaves native\ and publish\ - copies of twllink that would come along.
+	-->
+	<Target Name="CopyTwllink" AfterTargets="Build">
+		<ItemGroup>
+			<TwllinkFiles Include="%(TwllinkBuildOutput.RootDir)%(TwllinkBuildOutput.Directory)*" />
+		</ItemGroup>
+		<Copy SourceFiles="@(TwllinkFiles)" DestinationFolder="$(OutDir)DevTools\Binaries\" SkipUnchangedFiles="true" />
+	</Target>
+
+	<!--
     Same asbridge.exe pre-build hook as SkinChangerRestyle.csproj (Phase 3c) - AudiosurfHandle spawns
     it next to the exe at runtime, so without this the bridge subprocess is simply missing and the
     connection status sits in a permanent reconnect loop. CMake is still a black box here: no vcxproj,

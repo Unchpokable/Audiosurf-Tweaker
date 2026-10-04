@@ -40,7 +40,11 @@ std::vector<button> g_resume_buttons;
 // setting.
 std::vector<char> g_expanded;
 
-int g_built_for = -1; // registry::count() the widget vectors were sized for
+// How many rows the vectors above have. A rescan only ever appends scripts, so they only ever grow -
+// and the rows already there keep their widgets, mid-animation or not.
+std::size_t g_built_for = 0;
+
+button g_rescan_button { "lua_scripts_rescan", ImVec2 { 72.f, 22.f } }; // k_button_w x k_control_h
 
 constexpr float k_row_pad = 10.f;
 constexpr float k_rounding = 6.f;
@@ -53,6 +57,9 @@ constexpr float k_gap = 4.f;
 // see script_state in lua_script.hxx for why it is never stored.
 tw::lua::script_state state_of(const tw::lua::script& script, int waiting_hooks) noexcept
 {
+    if(script.missing) {
+        return tw::lua::script_state::missing;
+    }
     if(script.failed) {
         return tw::lua::script_state::failed;
     }
@@ -81,6 +88,7 @@ ImVec4 colour_of(tw::lua::script_state state) noexcept
     case tw::lua::script_state::failed:
         return theme::text_error;
     case tw::lua::script_state::off:
+    case tw::lua::script_state::missing:
         return theme::text_faint;
     }
 
@@ -119,14 +127,23 @@ float draw_chip(ImDrawList* draw, ImVec2 at, const char* text, const ImVec4& tin
     return width;
 }
 
-// One line of text, clipped to `width` rather than wrapped: row heights are decided before anything is
-// drawn, so a line that wrapped would draw straight through the row below.
-void draw_clipped(ImDrawList* draw, ImVec2 at, float width, const ImVec4& colour, std::string_view text)
+// One line of text, cut to `width` with an ellipsis rather than wrapped: row heights are decided before
+// anything is drawn, so a line that wrapped would draw straight through the row below. Returns whether
+// it was cut.
+bool draw_line(ImDrawList* draw, ImVec2 at, float width, const ImVec4& colour, const std::string& text)
 {
-    const float line = ImGui::GetTextLineHeight();
-    draw->PushClipRect(at, ImVec2 { at.x + width, at.y + line }, true);
-    draw->AddText(at, detail::to_u32(colour), text.data(), text.data() + text.size());
-    draw->PopClipRect();
+    return detail::add_text_ellipsis(draw, at, at.x + width, detail::to_u32(colour), text.c_str());
+}
+
+// The whole of a line draw_line() had to cut, wrapped at a readable width rather than one screen-wide
+// strip (script-manager-roadmap.md §9.3 п. 4).
+void full_text_tooltip(const std::string& text)
+{
+    ImGui::BeginTooltip();
+    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 32.f);
+    ImGui::TextUnformatted(text.c_str(), text.c_str() + text.size());
+    ImGui::PopTextWrapPos();
+    ImGui::EndTooltip();
 }
 
 // The unfolded diagnostics: one line per record - level, where, text, and how often. The first
@@ -151,7 +168,7 @@ void draw_diagnostics(std::span<const tw::lua::diag::entry> entries, ImVec2 at, 
         if(record.count > 1) {
             tail += std::format("  x{}", record.count);
         }
-        draw_clipped(draw, ImVec2 { row.x + head_w, row.y }, std::max(0.f, width - head_w), theme::text_secondary, tail);
+        (void)draw_line(draw, ImVec2 { row.x + head_w, row.y }, std::max(0.f, width - head_w), theme::text_secondary, tail);
 
         if(ImGui::IsMouseHoveringRect(row, ImVec2 { row.x + width, row.y + line })) {
             ImGui::SetTooltip("%s\n\nseen %u time(s), first at frame %u, last at frame %u",
@@ -187,7 +204,11 @@ void draw_row(tw::lua::script& script, std::size_t index, float width)
     // was suspended, or - when nothing is wrong - what it is.
     std::string note;
     ImVec4 note_colour = theme::text_secondary;
-    if(script.failed) {
+    if(script.missing) {
+        note = "The file is gone from the Scripts folder. Rescan picks it up again if it comes back.";
+        note_colour = theme::text_faint;
+    }
+    else if(script.failed) {
         note = script.error;
         note_colour = theme::text_error;
     }
@@ -219,7 +240,8 @@ void draw_row(tw::lua::script& script, std::size_t index, float width)
     }
 
     const float buttons = (script.enabled ? k_button_w + 8.f : 0.f) + (script.health.suspended ? k_button_w + 8.f : 0.f);
-    const float controls_w = k_toggle_w + buttons + k_row_pad;
+    // A missing script has nothing to switch: its row is a record, not a control.
+    const float controls_w = script.missing ? 0.f : k_toggle_w + buttons + k_row_pad;
     const float text_w = std::max(60.f, width - controls_w - k_row_pad * 2.f);
     const float full_w = width - k_row_pad * 2.f;
 
@@ -243,9 +265,14 @@ void draw_row(tw::lua::script& script, std::size_t index, float width)
         }
     }
 
+    // A description longer than the row ends in an ellipsis and is shown whole on hover; so is a long
+    // error or suspension reason.
     if(has_note) {
         y += line + k_gap;
-        draw_clipped(draw, ImVec2 { x, y }, text_w, note_colour, note);
+        const ImVec2 note_at { x, y };
+        if(draw_line(draw, note_at, text_w, note_colour, note) && ImGui::IsMouseHoveringRect(note_at, ImVec2 { x + text_w, y + line })) {
+            full_text_tooltip(note);
+        }
     }
 
     // Chips: state, then cost when it is worth mentioning, then hooks, then the diagnostics fold.
@@ -330,6 +357,12 @@ void draw_row(tw::lua::script& script, std::size_t index, float width)
     // The controls sit on top of the hand-drawn row: ImGui widgets need a cursor, so it is parked
     // where each one belongs and the row's own height is claimed with a Dummy afterwards. Top-aligned
     // rather than centred, so they stay put when the diagnostics unfold.
+    if(script.missing) {
+        ImGui::SetCursorScreenPos(origin);
+        ImGui::Dummy(ImVec2 { width, height });
+        return;
+    }
+
     const float control_y = p_min.y + k_row_pad - 3.f;
     float control_x = p_max.x - k_row_pad - k_toggle_w;
 
@@ -441,25 +474,35 @@ void draw_tab()
 
     draw_status();
 
+    // Before the count is read: a rescan can add rows, and this frame should already draw them.
+    // Picks up scripts dropped into the folder or deleted from it while the game runs - and TweakerUI
+    // asks for the same thing over IPC after it installs or removes one (lua_remote).
+    const float rescan_y = ImGui::GetCursorScreenPos().y;
+    g_rescan_button.set_label("Rescan");
+    g_rescan_button.update();
+    if(g_rescan_button.clicked()) {
+        tw::lua::registry::rescan();
+    }
+    ImGui::SameLine(0.f, 10.f);
+    ImGui::SetCursorScreenPos(
+        ImVec2 { ImGui::GetCursorScreenPos().x, rescan_y + (k_control_h - ImGui::GetTextLineHeight()) * 0.5f });
+    ImGui::TextColored(theme::text_faint, "Picks up scripts added to or removed from the Scripts folder.");
+    ImGui::Dummy(ImVec2 { 0.f, 2.f });
+
     const int count = tw::lua::registry::count();
     if(count == 0) {
         ImGui::TextColored(theme::text_muted, "No scripts found.");
-        ImGui::TextColored(theme::text_faint, "Drop .lua files into engine\\TweakerStuff\\Scripts in the game folder.");
+        ImGui::TextColored(theme::text_faint, "Drop .lua files into engine\\TweakerStuff\\Scripts in the game folder, then Rescan.");
         return;
     }
 
-    if(g_built_for != count) {
-        g_toggles.clear();
-        g_reload_buttons.clear();
-        g_resume_buttons.clear();
-        for(int i = 0; i < count; ++i) {
-            g_toggles.emplace_back(("lua_script_toggle_" + std::to_string(i)).c_str());
-            g_reload_buttons.emplace_back(("lua_script_reload_" + std::to_string(i)).c_str(), ImVec2 { k_button_w, k_control_h });
-            g_resume_buttons.emplace_back(("lua_script_resume_" + std::to_string(i)).c_str(), ImVec2 { k_button_w, k_control_h });
-        }
-        g_expanded.assign(static_cast<std::size_t>(count), 0);
-        g_built_for = count;
+    for(std::size_t i = g_built_for; i < static_cast<std::size_t>(count); ++i) {
+        g_toggles.emplace_back(("lua_script_toggle_" + std::to_string(i)).c_str());
+        g_reload_buttons.emplace_back(("lua_script_reload_" + std::to_string(i)).c_str(), ImVec2 { k_button_w, k_control_h });
+        g_resume_buttons.emplace_back(("lua_script_resume_" + std::to_string(i)).c_str(), ImVec2 { k_button_w, k_control_h });
+        g_expanded.push_back(0);
     }
+    g_built_for = std::max(g_built_for, static_cast<std::size_t>(count));
 
     const float width = ImGui::GetContentRegionAvail().x;
 

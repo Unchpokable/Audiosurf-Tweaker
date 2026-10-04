@@ -38,32 +38,8 @@
         <Setter Property="Height" Value="34"/>
     </Style>
 
-    <!-- Skins list -->
-    <Style Selector="ListBox.SCSkinsList">
-        <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="BorderThickness" Value="0"/>
-        <Setter Property="Padding" Value="0"/>
-    </Style>
-    <Style Selector="ListBox.SCSkinsList ListBoxItem">
-        <Setter Property="Padding" Value="0"/>
-        <Setter Property="Margin" Value="0,0,0,8"/>
-        <Setter Property="CornerRadius" Value="8"/>
-        <Setter Property="Background" Value="{DynamicResource SurfaceRowBrush}"/>
-        <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-        <Setter Property="Template" Value="{StaticResource FlatListItemTemplate}"/>
-    </Style>
-    <Style Selector="ListBox.SCSkinsList ListBoxItem:pointerover">
-        <Setter Property="Background" Value="{DynamicResource SurfaceRowHoverBrush}"/>
-    </Style>
-    <!-- The mockup's own literal #B7C3F7 read as too bright/blue against real skin data - shifted
-    toward the app's purple accent family and toned down a notch. -->
-    <Style Selector="ListBox.SCSkinsList ListBoxItem:selected">
-        <Setter Property="Background" Value="{DynamicResource AccentSelectedBrush}"/>
-    </Style>
-    <Style Selector="ListBox.SCSkinsList ListBoxItem:selected:pointerover">
-        <Setter Property="Background" Value="{DynamicResource AccentSelectedBrush}"/>
-    </Style>
+    <!-- The skins list is the shared RowList (SharedStyles.axaml) - it was this file's SCSkinsList until Script Dev needed
+    the same list. -->
 
     <Style Selector="TextBlock.SCSkinName">
         <Setter Property="FontSize" Value="15"/>

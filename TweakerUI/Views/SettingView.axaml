@@ -32,15 +32,15 @@
                         <StackPanel>
                             <TextBlock Text="Path to Audiosurf textures" Classes="STFieldLabel"/>
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBox Grid.Column="0" Classes="STPathBox" Text="{Binding TexturesFolderPath}" IsReadOnly="True"/>
-                                <Button Grid.Column="1" Classes="STBrowseButton" Content="Browse…" Command="{Binding BrowseTexturesPathCommand}"/>
+                                <TextBox Grid.Column="0" Classes="TextField" Text="{Binding TexturesFolderPath}" IsReadOnly="True"/>
+                                <Button Grid.Column="1" Classes="ActionButton STBrowseButton" Content="Browse…" Command="{Binding BrowseTexturesPathCommand}"/>
                             </Grid>
                         </StackPanel>
                         <StackPanel>
                             <TextBlock Text="Additional skins folder" Classes="STFieldLabel"/>
                             <Grid ColumnDefinitions="*,Auto">
-                                <TextBox Grid.Column="0" Classes="STPathBox" Text="{Binding AdditionalSkinsFolderPath}" IsReadOnly="True"/>
-                                <Button Grid.Column="1" Classes="STBrowseButton" Content="Browse…" Command="{Binding BrowseSkinsPathCommand}"/>
+                                <TextBox Grid.Column="0" Classes="TextField" Text="{Binding AdditionalSkinsFolderPath}" IsReadOnly="True"/>
+                                <Button Grid.Column="1" Classes="ActionButton STBrowseButton" Content="Browse…" Command="{Binding BrowseSkinsPathCommand}"/>
                             </Grid>
                         </StackPanel>
                     </StackPanel>
@@ -148,9 +148,9 @@
                         IsEnabled inheritance (outer bound to IsWatcherActive, inner to IsTempFileOverrided). -->
                         <Border IsEnabled="{Binding IsWatcherActive}">
                             <Grid ColumnDefinitions="*,Auto,Auto" Margin="30,4,0,0" IsEnabled="{Binding IsTempFileOverrided}">
-                                <TextBox Grid.Column="0" Classes="STPathBox" Text="{Binding WatcherTempFile}" IsReadOnly="True"/>
-                                <Button Grid.Column="1" Classes="STBrowseButton" Content="Select…" Command="{Binding SelectTempFileCommand}"/>
-                                <Button Grid.Column="2" Classes="STBrowseButton" Content="Duplicate" Command="{Binding DuplicateTempFileCommand}"/>
+                                <TextBox Grid.Column="0" Classes="TextField" Text="{Binding WatcherTempFile}" IsReadOnly="True"/>
+                                <Button Grid.Column="1" Classes="ActionButton STBrowseButton" Content="Select…" Command="{Binding SelectTempFileCommand}"/>
+                                <Button Grid.Column="2" Classes="ActionButton STBrowseButton" Content="Duplicate" Command="{Binding DuplicateTempFileCommand}"/>
                             </Grid>
                         </Border>
                     </StackPanel>

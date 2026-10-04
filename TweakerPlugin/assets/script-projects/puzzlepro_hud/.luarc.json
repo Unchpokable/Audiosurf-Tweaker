@@ -1,0 +1,14 @@
+{
+  "$schema": "https://raw.githubusercontent.com/LuaLS/vscode-lua/master/setting/schema.json",
+  "runtime.version": "LuaJIT",
+  "runtime.path": ["src/?.lua"],
+  "runtime.builtin": {
+    "io": "disable",
+    "debug": "disable",
+    "ffi": "disable",
+    "jit": "disable",
+    "package": "disable"
+  },
+  "workspace.library": [".twllink"],
+  "workspace.ignoreDir": ["build"]
+}

@@ -134,26 +134,28 @@ inline void add_text_scaled(ImDrawList* draw, float font_size, const ImVec2& pos
 // The cut point is found by binary search over byte offsets and then backed up to a UTF-8 character
 // boundary - a handful of CalcTextSize calls per truncated string, and only for rows actually on
 // screen. Walking one character at a time would be quadratic on long names.
-inline void add_text_ellipsis(ImDrawList* draw, const ImVec2& pos, float max_x, ImU32 col, const char* text) noexcept
+//
+// Returns whether the text was cut - for a caller that offers the whole of it in a tooltip.
+inline bool add_text_ellipsis(ImDrawList* draw, const ImVec2& pos, float max_x, ImU32 col, const char* text) noexcept
 {
     if(draw == nullptr || text == nullptr || text[0] == '\0') {
-        return;
+        return false;
     }
 
     const float avail = max_x - pos.x;
     if(avail <= 0.f) {
-        return;
+        return true;
     }
 
     if(ImGui::CalcTextSize(text).x <= avail) {
         draw->AddText(pos, col, text);
-        return;
+        return false;
     }
 
     static constexpr const char* k_ellipsis = "...";
     const float budget = avail - ImGui::CalcTextSize(k_ellipsis).x;
     if(budget <= 0.f) {
-        return;
+        return true;
     }
 
     const auto length = static_cast<int>(std::char_traits<char>::length(text));
@@ -179,6 +181,7 @@ inline void add_text_ellipsis(ImDrawList* draw, const ImVec2& pos, float max_x, 
 
     draw->AddText(pos, col, text, text + low);
     draw->AddText(ImVec2 { pos.x + ImGui::CalcTextSize(text, text + low).x, pos.y }, col, k_ellipsis);
+    return true;
 }
 
 inline ImVec2 resolve_size(ImVec2 size, float default_w, float default_h) noexcept

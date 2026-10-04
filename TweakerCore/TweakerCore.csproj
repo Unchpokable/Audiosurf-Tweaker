@@ -6,4 +6,8 @@
     <PackageReference Include="SkiaSharp" Version="4.150.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="TweakerCore.Tests" />
+  </ItemGroup>
+
 </Project>

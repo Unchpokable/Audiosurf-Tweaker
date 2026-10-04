@@ -16,7 +16,8 @@ Audiosurf Tweaker — сторонний инструмент для игры Au
 `engine\channels\`, раскладка `engine\TweakerStuff\`, оффлайн-режим, установка из TweakerUI) —
 `Docs/Internal/plugin-offline-mode.md`, и его §0 написан так, чтобы его читали первым. Протокол
 оверлея (`TW_OVL`, host ↔ asbridge ↔ TweakerPlugin) — `Docs/Internal/overlay-protocol.md`; его Quick Player-половина (операции `QP_*`, вкладка Player) —
-`Docs/Internal/overlay-quickplayer.md`. Skybox Replacer (подмена скайсферы игры на cube map, плюс
+`Docs/Internal/overlay-quickplayer.md`; скриптовая (операции `SCRIPT_*`, протокол 2; реализована с обеих
+сторон и принята 03.10.2026) — `Docs/Internal/overlay-scripts.md`. Skybox Replacer (подмена скайсферы игры на cube map, плюс
 весь реверс её загрузки и отрисовки) — `Docs/Internal/skybox-replacer.md`; ресёрч и план
 процедурного (шейдерного) неба — `Docs/Internal/skybox-procedural.md`; замена процедурного
 шума запечённым объёмом и текстуры на базовом слое (что померено, чем за это заплачено в картинке) —
@@ -31,7 +32,11 @@ Audiosurf Tweaker — сторонний инструмент для игры Au
 `Docs/Internal/lua-scripting.md`. Он описывает **проект** слоя и остаётся источником правды по
 механике перехвата; план превращения написанного прототипа в инструмент (жизненный цикл движка,
 разделение разметки vtable по семействам каналов, изоляция отказов, сборка скриптов из модулей) —
-`Docs/Internal/lua-engine-fix-roadmap.md`, и **начинать работу над Lua-слоем надо с него**.
+`Docs/Internal/lua-engine-fix-roadmap.md`, и **начинать работу над Lua-слоем надо с него** (план
+выполнен целиком, Ф1–Ф5 закрыты 27.09.2026). Следующая работа по Lua — **модуль управления скриптами в
+`TweakerUI`** — начинается с `Docs/Internal/script-manager-roadmap.md`: короткая сводка того, что сделано
+в плагине и в `twllink`, и `twllink` как CLI с кратким руководством; в 2.5 тысячи строк плана
+заглядывать только за деталями, на которые он ссылается.
 
 **Пользовательская** документация по скриптовому API (в отличие от всего вышеперечисленного —
 на английском, для тех, кто пишет скрипты и делится ими) — `Docs/scripting.md` и `Docs/scripting/`:
@@ -92,10 +97,16 @@ clouds (спрайтовый слой, `place()`/`fill()`), limits (цена, з
 
 ## Устройство решения
 
-10 проектов в `Audiosurf SkinChanger.sln`, три платформенных слоя снизу вверх:
+11 проектов в `Audiosurf SkinChanger.sln`, три платформенных слоя снизу вверх:
 
 - **`TweakerCore`** — модельный/файловый слой без UI-зависимостей: формат скинов (zip +
-  `manifest.json` + PNG), цветовые пресеты, `FolderChecker` (дрейф папки текстур), кэш превью.
+  `manifest.json` + PNG), цветовые пресеты, `FolderChecker` (дрейф папки текстур), кэш превью,
+  `PluginInstall/` (установка плагина в игру) и `Scripting/` — модель модуля скриптов
+  (`script-manager-roadmap.md`, С2): шапки и `scripts.cfg` читаются **ровно как в плагине**, каталог
+  `Scripts\` игры, проекты `twllink` и клиент его CLI, редакторы (`ScriptEditors`: поиск установленных,
+  запуск с `DevTools\Binaries` в `PATH` и `AUDIOSURF_DIR` — пользовательский `PATH` не трогается) и
+  `ScriptWire` — грамматика `SCRIPT_*` хоста (С5b; состояние и ожидание подтверждений —
+  `TweakerUI/Core/ScriptsOverlayBridge`, транспорт — `OverlayHelper`).
 - **`AudiosurfInterface`** — управляемый клиент протокола игры: `GameProtocol`, `GameConfigState`
   (LIFO-оверрайды `asconfig`), `GameReportListener`, `AudiosurfHandle` (публичный фасад с
   событиями подключения) и `Bridge/` — тонкий pipe-клиент `asbridge.exe`.
@@ -110,7 +121,7 @@ clouds (спрайтовый слой, `place()`/`fill()`), limits (цена, з
   чтобы тема переключалась без перезапуска. Шаблоны контролов — только общие, из
   `Themes/SharedControlTemplates.axaml` (`FlatButtonTemplate`, `FlatTextBoxTemplate`,
   `FlatListItemTemplate`), не копия во вкладке; то же для строительных блоков, одинаковых во всех
-  вкладках, — `Themes/SharedStyles.axaml` (`Card`, `Switch`, `ToggleRow`, `IconButton`, …, классы без
+  вкладках, — `Themes/SharedStyles.axaml` (`Card`, `Switch`, `ToggleRow`, `IconButton`, `ActionButton`, `TextField`, `RowList`, …, классы без
   префикса модуля). Модульный файл — только для своего; нужен другой размер/отступ — модификатор поверх
   общего класса, а не копия. **Перед тем как писать свой шаблон контрола или ловить клавиши внутри элемента списка —
   `Docs/Internal/avalonia-pitfalls.md`**: неочевидное поведение Avalonia, каждое из которых уже стоило
@@ -131,7 +142,8 @@ clouds (спрайтовый слой, `place()`/`fill()`), limits (цена, з
   Проверять правки UI без владельца — **`Tools/UiStand/`** (свой `README.md`): headless Avalonia на настоящих
   стилях из собранной `TweakerUI.dll` — снимки вкладок и общих блоков во всех состояниях с попиксельным
   сравнением до/после, сверка всех анимируемых переходов цвета, вкладка Colors Configurator с живой
-  вьюмоделью, замер памяти Skin Changer (`mem`) и утечки вьюшек при смене вкладок (`tabs`). Там же — что в
+  вьюмоделью, вкладки Scripts и Script Dev с живыми вьюмоделями над поддельной папкой игры (`scripts`, `scriptdev` — второй с настоящим `twllink`), замер памяти Skin
+  Changer (`mem`) и утечки вьюшек при смене вкладок (`tabs`). Там же — что в
   headless не работает (часы анимаций) и как это обходить.
 - **`LegacyDataConverter`** — отдельный консольный `.exe`, намеренно застрявший на .NET
   Framework 4.8.1 (единственное место, где ещё жив `BinaryFormatter`, удалённый из рантайма
@@ -158,7 +170,7 @@ clouds (спрайтовый слой, `place()`/`fill()`), limits (цена, з
   граф `require`, строки модулей, бандл и карта (карта пишется **во время** вывода, а не считается),
   `Diagnostics/` — коды `TWxxxx` (номера не переиспользуются, пользовательская таблица —
   `Docs/scripting/authoring.md`), `Cli.cs` — контракт командной строки (коды возврата 0/1/2/3, `--json`,
-  `--install`/`--game` через `AUDIOSURF_DIR`, `--watch`, `--new <template> <dir>`, `--api`). `Api/` —
+  `--install`/`--game` через `AUDIOSURF_DIR`, `--new <template> <dir>`, `--api`; `--watch` убран — следить за папкой проекта дело `TweakerUI`). `Api/` —
   `api.json` (вшит; что есть в окружении скрипта), разбор `api-reference.md`, генератор `tw.def.lua`;
   `Linking/ApiChecker` — проверки TW03xx (песочница, имена `tw.*`, запись в `tw`, глобалы) по `api.json`;
   `Project/Scaffold` — шаблоны `--new` и папка `.twllink/` проекта (копии `tw.def.lua` и схемы
@@ -253,7 +265,9 @@ SkiaSharp/HarfBuzzSharp), чтобы можно было приаттачить�
 берёт оба (`CopyTweakerPlugin`). **Правится проект, не собранный файл**: после правки модуля
 `twllink --project <проект> --out <assets/scripts/...>`; забытая пересборка роняет
 `TweakerLuaLinker.Tests` (`ShippedProjectsTests`). `twllink.exe` (Native AOT) публикуется всеми
-четырьмя скриптами деплоя в `/distr/TweakerUI/`, в `PluginPayload\` не входит.
+четырьмя скриптами деплоя в `/distr/TweakerUI/DevTools/Binaries/`, в `PluginPayload\` не входит. В
+дев-сборке его туда же кладёт `dotnet build` самого `TweakerUI` — обычной сборкой по `ProjectReference`
+(target `CopyTwllink`).
 
 Скрипты есть в двух видах и поддерживаются оба: `.ps1` (PowerShell) и `.sh` (Git Bash). Правишь один —
 правь парный, иначе они разъезжаются молча.
@@ -344,7 +358,8 @@ src/framework/    — хуки (Detours, D3D9, dinput8 + texture_hook на
                     vtable в d3d9_hooks/dinput8_hooks/channel_shim разбираются вручную; план
                     обобщить под это engine/channel_vtable — lua-engine-fix-roadmap.md §17.1
 src/ipc/          — overlay_ipc: разбор/сборка L3-протокола TW_OVL (см. overlay-protocol.md);
-                    операции с префиксом QP_ он не разбирает, а форвардит в src/ui/qp/
+                    операции с префиксом QP_ он не разбирает, а форвардит в src/ui/qp/, а SCRIPT_ — в
+                    src/lua/lua_remote (overlay-scripts.md)
 src/ui/           — overlay_state (кэш состояния, generation-counter, lock-free read по try_lock),
                     pending_actions (optimistic UI + таймаут-подтверждение для reverse-sync),
                     wire_text (общий percent-кодек L3), ui_main/theme, fonts (реестр запечённых
@@ -391,7 +406,7 @@ src/skybox/       — Skybox Replacer: перехват draw-call скайсфе
 src/lua/          — LuaJIT-скриптинг поверх src/engine/ (своего доступа к графу у него больше нет),
                     разрезан по lua-engine-fix-roadmap.md §3.3 (Ф4); карта кусков — в шапке
                     lua_host.hxx. lua_host (фасад: подъём слоя, draw_frame под ОДНИМ ImGui
-                    ErrorRecovery-guard'ом на весь диспетч), lua_vm (lua_State, песочница и
+                    ErrorRecovery-guard'ом на весь диспетч), lua_vm (lua_State и
                     ЕДИНСТВЕННЫЙ список C-точек входа k_entry_points — ПО ИМЕНИ, не по позиции;
                     пролог сверяет имена в обе стороны и не стартует при расхождении), lua_prelude
                     (Lua-половина слоя текстом, шесть секций-чанков tw.abi/core/channels/hud/callbacks/
@@ -402,8 +417,12 @@ src/lua/          — LuaJIT-скриптинг поверх src/engine/ (сво
                     (extern "C" ABI, который скрипт зовёт через FFI — НЕ lua_CFunction, см.
                     lua-scripting.md §2.2; хендл канала в Lua — это channel_ref в куче, которым
                     владеет Lua-объект через ffi.gc → tw_ref_free), lua_registry (скрипты из
-                    Scripts\, id = индекс, вкл/выкл/перезагрузка; метаданные из
-                    `-- @name/@author/@version/@description` читаются БЕЗ запуска файла), lua_script
+                    Scripts\, id = индекс, вкл/выкл/перезагрузка; скрипты в куче, в векторе — unique_ptr,
+                    поэтому script* живёт весь сеанс; rescan() только дописывает в конец, пропавший файл —
+                    запись `missing`, номера не сдвигаются; reload НЕ пишет scripts.cfg; revision() —
+                    счётчик изменений для хоста; метаданные из
+                    `-- @name/@author/@version/@description/@api` читаются БЕЗ запуска файла; скрипт с
+                    @api больше tw.api_version не запускается; .lua.map грузится на каждом запуске), lua_script
                     (один скрипт + его здоровье), lua_sched (ЕДИНИЦА ОТКАЗА — СКРИПТ: каждый колбэк
                     под своим xpcall в прологе, учёт в C через tw_script_enter/leave; 5 ошибок за 300
                     кадров или >4 мс/кадр 120 кадров подряд → приостановка, у приостановленного
@@ -417,7 +436,11 @@ src/lua/          — LuaJIT-скриптинг поверх src/engine/ (сво
                     engine.settle_frames / engine.settle_ms — окно отстоя для engine_state, и save()
                     их сохраняет), lua_ui (вкладка Scripts, регистрируется через
                     menu::add_extra_tab, как и Skybox; шапка показывает состояние слоя, строка скрипта —
-                    чип состояния, стоимость, хуки/ожидания, сообщения, Resume). Выключение скрипта = on_unload + снятие его подписок
+                    чип состояния, стоимость, хуки/ожидания, сообщения, Resume; кнопка Rescan; длинное
+                    описание — «...» и подсказка), lua_remote (SCRIPT_* от хоста: разбор на IPC-потоке
+                    только кладёт команду в ящик, pump() в начале lua_host::draw_frame её исполняет и
+                    шлёт SCRIPT_STATE по сдвигу registry::revision() — источники изменений, включая
+                    приостановку в lua_sched, только двигают счётчик). Выключение скрипта = on_unload + снятие его подписок
                     и возврат оригинальных vtable, а не спящий хук; включение = повторный запуск
                     файла с диска, оно же горячая перезагрузка. Скрипты — loose-файлы
                     в engine\TweakerStuff\Scripts\, не ресурсы: их правят без пересборки; в бандл
@@ -483,7 +506,9 @@ cmake --build --preset smoke         # smoke_test: визуальный Win32+Op
 заглушка `detour::attach` **запоминает адрес хук-функции**, поэтому «игра выгрузила группу» в сюите —
 это вызов настоящего тела хука. Планировщик — `harness/sched/schedtest`: настоящие `lua_sched.cxx`,
 `lua_diag.cxx`, `lua_script.cxx` против заглушек (бюджеты ошибок и времени — последнее настоящим
-временем, ~1 с; дедупликация, маршруты в ленту; `lua_linemap.cxx` и путь карты через `diag::report`). Правишь `src/lua/*`, `src/engine/*` или `assets/scripts/*` — прогони. Часть требует собранного плагина: они
+временем, ~1 с; дедупликация, маршруты в ленту; `lua_linemap.cxx` и путь карты через `diag::report`). Реестр глазами хоста — `harness/remote/remotetest`:
+настоящие `lua_registry.cxx`, `lua_remote.cxx`, `lua_script.cxx` над настоящей временной папкой (rescan,
+стабильные номера и адреса, ящик `SCRIPT_*`, что и когда уходит хосту), без `luajit.lib`. Правишь `src/lua/*`, `src/engine/*` или `assets/scripts/*` — прогони. Часть требует собранного плагина: они
 линкуются с `build/x86-release/luajit.lib`.
 
 **`TweakerPlugin/harness/` при этом в `.gitignore`** (строка 12) — каталог не в репозитории, правки

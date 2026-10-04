@@ -2,8 +2,8 @@
 
 // The LuaJIT state, and nothing that knows what a script is for.
 //
-// Owns the lua_State, runs the prelude (lua_prelude) against the C entry points - handed over **by
-// name**, from the one list in lua_vm.cxx - strips the sandbox, and keeps references to the handful
+// Owns the lua_State, runs the prelude (lua_prelude - its last section strips the sandbox) against the C
+// entry points - handed over **by name**, from the one list in lua_vm.cxx - and keeps references to the handful
 // of prelude functions C calls back into. Running a script file is here too, because it is the one
 // place that sets up a script's environment; deciding *which* scripts run is lua_registry's, and
 // calling their callbacks is lua_sched's.
@@ -39,7 +39,7 @@ enum class fn {
 // Pushes that function. False (and nothing pushed) when the VM is not up.
 bool push(fn which) noexcept;
 
-// Pushes debug.traceback as captured before the sandbox strip, and returns its stack index - or 0
+// Pushes debug.traceback as captured before the prelude's sandbox section, and returns its stack index - or 0
 // when there is none, which lua_pcall reads as "no handler", so a caller needs no special case.
 int push_traceback() noexcept;
 

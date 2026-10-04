@@ -13,6 +13,7 @@ target_sources(TweakerPlugin PRIVATE
     lua_diag.cxx
     lua_linemap.cxx
     lua_config.cxx
+    lua_remote.cxx
     lua_ui.cxx
     api/api_core.cxx
     api/api_channels.cxx
