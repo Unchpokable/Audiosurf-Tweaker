@@ -7,7 +7,7 @@ using TweakerCore.Scripting;
 namespace TweakerUI.Core
 {
     /// <summary>
-    /// The host half of the scripts protocol (Docs/Internal/overlay-scripts.md, script-manager-roadmap.md §9): what
+    /// The host half of the scripts protocol (Docs/Internal/overlay-scripts.md, script-manager.md §7): what
     /// the running plugin says each script is doing, the switches waiting for its confirmation, and the commands
     /// that go the other way. OverlayHelper only carries the lines; ScriptWire spells them.
     ///

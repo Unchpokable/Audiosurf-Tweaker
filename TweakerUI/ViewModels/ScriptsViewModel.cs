@@ -16,7 +16,7 @@ using TweakerUI.Models;
 namespace TweakerUI.ViewModels
 {
     /// <summary>
-    /// The Scripts tab (Docs/Internal/script-manager-roadmap.md, С3, С5b): the scripts in the game's
+    /// The Scripts tab (Docs/Internal/script-manager.md §5): the scripts in the game's
     /// engine\TweakerStuff\Scripts\, bundled and the user's own, switched on and off, and the bundled ones put
     /// back. The list comes from files (TweakerCore.Scripting); while the game is connected, the plugin's word
     /// about each script (ScriptsOverlayBridge) is laid over it.
@@ -123,7 +123,7 @@ namespace TweakerUI.ViewModels
 
         /// <summary>
         /// Reads the folder again - and, with the game connected, asks the plugin to do the same: the one place a
-        /// user asks for a rescan by hand (§9.3 п. 2), so the two are one button rather than two that look alike.
+        /// user asks for a rescan by hand (script-manager.md §8.9), so the two are one button rather than two that look alike.
         /// </summary>
         [RelayCommand]
         private Task Refresh()
@@ -420,7 +420,7 @@ namespace TweakerUI.ViewModels
                 $"restore: +{report.Added.Count} ~{report.Updated.Count} backed-up {report.UpdatedWithBackup.Count} errors {report.Errors.Count}");
 
             // The game: a rescan for the files that came back, then a reload for the ones replaced under a running
-            // script (§9.2 п. 9). A reload of a file it has not seen rescans too, but the rescan also answers with
+            // script (script-manager.md §5). A reload of a file it has not seen rescans too, but the rescan also answers with
             // the whole list - which is what this tab wants after a restore anyway.
             if (report.ChangedAnything && ScriptsOverlayBridge.IsLive)
             {

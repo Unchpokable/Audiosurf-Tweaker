@@ -37,7 +37,7 @@ namespace TweakerCore.Scripting
     }
 
     /// <summary>
-    /// The projects of the Script Dev tab (Docs/Internal/script-manager-roadmap.md §5, п. 3): every project
+    /// The projects of the Script Dev tab (Docs/Internal/script-manager.md §8.1): every project
     /// folder directly inside the sources folder (&lt;TweakerUI&gt;\DevTools\Sources\ by default), plus
     /// folders opened from anywhere else and remembered in a recents file - the way an editor's "Open Folder"
     /// works, so the user's files stay where the user keeps them.

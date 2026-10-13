@@ -20,7 +20,7 @@ namespace tw::lua::registry
 // comes from the file's header rather than from anything the file does when it runs.
 void load_all(const std::filesystem::path& directory) noexcept;
 
-// Reads the directory load_all() was given again (script-manager-roadmap.md §9). New files are
+// Reads the directory load_all() was given again (script-manager.md §8.9). New files are
 // appended - and run, unless scripts.cfg has them off; files that are gone are unloaded and marked
 // missing; files that came back run again if scripts.cfg says so; every header is read again. Nothing
 // already running is restarted - that is reload().
@@ -65,8 +65,30 @@ bool set_enabled(int id, bool enabled) noexcept;
 // quietly turn the script off in scripts.cfg, or the fixed build after it would not run.
 void reload(int id) noexcept;
 
+// **The order scripts run in** (Docs/Internal/script-coexistence-roadmap.md §3) - ids, first to run
+// first. Separate from the id on purpose: the id is what everything holds for the session, the place
+// is what the user changes by dragging a row.
+//
+// Set by the user and nobody else, and kept in scripts.cfg as `order=` lines. At startup: the scripts
+// the file lists, in its order, then the rest by file name. A file a rescan finds goes last, a missing
+// one keeps its place, and nothing a script does - reload, toggle, failure - moves it. Every list that
+// runs scripts one after another follows it: the bodies at startup, each of the prelude's callback
+// lists, and the subscribers of each hooked channel (lua_sched::reorder).
+[[nodiscard]] std::span<const int> order() noexcept;
+
+// Where script `id` runs, 0 first; -1 for an id that is not a script (including -1, the layer).
+[[nodiscard]] int place_of(int id) noexcept;
+
+// Moves one script to `place` - its index in the order once it is there, clamped - and puts the new
+// order into effect at once: scripts.cfg is written, and every running list is re-sorted. Cold: a drag.
+void move(int id, int place) noexcept;
+
+// The whole order from file names, as TweakerUI sends it: the names given, in that order, then every
+// script they leave out, in the order it had. Unknown names are ignored.
+void set_order(std::span<const std::string> files) noexcept;
+
 // Bumped by everything that can change what a script's state looks like from outside - switching,
-// loading, failing, a rescan, a suspension or a Resume (lua_sched). lua_remote compares it once a
+// loading, failing, a rescan, a reorder, a suspension or a Resume (lua_sched). lua_remote compares it once a
 // frame and looks at the scripts only when it moved.
 [[nodiscard]] std::uint32_t revision() noexcept;
 void changed() noexcept;

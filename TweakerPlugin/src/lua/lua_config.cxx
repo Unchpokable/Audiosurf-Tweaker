@@ -12,6 +12,11 @@ std::filesystem::path g_path;
 // Only the scripts that differ from the default. See the header: absence means enabled.
 std::vector<std::string> g_disabled;
 
+// The order the user put the scripts in, top first, exactly as the `order=` lines gave it - including
+// names with no file behind them, which are lua_registry's to skip. Empty until the user has reordered
+// anything at all: then nobody chose an order, and the registry's default (by name) is the order.
+std::vector<std::string> g_order;
+
 // 0 means "not in the file", which is what engine::state reads as "use the default". Kept as the
 // raw value rather than resolved here so that save() writes back exactly what was read, and a file
 // with no such line stays a file with no such line.
@@ -51,6 +56,7 @@ void load(const std::filesystem::path& path)
 {
     g_path = path;
     g_disabled.clear();
+    g_order.clear();
 
     std::ifstream file { g_path };
     if(!file.is_open()) {
@@ -84,6 +90,14 @@ void load(const std::filesystem::path& path)
             continue;
         }
 
+        // A name twice is a hand edit gone wrong; the first place wins, as it would reading top down.
+        if(key == "order") {
+            if(!value.empty() && std::ranges::find(g_order, value) == g_order.end()) {
+                g_order.emplace_back(value);
+            }
+            continue;
+        }
+
         if(!key.starts_with("script.")) {
             continue;
         }
@@ -98,7 +112,10 @@ void load(const std::filesystem::path& path)
         }
     }
 
-    TW_LOG_INFO("lua_config: loaded '{}' ({} script(s) disabled)", tw::plugin::paths::to_utf8(g_path), g_disabled.size());
+    TW_LOG_INFO("lua_config: loaded '{}' ({} script(s) disabled, {} in a set order)",
+        tw::plugin::paths::to_utf8(g_path),
+        g_disabled.size(),
+        g_order.size());
 }
 
 void save()
@@ -117,6 +134,16 @@ void save()
     file << "# .lua dropped into Scripts\\ starts working without editing this file.\n";
     for(const std::string& name : g_disabled) {
         file << "script." << name << "=0\n";
+    }
+
+    // Only once somebody chose an order. Before that the file says nothing about order, and the
+    // default - by file name - is not written down as if it were a choice.
+    if(!g_order.empty()) {
+        file << "\n# The order scripts run in, top first. Set by dragging rows in the Scripts tab;\n";
+        file << "# scripts not listed run after these, by file name.\n";
+        for(const std::string& name : g_order) {
+            file << "order=" << name << "\n";
+        }
     }
 
     // Written back only when it was there to begin with. A toggle in the Scripts tab rewrites this
@@ -147,6 +174,16 @@ int settle_ms() noexcept
 bool enabled(std::string_view file) noexcept
 {
     return !listed(file);
+}
+
+std::span<const std::string> order() noexcept
+{
+    return g_order;
+}
+
+void set_order(std::vector<std::string> files)
+{
+    g_order = std::move(files);
 }
 
 void set_enabled(std::string_view file, bool value)

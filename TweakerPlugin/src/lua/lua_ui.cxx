@@ -46,6 +46,13 @@ std::size_t g_built_for = 0;
 
 button g_rescan_button { "lua_scripts_rescan", ImVec2 { 72.f, 22.f } }; // k_button_w x k_control_h
 
+// The row being dragged to a new place in the run order, by script id; -1 when nothing is. A drag
+// only lives while the tab is drawn every frame: g_drag_frame is the last frame it was, and a drag the
+// tab was not there to see the end of (the menu closed under it) is dropped, not applied.
+int g_drag_id = -1;
+int g_drag_frame = -1;
+
+constexpr float k_grip_w = 14.f;
 constexpr float k_row_pad = 10.f;
 constexpr float k_rounding = 6.f;
 constexpr float k_toggle_w = 40.f;
@@ -136,7 +143,7 @@ bool draw_line(ImDrawList* draw, ImVec2 at, float width, const ImVec4& colour, c
 }
 
 // The whole of a line draw_line() had to cut, wrapped at a readable width rather than one screen-wide
-// strip (script-manager-roadmap.md §9.3 п. 4).
+// strip (script-manager.md §8.13).
 void full_text_tooltip(const std::string& text)
 {
     ImGui::BeginTooltip();
@@ -239,14 +246,49 @@ void draw_row(tw::lua::script& script, std::size_t index, float width)
         draw->AddRect(p_min, p_max, detail::to_u32(colour_of(state)), k_rounding);
     }
 
+    if(g_drag_id == script.id) {
+        draw->AddRect(p_min, p_max, detail::to_u32(theme::accent_primary), k_rounding, 0, 1.5f);
+    }
+
     const float buttons = (script.enabled ? k_button_w + 8.f : 0.f) + (script.health.suspended ? k_button_w + 8.f : 0.f);
     // A missing script has nothing to switch: its row is a record, not a control.
     const float controls_w = script.missing ? 0.f : k_toggle_w + buttons + k_row_pad;
-    const float text_w = std::max(60.f, width - controls_w - k_row_pad * 2.f);
-    const float full_w = width - k_row_pad * 2.f;
+    const float text_w = std::max(60.f, width - controls_w - k_row_pad * 2.f - k_grip_w);
+    const float full_w = width - k_row_pad * 2.f - k_grip_w;
 
-    const float x = p_min.x + k_row_pad;
+    const float x = p_min.x + k_row_pad + k_grip_w;
     float y = p_min.y + k_row_pad;
+
+    // The handle the row is dragged by, down its whole left edge (script-coexistence-roadmap.md §3.3).
+    // A missing script has one too: it keeps its place for when the file comes back, so it can be moved.
+    {
+        const ImVec2 grip_min { p_min.x + 2.f, p_min.y };
+        const ImVec2 grip_size { k_row_pad + k_grip_w - 6.f, height };
+
+        ImGui::SetCursorScreenPos(grip_min);
+        ImGui::PushID(script.id);
+        ImGui::InvisibleButton("grip", grip_size);
+        ImGui::PopID();
+
+        const bool grip_hot = ImGui::IsItemHovered() || ImGui::IsItemActive();
+        if(ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 3.f)) {
+            g_drag_id = script.id;
+        }
+        if(ImGui::IsItemHovered() && g_drag_id < 0) {
+            ImGui::SetTooltip("Drag to change the order. Scripts run top to bottom.");
+        }
+
+        // Two columns of three dots, beside the title and the line under it.
+        const ImU32 dots = detail::to_u32(grip_hot || g_drag_id == script.id ? theme::text_secondary : theme::text_faint);
+        const float centre_x = grip_min.x + grip_size.x * 0.5f;
+        const float centre_y = p_min.y + k_row_pad + line;
+        for(int column = 0; column < 2; ++column) {
+            for(int dot = 0; dot < 3; ++dot) {
+                const ImVec2 at { centre_x + (static_cast<float>(column) - 0.5f) * 4.f, centre_y + static_cast<float>(dot - 1) * 4.f };
+                draw->AddCircleFilled(at, 1.2f, dots);
+            }
+        }
+    }
 
     // Title line: name, then version and author in muted type beside it. Everything after the name is
     // optional, because a script with no header annotations at all still has to list cleanly.
@@ -461,6 +503,46 @@ void draw_status()
     ImGui::Dummy(ImVec2 { 0.f, 4.f });
 }
 
+// While a row is being dragged: which gap between rows the pointer is over - the number of rows whose
+// middle is above it - shown as a line, and applied when the button comes up. `spans` are the rows' top
+// and bottom in run order. A gap next to the dragged row is no move and gets no line.
+void drop_target(std::span<const ImVec2> spans, float left, float width)
+{
+    const int from = tw::lua::registry::place_of(g_drag_id);
+    if(from < 0) {
+        g_drag_id = -1;
+        return;
+    }
+
+    const float pointer = ImGui::GetIO().MousePos.y;
+    int gap = 0;
+    for(const ImVec2& span : spans) {
+        if(pointer > (span.x + span.y) * 0.5f) {
+            ++gap;
+        }
+    }
+
+    const bool moves = gap != from && gap != from + 1;
+
+    if(moves) {
+        const std::size_t at = static_cast<std::size_t>(gap);
+        const float y = at == 0              ? spans.front().x - 3.f
+                        : at == spans.size() ? spans.back().y + 3.f
+                                             : (spans[at - 1].y + spans[at].x) * 0.5f;
+        ImGui::GetWindowDrawList()->AddLine(
+            ImVec2 { left, y }, ImVec2 { left + width, y }, detail::to_u32(theme::accent_primary), 2.f);
+    }
+
+    if(ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+        return;
+    }
+
+    if(moves) {
+        tw::lua::registry::move(g_drag_id, gap > from ? gap - 1 : gap);
+    }
+    g_drag_id = -1;
+}
+
 void draw_tab()
 {
     if(!tw::lua::host::is_running()) {
@@ -487,6 +569,7 @@ void draw_tab()
     ImGui::SetCursorScreenPos(
         ImVec2 { ImGui::GetCursorScreenPos().x, rescan_y + (k_control_h - ImGui::GetTextLineHeight()) * 0.5f });
     ImGui::TextColored(theme::text_faint, "Picks up scripts added to or removed from the Scripts folder.");
+    ImGui::TextColored(theme::text_faint, "Scripts run top to bottom - drag a row by its handle to change the order.");
     ImGui::Dummy(ImVec2 { 0.f, 2.f });
 
     const int count = tw::lua::registry::count();
@@ -509,19 +592,38 @@ void draw_tab()
     int hooks = 0;
     int running = 0;
 
-    for(int i = 0; i < count; ++i) {
-        tw::lua::script* const script = tw::lua::registry::find(i);
+    // A drag the tab did not see every frame of - the menu was closed, another tab was open - ends here,
+    // unapplied: its release happened somewhere this code was not looking.
+    if(g_drag_id >= 0 && g_drag_frame != ImGui::GetFrameCount() - 1) {
+        g_drag_id = -1;
+    }
+    g_drag_frame = ImGui::GetFrameCount();
+
+    // In run order, top first. Widgets stay indexed by id - a row keeps its toggle mid-animation when it
+    // moves. Each row's top and bottom are kept for the drop below.
+    const std::span<const int> order = tw::lua::registry::order();
+    const float left = ImGui::GetCursorScreenPos().x;
+    std::vector<ImVec2> spans;
+    spans.reserve(order.size());
+
+    for(const int id : order) {
+        tw::lua::script* const script = tw::lua::registry::find(id);
         if(script == nullptr) {
             continue;
         }
 
-        draw_row(*script, static_cast<std::size_t>(i), width);
+        draw_row(*script, static_cast<std::size_t>(id), width);
+        spans.push_back(ImVec2 { ImGui::GetItemRectMin().y, ImGui::GetItemRectMax().y });
         ImGui::Dummy(ImVec2 { width, 6.f });
 
         if(script->enabled) {
             ++running;
             hooks += tw::lua::api::subscription_count(script->id);
         }
+    }
+
+    if(g_drag_id >= 0 && !spans.empty()) {
+        drop_target(spans, left, width);
     }
 
     ImGui::Dummy(ImVec2 { width, 4.f });

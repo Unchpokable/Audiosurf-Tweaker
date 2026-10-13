@@ -6,7 +6,7 @@
              x:Class="TweakerUI.Views.ScriptDevView"
              x:DataType="vm:ScriptDevViewModel">
 
-    <!-- Script projects (script-manager-roadmap.md, С4): the list and the editor on the left; on the right the
+    <!-- Script projects (script-manager.md §6): the list and the editor on the left; on the right the
     selected project (its details, or a form editing them) or the new-project form. -->
     <Border Background="{DynamicResource AppBackgroundBrush}">
         <Grid Margin="20" RowDefinitions="Auto,*">

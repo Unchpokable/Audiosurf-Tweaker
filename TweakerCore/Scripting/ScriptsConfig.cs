@@ -10,8 +10,8 @@ namespace TweakerCore.Scripting
     /// engine\TweakerStuff\Config\scripts.cfg - which scripts the plugin should not run. The plugin owns this
     /// file (TweakerPlugin/src/lua/lua_config.cxx): it reads it once at start and rewrites it on every toggle
     /// in the overlay. The host writes it only while the game is not running - then there is no plugin to
-    /// ask, and nothing that could read the file halfway through (Docs/Internal/script-manager-roadmap.md §5,
-    /// п. 5). Checking that is the caller's job, as with PluginInstallation.
+    /// ask, and nothing that could read the file halfway through (Docs/Internal/script-manager.md
+    /// §8.4). Checking that is the caller's job, as with PluginInstallation.
     ///
     /// Reading follows the plugin exactly: <c>script.&lt;file&gt;=0|false|off</c> disables the script, anything
     /// else means nothing, and names compare case-sensitively - the plugin keys a script by the file name as

@@ -16,12 +16,12 @@ using TweakerUI.Services;
 namespace TweakerUI.ViewModels
 {
     /// <summary>
-    /// The Script Dev tab (Docs/Internal/script-manager-roadmap.md, С4a): twllink projects - the ones in
+    /// The Script Dev tab (Docs/Internal/script-manager.md §6): twllink projects - the ones in
     /// DevTools\Sources\ and the ones opened from anywhere else - created from a template, built, installed into
     /// the game, with the diagnostics of the last build. Everything twllink does is done by running twllink
     /// (TweakerCore.Scripting.Twllink); this tab only decides when and shows what came back.
     ///
-    /// "Rebuild on save" is this tab's, not twllink's (§5, п. 8): a watcher on the selected project's folder,
+    /// "Rebuild on save" is this tab's, not twllink's (§8.8): a watcher on the selected project's folder,
     /// running while the switch is on - including when another tab is on screen, because the user asked for it
     /// and is most likely looking at their editor, not at Tweaker.
     /// </summary>
@@ -96,7 +96,7 @@ namespace TweakerUI.ViewModels
         public IReadOnlyList<ProjectTemplate> Templates { get; } = new[]
         {
             new ProjectTemplate("hud", "HUD", "Draws over the game with tw.hud - the most common kind of script."),
-            new ProjectTemplate("hook", "Hook", "Watches or changes a channel of the game with tw.hook, and shows what it saw."),
+            new ProjectTemplate("hook", "Hook", "Counts something the game does, through tw.on_call, and draws the count."),
             new ProjectTemplate("empty", "Empty", "Just the project, with an empty main.lua.")
         };
 
@@ -575,7 +575,7 @@ namespace TweakerUI.ViewModels
             {
                 var result = await _twllink.BuildAsync(row.Root, game);
 
-                // Installed into a game that is running and connected: have it run the new build now (§9.3 п. 3),
+                // Installed into a game that is running and connected: have it run the new build now (§8.10),
                 // on a rebuild-on-save too. A script that was off stays off - the plugin only re-reads its header.
                 var reloaded = result.Success && result.Build?.Installed != null && ScriptsOverlayBridge.IsLive;
                 if (reloaded)
@@ -602,7 +602,7 @@ namespace TweakerUI.ViewModels
         }
 
         /// <summary>
-        /// The one question installing can need (§5, п. 6): the project's script has the name of a bundled one.
+        /// The one question installing can need (§8.6): the project's script has the name of a bundled one.
         /// Asked once per project per session; true when there is no collision or the user said go ahead.
         /// </summary>
         private async Task<bool> ConfirmCollisionIfNeededAsync(ScriptProjectRowViewModel row)
@@ -725,7 +725,7 @@ namespace TweakerUI.ViewModels
         }
 
         /// <summary>
-        /// The owner's warning (§5, п. 2): an editor that keeps one process will hand the project to the instance
+        /// The owner's warning (§8.3): an editor that keeps one process will hand the project to the instance
         /// that is already running, and that instance's terminal has no twllink in PATH. Not asked when the running
         /// instance is the one this session started, and not asked twice for the same editor in a session.
         /// </summary>

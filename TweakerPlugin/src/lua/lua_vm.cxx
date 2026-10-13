@@ -30,6 +30,7 @@ constexpr const char* k_export_names[] = {
     "dispatch_graph",
     "unload_owner",
     "run_script",
+    "reorder",
 };
 
 std::array<int, std::size(k_export_names)> g_exports = [] {
@@ -57,6 +58,7 @@ const entry_point k_entry_points[] = {
     // api_core
     TW_LUA_ENTRY(tw_script_enter),
     TW_LUA_ENTRY(tw_script_leave),
+    TW_LUA_ENTRY(tw_script_order),
     TW_LUA_ENTRY(tw_diag),
     TW_LUA_ENTRY(tw_log),
     TW_LUA_ENTRY(tw_notify),

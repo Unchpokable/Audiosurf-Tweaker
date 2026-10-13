@@ -7,8 +7,8 @@ They are here rather than in your `Scripts\` folder for exactly that reason — 
 running while they play — but they are the most honest documentation of the API there is: each one
 was used to establish something the rest of these pages now states as fact.
 
-Copy any of them into `engine\TweakerStuff\Scripts\`, open the overlay's Scripts tab and switch it
-on. See [Getting started](getting-started.md) if that layout is new to you.
+Copy any of them into `engine\TweakerStuff\Scripts\`, open the overlay's Scripts tab — press
+**Rescan** if the game was already running — and switch it on. See [Getting started](getting-started.md) if that layout is new to you.
 
 The full versions, with the whole investigation written out in comments, live in the repository under
 `TweakerPlugin/assets/scripts/dev/`.

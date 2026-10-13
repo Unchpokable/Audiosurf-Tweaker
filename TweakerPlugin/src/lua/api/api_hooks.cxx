@@ -10,6 +10,7 @@
 
 #include "lua/api/api_channels.hxx"
 #include "lua/lua_diag.hxx"
+#include "lua/lua_registry.hxx"
 #include "lua/lua_sched.hxx"
 
 namespace
@@ -131,6 +132,21 @@ void report_missing_target(const subscription& record, tw::lua::api::resolve_sta
 // Returns the status a script would want to hear about, and leaves the record detached on anything
 // but `resolve_ok`. It is called twice for most subscriptions: once when the script registers, and
 // again from the group registry when the group it was waiting for turns up.
+// Where a subscription runs among the subscribers of its channel: its script's place in the user's order,
+// then the order the subscriptions were asked for in (ids only grow). Taken at every attach, so a
+// subscription that comes back with its group lands in its place, not at the end - and redone for all of
+// them by reorder_subscriptions(). The layer's own, owner -1, goes first.
+std::uint64_t order_key(const subscription& record) noexcept
+{
+    const auto place = static_cast<std::uint32_t>(tw::lua::registry::place_of(record.owner) + 1);
+    return (std::uint64_t { place } << 32) | static_cast<std::uint32_t>(record.id);
+}
+
+std::uint64_t order_of(void* user) noexcept
+{
+    return order_key(*static_cast<const subscription*>(user));
+}
+
 tw::lua::api::resolve_status attach_subscription(subscription* record) noexcept
 {
     if(record->channel != nullptr) {
@@ -155,7 +171,7 @@ tw::lua::api::resolve_status attach_subscription(subscription* record) noexcept
     // The record doubles as the subscriber key: it is unique per subscription, which is exactly what
     // the shim needs to tell two scripts watching the same channel apart. The group goes with it so
     // that the shim can be torn off the whole group at once when it is destroyed.
-    if(!tw::framework::channel_shim::subscribe(channel, group, &dispatch_channel_call, record)) {
+    if(!tw::framework::channel_shim::subscribe(channel, group, &dispatch_channel_call, record, order_key(*record))) {
         return tw::lua::api::resolve_unusable;
     }
 
@@ -364,6 +380,11 @@ int shared_channel_count() noexcept
     }
 
     return static_cast<int>(seen.size());
+}
+
+void reorder_subscriptions() noexcept
+{
+    tw::framework::channel_shim::reorder(&order_of);
 }
 
 void install_engine_listeners() noexcept

@@ -3,7 +3,7 @@
 #include "lua/lua_script.hxx"
 
 // The scripts as the host sees them: the SCRIPT_* half of TW_OVL, both directions
-// (Docs/Internal/overlay-scripts.md; why it is shaped this way - script-manager-roadmap.md §9).
+// (Docs/Internal/overlay-scripts.md; why it is shaped this way - script-manager.md §7).
 //
 // **Two threads, and a mailbox between them.** Commands arrive on whichever thread delivers WM_COPYDATA
 // and are only parsed and posted there. Switching a script on is running its body, and the registry

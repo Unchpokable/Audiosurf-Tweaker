@@ -8,7 +8,7 @@ using System.Linq;
 namespace TweakerCore.Scripting
 {
     /// <summary>
-    /// An editor the Script Dev tab can open a project in (Docs/Internal/script-manager-roadmap.md §5, п. 2):
+    /// An editor the Script Dev tab can open a project in (Docs/Internal/script-manager.md §8.3):
     /// where it is installed and how to ask it for a folder, or a file at a line.
     /// </summary>
     public sealed class ScriptEditor
@@ -100,7 +100,7 @@ namespace TweakerCore.Scripting
     }
 
     /// <summary>
-    /// The editors the Script Dev tab knows (§5, п. 2, decided 28.09.2026): VS Code, Cursor, Sublime Text,
+    /// The editors the Script Dev tab knows (script-manager.md §8.3, decided 28.09.2026): VS Code, Cursor, Sublime Text,
     /// Notepad++, Vim and Neovim. Found in their default install locations and through the shims they put on PATH;
     /// adding one is one more definition below.
     ///

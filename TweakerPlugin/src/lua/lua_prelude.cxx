@@ -33,6 +33,7 @@ local SIG = {
     -- api_core
     tw_script_enter       = "int (*)(int, int)",
     tw_script_leave       = "void (*)(int, int, const char*)",
+    tw_script_order       = "int (*)(int)",
     tw_diag               = "void (*)(int, int, const char*, const char*)",
     tw_log                = "void (*)(const char*)",
     tw_notify             = "void (*)(int, const char*)",
@@ -847,7 +848,7 @@ local tw = S.tw
 local caller_owner, traceback = S.caller_owner, S.traceback
 local D_ERROR = S.D_ERROR
 
-local C_enter, C_leave, C_diag = C.tw_script_enter, C.tw_script_leave, C.tw_diag
+local C_enter, C_leave, C_diag, C_order = C.tw_script_enter, C.tw_script_leave, C.tw_diag, C.tw_script_order
 local C_frame, C_group_loaded = C.tw_frame, C.tw_group_loaded
 local C_on_call, C_on_call_at = C.tw_on_call, C.tw_on_call_at
 local C_mute, C_mute_at, C_mute_set = C.tw_mute, C.tw_mute_at, C.tw_mute_set
@@ -881,7 +882,7 @@ local function guarded(owner, kind, fn, arg)
 end
 
 -- **Registration happens while a script loads, or from its on_ready, and nowhere else.** Order of
--- registration is order of calling, and registering from a callback that runs every frame is a list
+-- registration is order of calling within a script, and registering from a callback that runs every frame is a list
 -- that grows every frame. So a registration from anywhere else is refused, and said once - against
 -- the API that was misused, which dedups it however often it happens.
 --
@@ -905,6 +906,37 @@ local function may_register(owner, what, fn)
     return window_open(owner, what)
 end
 
+-- **Every list below runs in the user's order of scripts** (script-coexistence-roadmap.md §3), and a
+-- script's own handlers in the order it registered them. Not in the order of registration across
+-- scripts: a script registers again every time it is reloaded or switched back on, and appending would
+-- move it to the end of everything - the order would last only until the first Reload.
+--
+-- So each record carries where its script runs (`place`, asked of C once, here) and a registration
+-- number (`seq`), and goes in at its place rather than at the end. The order changes only when the user
+-- reorders, and exports.reorder re-sorts everything then - nothing on the per-frame path looks at
+-- either field.
+local seq = 0
+
+local function runs_before(a, b)
+    if a.place ~= b.place then return a.place < b.place end
+    return a.seq < b.seq
+end
+
+-- After every record that runs before it. From the back, because the usual record is the newest of the
+-- last script to load and belongs at the end.
+local function place_in(list, rec)
+    local i = #list
+    while i > 0 and runs_before(rec, list[i]) do i = i - 1 end
+    table.insert(list, i + 1, rec)
+end
+
+local function enlist(list, rec)
+    seq = seq + 1
+    rec.seq = seq
+    rec.place = C_order(rec.owner)
+    place_in(list, rec)
+end
+
 local handlers = {}
 local before_ready_count = 0
 
@@ -915,7 +947,7 @@ function tw.on_frame(fn, opts)
     local owner = caller_owner()
     if not may_register(owner, "tw.on_frame", fn) then return end
     local early = type(opts) == "table" and opts.before_ready == true
-    handlers[#handlers + 1] = { fn = fn, owner = owner, before_ready = early }
+    enlist(handlers, { fn = fn, owner = owner, before_ready = early })
     if early then before_ready_count = before_ready_count + 1 end
 end
 
@@ -932,14 +964,14 @@ local ticks = {}
 function tw.on_tick(fn)
     local owner = caller_owner()
     if not may_register(owner, "tw.on_tick", fn) then return end
-    ticks[#ticks + 1] = { fn = fn, owner = owner }
+    enlist(ticks, { fn = fn, owner = owner })
 end
 
 local post_ticks = {}
 function tw.on_post_tick(fn)
     local owner = caller_owner()
     if not may_register(owner, "tw.on_post_tick", fn) then return end
-    post_ticks[#post_ticks + 1] = { fn = fn, owner = owner }
+    enlist(post_ticks, { fn = fn, owner = owner })
 end
 
 -- Runs once, on the first frame where everything is allowed.
@@ -954,7 +986,7 @@ local ready_waiting = {}
 function tw.on_ready(fn)
     local owner = caller_owner()
     if not may_register(owner, "tw.on_ready", fn) then return end
-    ready_waiting[#ready_waiting + 1] = { fn = fn, owner = owner }
+    enlist(ready_waiting, { fn = fn, owner = owner })
 end
 
 -- Every transition, with the new state as a string. For a script that wants to put something on
@@ -963,7 +995,7 @@ local state_handlers = {}
 function tw.on_state(fn)
     local owner = caller_owner()
     if not may_register(owner, "tw.on_state", fn) then return end
-    state_handlers[#state_handlers + 1] = { fn = fn, owner = owner }
+    enlist(state_handlers, { fn = fn, owner = owner })
 end
 
 -- `fn(loaded)` whenever that group appears or disappears - by pool name ("Renderer") or bare file
@@ -975,7 +1007,7 @@ local group_handlers = {}
 function tw.on_group(name, fn)
     local owner = caller_owner()
     if not may_register(owner, "tw.on_group", fn) then return end
-    group_handlers[#group_handlers + 1] = { name = name, fn = fn, owner = owner, loaded = C_group_loaded(name) ~= 0 }
+    enlist(group_handlers, { name = name, fn = fn, owner = owner, loaded = C_group_loaded(name) ~= 0 })
 end
 
 -- The script is being switched off or reloaded: put back whatever it changed. Runs before its hooks
@@ -986,7 +1018,7 @@ local unloads = {}
 function tw.on_unload(fn)
     local owner = caller_owner()
     if not may_register(owner, "tw.on_unload", fn) then return end
-    unloads[#unloads + 1] = { fn = fn, owner = owner }
+    enlist(unloads, { fn = fn, owner = owner })
 end
 
 -- Channel-call subscriptions. The engine calls back with a numeric id, which is looked up here -
@@ -1120,7 +1152,7 @@ function exports.dispatch_tick()
         for i = 1, #waiting do
             local r = waiting[i]
             if not guarded(r.owner, K_READY, r.fn) then
-                ready_waiting[#ready_waiting + 1] = r
+                place_in(ready_waiting, r)
             end
         end
         in_ready = false
@@ -1177,6 +1209,19 @@ function exports.run_script(chunk)
     loading = false
     if ok then return nil end
     return tostring(err)
+end
+
+-- The user changed the order. Every list is re-sorted against the registry's new answer; within a
+-- script, registration order still decides. Channel subscribers are C's half (api_hooks), done by the
+-- caller right after this.
+function exports.reorder()
+    local lists = { handlers, ticks, post_ticks, ready_waiting, state_handlers, group_handlers, unloads }
+    for _, list in ipairs(lists) do
+        for i = 1, #list do
+            list[i].place = C_order(list[i].owner)
+        end
+        table.sort(list, runs_before)
+    end
 end
 
 local function drop(list, id)

@@ -42,9 +42,17 @@ is when the values you are reading actually change.
 
 **Register at the top level of your script, or inside `tw.on_ready` — nowhere else.** Every `tw.on_*`
 call and `tw.mute` made from inside some other callback is refused and reported once in the Scripts
-tab. Handlers run in the order they were registered, and registering from a callback that runs every
-frame is a list that grows every frame. Passing something that is not a function is an error on the
-spot, at your line.
+tab. Registering from a callback that runs every frame would be a list that grows every frame. Passing
+something that is not a function is an error on the spot, at your line.
+
+**Scripts run in the order the user set.** Every kind of handler — `on_frame`, `on_tick`, `on_call` on
+a shared channel, all of them — runs script by script, top to bottom as the Scripts tab lists them; the
+user changes that order by dragging rows
+([Getting started § The order scripts run in](getting-started.md#the-order-scripts-run-in)). Your own
+handlers run in the order you registered them. Reload and switching off and on keep your script's
+place. You cannot set or read the order from a
+script: if two parts of yours must run in a fixed order, make them one script
+([projects](authoring.md)), or say in your documentation which order to put them in.
 
 **Each script fails on its own.** Every handler runs under its own error guard: when yours throws,
 you lose that one call, and every other script — and every other handler of yours — runs as if

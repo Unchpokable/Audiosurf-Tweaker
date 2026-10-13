@@ -449,6 +449,14 @@ void unload(int owner) noexcept
     tw::lua::api::unsubscribe_owner(owner);
 }
 
+void reorder() noexcept
+{
+    // A failure here is the prelude's, like any dispatcher's - but there is no dispatcher to latch: a
+    // reorder is a click, and the next one simply tries again.
+    run_export(tw::lua::vm::fn::reorder, nullptr, "reorder", [](lua_State*) { return 0; });
+    tw::lua::api::reorder_subscriptions();
+}
+
 std::uint32_t frame() noexcept
 {
     const std::uint32_t candidate = tw::engine::frame::started() ? tw::engine::frame::count() : g_draw_frames;

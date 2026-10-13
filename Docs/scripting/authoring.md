@@ -8,19 +8,28 @@ each, and what the game loads is still one file.
 
 The tool that turns a folder of modules into that one file is **`twllink`** — the Tweaker's Lua
 linker. It ships with the Tweaker, as `twllink.exe` in the `DevTools\Binaries\` folder next to
-`TweakerUI.exe`, and needs nothing installed to run. To type `twllink` in a terminal, put that folder
-on your `PATH`.
+`TweakerUI.exe`, and needs nothing installed to run.
+
+**You do not have to use it from a terminal.** The Tweaker's **Script Dev** tab drives it for you:
+it creates projects, builds and installs them, rebuilds when you save, lists the errors and opens your
+editor on them, and opens the editor with `twllink` already on its `PATH`. That is the easy way in, and
+it is described in [Scripts in Audiosurf Tweaker](tweaker.md). This page is about what a project *is* —
+the same whichever way you build it — and about `twllink` itself, for when you want the command line.
+To type `twllink` in a terminal of your own, put `DevTools\Binaries` on your `PATH`.
 
 Nothing about the game side changes. The plugin never learns there were several files: what it loads
 is ordinary Lua, the same as a script written by hand, with the same rights and the same limits.
 
 ## Starting a project
 
+In the Tweaker: **Script Dev → +**, a name, a template, **Create** — see
+[Your first project](tweaker.md#your-first-project). From a terminal:
+
 ```
 twllink --new hud my_hud
 ```
 
-creates `my_hud/` with a project that builds as it is. Three templates:
+creates `my_hud/` with a project that builds as it is. Both make the same project. Three templates:
 
 | Template | |
 |---|---|
@@ -28,8 +37,9 @@ creates `my_hud/` with a project that builds as it is. Three templates:
 | `hook` | Counts something the game does, through `tw.on_call`, and draws the count. |
 | `empty` | `main.lua` with an empty `tw.on_frame`. |
 
-The folder must be new or empty. The script's `id` is made from the folder name (`My HUD!` becomes
-`my_hud`); change it in `twproject.json` before anyone else has the script, not after — see below.
+The folder must be new or empty. With `--new`, the script's `id` is made from the folder name (`My
+HUD!` becomes `my_hud`); Script Dev makes it from the name you type, and lets you change it right
+there. Either way, change it before anyone else has the script, not after — see below.
 
 ### Your editor
 
@@ -66,8 +76,8 @@ my_hud/
 
 Two names are fixed, on purpose:
 
-- **`twproject.json`** is how a folder is recognised as a project — by `twllink` now, and by the
-  Tweaker's own script tools once it has them.
+- **`twproject.json`** is how a folder is recognised as a project — by `twllink`, and by the Tweaker's
+  Script Dev tab when you open a folder as a project.
 - **`src/main.lua`** is where the script starts. There is no setting for it, the same way a C program
   has no setting for `main`.
 
@@ -178,7 +188,9 @@ And what a module can count on:
 - **Order is the order you require in.** Modules run the first time they are required, not before.
   `main` runs everything else, directly or not — so the order of the `require` lines in `main` is the
   order their top-level code runs in. That matters for anything with a side effect: two `tw.on_call`
-  handlers on the same channel run in the order they were registered.
+  handlers on the same channel run in the order they were registered. This is also the way to fix the
+  order between two parts of yours: between separate scripts, the order is the user's
+  ([API reference § Lifecycle](api-reference.md#lifecycle)).
 
 Registration (`tw.on_frame`, `tw.on_call`, `tw.mute`, …) works at the top level of any module, not
 only in `main`: a module's top level runs while the script is loading, which is exactly when
@@ -217,7 +229,9 @@ tells the plugin where each line came from. Files are only rewritten when their 
 | `--version`, `--help` | |
 
 Exit codes: **0** built, **1** the project has errors, **2** the command line was wrong, **3** `twllink`
-itself failed. A build that fails writes nothing.
+itself failed. A build that fails writes nothing — and installs nothing.
+
+Script Dev's **Build** and **Build and install** run exactly this, and show the same messages as a list.
 
 ### Installing
 
@@ -233,11 +247,17 @@ be an `engine\TweakerStuff\`); `twllink` does not install the plugin.
 Where your game is, is a fact about your computer, so it never goes into `twproject.json`.
 
 By hand works just as well: copy both files. The script runs without the map; the map is what makes
-its errors readable. Then press **Reload** on the script's row in the Scripts tab — or switch it off
-and on — and the game runs the new version.
+its errors readable.
 
-`twllink` builds once per run and does not watch your files: after a change, run it again. Most
-editors can run a command on save if you want that.
+If the game is running, it does not notice the new file by itself: press **Reload** on the script's
+row in the overlay's Scripts tab (or switch it off and on) to run the new version, or **Rescan** if the
+script was not installed before. **Build and install** in the Tweaker's Script Dev tab does that for
+you: with the game running and the Tweaker connected, the game reloads the script the moment it is
+installed.
+
+`twllink` builds once per run and does not watch your files: after a change, run it again. Script
+Dev's **Rebuild on save** does exactly that — and, with **and install into the game**, installs and
+reloads too — see [Rebuild on save](tweaker.md#rebuild-on-save).
 
 ## Checks at build time
 

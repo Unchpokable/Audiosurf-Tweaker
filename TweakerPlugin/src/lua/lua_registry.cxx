@@ -18,6 +18,12 @@ namespace
 // scripts do not. Reading through one is the same load as reading through a raw pointer.
 std::vector<std::unique_ptr<tw::lua::script>> g_scripts;
 
+// The order scripts run in: ids, first to run first (script-coexistence-roadmap.md §3). Every record is
+// in it exactly once, missing ones included - a file that went away keeps its place for when it comes
+// back. g_place is the inverse, by id, so "where does this script run" is one load.
+std::vector<int> g_order;
+std::vector<int> g_place;
+
 // What load_all() was given, for rescan().
 std::filesystem::path g_directory;
 
@@ -134,6 +140,66 @@ void stop(tw::lua::script& script) noexcept
     tw::lua::reset_health(script);
     tw::lua::diag::clear(script.id);
 }
+
+void index_places() noexcept
+{
+    g_place.assign(g_scripts.size(), -1);
+    for(std::size_t place = 0; place < g_order.size(); ++place) {
+        g_place[static_cast<std::size_t>(g_order[place])] = static_cast<int>(place);
+    }
+}
+
+// The order at startup: what scripts.cfg lists, in its order, then everything it does not, by id - which
+// at startup is by file name. Names in the file with no script behind them are skipped here and dropped at
+// the next write.
+void initial_order() noexcept
+{
+    g_order.clear();
+    g_order.reserve(g_scripts.size());
+
+    for(const std::string& name : tw::lua::config::order()) {
+        for(const std::unique_ptr<tw::lua::script>& entry : g_scripts) {
+            if(entry->file == name) {
+                g_order.push_back(entry->id);
+                break;
+            }
+        }
+    }
+
+    for(const std::unique_ptr<tw::lua::script>& entry : g_scripts) {
+        if(std::ranges::find(g_order, entry->id) == g_order.end()) {
+            g_order.push_back(entry->id);
+        }
+    }
+
+    index_places();
+}
+
+// Puts a new order into effect: scripts.cfg, then everything that runs scripts one after another. The
+// registry's own idea comes first, so that the prelude and the hook table, asking where each script
+// runs while they re-sort, already get the new answer.
+void apply(std::vector<int> order) noexcept
+{
+    if(order == g_order) {
+        return;
+    }
+
+    g_order = std::move(order);
+    index_places();
+
+    std::vector<std::string> names;
+    names.reserve(g_order.size());
+    for(const int id : g_order) {
+        names.push_back(g_scripts[static_cast<std::size_t>(id)]->file);
+    }
+    tw::lua::config::set_order(std::move(names));
+    tw::lua::config::save();
+
+    tw::lua::sched::reorder();
+    tw::lua::registry::changed();
+
+    TW_LOG_INFO("lua: run order changed - {} script(s)", g_order.size());
+}
 } // namespace
 
 namespace tw::lua::registry
@@ -150,7 +216,12 @@ void load_all(const std::filesystem::path& directory) noexcept
         g_scripts.push_back(catalogue(path, static_cast<int>(g_scripts.size())));
     }
 
-    for(const std::unique_ptr<script>& entry : g_scripts) {
+    initial_order();
+
+    // In run order, so that what one body does at the top level - a notification, a log line - comes
+    // out in the order everything else will run in.
+    for(const int id : g_order) {
+        const std::unique_ptr<script>& entry = g_scripts[static_cast<std::size_t>(id)];
         if(!entry->enabled) {
             TW_LOG_INFO("lua: {} is disabled - not loading", entry->file);
             continue;
@@ -224,6 +295,13 @@ void rescan() noexcept
 
         g_scripts.push_back(catalogue(files[i], static_cast<int>(g_scripts.size())));
         script& entry = *g_scripts.back();
+
+        // Last to run, too, before it runs: its registrations ask where it runs. Not written to
+        // scripts.cfg - nobody chose this place, and a script that is not listed runs after the listed
+        // ones anyway, which is where it is.
+        g_order.push_back(entry.id);
+        index_places();
+
         ++added;
         TW_LOG_INFO("lua: {} is new in Scripts{}", entry.file, entry.enabled ? "" : " - disabled, not loading");
         if(entry.enabled) {
@@ -238,6 +316,8 @@ void rescan() noexcept
 void clear() noexcept
 {
     g_scripts.clear();
+    g_order.clear();
+    g_place.clear();
     g_directory.clear();
     changed();
 }
@@ -358,6 +438,56 @@ void reload(int id) noexcept
     }
 
     changed();
+}
+
+std::span<const int> order() noexcept
+{
+    return g_order;
+}
+
+int place_of(int id) noexcept
+{
+    if(id < 0 || id >= static_cast<int>(g_place.size())) {
+        return -1;
+    }
+
+    return g_place[static_cast<std::size_t>(id)];
+}
+
+void move(int id, int place) noexcept
+{
+    const int from = place_of(id);
+    if(from < 0) {
+        return;
+    }
+
+    std::vector<int> order = g_order;
+    order.erase(order.begin() + from);
+    const int to = std::clamp(place, 0, static_cast<int>(order.size()));
+    order.insert(order.begin() + to, id);
+
+    apply(std::move(order));
+}
+
+void set_order(std::span<const std::string> files) noexcept
+{
+    std::vector<int> order;
+    order.reserve(g_order.size());
+
+    for(const std::string& name : files) {
+        const script* const entry = find(name);
+        if(entry != nullptr && std::ranges::find(order, entry->id) == order.end()) {
+            order.push_back(entry->id);
+        }
+    }
+
+    for(const int id : g_order) {
+        if(std::ranges::find(order, id) == order.end()) {
+            order.push_back(id);
+        }
+    }
+
+    apply(std::move(order));
 }
 
 std::uint32_t revision() noexcept

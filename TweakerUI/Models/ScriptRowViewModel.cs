@@ -22,7 +22,7 @@ namespace TweakerUI.Models
         private GameScript _script;
         private bool _enabled;
 
-        // What the running plugin says (script-manager-roadmap.md §9, С5b) and a switch still waiting for it to
+        // What the running plugin says (script-manager.md §7) and a switch still waiting for it to
         // confirm. Both null without a link; then the file - scripts.cfg - is all there is.
         private ScriptLiveState _live;
         private bool? _pending;

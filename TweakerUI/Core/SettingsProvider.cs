@@ -21,7 +21,7 @@ namespace TweakerUI.Core
         // skyboxes and scripts keep working, the host just never talks to it.
         internal static bool SyncOverlayWithTweaker { get; set; }
         // The editor Script Dev opens projects in, by TweakerCore.Scripting.ScriptEditor.Id; empty until one is
-        // chosen (script-manager-roadmap.md, С4b).
+        // chosen (script-manager.md §8.3).
         internal static string ScriptEditor { get; set; }
 
         internal static string WatcherDefaultTemp => @"Storage\temp.tasp";

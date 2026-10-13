@@ -38,7 +38,7 @@ namespace TweakerCore.Scripting
 
     /// <summary>
     /// What one run of twllink came to. The exit code decides which half is filled
-    /// (Docs/Internal/script-manager-roadmap.md §3): 0 and 1 carry the parsed <c>--json</c> result, 2 and 3 only
+    /// (Docs/Internal/script-manager.md §3): 0 and 1 carry the parsed <c>--json</c> result, 2 and 3 only
     /// <see cref="ToolMessage"/> - the command line was wrong, or twllink itself failed, and neither prints JSON.
     /// </summary>
     public sealed class TwllinkResult

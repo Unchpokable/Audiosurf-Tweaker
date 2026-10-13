@@ -28,15 +28,19 @@ Audiosurf/
 They are loose files on purpose, not packed into the plugin. You can edit one in a text editor and
 reload it without rebuilding anything, and sharing a script means sending someone a file.
 
-Every `.lua` file directly in `Scripts/` is picked up. **Subfolders are not scanned**, so a folder
-is a fine place to park scripts you do not want running.
+Every `.lua` file directly in `Scripts/` is picked up when the game starts. A file added while the game
+is running is picked up when you press **Rescan** in the [Scripts tab](#the-scripts-tab) (or Refresh
+in the Tweaker's own [Scripts tab](tweaker.md#scripts-what-is-installed)). **Subfolders are not
+scanned**, so a folder is a fine place to park scripts you do not want running.
 
 ## Getting the plugin in there
 
 The usual way is Audiosurf Tweaker: **Settings → In-game plugin → Install the plugin into
 Audiosurf**. It copies the plugin and the bundled scripts into the layout above, and keeps them up
 to date when you update the Tweaker. Anything you wrote yourself it leaves alone; if you edited one
-of the bundled scripts, an update keeps your version next to the new one as `<name>.lua.old`.
+of the bundled scripts, an update keeps your version next to the new one as `<name>.lua.old`. A
+bundled script you deleted is not put back by an update — the Tweaker's
+[Scripts tab](tweaker.md#scripts-what-is-installed) can restore it.
 
 **You do not need Audiosurf Tweaker running to use scripts.** The game loads the plugin by itself at
 startup, so scripts, skyboxes and the overlay work with nothing else running. The Tweaker is only
@@ -105,7 +109,8 @@ script** — that is how the Scripts tab can list something you have turned off:
 All four are optional. Missing `@name` falls back to the file name. Scanning stops at the first line
 that is neither blank nor a comment, so put the header at the very top.
 
-Keep `@description` to one line — it is drawn on one line and clipped.
+Keep `@description` to one line — the header is read line by line. The Scripts tab shows it on one
+line too; a longer one ends in `...`, and hovering it shows the whole text.
 
 ## The Scripts tab
 
@@ -117,15 +122,37 @@ author and description. Each row has:
 - a **toggle** — turns the script on and off;
 - a **Reload** button, on running scripts — re-runs the file from disk;
 - a **state**: `running`, `waiting` (the game is still loading, a group it hooks is not loaded yet, or
-  it said [`tw.pending`](api-reference.md#twwarnmessage)), `suspended`, `failed` or `off`;
+  it said [`tw.pending`](api-reference.md#twwarnmessage)), `suspended`, `failed`, `off`, or `missing`
+  (its file was deleted while the game was running — the row stays until the game restarts, and comes
+  back to life if the file does);
 - its **cost**, when it is high enough to mention — the average time its handlers take per frame;
 - how many channel **hooks** it holds, and how many of those are still waiting for their group;
 - its **messages** — click to unfold: every warning and error it produced, each with a count, and the
   full text with the traceback when you hover one;
 - a **Resume** button, on a suspended script.
 
-At the top: what the game is doing (loading, ready, loading a run). At the bottom: how many scripts
-are running and how many channel hooks they hold between them.
+At the top: what the game is doing (loading, ready, loading a run), and **Rescan** — it looks at the
+`Scripts` folder again, so a script you copied in starts and one you deleted is unloaded, without
+restarting the game. At the bottom: how many scripts are running and how many channel hooks they hold
+between them.
+
+### The order scripts run in
+
+**Scripts run top to bottom, in the order the tab lists them.** Every frame, the first script's handlers
+run, then the second's, and so on — and the same goes for two scripts hooking the same channel. It
+matters when scripts work together: if one changes something in the game and another shows it, the
+one that changes it should be above, or the display is always a frame behind.
+
+To change the order, **drag a row by the handle on its left** (the six dots) and drop it where the line
+shows. It takes effect at once, and it is remembered. Until you change it, scripts run by file name; a
+script added later goes to the bottom. Reload, switching a script off and on, or a script failing never
+moves it.
+
+If a script's author says it must run before or after another one, this is where you arrange it.
+
+Audiosurf Tweaker has a **Scripts tab of its own**, outside the game: the same list, with where each
+script came from, and the switches. With the game running and the Tweaker connected, switching there
+switches here. See [Scripts in Audiosurf Tweaker](tweaker.md).
 
 ### Turning a script off really turns it off
 
@@ -151,16 +178,20 @@ You can toggle a script mid-run. The game handles it.
 ### Which scripts are on is remembered
 
 `TweakerStuff\Config\scripts.cfg` stores **only the scripts you switched off**. Anything not listed
-is on. So a new `.lua` dropped into the folder runs immediately, which is what you want when someone
-sends you one, and deleting a script leaves at worst a stale line naming a file that no longer
-exists.
+is on. So a new `.lua` dropped into the folder runs as soon as the game sees it — at the next start, or
+on Rescan — which is what you want when someone sends you one, and deleting a script leaves at worst a
+stale line naming a file that no longer exists.
+
+Once you have reordered scripts, the same file also keeps the order, as `order=` lines, top first.
 
 ## When something goes wrong
 
 ### The script has a syntax error, or throws while loading
 
-The row in the Scripts tab gets a red border and shows the error instead of the description, and the
-toggle springs back to off. Fix the file and toggle it on again.
+The row in the Scripts tab gets a red border and shows the error instead of the description. If you
+had just switched it on, the toggle springs back to off: fix the file and toggle it on again. If it
+failed on **Reload** (or when the game started), it stays switched on, `failed`: fix the file and
+Reload — the same as installing a fixed build from the Tweaker's Script Dev tab.
 
 ### The script throws while running
 
@@ -202,7 +233,8 @@ worth waiting on.
 Check, in order:
 
 - Is the script listed in the Scripts tab? If not, it is not directly in
-  `engine\TweakerStuff\Scripts\` (a subfolder will not do), or does not end in `.lua`.
+  `engine\TweakerStuff\Scripts\` (a subfolder will not do), or does not end in `.lua` — or you added
+  it while the game was running and have not pressed **Rescan**.
 - Is its toggle on?
 - Are you in a run? Most of the interesting channels only exist while the game is actually playing.
 - Does anything draw? Try `tw.notify("alive")` at the top level — it shows a toast the moment the

@@ -13,7 +13,7 @@ using TweakerUI.Models;
 using TweakerUI.ViewModels;
 using Application = Avalonia.Application;
 
-// The Scripts tab (script-manager-roadmap.md, С3) with its REAL view model over a fake game folder: every kind
+// The Scripts tab (script-manager.md §5) with its REAL view model over a fake game folder: every kind
 // of row (bundled, edited, yours, project build with and without its map, not installed, with .old copies),
 // the notices, the empty states - both themes, both module widths. Then the switch: flipping one must write
 // scripts.cfg the way the plugin reads it.

@@ -5,7 +5,7 @@
              x:Class="TweakerUI.Views.ScriptsView"
              x:DataType="vm:ScriptsViewModel">
 
-    <!-- The scripts in the game (script-manager-roadmap.md, С3). Laid out in the app's card vocabulary:
+    <!-- The scripts in the game (script-manager.md §5). Laid out in the app's card vocabulary:
     a tinted notice when something stands in the way, then one card with the list. -->
     <Border Background="{DynamicResource AppBackgroundBrush}">
         <Grid Margin="20" RowDefinitions="Auto,*">

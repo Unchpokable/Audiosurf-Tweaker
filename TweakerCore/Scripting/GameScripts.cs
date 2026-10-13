@@ -53,8 +53,8 @@ namespace TweakerCore.Scripting
 
     /// <summary>
     /// What is in the game's engine\TweakerStuff\Scripts\ and what it is - read from the files, the deployment
-    /// manifest, scripts.cfg and the plugin bundle, never from the running plugin (that is С5/С6 of
-    /// Docs/Internal/script-manager-roadmap.md).
+    /// manifest, scripts.cfg and the plugin bundle, never from the running plugin (what the plugin says is laid
+    /// over it by the Scripts tab - Docs/Internal/script-manager.md §5, §7).
     ///
     /// The folder is read the way the plugin reads it: flat, and only files whose extension is exactly ".lua" -
     /// the plugin's comparison is case-sensitive, so "X.LUA" is not a script to it, and must not be one here.
@@ -133,7 +133,7 @@ namespace TweakerCore.Scripting
 
         /// <summary>
         /// Whether the plugin bundle ships a script under this file name - what a project whose id collides with
-        /// a bundled script is warned about (Docs/Internal/script-manager-roadmap.md §5, п. 6). The manifest
+        /// a bundled script is warned about (Docs/Internal/script-manager.md §8.6). The manifest
         /// counts too: a script shipped by an earlier version is still recorded as Tweaker's in this game.
         /// </summary>
         public static bool IsShipped(string engineDirectory, string payloadDirectory, string scriptFileName)

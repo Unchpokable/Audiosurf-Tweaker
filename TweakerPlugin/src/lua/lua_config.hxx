@@ -21,6 +21,15 @@ void save();
 [[nodiscard]] bool enabled(std::string_view file) noexcept;
 void set_enabled(std::string_view file, bool value);
 
+// The order scripts run in, as the user set it: file names, top first, one `order=` line each
+// (Docs/Internal/script-coexistence-roadmap.md §3.1). Empty until the user has reordered anything -
+// lua_registry then orders by name. The list can name files that are not there and miss files that
+// are; making a whole order out of it is the registry's job, not this file's.
+[[nodiscard]] std::span<const std::string> order() noexcept;
+
+// Replaces the list in memory; save() writes it.
+void set_order(std::vector<std::string> files);
+
 // The settle window engine::state uses to decide the game has finished loading: the set of channel
 // groups must have stood still for this many engine frames **and** this many milliseconds.
 //

@@ -51,7 +51,7 @@ using call_hook_fn = bool (*)(A3d_Channel* channel, void* user, phase when);
 // sooner or later, and neither has any way to know about the other. So subscribers stack, and the
 // dispatch rules are:
 //
-//  - every `before` subscriber runs, in subscription order, *before* any of them can cancel the
+//  - every `before` subscriber runs, in `order` (below), *before* any of them can cancel the
 //    call. An observer therefore always sees the event regardless of what else is attached;
 //  - if any of them returned false, the original is skipped - suppression is a logical OR, so two
 //    scripts muting the same node compose, and turning one off still leaves it muted;
@@ -68,7 +68,18 @@ using call_hook_fn = bool (*)(A3d_Channel* channel, void* user, phase when);
 // teardown. Asking a half-destroyed object which group it belongs to would be the one call this
 // layer cannot afford to get wrong. May be null; such a subscription is simply never matched by
 // group.
-bool subscribe(A3d_Channel* channel, A3d_ChannelGroup* group, call_hook_fn hook, void* user) noexcept;
+//
+// **`order` decides who runs first** among the subscribers of one channel, lower first, in both
+// phases; equal keys run in the order they subscribed. The scripting layer passes where the owning
+// script runs in the user's order (Docs/Internal/script-coexistence-roadmap.md §3.2) - not the moment of
+// subscribing, which a group being rebuilt or a script being reloaded would reshuffle. Callers with no
+// opinion leave it at 0 and get subscription order.
+bool subscribe(A3d_Channel* channel, A3d_ChannelGroup* group, call_hook_fn hook, void* user, std::uint64_t order = 0) noexcept;
+
+// Asks `order_of` for every subscriber's key again and re-sorts each channel's subscribers by it.
+// For when the order the keys stand for changed - the user reordered scripts. Cold.
+using order_fn = std::uint64_t (*)(void* user);
+void reorder(order_fn order_of) noexcept;
 
 // Drops one subscriber. When it was the last one on that channel, the original vptr goes back and
 // the copy is freed - so a channel nobody is watching any more costs the game nothing at all, which

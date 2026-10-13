@@ -34,6 +34,7 @@ enum class fn {
     dispatch_graph,
     unload_owner,
     run_script,
+    reorder,
 };
 
 // Pushes that function. False (and nothing pushed) when the VM is not up.

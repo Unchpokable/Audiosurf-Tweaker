@@ -26,6 +26,10 @@ end)
 Drop that in `engine\TweakerStuff\Scripts\` inside your Audiosurf install, start a run, and the
 number is on your screen. No rebuild, and Audiosurf Tweaker does not have to be running.
 
+When you are ready to write something of your own, the shortest way in is the **Script Dev** tab of
+Audiosurf Tweaker: it creates a project, opens it in your editor, builds it and installs it into the
+game — see [Scripts in Audiosurf Tweaker](scripting/tweaker.md).
+
 ---
 
 ## The manual
@@ -35,6 +39,7 @@ Read these in order the first time. After that they stand alone.
 | | |
 |---|---|
 | **[Getting started](scripting/getting-started.md)** | Where files go, your first script, the Scripts tab, turning scripts on and off, what happens when something breaks. |
+| **[Scripts in Audiosurf Tweaker](scripting/tweaker.md)** | The Script Dev tab — create a project, open it in your editor, build, install, rebuild on save — and the Scripts tab, which manages what is installed. Where to start writing a script. |
 | **[How Audiosurf is built](scripting/game-model.md)** | The important one. The game is a graph of *channels*, and everything else here only makes sense once that clicks. How to think about it, and how to find the piece you want. |
 | **[Reading and writing the game](scripting/channels.md)** | Channel accessors, values, text, vectors, tables, and how to handle the fact that nothing is available immediately. |
 | **[Reacting and intercepting](scripting/hooks.md)** | Running code when the game does something, and stopping the game from doing it. |

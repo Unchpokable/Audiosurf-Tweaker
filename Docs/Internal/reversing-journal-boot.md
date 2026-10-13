@@ -55,6 +55,15 @@
 | 5 | `+0x14` | `EngineControl::GetEngineInterface` | — |
 | 1 | `+0x04` | `EngineControl::LoadProject` | однократно при старте |
 
+**Слот 5 склеен линкером с чужой функцией.** Тело `GetEngineInterface` — 4 байта
+(`mov eax,[ecx+4]; ret`), и `/OPT:ICF` слил его с побайтно таким же `A3d_String::GetString`: оба
+экспорта (№301 `?GetEngineInterface@EngineControl@@…` и №368 `?GetString@A3d_String@@QAEPBDXZ`)
+указывают на один адрес, RVA `0x10d20`. Два следствия. **Детур на этот экспорт перехватит и каждый
+`A3d_String::GetString` во всём движке** — звать его можно сколько угодно, вешать хук нельзя.
+И IDA показывает функцию **под одним именем, `GetString`**, так что в её листинге слот 5 таблицы
+`EngineControl` выглядит как строковый метод; `vtdump` (`Tools/CgrPy`) печатает оба имени и не
+путает. Проверено по живой базе IDA 9.3, 13.10.2026.
+
 `QuestViewer.exe` вообще **не импортирует `HighPoly.dll`** — в его таблице импорта только
 `KERNEL32`, `USER32`, `ADVAPI32`, `urlmon`. Модуль грузится руками, точка входа —
 экспортируемая C-функция **`GetEngineControlInstance`** (RVA `0x10dd0`).
@@ -504,6 +513,8 @@ engine->vtable[+0x34]( g->vtable[+0x1c]() );   // DeleteChannelGroup( GetGroupIn
 Кадр и движок
   ?EngineLoop@EngineControl@@UAEXXZ                        спина кадра (детур), RVA 0x10b10
   ?GetEngineInterface@EngineControl@@UAEPAVEngineInterface@@XZ   EngineInterface* из this
+                                                           звать - да, детур - НЕТ: тот же адрес,
+                                                           что A3d_String::GetString (ICF, §1.1)
   GetEngineControlInstance                                 ФАБРИКА, не аксессор - не звать
   ?GetTreeCalculateCount@EngineInterface@@UAEHXZ           номер кадра графа (кольцевой)
   ?GetTreeCalculateCount@A3d_ChannelGroup@@QAEHXZ          то же + собственный счётчик группы

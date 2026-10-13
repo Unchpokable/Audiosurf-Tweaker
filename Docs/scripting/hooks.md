@@ -132,15 +132,19 @@ tree takes out everything below it, including things you did not mean.
 This is expected, not exceptional — install a few scripts and two of them will eventually watch the
 same popular handler. The rules:
 
-- **Every `before` handler runs**, in subscription order, *before* any of them can cancel. So whether
-  your observer sees an event never depends on which script the user happened to install first.
+- **Every `before` handler runs**, *before* any of them can cancel. So whether your observer sees an
+  event never depends on what else is attached.
+- **They run in the user's order of scripts** — top to bottom in the Scripts tab, which the user
+  changes by dragging rows — and a script's own handlers in the order it registered them. Both phases
+  follow it. A group that is rebuilt every run, a Reload, a toggle: none of them moves a script's place.
 - **Cancellation is an OR.** Any one of them can suppress the call. Two scripts muting the same node
   compose, and turning one off leaves it muted by the other.
 - **A suppressed call has no `after` phase for anyone.**
 - Then every `after` handler runs.
 
-You cannot detect or override another script. That is intentional — there is no ordering to fight
-over and no priority to escalate.
+You cannot detect or override another script, and you cannot set your place. That is intentional —
+the order is the user's, there is no priority to escalate. If your script only works before or after
+another one, say so in its description or documentation.
 
 The Scripts tab shows a count of channels more than one script is attached to, so a user can at least
 see when it is happening.

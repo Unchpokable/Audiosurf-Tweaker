@@ -65,6 +65,10 @@ void unsubscribe_owner(int owner) noexcept;
 // Drops every subscription and puts the original vtables back.
 void clear_subscriptions() noexcept;
 
+// The user reordered scripts: every hooked channel's subscribers are put back in the new order -
+// script by script, and within one script in the order it subscribed (lua_registry::place_of). Cold.
+void reorder_subscriptions() noexcept;
+
 // How many subscriptions exist, in total (owner < 0) or for one script.
 [[nodiscard]] int subscription_count(int owner) noexcept;
 

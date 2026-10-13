@@ -53,7 +53,7 @@
 
 	<!--
 	    twllink, the Lua project linker the Script Dev tab drives as a child process
-	    (Docs/Internal/script-manager-roadmap.md, С1). A tool beside the app, not a library: the reference
+	    (Docs/Internal/script-manager.md §8.1). A tool beside the app, not a library: the reference
 	    only orders the build and hands back where the linker's output is (TwllinkBuildOutput), and
 	    nothing of it enters TweakerUI's own references.
 

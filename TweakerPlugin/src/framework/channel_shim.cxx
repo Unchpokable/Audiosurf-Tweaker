@@ -27,7 +27,16 @@ using call_channel_fn = void(__fastcall*)(A3d_Channel* self, void* edx);
 struct subscriber {
     tw::framework::channel_shim::call_hook_fn hook;
     void* user;
+    // Lower runs first; see subscribe() in the header.
+    std::uint64_t order;
 };
+
+// After every subscriber whose key is not greater: equal keys keep the order they subscribed in.
+void add_subscriber(std::vector<subscriber>& list, const subscriber& entry)
+{
+    const auto at = std::ranges::upper_bound(list, entry.order, {}, &subscriber::order);
+    list.insert(at, entry);
+}
 
 struct binding {
     A3d_Channel* channel;
@@ -160,7 +169,7 @@ bool detach(binding* item, void* user, std::size_t binding_index) noexcept
 
 namespace tw::framework::channel_shim
 {
-bool subscribe(A3d_Channel* channel, A3d_ChannelGroup* group, call_hook_fn hook, void* user) noexcept
+bool subscribe(A3d_Channel* channel, A3d_ChannelGroup* group, call_hook_fn hook, void* user, std::uint64_t order) noexcept
 {
     if(channel == nullptr || hook == nullptr) {
         return false;
@@ -170,7 +179,7 @@ bool subscribe(A3d_Channel* channel, A3d_ChannelGroup* group, call_hook_fn hook,
     // which silently stole the first script's subscription the moment a second one asked for the
     // same channel - the exact case a user with several scripts installed runs into.
     if(binding* existing = find_binding(channel); existing != nullptr) {
-        existing->subscribers.push_back(subscriber { hook, user });
+        add_subscriber(existing->subscribers, subscriber { hook, user, order });
         return true;
     }
 
@@ -207,7 +216,7 @@ bool subscribe(A3d_Channel* channel, A3d_ChannelGroup* group, call_hook_fn hook,
     item->group = group;
     item->original_vtable = original;
     item->original_call = reinterpret_cast<call_channel_fn>(original[k_call_channel_slot]);
-    item->subscribers.push_back(subscriber { hook, user });
+    item->subscribers.push_back(subscriber { hook, user, order });
     item->block = block;
     item->slots = slots;
 
@@ -261,6 +270,20 @@ void remove(A3d_Channel* channel) noexcept
         delete item;
         g_bindings.erase(g_bindings.begin() + static_cast<std::ptrdiff_t>(i));
         return;
+    }
+}
+
+void reorder(order_fn order_of) noexcept
+{
+    if(order_of == nullptr) {
+        return;
+    }
+
+    for(binding* item : g_bindings) {
+        for(subscriber& sub : item->subscribers) {
+            sub.order = order_of(sub.user);
+        }
+        std::ranges::stable_sort(item->subscribers, {}, &subscriber::order);
     }
 }
 

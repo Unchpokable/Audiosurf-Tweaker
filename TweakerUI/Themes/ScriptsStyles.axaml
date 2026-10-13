@@ -3,7 +3,7 @@
         xmlns:core="using:TweakerUI.Core">
 
     <!-- ============================================================================
-    Scripts tab (Docs/Internal/script-manager-roadmap.md, С3). "SM" - script manager; the Script Dev tab
+    Scripts tab (Docs/Internal/script-manager.md §5). "SM" - script manager; the Script Dev tab
     (С4) shares this file. Cards, the card title, the switch, the empty-state text and the icon buttons
     are the shared ones from SharedStyles.axaml; what follows is only this tab's own: the script row and
     its origin badges.

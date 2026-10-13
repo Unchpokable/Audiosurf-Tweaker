@@ -9,6 +9,7 @@
 #include "libtweeny/tweeny.hxx"
 
 #include "lua/lua_diag.hxx"
+#include "lua/lua_registry.hxx"
 #include "lua/lua_sched.hxx"
 
 #include "plugin/diagnostics.hxx"
@@ -62,6 +63,11 @@ int tw_script_enter(int owner, int kind) noexcept
 void tw_script_leave(int owner, int kind, const char* error) noexcept
 {
     tw::lua::sched::leave(owner, kind, error);
+}
+
+int tw_script_order(int owner) noexcept
+{
+    return tw::lua::registry::place_of(owner);
 }
 
 void tw_diag(int owner, int level, const char* where, const char* message) noexcept

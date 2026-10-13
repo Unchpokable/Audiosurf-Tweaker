@@ -13,7 +13,7 @@ using TweakerUI.Models;
 using TweakerUI.ViewModels;
 using Application = Avalonia.Application;
 
-// The Script Dev tab (script-manager-roadmap.md, С4a) with its REAL view model and the REAL twllink: create a
+// The Script Dev tab (script-manager.md §6) with its REAL view model and the REAL twllink: create a
 // project from a template, a bad name, build, a build with an error, install into a fake game, and rebuild on
 // save - one rebuild per change, none for twllink's own writes into build\. Snapshots of each state, both themes.
 //

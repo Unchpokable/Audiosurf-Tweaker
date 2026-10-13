@@ -75,6 +75,11 @@ bool resume(int owner) noexcept;
 // boundary.
 void unload(int owner) noexcept;
 
+// The run order changed (lua_registry::move / set_order): re-sorts the prelude's callback lists and the
+// subscribers of every hooked channel, so the new order holds from the next callback on. Asks the
+// registry where each script runs, so the registry must already have the new order.
+void reorder() noexcept;
+
 // The frame number scripts see as tw.frame: engine frames once the spine has ticked, overlay frames
 // before that, and never backwards across the handover.
 [[nodiscard]] std::uint32_t frame() noexcept;

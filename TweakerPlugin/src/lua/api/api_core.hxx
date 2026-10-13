@@ -21,6 +21,11 @@ extern "C" {
 int tw_script_enter(int owner, int kind) noexcept;
 void tw_script_leave(int owner, int kind, const char* error) noexcept;
 
+// Where `owner` runs in the user's order, 0 first (lua_registry::place_of); -1 for the layer itself,
+// which therefore runs before every script. The prelude asks when a callback is registered and when the
+// order changes - never per call.
+int tw_script_order(int owner) noexcept;
+
 // A diagnostic from a script: tw.warn, tw.error and tw.pending, and the channel layer's own "no such
 // channel". `level` is tw::lua::diag::level, `where` is the place it was said from ("hud.lua:88"),
 // and the whole triple is deduplicated - see lua_diag.hxx for what reaches the notefeed and when.

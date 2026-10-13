@@ -246,7 +246,7 @@ namespace TweakerCore.PluginInstall
         }
 
         /// <summary>
-        /// "Restore bundled scripts" (Docs/Internal/script-manager-roadmap.md §5, п. 9): puts the bundle's scripts
+        /// "Restore bundled scripts" (Docs/Internal/script-manager.md §8.11): puts the bundle's scripts
         /// back as the bundle has them - <paramref name="scriptFileNames"/> only ("foo.lua", which takes its
         /// "foo.lua.map" along), or every one when null. Nothing outside the Scripts folder is touched: this is
         /// not an update, the plugin stays whatever version it is.
