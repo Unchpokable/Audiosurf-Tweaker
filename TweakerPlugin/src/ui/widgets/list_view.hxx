@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ui/kit/anim.hxx"
 #include "ui/widgets/list_item.hxx"
 
 #include <imgui.h>
@@ -10,6 +11,10 @@
 
 namespace tw::ui::widgets
 {
+// A scrolling list of rows with one selection. The rows are not objects: each is drawn as list_item's card
+// (kit::paint::row_background + list_item::draw_content), and the hover and the selection each animate as
+// one kit::anim::focus_pair. So replacing the items - a catalog refresh, a rename - keeps whatever is lit
+// lit instead of fading every row in from nothing (R5).
 class list_view {
 public:
     explicit list_view(const char* id, ImVec2 size = { 0.f, 200.f });
@@ -19,7 +24,8 @@ public:
 
     // Programmatic selection, for when the authoritative choice lives outside the widget (the Quick
     // Player tab adopts whichever playlist the host is positioned in). Out-of-range clears the
-    // selection; never raises selection_changed(), which stays reserved for the user's own clicks.
+    // selection; never raises selection_changed(), which stays reserved for the user's own clicks, and
+    // never animates - the change did not come from anyone looking at the list.
     void set_selected(int index) noexcept;
 
     void update();
@@ -31,12 +37,13 @@ private:
     std::string m_id;
     ImVec2 m_size;
     std::vector<list_item_content> m_items;
-    std::vector<list_item> m_rows;
-    std::vector<std::string> m_row_ids;
 
     float m_row_height = 36.f; // grows when any item carries a subtext - see set_items
 
     int m_selected_index = -1;
     bool m_selection_changed = false;
+
+    kit::anim::focus_pair<int> m_hover { theme::motion::hover, -1 };
+    kit::anim::focus_pair<int> m_select { theme::motion::select, -1 };
 };
 } // namespace tw::ui::widgets

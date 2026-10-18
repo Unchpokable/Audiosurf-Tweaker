@@ -2,10 +2,10 @@
 
 #include <imgui.h>
 
-#include <libtweeny/tweeny.hxx>
-
 #include <string>
 #include <string_view>
+
+#include "ui/kit/anim.hxx"
 
 namespace tw::ui::widgets
 {
@@ -45,8 +45,8 @@ public:
     // True on every frame the value moved - that is the point, this is the live-preview signal.
     [[nodiscard]] bool changed() const noexcept;
 
-    // True on the single frame a gesture ended: mouse released after a drag, or a typed value
-    // accepted. This is the one to persist on.
+    // True on the single frame a gesture ended: mouse released after a press on the track, or a typed
+    // value accepted. This is the one to persist on.
     [[nodiscard]] bool committed() const noexcept;
 
 private:
@@ -61,11 +61,11 @@ private:
     float m_min = 0.f;
     float m_max = 1.f;
 
-    float m_hover_t = 0.f;
-    float m_active_t = 0.f;
-    tweeny::tween<float> m_hover_tween {};
-    tweeny::tween<float> m_active_tween {};
-    bool m_was_hovered = false;
+    kit::anim::channel m_hover { theme::motion::hover };
+    kit::anim::channel m_active { theme::motion::press };
+
+    // Whether the previous frame had the slider held - a gesture in progress. Not animation state:
+    // set_value() ignores the owner while it is true.
     bool m_was_active = false;
 
     // Drag is re-anchored whenever Shift is pressed or released mid-gesture. Without that, switching
@@ -73,6 +73,12 @@ private:
     float m_anchor_x = 0.f;
     float m_anchor_value = 0.f;
     bool m_was_shift = false;
+
+    // The gesture since the button went down on the slider (see update): whether it came down on the
+    // track's lane, the value before it, whether Escape called it off.
+    bool m_gesture_in_lane = false;
+    float m_gesture_start = 0.f;
+    bool m_gesture_cancelled = false;
 
     bool m_editing = false;
     bool m_focus_pending = false;

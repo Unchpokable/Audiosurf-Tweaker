@@ -18,7 +18,7 @@ namespace
 // scripts do not. Reading through one is the same load as reading through a raw pointer.
 std::vector<std::unique_ptr<tw::lua::script>> g_scripts;
 
-// The order scripts run in: ids, first to run first (script-coexistence-roadmap.md §3). Every record is
+// The order scripts run in: ids, first to run first (script-coexistence.md §3). Every record is
 // in it exactly once, missing ones included - a file that went away keeps its place for when it comes
 // back. g_place is the inverse, by id, so "where does this script run" is one load.
 std::vector<int> g_order;

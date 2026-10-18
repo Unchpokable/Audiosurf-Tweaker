@@ -1,19 +1,17 @@
 #include "ui/plugins/static/notefeed.hxx"
 
 #include "ui/image/svg.hxx"
+#include "ui/kit/anim.hxx"
+#include "ui/kit/paint.hxx"
 #include "ui/overlay_config.hxx"
 #include "ui/theme.hxx"
-#include "ui/widgets/detail/draw.hxx"
 
 #include <imgui.h>
-
-#include <libtweeny/tweeny.hxx>
 
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
-#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -24,7 +22,9 @@ namespace
 constexpr float k_lifetime_ms = 3000.f;
 constexpr float k_fade_in_ms = 200.f;
 constexpr float k_fade_out_ms = 400.f;
-constexpr float k_reflow_ms = 220.f;
+// The feed's own motion, not one of the shared roles in theme::motion: a toast settling into a new
+// slot is neither a hover nor a page transition.
+constexpr tw::ui::theme::timing k_reflow { 220, tw::ui::theme::easing::cubic_out };
 constexpr float k_row_gap = 8.f;
 constexpr float k_margin = 16.f;
 constexpr float k_width = 300.f;
@@ -51,15 +51,14 @@ constexpr float k_min_reflow_px = 0.5f;
 // other is the realistic worst case; past the cap the oldest is folded into the newest (add_reflow).
 constexpr std::size_t k_max_reflows = 4;
 
-// One in-flight layout change: `value` travels from (old target - new target) to zero.
+// One in-flight layout change: its value travels from (old target - new target) to zero.
 //
 // Additive rather than a single position tween. A toast is drawn at its layout target plus the sum of
 // its reflows, so a second change arriving mid-animation starts a curve of its own on top of the first
 // one instead of restarting cubicOut from wherever the toast happened to be - which is what made the
 // stack jerk when toasts expired in quick succession.
 struct reflow {
-    float value = 0.f; // source of truth, written by tween.step() - see button.cxx convention
-    tweeny::tween<float> tween;
+    tw::ui::kit::anim::channel offset { k_reflow };
 };
 
 struct entry {
@@ -101,13 +100,13 @@ void measure(entry& e, ImFont* font, float font_size, float wrap_width)
     e.text_size = ImVec2 { std::min(full.x, wrap_width), std::min(full.y, k_max_lines * font_size) };
 }
 
-void advance_reflows(entry& e, std::int32_t dt)
+void advance_reflows(entry& e)
 {
     std::size_t kept = 0;
     for(std::size_t i = 0; i < e.reflow_count; ++i) {
         reflow& r = e.reflows[i];
-        r.value = r.tween.step(dt);
-        if(r.tween.isFinished()) {
+        r.offset.step();
+        if(!r.offset.moving()) {
             continue;
         }
         if(kept != i) {
@@ -123,21 +122,19 @@ void add_reflow(entry& e, float delta)
     if(e.reflow_count == k_max_reflows) {
         // Full: the oldest one's remaining distance joins the new curve. The sum does not change, so
         // the drawn position does not jump - only that leftover part of the motion restarts easing.
-        delta += e.reflows[0].value;
+        delta += e.reflows[0].offset.value();
         std::move(e.reflows.begin() + 1, e.reflows.begin() + static_cast<std::ptrdiff_t>(e.reflow_count), e.reflows.begin());
         --e.reflow_count;
     }
 
-    reflow& r = e.reflows[e.reflow_count++];
-    r.value = delta;
-    r.tween = tweeny::from(delta).to(0.f).during(static_cast<int>(k_reflow_ms)).via(tweeny::easing::cubicOut);
+    e.reflows[e.reflow_count++].offset.restart(delta, 0.f);
 }
 
 float reflow_offset(const entry& e)
 {
     float sum = 0.f;
     for(std::size_t i = 0; i < e.reflow_count; ++i) {
-        sum += e.reflows[i].value;
+        sum += e.reflows[i].offset.value();
     }
     return sum;
 }
@@ -156,7 +153,7 @@ float alpha_at(float age)
 
 namespace tw::ui::plugins::statics::notefeed
 {
-namespace detail = tw::ui::widgets::detail;
+namespace paint = tw::ui::kit::paint;
 
 void initialize() noexcept
 {
@@ -180,7 +177,7 @@ void push(std::string_view text, std::string_view icon_resource_key)
 
 void update() noexcept
 {
-    const auto dt = detail::dt_ms();
+    const auto dt = tw::ui::kit::anim::dt_ms();
     g_clock_ms += dt;
 
     std::erase_if(g_entries, [](const entry& e) { return g_clock_ms - e.spawn_time_ms >= k_lifetime_ms; });
@@ -222,7 +219,7 @@ void update() noexcept
             }
         }
         else {
-            advance_reflows(e, dt);
+            advance_reflows(e);
             if(target != e.target_y) {
                 const float delta = e.target_y - target;
                 e.target_y = target;
@@ -246,8 +243,8 @@ void update() noexcept
 
         const ImVec4 bg { theme::surface.x, theme::surface.y, theme::surface.z, theme::surface.w * 0.92f * alpha };
         const ImVec4 border { theme::border.x, theme::border.y, theme::border.z, theme::border.w * alpha };
-        draw->AddRectFilled(p_min, p_max, detail::to_u32(bg), k_rounding);
-        draw->AddRect(p_min, p_max, detail::to_u32(border), k_rounding);
+        draw->AddRectFilled(p_min, p_max, paint::to_u32(bg), k_rounding);
+        draw->AddRect(p_min, p_max, paint::to_u32(border), k_rounding);
 
         const float text_x = p_min.x + half_pad + icon_dim;
         const float text_y = p_min.y + half_pad;
@@ -256,18 +253,15 @@ void update() noexcept
             const ImTextureID icon = image::svg::get_resource(e.icon_key).at(icon_px);
             // Aligned to the first line, not centred in the box: next to wrapped text a centred icon
             // floats loose between lines.
-            const ImVec2 icon_min { p_min.x + half_pad, text_y };
-            const ImVec2 icon_max { icon_min.x + icon_dim, text_y + text_h };
-            // Assets are monochrome white - the tint is what carries the fade here.
-            const ImU32 icon_col = IM_COL32(255, 255, 255, static_cast<int>(alpha * 255.f + 0.5f));
-            detail::add_image_keep_aspect(draw, icon, ImVec2 { 0.f, 0.f }, icon_min, icon_max, icon_col);
+            // Drawn at the size it was baked at, which is the line height rounded. The tint carries the fade.
+            paint::icon(draw, icon, ImVec2 { p_min.x + half_pad, text_y }, static_cast<float>(icon_px), ImVec4 { 1.f, 1.f, 1.f, alpha });
         }
 
         const ImVec4 text_col { theme::text_primary.x, theme::text_primary.y, theme::text_primary.z, theme::text_primary.w * alpha };
         // Clipped to the measured height, which is where k_max_lines cuts the text off.
         const ImVec4 text_clip { text_x, text_y, p_max.x, text_y + e.text_size.y };
         draw->AddText(
-            font, text_h, ImVec2 { text_x, text_y }, detail::to_u32(text_col), e.text.c_str(), nullptr, k_width - pad - icon_dim, &text_clip);
+            font, text_h, ImVec2 { text_x, text_y }, paint::to_u32(text_col), e.text.c_str(), nullptr, k_width - pad - icon_dim, &text_clip);
     }
 }
 

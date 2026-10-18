@@ -13,11 +13,11 @@
 #include "skybox/sky_timer.hxx"
 #include "skybox/skybox.hxx"
 
+#include "ui/kit/paint.hxx"
 #include "ui/plugins/interactive/menu.hxx"
 #include "ui/plugins/static/notefeed.hxx"
 #include "ui/theme.hxx"
 #include "ui/widgets/button.hxx"
-#include "ui/widgets/detail/draw.hxx"
 #include "ui/widgets/list_view.hxx"
 #include "ui/widgets/segmented.hxx"
 #include "ui/widgets/slider.hxx"
@@ -131,8 +131,7 @@ int quality_index(int percent) noexcept
 // flipped.
 bool toggle_row(const char* label, toggle& widget)
 {
-    ImGui::TextUnformatted(label);
-    ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetCursorPosX() - 44.f);
+    tw::ui::kit::paint::label_row(label, widget.size());
     widget.update();
 
     return widget.changed();
@@ -349,8 +348,7 @@ void draw_tab()
     // Shader-only: a cube map is one texture lookup per pixel, and rendering it small to stretch it
     // big would cost picture for nothing.
     if(status.program != nullptr) {
-        ImGui::TextUnformatted("Render resolution");
-        ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetCursorPosX() - g_quality.width());
+        tw::ui::kit::paint::label_row("Render resolution", ImVec2 { g_quality.width(), g_quality.height() });
         g_quality.update();
 
         if(g_quality.changed()) {
@@ -422,10 +420,10 @@ void draw_tab()
     const char* dir_text = k_dir_text.c_str();
 
     const ImVec2 dir_pos = ImGui::GetCursorScreenPos();
-    tw::ui::widgets::detail::add_text_ellipsis(ImGui::GetWindowDrawList(),
+    tw::ui::kit::paint::add_text_ellipsis(ImGui::GetWindowDrawList(),
         dir_pos,
         dir_pos.x + ImGui::GetContentRegionAvail().x,
-        tw::ui::widgets::detail::to_u32(tw::ui::theme::text_muted),
+        tw::ui::kit::paint::to_u32(tw::ui::theme::text_muted),
         dir_text);
     ImGui::Dummy(ImVec2 { ImGui::GetContentRegionAvail().x, ImGui::GetFontSize() });
 }

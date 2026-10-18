@@ -1,13 +1,11 @@
 #include "ui/widgets/list_view.hxx"
 
+#include "ui/kit/interact.hxx"
+#include "ui/kit/paint.hxx"
 #include "ui/theme.hxx"
-#include "ui/widgets/detail/draw.hxx"
-
-#include <format>
 
 namespace
 {
-constexpr float k_row_gap = 4.f;
 constexpr float k_row_height = 36.f;
 
 // Rows carrying a second line need the height for it. One height for the whole list, decided by
@@ -30,10 +28,6 @@ void list_view::set_size(ImVec2 size) noexcept
 void list_view::set_items(std::span<const list_item_content> items)
 {
     m_items.assign(items.begin(), items.end());
-    m_rows.clear();
-    m_row_ids.clear();
-    m_rows.reserve(m_items.size());
-    m_row_ids.reserve(m_items.size());
 
     m_row_height = k_row_height;
     for(const list_item_content& item : m_items) {
@@ -43,21 +37,23 @@ void list_view::set_items(std::span<const list_item_content> items)
         }
     }
 
-    for(std::size_t i = 0; i < m_items.size(); ++i) {
-        m_row_ids.emplace_back(std::format("row_{}", i));
-        m_rows.emplace_back(m_row_ids.back().c_str(), ImVec2 { 0.f, m_row_height });
-        m_rows.back().set_content(m_items[i]);
-        m_rows.back().set_selected(static_cast<int>(i) == m_selected_index);
-    }
-
+    // The highlights are keyed by index and survive the new items: a row that stayed where it was stays
+    // lit. Only an index past the end is let go.
     if(m_selected_index >= static_cast<int>(m_items.size())) {
         m_selected_index = -1;
+        m_select.jump(-1);
+    }
+    if(m_hover.current() >= static_cast<int>(m_items.size())) {
+        m_hover.reset();
     }
 }
 
 void list_view::set_selected(int index) noexcept
 {
     m_selected_index = index >= 0 && index < static_cast<int>(m_items.size()) ? index : -1;
+    if(m_select.current() != m_selected_index) {
+        m_select.jump(m_selected_index);
+    }
 }
 
 void list_view::update()
@@ -66,38 +62,53 @@ void list_view::update()
 
     ImGui::PushID(m_id.c_str());
 
-    const ImVec2 size = detail::resolve_size(m_size, 200.f, 200.f);
-    const ImGuiChildFlags child_flags = ImGuiChildFlags_Borders;
-    const ImGuiWindowFlags window_flags = ImGuiWindowFlags_None;
+    const ImVec2 size = kit::paint::resolve_size(m_size, 200.f, 200.f);
 
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, theme::surface);
-    ImGui::PushStyleColor(ImGuiCol_Border, theme::border);
-    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2 { 6.f, 6.f });
+    if(kit::paint::scroll_body_begin("##list", size, theme::space::list_pad, theme::radius::scroll)) {
+        // Stepped once for the list, not per row: one hover and one selection are ever in flight.
+        m_hover.step();
+        m_select.step();
+        bool hover_seen = false;
 
-    if(ImGui::BeginChild("##list", size, child_flags, window_flags)) {
-        for(std::size_t i = 0; i < m_rows.size(); ++i) {
-            m_rows[i].set_content(m_items[i]);
-            m_rows[i].set_selected(static_cast<int>(i) == m_selected_index);
-            m_rows[i].set_size(ImVec2 { 0.f, m_row_height });
-            m_rows[i].update();
+        // The gap between the cards is the item spacing, and only it.
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2 { ImGui::GetStyle().ItemSpacing.x, theme::space::row_gap });
+        ImDrawList* draw = ImGui::GetWindowDrawList();
 
-            if(m_rows[i].clicked()) {
-                if(m_selected_index != static_cast<int>(i)) {
-                    m_selected_index = static_cast<int>(i);
-                    m_selection_changed = true;
-                }
+        for(std::size_t i = 0; i < m_items.size(); ++i) {
+            const int index = static_cast<int>(i);
+            const ImVec2 pos = ImGui::GetCursorScreenPos();
+            const ImVec2 max { pos.x + ImGui::GetContentRegionAvail().x, pos.y + m_row_height };
+
+            ImGui::PushID(index);
+            const kit::interaction pointer = kit::interact(ImRect { pos, max }, ImGui::GetID("##row"));
+            ImGui::PopID();
+            if(!pointer.visible) {
+                continue;
             }
 
-            if(i + 1 < m_rows.size()) {
-                ImGui::Dummy(ImVec2 { 0.f, k_row_gap });
+            if(pointer.hovered) {
+                hover_seen = true;
+                m_hover.focus(index);
             }
+            if(pointer.clicked && m_selected_index != index) {
+                m_selected_index = index;
+                m_selection_changed = true;
+                m_select.focus(index);
+            }
+
+            kit::paint::row_background(draw, pos, max, m_hover.alpha(index), m_select.alpha(index));
+            list_item::draw_content(draw, pos, max, m_items[i]);
+        }
+
+        ImGui::PopStyleVar();
+
+        // A row under the pointer always reports it, so no report means the pointer left the list.
+        if(!hover_seen) {
+            m_hover.focus(-1);
         }
     }
-    ImGui::EndChild();
+    kit::paint::scroll_body_end();
 
-    ImGui::PopStyleVar(2);
-    ImGui::PopStyleColor(2);
     ImGui::PopID();
 }
 

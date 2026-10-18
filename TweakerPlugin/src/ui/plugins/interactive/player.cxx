@@ -1,13 +1,15 @@
 // No TweakerPlugin PCH here - shared with smoke_test, same convention as menu.cxx.
 #include "ui/plugins/interactive/player.hxx"
 
+#include "ui/kit/anim.hxx"
+#include "ui/kit/interact.hxx"
+#include "ui/kit/paint.hxx"
 #include "ui/overlay_state.hxx"
 #include "ui/qp/qp_catalog.hxx"
 #include "ui/qp/qp_pending.hxx"
 #include "ui/qp/qp_wire.hxx"
 #include "ui/theme.hxx"
 #include "ui/widgets/button.hxx"
-#include "ui/widgets/detail/draw.hxx"
 #include "ui/widgets/list_item.hxx"
 #include "ui/widgets/list_view.hxx"
 #include "ui/widgets/number_input.hxx"
@@ -18,8 +20,6 @@
 
 #include <imgui.h>
 #include <imgui_internal.h>
-
-#include <libtweeny/tweeny.hxx>
 
 #include <algorithm>
 #include <memory>
@@ -32,7 +32,7 @@ namespace
 namespace qp = tw::ui::qp;
 namespace state = tw::ui::qp::state;
 namespace theme = tw::ui::theme;
-namespace detail = tw::ui::widgets::detail;
+namespace paint = tw::ui::kit::paint;
 
 using tw::ui::widgets::button;
 using tw::ui::widgets::list_item;
@@ -50,6 +50,7 @@ constexpr float k_row_pad_x = 10.f;
 constexpr float k_row_pad_y = 6.f;
 constexpr float k_line_gap = 4.f;
 constexpr float k_marker_w = 3.f;
+constexpr float k_marker_inset = 4.f; // the "playing" marker from the card's left edge
 
 // A track row grows to fit its badges instead of dropping the ones that do not fit, which is what
 // the desktop card does (its badges live in a WrapPanel) and what the first pass did not
@@ -58,12 +59,9 @@ constexpr float k_marker_w = 3.f;
 constexpr float k_badge_line_gap = 3.f;
 constexpr float k_min_badge_area = 140.f; // reserved from the title so badges always get a first run
 
-// Badges get real breathing room on both axes. The first pass gave them 6px horizontally and 2px
-// vertically, which read as text with a tint behind it rather than as the desktop's pills
-// (Fuckups/tags_too_small.png), and let the last one sit flush against the row's edge.
+// Badges are kit::paint::pill, neutral. The first pass let the last one sit flush against the row's
+// edge (Fuckups/tags_too_small.png), hence the margin.
 constexpr float k_badge_gap = 6.f;
-constexpr float k_badge_pad_x = 8.f;
-constexpr float k_badge_pad_y = 3.f;
 constexpr float k_badge_margin = 12.f; // kept clear at the row's right edge
 
 constexpr float k_transport_btn = 36.f;
@@ -74,11 +72,6 @@ constexpr float k_divider_margin = 10.f;
 constexpr float k_group_gap = 8.f; // between a caption and the strip it labels
 constexpr float k_min_track_col_w = 340.f;
 constexpr float k_min_body_h = 120.f;
-
-// Same durations and easings the rest of the widget set uses (see the animation table in
-// Docs/Internal/tweaker-plugin-widgets.md) - the list has no business feeling different.
-constexpr int k_hover_ms = 150;
-constexpr int k_select_ms = 150;
 
 // One prepared track row. Badge strings are built when the track list changes rather than every
 // frame: the list is drawn from EndScene, and formatting a dozen strings per visible row per frame
@@ -116,21 +109,11 @@ std::vector<row_view> g_rows;
 std::vector<float> g_row_offsets;
 float g_rows_layout_width = -1.f;
 
-int g_selected_track = -1;
-
-// Row highlight animation. Per-row tween state is what a virtualized list cannot have - a float
-// attached to row index 12 animates whatever scrolled into that slot, not the row the mouse is on.
-// But at any instant there is exactly one hovered row and one selected row, so the animation belongs
-// to *those*, with the row they moved away from kept for the length of one crossfade. Same
-// previous/current pair tab_view uses for its own content transition.
-int g_hover_row = -1;
-int g_prev_hover_row = -1;
-float g_hover_t = 1.f;
-tweeny::tween<float> g_hover_tween;
-
-int g_prev_selected_row = -1;
-float g_select_t = 1.f;
-tweeny::tween<float> g_select_tween;
+// Row highlight. A virtualized list has no per-row state to animate, so the hovered and the selected
+// row each get one focus_pair - see kit/anim.hxx for why. The selected row's index is the pair's
+// current key; -1 is "none" for both.
+tw::ui::kit::anim::focus_pair<int> g_hover { tw::ui::theme::motion::hover, -1 };
+tw::ui::kit::anim::focus_pair<int> g_select { tw::ui::theme::motion::select, -1 };
 
 // Set by any row that reports hover this frame. A row under the mouse is always inside the clipper's
 // range, so "no row set this" means the pointer left the list - which has to fade the highlight out,
@@ -150,6 +133,8 @@ button g_next_btn { "qp_next", { k_transport_btn, k_transport_btn } };
 button g_character_btn { "qp_character", { 150.f, 26.f } };
 popup_menu g_character_popup { "qp_character_popup", "Default character" };
 std::vector<list_item> g_character_rows;
+std::string g_character_label;
+qp::character_id g_character_label_for = qp::character_id::none;
 
 // Right-click context menu for one track: character override, tags, mods - the overlay's answer to
 // the desktop card's own right-click editor. Three tabs rather than one long column because the
@@ -168,6 +153,11 @@ std::vector<qp::tag_id> g_selectable_tags;
 std::vector<toggle> g_tag_toggles;
 std::vector<number_input> g_tag_params;
 std::vector<toggle> g_mod_toggles;
+
+// The track each group of toggles was last set from. A different track under the context menu is not a
+// tag being switched: its toggles snap to that track's state instead of sliding there (R5).
+std::string g_tag_toggles_entry;
+std::string g_mod_toggles_entry;
 
 bool g_widgets_ready = false;
 
@@ -203,6 +193,7 @@ void ensure_widgets_ready()
     for(std::size_t i = 0; i < qp::all_characters().size(); ++i) {
         const std::string id = "qp_character_" + std::to_string(i);
         g_character_rows.emplace_back(id.c_str(), ImVec2 { 168.f, 26.f });
+        g_character_rows.back().set_content(list_item_content { .text = std::string(qp::all_characters()[i].display_name) });
     }
 
     static const std::string_view k_context_labels[] = { "Character", "Tags", "Mods" };
@@ -318,8 +309,8 @@ void sync_rows(const state::cache& snapshot)
     // definition - force it to be recomputed on the next draw, where a width is known.
     g_rows_layout_width = -1.f;
 
-    if(g_selected_track >= static_cast<int>(g_rows.size())) {
-        g_selected_track = -1;
+    if(g_select.current() >= static_cast<int>(g_rows.size())) {
+        g_select.jump(-1);
     }
 }
 
@@ -348,7 +339,7 @@ void layout_rows(float content_w)
     g_row_offsets.assign(g_rows.size() + 1, 0.f);
 
     const float line_h = ImGui::GetFontSize();
-    const float badge_h = line_h + k_badge_pad_y * 2.f;
+    const float badge_h = paint::pill_height();
     const float text_x = k_row_pad_x + k_marker_w;
     const float right_x = content_w - k_badge_margin;
 
@@ -368,7 +359,7 @@ void layout_rows(float content_w)
             int line = 0;
             float x = text_x + title_w + k_badge_gap * 2.f;
             for(const std::string& badge : row.badges) {
-                const float w = ImGui::CalcTextSize(badge.c_str()).x + k_badge_pad_x * 2.f;
+                const float w = paint::pill_size(badge.c_str()).x;
 
                 // Wrap, except when the run is already at the margin - a badge wider than the whole
                 // column would otherwise loop forever looking for a line it fits on.
@@ -388,7 +379,11 @@ void layout_rows(float content_w)
         const float extra_lines = static_cast<float>((std::max)(0, row.badge_lines - 1));
 
         row.height = k_row_pad_y * 2.f + first_line_h + extra_lines * (badge_h + k_badge_line_gap) + k_line_gap + line_h;
-        g_row_offsets[i + 1] = g_row_offsets[i] + row.height;
+
+        // The gap to the next card is part of the sum, not of the card: culling reads the sum, and a gap
+        // added anywhere else would put the drawn rows and the culled range out of step.
+        const float gap = i + 1 < g_rows.size() ? theme::space::row_gap : 0.f;
+        g_row_offsets[i + 1] = g_row_offsets[i] + row.height + gap;
     }
 }
 
@@ -411,7 +406,7 @@ void request_playlist(std::string_view playlist_id)
     }
 
     g_requested_playlist_id = playlist_id;
-    g_selected_track = -1;
+    g_select.jump(-1);
     qp::send_select(playlist_id);
 }
 
@@ -419,21 +414,14 @@ void request_playlist(std::string_view playlist_id)
 // vertical middle of the title's line, so a pill taller than the text beside it stays centred on it.
 void draw_badges(ImDrawList* draw, const row_view& row, float origin_x, float first_line_center)
 {
-    const float badge_h = ImGui::GetFontSize() + k_badge_pad_y * 2.f;
+    const float badge_h = paint::pill_height();
 
     for(std::size_t i = 0; i < row.badge_layout.size() && i < row.badges.size(); ++i) {
         const badge_placement& placement = row.badge_layout[i];
         const float center_y = first_line_center + static_cast<float>(placement.line) * (badge_h + k_badge_line_gap);
         const float top = center_y - badge_h * 0.5f;
 
-        const ImVec2 b_min { origin_x + placement.x, top };
-        const ImVec2 b_max { b_min.x + placement.width, top + badge_h };
-        draw->AddRectFilled(b_min, b_max, detail::to_u32(theme::surface_badge), 5.f);
-
-        const ImVec2 text_size = ImGui::CalcTextSize(row.badges[i].c_str());
-        draw->AddText(ImVec2 { b_min.x + k_badge_pad_x, center_y - text_size.y * 0.5f },
-            detail::to_u32(theme::text_muted),
-            row.badges[i].c_str());
+        paint::pill(draw, ImVec2 { origin_x + placement.x, top }, row.badges[i].c_str());
     }
 }
 
@@ -444,72 +432,53 @@ bool draw_track_row(int index, const row_view& row, bool playing)
     const float width = ImGui::GetContentRegionAvail().x;
     const ImRect bb { pos, ImVec2 { pos.x + width, pos.y + row.height } };
 
-    ImGui::ItemSize(bb);
     ImGui::PushID(index);
-    const ImGuiID id = ImGui::GetID("##row");
-    if(!ImGui::ItemAdd(bb, id)) {
-        ImGui::PopID();
+    const tw::ui::kit::interaction pointer = tw::ui::kit::interact(bb, ImGui::GetID("##row"));
+    ImGui::PopID();
+    if(!pointer.visible) {
         return false;
     }
 
-    bool hovered = false;
-    bool held = false;
-    const bool pressed = ImGui::ButtonBehavior(bb, id, &hovered, &held);
-    const bool double_clicked = hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left);
-    ImGui::PopID();
-
+    const bool hovered = pointer.hovered;
     if(hovered) {
         g_hover_seen_this_frame = true;
     }
 
-    if(pressed && g_selected_track != index) {
-        g_prev_selected_row = g_selected_track;
-        g_selected_track = index;
-        g_select_t = 0.f;
-        g_select_tween = tweeny::from(0.f).to(1.f).during(k_select_ms).via(tweeny::easing::cubicOut);
+    if(pointer.clicked) {
+        g_select.focus(index);
     }
 
-    if(hovered && g_hover_row != index) {
-        g_prev_hover_row = g_hover_row;
-        g_hover_row = index;
-        g_hover_t = 0.f;
-        g_hover_tween = tweeny::from(0.f).to(1.f).during(k_hover_ms).via(tweeny::easing::cubicOut);
+    if(hovered) {
+        g_hover.focus(index);
     }
 
     // The track's tags/mods/character editor, matching the desktop card's own right-click menu. Only
     // the id is remembered - the popup re-resolves the track every frame, because the row vector is
-    // rebuilt by the very edits this menu makes.
-    if(hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
-        g_selected_track = index;
+    // rebuilt by the very edits this menu makes. The selection moves the way a left click moves it,
+    // with the same crossfade (review U8).
+    if(pointer.right_down) {
+        g_select.focus(index);
         g_context_entry_id = row.track->entry_id;
         g_context_popup.open();
     }
 
     // Both highlights crossfade: the row being left keeps its fill at 1-t while the row being
     // entered comes up at t, so nothing pops.
-    const float select_a = g_selected_track == index ? g_select_t : (g_prev_selected_row == index ? 1.f - g_select_t : 0.f);
-    const float hover_a = g_hover_row == index ? g_hover_t : (g_prev_hover_row == index ? 1.f - g_hover_t : 0.f);
-
     ImDrawList* draw = ImGui::GetWindowDrawList();
-    if(hover_a > 0.01f) {
-        // Under the selection, not instead of it: hovering the selected row should deepen it rather
-        // than swap one fill for another.
-        const ImVec4 fill { theme::surface_row_hover.x, theme::surface_row_hover.y, theme::surface_row_hover.z,
-            theme::surface_row_hover.w * hover_a };
-        draw->AddRectFilled(bb.Min, bb.Max, detail::to_u32(fill), 6.f);
-    }
-    if(select_a > 0.01f) {
-        const ImVec4 fill { theme::accent_soft.x, theme::accent_soft.y, theme::accent_soft.z, theme::accent_soft.w * select_a };
-        draw->AddRectFilled(bb.Min, bb.Max, detail::to_u32(fill), 6.f);
-    }
+    paint::row_background(draw, bb.Min, bb.Max, g_hover.alpha(index), g_select.alpha(index));
 
+    // A pill inside the card rather than a bar down its edge, which the card's rounded corners would cut.
     if(playing) {
-        draw->AddRectFilled(bb.Min, ImVec2 { bb.Min.x + k_marker_w, bb.Max.y }, detail::to_u32(theme::accent_primary), 1.5f);
+        const float inset_y = theme::radius::row;
+        draw->AddRectFilled(ImVec2 { bb.Min.x + k_marker_inset, bb.Min.y + inset_y },
+            ImVec2 { bb.Min.x + k_marker_inset + k_marker_w, bb.Max.y - inset_y },
+            paint::to_u32(theme::accent_primary),
+            k_marker_w * 0.5f);
     }
 
     const float text_x = bb.Min.x + k_row_pad_x + k_marker_w;
     const float line_h = ImGui::GetFontSize();
-    const float badge_h = line_h + k_badge_pad_y * 2.f;
+    const float badge_h = paint::pill_height();
     const float first_line_h = row.badges.empty() ? line_h : (std::max)(line_h, badge_h);
 
     // Title and badges share the first line; the badges flow downwards from there, and the artist
@@ -517,29 +486,24 @@ bool draw_track_row(int index, const row_view& row, bool playing)
     const float first_center = bb.Min.y + k_row_pad_y + first_line_h * 0.5f;
 
     const ImVec4 title_col = playing ? theme::accent_text : theme::text_primary;
-    detail::add_text_ellipsis(draw,
+    paint::add_text_ellipsis(draw,
         ImVec2 { text_x, first_center - line_h * 0.5f },
         bb.Min.x + row.title_max_x,
-        detail::to_u32(title_col),
+        paint::to_u32(title_col),
         row.track->title.c_str());
 
     draw_badges(draw, row, bb.Min.x, first_center);
 
     const float artist_y = bb.Max.y - k_row_pad_y - line_h;
-    detail::add_text_ellipsis(
-        draw, ImVec2 { text_x, artist_y }, bb.Max.x - k_badge_margin, detail::to_u32(theme::text_muted), row.track->artist.c_str());
+    paint::add_text_ellipsis(
+        draw, ImVec2 { text_x, artist_y }, bb.Max.x - k_badge_margin, paint::to_u32(theme::text_muted), row.track->artist.c_str());
 
-    return double_clicked;
+    return pointer.double_clicked;
 }
 
 void draw_track_list(const state::cache& snapshot, float height)
 {
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, theme::surface);
-    ImGui::PushStyleColor(ImGuiCol_Border, theme::border);
-    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 8.f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2 { 6.f, 6.f });
-
-    if(ImGui::BeginChild("##qp_tracks", ImVec2 { 0.f, height }, ImGuiChildFlags_Borders)) {
+    if(paint::scroll_body_begin("##qp_tracks", ImVec2 { 0.f, height }, theme::space::list_pad, theme::radius::scroll)) {
         if(g_rows.empty()) {
             ImGui::TextUnformatted(snapshot.tracks_playlist_id.empty() ? "Pick a playlist." : "This playlist is empty.");
         }
@@ -550,13 +514,8 @@ void draw_track_list(const state::cache& snapshot, float height)
 
             // Stepped once for the whole list, not per row: there is one hover animation and one
             // selection animation in flight, whatever the row count.
-            const auto dt = detail::dt_ms();
-            if(!g_hover_tween.isFinished()) {
-                g_hover_t = g_hover_tween.step(dt);
-            }
-            if(!g_select_tween.isFinished()) {
-                g_select_t = g_select_tween.step(dt);
-            }
+            g_hover.step();
+            g_select.step();
             g_hover_seen_this_frame = false;
 
             // Relaid out when the column resizes, including the resize caused by the scrollbar
@@ -580,14 +539,14 @@ void draw_track_list(const state::cache& snapshot, float height)
             const auto last_it = std::lower_bound(g_row_offsets.begin(), g_row_offsets.end(), scroll_y + view_h);
             const auto last = (std::min)(g_rows.size(), static_cast<std::size_t>(last_it - g_row_offsets.begin()) + 1);
 
-            // Zero item spacing while the rows are placed: every gap here is baked into the heights
-            // the prefix sum was built from, and ImGui's own spacing on top would drift the two apart.
+            // Every row is placed at its offset in the prefix sum, gaps included, rather than after the
+            // previous one: ImGui's own spacing would drift the drawn rows away from the culled range.
             ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2 { ImGui::GetStyle().ItemSpacing.x, 0.f });
 
             const float base_y = ImGui::GetCursorPosY();
-            ImGui::SetCursorPosY(base_y + g_row_offsets[first]);
 
             for(std::size_t i = first; i < last; ++i) {
+                ImGui::SetCursorPosY(base_y + g_row_offsets[i]);
                 const row_view& row = g_rows[i];
                 const bool playing = !playing_id.empty() && row.track->entry_id == playing_id;
 
@@ -602,18 +561,12 @@ void draw_track_list(const state::cache& snapshot, float height)
             ImGui::Dummy(ImVec2 { 0.f, 0.f });
             ImGui::PopStyleVar();
 
-            if(!g_hover_seen_this_frame && g_hover_row >= 0) {
-                g_prev_hover_row = g_hover_row;
-                g_hover_row = -1;
-                g_hover_t = 0.f;
-                g_hover_tween = tweeny::from(0.f).to(1.f).during(k_hover_ms).via(tweeny::easing::cubicOut);
+            if(!g_hover_seen_this_frame) {
+                g_hover.focus(-1);
             }
         }
     }
-    ImGui::EndChild();
-
-    ImGui::PopStyleVar(2);
-    ImGui::PopStyleColor(2);
+    paint::scroll_body_end();
 }
 
 void draw_context_character_tab(const state::track& entry)
@@ -648,69 +601,76 @@ void draw_context_character_tab(const state::track& entry)
 
 void draw_context_tags_tab(const state::track& entry)
 {
-    if(ImGui::BeginChild("##qp_ctx_tags", ImVec2 { 0.f, ImGui::GetContentRegionAvail().y })) {
-        for(std::size_t i = 0; i < g_selectable_tags.size(); ++i) {
-            const qp::tag_id id = g_selectable_tags[i];
-            const auto& definition = qp::tag(id);
-            const bool enabled = qp::pending::display_tag_enabled(entry, id);
+    const bool other_track = g_tag_toggles_entry != entry.entry_id;
+    g_tag_toggles_entry = entry.entry_id;
 
-            ImGui::PushID(static_cast<int>(i));
+    // Straight on the tab's page, which scrolls by itself and keeps its padding clear of the scrollbar - a
+    // child of its own here put its scrollbar against the toggles at the right edge.
+    for(std::size_t i = 0; i < g_selectable_tags.size(); ++i) {
+        const qp::tag_id id = g_selectable_tags[i];
+        const auto& definition = qp::tag(id);
+        const bool enabled = qp::pending::display_tag_enabled(entry, id);
 
+        ImGui::PushID(static_cast<int>(i));
+
+        if(other_track) {
+            g_tag_toggles[i].snap(enabled);
+        }
+        else {
             g_tag_toggles[i].set_checked(enabled);
-            g_tag_toggles[i].update();
+        }
 
-            const bool toggled = g_tag_toggles[i].changed();
-            const bool now_enabled = g_tag_toggles[i].checked();
+        // The overlay's "label + control" row, like Mods and the Tweaks tab - but wrapped rather than
+        // cut: the labels are full sentences of wildly different lengths, and an ellipsis would hide
+        // the part that says what the tag does.
+        paint::label_block(definition.label, g_tag_toggles[i].size());
+        g_tag_toggles[i].update();
 
-            // Wrapped rather than right-aligned against a fixed offset: the labels are full
-            // sentences of wildly different lengths, and the first attempt let the longest ones run
-            // straight under the numeric field.
-            ImGui::SameLine();
-            ImGui::AlignTextToFramePadding();
-            ImGui::PushTextWrapPos(0.f);
-            ImGui::TextUnformatted(definition.label.data(), definition.label.data() + definition.label.size());
-            ImGui::PopTextWrapPos();
+        const bool toggled = g_tag_toggles[i].changed();
+        const bool now_enabled = g_tag_toggles[i].checked();
 
-            // The parameter goes on its own indented line, not beside the label. Sharing the line
-            // means either clipping the label or reserving width the short labels waste, and only
-            // 7 of the 17 tags have a parameter at all.
-            bool parameter_edited = false;
-            if(definition.has_parameter) {
-                g_tag_params[i].set_value(qp::pending::display_tag_parameter(entry, id));
-                g_tag_params[i].set_width(k_context_param_w);
-                ImGui::Indent(28.f);
-                g_tag_params[i].update();
-                ImGui::Unindent(28.f);
-                parameter_edited = g_tag_params[i].changed();
-            }
+        // The parameter goes on its own line under the label, not beside it. Sharing the line
+        // means either clipping the label or reserving width the short labels waste, and only
+        // 7 of the 17 tags have a parameter at all.
+        bool parameter_edited = false;
+        if(definition.has_parameter) {
+            g_tag_params[i].set_value(qp::pending::display_tag_parameter(entry, id));
+            g_tag_params[i].set_width(k_context_param_w);
+            g_tag_params[i].update();
+            parameter_edited = g_tag_params[i].changed();
+        }
 
-            ImGui::PopID();
+        ImGui::PopID();
 
-            // A parameter edit on an already-enabled tag is a change to that tag, so it goes out as
-            // the same request - the host rebuilds the whole tag set from what it is told either way.
-            if(toggled || (parameter_edited && now_enabled)) {
-                qp::pending::request_tag(entry.entry_id, id, now_enabled, g_tag_params[i].value(), definition.has_parameter);
-            }
+        // A parameter edit on an already-enabled tag is a change to that tag, so it goes out as
+        // the same request - the host rebuilds the whole tag set from what it is told either way.
+        if(toggled || (parameter_edited && now_enabled)) {
+            qp::pending::request_tag(entry.entry_id, id, now_enabled, g_tag_params[i].value(), definition.has_parameter);
         }
     }
-    ImGui::EndChild();
 }
 
 void draw_context_mods_tab(const state::track& entry)
 {
+    const bool other_track = g_mod_toggles_entry != entry.entry_id;
+    g_mod_toggles_entry = entry.entry_id;
+
     const auto& ids = tw::ui::overlay_state::all_tweak_ids();
     for(std::size_t i = 0; i < ids.size(); ++i) {
-        g_mod_toggles[i].set_checked(qp::pending::display_mod_enabled(entry, ids[i]));
+        const bool enabled = qp::pending::display_mod_enabled(entry, ids[i]);
+        if(other_track) {
+            g_mod_toggles[i].snap(enabled);
+        }
+        else {
+            g_mod_toggles[i].set_checked(enabled);
+        }
+        // Label at the left, toggle at the right edge - the same tweaks, laid out as the Tweaks tab lays them.
+        paint::label_row(tw::ui::overlay_state::tweak_display_name(ids[i]).data(), g_mod_toggles[i].size());
         g_mod_toggles[i].update();
 
         if(g_mod_toggles[i].changed()) {
             qp::pending::request_mod(entry.entry_id, ids[i], g_mod_toggles[i].checked());
         }
-
-        ImGui::SameLine();
-        ImGui::AlignTextToFramePadding();
-        const std::string_view name = tw::ui::overlay_state::tweak_display_name(ids[i]);
-        ImGui::TextUnformatted(name.data(), name.data() + name.size());
     }
 }
 
@@ -759,22 +719,29 @@ void draw_track_context_menu(const state::cache& snapshot)
 void draw_character_row(const state::cache& snapshot)
 {
     const qp::character_id shown = qp::pending::display_default_character(snapshot);
-    const std::string_view current = qp::character_display_name(shown);
 
-    std::string label = "Character: ";
-    label += current.empty() ? "(unset)" : current;
+    // Rebuilt when the character changes, not formatted every frame.
+    if(shown != g_character_label_for || g_character_label.empty()) {
+        const std::string_view current = qp::character_display_name(shown);
+        g_character_label = "Character: ";
+        g_character_label += current.empty() ? "(unset)" : current;
+        g_character_label_for = shown;
+    }
 
     g_character_btn.set_size(ImVec2 { ImGui::GetContentRegionAvail().x, k_char_row_h });
-    g_character_btn.update(label.c_str());
+    g_character_btn.update(g_character_label.c_str());
     if(g_character_btn.clicked()) {
-        g_character_popup.open();
+        // From the button, not from the pointer (review U8): the list belongs to the button, and where on
+        // a 400-pixel button the click landed is an accident.
+        const ImVec2 min = ImGui::GetItemRectMin();
+        g_character_popup.open_at(min, ImVec2 { min.x + g_character_btn.size().x, min.y + k_char_row_h });
     }
 
     if(g_character_popup.opened()) {
         g_character_popup.begin();
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2 { ImGui::GetStyle().ItemSpacing.x, theme::space::row_gap });
         const auto characters = qp::all_characters();
         for(std::size_t i = 0; i < characters.size() && i < g_character_rows.size(); ++i) {
-            g_character_rows[i].set_content(list_item_content { .text = std::string(characters[i].display_name) });
             g_character_rows[i].set_selected(characters[i].id == shown);
             g_character_rows[i].update();
             if(g_character_rows[i].clicked()) {
@@ -782,7 +749,18 @@ void draw_character_row(const state::cache& snapshot)
                 g_character_popup.close();
             }
         }
+        ImGui::PopStyleVar();
         g_character_popup.end();
+    }
+}
+
+// The transport buttons are glyphs, so the tooltip is the only place they are named (review U8). Delayed, as
+// a tooltip on a button is: the glyphs are the usual ones, and an instant box under every pass of the
+// pointer along the row would be noise.
+void transport_tooltip(const button& btn, const char* text)
+{
+    if(btn.hovered() && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
+        ImGui::SetTooltip("%s", text);
     }
 }
 
@@ -793,16 +771,20 @@ void draw_transport_buttons(const state::cache& snapshot)
     const std::string_view playing_id = snapshot.playing_entry_id;
 
     g_prev_btn.update();
+    transport_tooltip(g_prev_btn, "Previous track");
     if(g_prev_btn.clicked()) {
         qp::pending::request_transport("prev", playing_id);
     }
 
+    // Play acts on the open playlist's rows; with none there is nothing it could start (review R12).
     ImGui::SameLine(0.f, 6.f);
+    g_play_btn.set_enabled(!g_rows.empty());
     g_play_btn.update();
+    transport_tooltip(g_play_btn, "Play the selected track");
     if(g_play_btn.clicked()) {
         // Play acts on the highlighted row; with nothing highlighted it starts the playlist from
         // the top, which is what the desktop's own Play does (SelectedTrackCard ?? first).
-        const int index = g_selected_track >= 0 ? g_selected_track : 0;
+        const int index = g_select.current() >= 0 ? g_select.current() : 0;
         if(index < static_cast<int>(g_rows.size())) {
             const std::string_view playlist_id = acting_playlist_id(snapshot);
             qp::pending::request_play(playlist_id, g_rows[static_cast<std::size_t>(index)].track->entry_id);
@@ -811,12 +793,14 @@ void draw_transport_buttons(const state::cache& snapshot)
 
     ImGui::SameLine(0.f, 6.f);
     g_stop_btn.update();
+    transport_tooltip(g_stop_btn, "Stop");
     if(g_stop_btn.clicked()) {
         qp::pending::request_transport("stop", playing_id);
     }
 
     ImGui::SameLine(0.f, 6.f);
     g_next_btn.update();
+    transport_tooltip(g_next_btn, "Next track");
     if(g_next_btn.clicked()) {
         qp::pending::request_transport("next", playing_id);
     }
@@ -827,10 +811,8 @@ void draw_transport_buttons(const state::cache& snapshot)
 // after its 2026-08-13 mockup pass: three stacked centred rows with captions above them cost two
 // rows of height that the track list wanted. Captions are inline micro-caps beside their group.
 //
-// The one deliberate divergence: the six playback chips stay words here, where the desktop had to
-// go to glyphs. That was forced by width - six text chips need ~950px and the desktop's bar has
-// ~656px at its minimum window size. This tab grows the overlay window to its content instead, so
-// the constraint does not apply, and words are strictly more readable than a glyph family.
+// The playback chips are glyphs, as on the desktop (six words need ~950px), and the mode's name lives in
+// the chip's tooltip.
 void draw_transport_row(const state::cache& snapshot)
 {
     const std::string_view playlist_id = acting_playlist_id(snapshot);
@@ -884,7 +866,7 @@ void draw_transport_row(const state::cache& snapshot)
         x += slack + k_divider_margin;
         draw->AddLine(ImVec2 { x, origin.y + 4.f },
             ImVec2 { x, origin.y + k_transport_btn - 4.f },
-            detail::to_u32(theme::border_divider),
+            paint::to_u32(theme::border_divider),
             k_divider_w);
         x += k_divider_w + k_divider_margin + slack;
     };
@@ -946,15 +928,11 @@ void initialize() noexcept
     g_rows_source.reset();
     g_rows.clear();
     g_playlist_ids.clear();
-    g_selected_track = -1;
     g_requested_playlist_id.clear();
     g_context_entry_id.clear();
 
-    g_hover_row = -1;
-    g_prev_hover_row = -1;
-    g_prev_selected_row = -1;
-    g_hover_t = 1.f;
-    g_select_t = 1.f;
+    g_hover.reset();
+    g_select.reset();
 }
 
 void shutdown() noexcept
@@ -1034,23 +1012,20 @@ void draw(const tw::ui::qp::state::cache& snapshot)
     ImGui::BeginGroup();
 
     const float header_h = ImGui::GetFontSize();
-    std::string_view open_name;
+    const std::string* open_name = nullptr;
     for(std::size_t i = 0; i < g_playlist_ids.size(); ++i) {
         if(g_playlist_ids[i] == open_id) {
-            open_name = state::playlists_of(snapshot)[i].name;
+            open_name = &state::playlists_of(snapshot)[i].name;
             break;
         }
     }
 
     const float header_w = ImGui::GetContentRegionAvail().x;
-    if(!open_name.empty()) {
+    if(open_name != nullptr && !open_name->empty()) {
         // Sampled here rather than above the branch: the cursor does not move until the Dummy below.
         const ImVec2 header_pos = ImGui::GetCursorScreenPos();
-        detail::add_text_ellipsis(ImGui::GetWindowDrawList(),
-            header_pos,
-            header_pos.x + header_w,
-            detail::to_u32(theme::text_primary),
-            std::string(open_name).c_str());
+        paint::add_text_ellipsis(
+            ImGui::GetWindowDrawList(), header_pos, header_pos.x + header_w, paint::to_u32(theme::text_primary), open_name->c_str());
     }
     ImGui::Dummy(ImVec2 { header_w, header_h });
 

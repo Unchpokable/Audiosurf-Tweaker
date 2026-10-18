@@ -148,7 +148,9 @@ shows. It takes effect at once, and it is remembered. Until you change it, scrip
 script added later goes to the bottom. Reload, switching a script off and on, or a script failing never
 moves it.
 
-If a script's author says it must run before or after another one, this is where you arrange it.
+If a script's author says it must run before or after another one, this is where you arrange it — or in
+Audiosurf Tweaker's Scripts tab, which shows the same order and changes it the same way, with the game
+running or not ([Scripts in Audiosurf Tweaker](tweaker.md#scripts-what-is-installed)).
 
 Audiosurf Tweaker has a **Scripts tab of its own**, outside the game: the same list, with where each
 script came from, and the switches. With the game running and the Tweaker connected, switching there

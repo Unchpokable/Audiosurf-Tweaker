@@ -92,7 +92,7 @@ void tw_hud_rect_corners(
     float x0, float y0, float x1, float y1, unsigned int color, float rounding, float thickness, int corners) noexcept;
 
 // A soft glow around a rounded rect, as several expanding fading outline copies - the overlay's own
-// technique (ui/widgets/detail/draw.hxx), shared rather than reimplemented so a script's glow looks
+// technique (ui/kit/paint.hxx), shared rather than reimplemented so a script's glow looks
 // like the overlay's. `strength` is 0..1; <= 0.01 draws nothing.
 //
 // Draws only the glow, not the rect: a script that wants both fills first and glows after, which is
@@ -162,5 +162,26 @@ enum hud_widget : int {
 // has drawn. A script can therefore dock to the notefeed or sit beside an open menu and stay put
 // while the menu is dragged, instead of trailing it by a frame.
 int tw_hud_widget_rect(int which, float* out) noexcept;
+
+// What is already on the HUD this frame, as the calling script sees it (lua_hud_space,
+// Docs/Internal/script-coexistence.md §4): the overlay's chrome, then the boxes of what every script
+// above the caller in the run order drew or claimed - not the caller's own. Box i is boxes[4i..4i+3] as
+// x0/y0/x1/y1; by[i] is the script id, or -1 - hud_widget for chrome. Returns how many were written, at
+// most `capacity`. The caller is whoever's callback is running; outside any script, everything is listed.
+int tw_hud_occupied(float* boxes, int* by, int capacity) noexcept;
+
+// Takes a box for the calling script this frame without drawing in it - for a widget fading out, blinking,
+// or not drawn every frame, so the scripts below do not move into its place and back. Outside on_frame it
+// does nothing: the boxes are this frame's.
+void tw_hud_claim(float x0, float y0, float x1, float y1) noexcept;
+
+// The nearest free spot to one corner (hud_space::corner) for a width x height box, `margin` from the screen
+// edges and from everything taken this frame except the menu; takes it for the calling script, as if it had
+// drawn there. Writes the top-left corner to out[0..1] and returns 1; 0 when nothing fits, or outside on_frame.
+int tw_hud_place(float width, float height, int corner, float margin, float* out) noexcept;
 }
+
+// Starts the frame's record of what is taken: the overlay's chrome as laid out now, and the screen. Called
+// by lua_host::draw_frame before any script draws - after the overlay's widgets, which have laid themselves out.
+void hud_begin_frame() noexcept;
 } // namespace tw::lua::api

@@ -6,7 +6,7 @@
 
 namespace
 {
-constexpr float k_rounding = 6.f;
+constexpr float k_rounding = tw::ui::theme::radius::field;
 constexpr int k_step = 1;
 constexpr int k_step_fast = 5;
 } // namespace

@@ -1,7 +1,9 @@
 #include "ui/widgets/item_group.hxx"
 
+#include "ui/kit/paint.hxx"
 #include "ui/theme.hxx"
-#include "ui/widgets/detail/draw.hxx"
+
+#include <imgui_internal.h>
 
 #include <algorithm>
 #include <cassert>
@@ -17,12 +19,15 @@ ImVec2 snap_px(ImVec2 p) noexcept
     return ImVec2 { std::floor(p.x), std::floor(p.y) };
 }
 
-// Same crisp path as button/tab_view borders: AddRect, then punch a gap under the title
-// with the parent window/child background (custom PathStroke AA looked uneven).
+// The frame with a gap in its top edge under the title. The same AddRect as every other border (a custom
+// PathStroke's anti-aliasing looked uneven), drawn three times under three clip rects that leave the gap
+// out: left of it, right of it, and below the top edge. Not a patch of background painted over the edge:
+// whatever colour it guessed, it showed during a fade and on anything but a flat background.
 void add_group_border(ImDrawList* draw, ImVec2 p_min, ImVec2 p_max, float rounding, float gap_x0, float gap_x1, ImU32 border_col) noexcept
 {
-    if(draw == nullptr)
+    if(draw == nullptr) {
         return;
+    }
 
     p_min = snap_px(p_min);
     p_max = snap_px(p_max);
@@ -31,25 +36,28 @@ void add_group_border(ImDrawList* draw, ImVec2 p_min, ImVec2 p_max, float roundi
     }
 
     rounding = std::clamp(rounding, 0.f, std::min(p_max.x - p_min.x, p_max.y - p_min.y) * 0.5f);
-    draw->AddRect(p_min, p_max, border_col, rounding);
-
-    if(gap_x1 <= gap_x0) {
-        return;
-    }
 
     gap_x0 = std::floor(gap_x0);
     gap_x1 = std::floor(gap_x1);
     if(gap_x1 <= gap_x0) {
+        draw->AddRect(p_min, p_max, border_col, rounding);
         return;
     }
 
-    // Prefer ChildBg when opaque (nested panels); otherwise WindowBg.
-    ImVec4 bg = ImGui::GetStyleColorVec4(ImGuiCol_ChildBg);
-    if(bg.w < 0.01f) {
-        bg = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
+    // The stroke is a pixel wide and anti-aliased a pixel either side of it, so "below the top edge" starts
+    // two pixels down and the side regions reach a pixel past the frame.
+    const ImVec2 outer_min { p_min.x - 1.f, p_min.y - 1.f };
+    const ImVec2 outer_max { p_max.x + 1.f, p_max.y + 1.f };
+    const ImVec4 regions[] = {
+        { outer_min.x, outer_min.y, gap_x0, outer_max.y },
+        { gap_x1, outer_min.y, outer_max.x, outer_max.y },
+        { gap_x0, p_min.y + 2.f, gap_x1, outer_max.y },
+    };
+    for(const ImVec4& r : regions) {
+        draw->PushClipRect(ImVec2 { r.x, r.y }, ImVec2 { r.z, r.w }, true);
+        draw->AddRect(p_min, p_max, border_col, rounding);
+        draw->PopClipRect();
     }
-    // Cover the stroked top edge under the title (1px stroke ±1).
-    draw->AddRectFilled(ImVec2 { gap_x0, p_min.y - 1.f }, ImVec2 { gap_x1, p_min.y + 2.f }, ImGui::GetColorU32(bg));
 }
 } // namespace
 
@@ -98,6 +106,17 @@ void item_group::begin()
 
     const float top_inset = (m_title_h > 0.f ? m_title_h * 0.5f : 0.f) + m_inner_padding.y;
     ImGui::SetCursorScreenPos(ImVec2 { m_origin.x + m_inner_padding.x, m_origin.y + top_inset });
+
+    // The content region ends where the frame's right padding starts, for as long as the group is open:
+    // a widget that fills "the rest of the line" would otherwise fill it to the window's edge and take
+    // the frame out past it. Internal state, saved and put back in end().
+    ImGuiWindow* const window = ImGui::GetCurrentWindow();
+    const float right = m_inner_padding.x + m_outer_padding.x;
+    m_saved_content_max_x = window->ContentRegionRect.Max.x;
+    m_saved_work_max_x = window->WorkRect.Max.x;
+    window->ContentRegionRect.Max.x -= right;
+    window->WorkRect.Max.x -= right;
+
     ImGui::BeginGroup();
 }
 
@@ -106,6 +125,10 @@ void item_group::end()
     assert(m_active && "item_group::end() called without matching begin()");
 
     ImGui::EndGroup();
+
+    ImGuiWindow* const window = ImGui::GetCurrentWindow();
+    window->ContentRegionRect.Max.x = m_saved_content_max_x;
+    window->WorkRect.Max.x = m_saved_work_max_x;
 
     ImVec2 content_min = ImGui::GetItemRectMin();
     ImVec2 content_max = ImGui::GetItemRectMax();
@@ -144,11 +167,11 @@ void item_group::end()
     }
 
     ImDrawList* draw = ImGui::GetWindowDrawList();
-    add_group_border(draw, frame_min, frame_max, m_rounding, gap_x0, gap_x1, detail::to_u32(theme::border));
+    add_group_border(draw, frame_min, frame_max, m_rounding, gap_x0, gap_x1, kit::paint::to_u32(theme::border));
 
     if(m_title_h > 0.f && !m_group_title.empty()) {
         title_pos = snap_px(title_pos);
-        draw->AddText(title_pos, detail::to_u32(theme::text_secondary), m_group_title.c_str());
+        draw->AddText(title_pos, kit::paint::to_u32(theme::text_secondary), m_group_title.c_str());
     }
 
     // Claim uses pre-snap layout size so Dummy matches content measurement.

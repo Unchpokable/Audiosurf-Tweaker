@@ -1,7 +1,8 @@
 #include "ui/widgets/color_picker.hxx"
 
+#include "ui/kit/interact.hxx"
+#include "ui/kit/paint.hxx"
 #include "ui/theme.hxx"
-#include "ui/widgets/detail/draw.hxx"
 
 #include <imgui_internal.h>
 
@@ -24,9 +25,10 @@ constexpr float k_inputs_min_w = 100.f;
 constexpr float k_sv_min = 64.f;
 constexpr float k_row_gap_min = 4.f;
 constexpr float k_label_w = 18.f;
+constexpr float k_caption_px = 12.f;
 constexpr float k_eps = 0.0005f;
 
-namespace wdetail = tw::ui::widgets::detail;
+namespace paint = tw::ui::kit::paint;
 
 bool near_equal(const ImVec4& a, const ImVec4& b) noexcept
 {
@@ -35,9 +37,12 @@ bool near_equal(const ImVec4& a, const ImVec4& b) noexcept
 
 ImU32 to_u32_opaque(float r, float g, float b) noexcept
 {
-    return wdetail::to_u32(ImVec4 { r, g, b, 1.f });
+    return paint::to_u32(ImVec4 { r, g, b, 1.f });
 }
 
+// The field's notation (R16). Eight digits are #AARRGGBB, alpha first - as TweakerUI and the theme file write
+// colours - and CSS's #RRGGBBAA would read as other channels; the caption over the field says which. Six digits are
+// the colour alone and keep the alpha `out` already has: typing a colour does not reset the A row.
 bool parse_hex_color(std::string_view text, ImVec4& out) noexcept
 {
     if(!text.empty() && text.front() == '#') {
@@ -62,7 +67,7 @@ bool parse_hex_color(std::string_view text, ImVec4& out) noexcept
     }
 
     if(text.size() == 6) {
-        value |= 0xFF000000u;
+        value |= static_cast<std::uint32_t>(std::clamp(static_cast<int>(out.w * 255.f + 0.5f), 0, 255)) << 24;
     }
 
     out = ImVec4 {
@@ -74,12 +79,19 @@ bool parse_hex_color(std::string_view text, ImVec4& out) noexcept
     return true;
 }
 
+// An opaque colour is shown as #RRGGBB - the same in every notation there is. Only a colour with alpha needs
+// the eighth and ninth digits, and gets them in front.
 void format_hex(char* buf, std::size_t buf_size, const ImVec4& rgba) noexcept
 {
     const auto ch = [](float f) -> int {
         return std::clamp(static_cast<int>(f * 255.f + 0.5f), 0, 255);
     };
-    std::snprintf(buf, buf_size, "#%02X%02X%02X%02X", ch(rgba.w), ch(rgba.x), ch(rgba.y), ch(rgba.z));
+    if(ch(rgba.w) == 255) {
+        std::snprintf(buf, buf_size, "#%02X%02X%02X", ch(rgba.x), ch(rgba.y), ch(rgba.z));
+    }
+    else {
+        std::snprintf(buf, buf_size, "#%02X%02X%02X%02X", ch(rgba.w), ch(rgba.x), ch(rgba.y), ch(rgba.z));
+    }
 }
 
 // Re-color vertices [vtx_begin, VtxBuffer.Size) by projecting them onto the p0 -> p1 axis.
@@ -158,8 +170,8 @@ void add_hue_gradient(ImDrawList* draw, const ImRect& bb, float rounding) noexce
             vtx_begin,
             ImVec2 { stop_x(i), bb.Min.y },
             ImVec2 { stop_x(i + 1), bb.Min.y },
-            wdetail::apply_style_alpha(k_hues[i]),
-            wdetail::apply_style_alpha(k_hues[i + 1]));
+            paint::apply_style_alpha(k_hues[i]),
+            paint::apply_style_alpha(k_hues[i + 1]));
     };
 
     // Caps bleed a pixel into their neighbour: the flat middle overdraws the first cap's
@@ -179,17 +191,14 @@ void draw_bar_marker(ImDrawList* draw, const ImRect& bb, float t) noexcept
     const float y0 = bb.Min.y + 1.f;
     const float y1 = bb.Max.y - 1.f;
 
-    const ImU32 black = wdetail::to_u32(ImVec4 { 0.f, 0.f, 0.f, 0.85f });
-    const ImU32 white = wdetail::to_u32(ImVec4 { 1.f, 1.f, 1.f, 0.95f });
+    const ImU32 black = paint::to_u32(ImVec4 { 0.f, 0.f, 0.f, 0.85f });
+    const ImU32 white = paint::to_u32(ImVec4 { 1.f, 1.f, 1.f, 0.95f });
     draw->AddLine(ImVec2 { x, y0 }, ImVec2 { x, y1 }, black, 3.f);
     draw->AddLine(ImVec2 { x, y0 }, ImVec2 { x, y1 }, white, 1.5f);
 }
 
-bool drag_sv(const ImRect& bb, ImGuiID id, float& s, float& v)
+bool drag_sv(const ImRect& bb, bool held, float& s, float& v)
 {
-    bool hovered = false;
-    bool held = false;
-    ImGui::ButtonBehavior(bb, id, &hovered, &held);
     if(!held) {
         return false;
     }
@@ -202,11 +211,8 @@ bool drag_sv(const ImRect& bb, ImGuiID id, float& s, float& v)
     return true;
 }
 
-bool drag_bar(const ImRect& bb, ImGuiID id, float& t)
+bool drag_bar(const ImRect& bb, bool held, float& t)
 {
-    bool hovered = false;
-    bool held = false;
-    ImGui::ButtonBehavior(bb, id, &hovered, &held);
     if(!held) {
         return false;
     }
@@ -279,7 +285,7 @@ void color_picker::apply_rgba_ints() noexcept
 
 bool color_picker::try_apply_hex() noexcept
 {
-    ImVec4 parsed {};
+    ImVec4 parsed = m_rgba;
     if(!parse_hex_color(m_hex_buf, parsed)) {
         sync_fields_from_rgba();
         return false;
@@ -317,10 +323,10 @@ void color_picker::update_internal()
         widget_w = k_sv_default + k_gap + k_inputs_min_w;
     }
 
-    // The inputs column (hex + 4 channel rows) sits next to the SV square: the square must not be
-    // shorter than that column, otherwise the rows spill over the hue/alpha bars below.
+    // The inputs column (the notation caption, hex + 4 channel rows) sits next to the SV square: the square
+    // must not be shorter than that column, otherwise the rows spill over the hue/alpha bars below.
     const float line_h = ImGui::GetFrameHeight();
-    const float inputs_h = 5.f * line_h + 4.f * k_row_gap_min;
+    const float inputs_h = k_caption_px + 5.f * line_h + 5.f * k_row_gap_min;
 
     float sv_size = k_sv_default;
     if(m_size.y > 0.f) {
@@ -340,10 +346,9 @@ void color_picker::update_internal()
 
     // --- SV square ---
     const ImRect sv_bb { origin, ImVec2 { origin.x + sv_size, origin.y + sv_size } };
-    ImGui::ItemSize(sv_bb.GetSize());
-    const ImGuiID sv_id = ImGui::GetID("##sv");
-    if(ImGui::ItemAdd(sv_bb, sv_id)) {
-        if(drag_sv(sv_bb, sv_id, m_s, m_v)) {
+    const tw::ui::kit::interaction sv_pointer = tw::ui::kit::interact(sv_bb, ImGui::GetID("##sv"));
+    if(sv_pointer.visible) {
+        if(drag_sv(sv_bb, sv_pointer.held, m_s, m_v)) {
             m_changed = true;
             rebuild_rgba_from_hsv();
         }
@@ -355,20 +360,20 @@ void color_picker::update_internal()
         const ImU32 col_white = to_u32_opaque(1.f, 1.f, 1.f);
         const ImU32 col_hue = to_u32_opaque(hue_r, hue_g, hue_b);
         const ImU32 col_black = to_u32_opaque(0.f, 0.f, 0.f);
-        const ImU32 col_black_clear = wdetail::to_u32(ImVec4 { 0.f, 0.f, 0.f, 0.f });
+        const ImU32 col_black_clear = paint::to_u32(ImVec4 { 0.f, 0.f, 0.f, 0.f });
 
         // Two rounded layers instead of one clipped multi-colour quad: saturation left -> right,
         // then value as a black veil top -> bottom.
         add_rect_gradient(draw, sv_bb.Min, sv_bb.Max, col_white, col_hue, false, k_rounding);
         add_rect_gradient(draw, sv_bb.Min, sv_bb.Max, col_black_clear, col_black, true, k_rounding);
-        draw->AddRect(sv_bb.Min, sv_bb.Max, wdetail::to_u32(theme::border), k_rounding);
+        draw->AddRect(sv_bb.Min, sv_bb.Max, paint::to_u32(theme::border), k_rounding);
 
         const float cx = sv_bb.Min.x + m_s * sv_size;
         const float cy = sv_bb.Min.y + (1.f - m_v) * sv_size;
         const ImU32 cursor_fill = to_u32_opaque(m_rgba.x, m_rgba.y, m_rgba.z);
         draw->AddCircleFilled(ImVec2 { cx, cy }, 6.f, cursor_fill, 16);
-        draw->AddCircle(ImVec2 { cx, cy }, 6.f, wdetail::to_u32(ImVec4 { 0.f, 0.f, 0.f, 0.65f }), 16, 2.f);
-        draw->AddCircle(ImVec2 { cx, cy }, 6.f, wdetail::to_u32(ImVec4 { 1.f, 1.f, 1.f, 0.95f }), 16, 1.25f);
+        draw->AddCircle(ImVec2 { cx, cy }, 6.f, paint::to_u32(ImVec4 { 0.f, 0.f, 0.f, 0.65f }), 16, 2.f);
+        draw->AddCircle(ImVec2 { cx, cy }, 6.f, paint::to_u32(ImVec4 { 1.f, 1.f, 1.f, 0.95f }), 16, 1.25f);
     }
 
     // --- Inputs column ---
@@ -393,7 +398,7 @@ void color_picker::update_internal()
     ImGui::PushStyleColor(ImGuiCol_Border, theme::border);
 
     const float field_w = inputs_w;
-    const float row_gap = std::max(k_row_gap_min, (sv_size - 5.f * line_h) / 4.f);
+    const float row_gap = std::max(k_row_gap_min, (sv_size - k_caption_px - 5.f * line_h) / 5.f);
 
     // Rows are spaced by ItemSpacing only — explicit Dummy() spacers would add their own spacing
     // on top and push the last channel row past the bottom of the SV square.
@@ -414,8 +419,19 @@ void color_picker::update_internal()
         }
     };
 
+    // The notation in plain sight rather than only in a tooltip (decision 5, overlay-widgets-history.md §2):
+    // the digit order of eight-digit hex is a convention, and which one this field speaks is not guessable.
+    const ImVec2 caption_pos = ImGui::GetCursorScreenPos();
+    ImGui::PushFont(nullptr, k_caption_px);
+    paint::add_text_ellipsis(draw, caption_pos, caption_pos.x + field_w, paint::to_u32(theme::text_muted), "Hex #AARRGGBB");
+    ImGui::PopFont();
+    ImGui::Dummy(ImVec2 { field_w, k_caption_px });
+
     ImGui::SetNextItemWidth(field_w);
     ImGui::InputText("##hex", m_hex_buf, sizeof(m_hex_buf));
+    if(ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal)) {
+        ImGui::SetTooltip("#RRGGBB, or #AARRGGBB with alpha first");
+    }
     if(ImGui::IsItemDeactivatedAfterEdit()) {
         if(try_apply_hex()) {
             m_changed = true;
@@ -435,16 +451,15 @@ void color_picker::update_internal()
 
     // --- Hue bar (full widget width) ---
     const ImRect hue_bb { ImGui::GetCursorScreenPos(), ImVec2 { origin.x + widget_w, ImGui::GetCursorScreenPos().y + k_bar_h } };
-    ImGui::ItemSize(hue_bb.GetSize());
-    const ImGuiID hue_id = ImGui::GetID("##hue");
-    if(ImGui::ItemAdd(hue_bb, hue_id)) {
-        if(drag_bar(hue_bb, hue_id, m_h)) {
+    const tw::ui::kit::interaction hue_pointer = tw::ui::kit::interact(hue_bb, ImGui::GetID("##hue"));
+    if(hue_pointer.visible) {
+        if(drag_bar(hue_bb, hue_pointer.held, m_h)) {
             m_changed = true;
             rebuild_rgba_from_hsv();
         }
 
         add_hue_gradient(draw, hue_bb, k_rounding);
-        draw->AddRect(hue_bb.Min, hue_bb.Max, wdetail::to_u32(theme::border), k_rounding);
+        draw->AddRect(hue_bb.Min, hue_bb.Max, paint::to_u32(theme::border), k_rounding);
         draw_bar_marker(draw, hue_bb, m_h);
     }
 
@@ -452,21 +467,20 @@ void color_picker::update_internal()
 
     // --- Alpha bar (full widget width) ---
     const ImRect alpha_bb { ImGui::GetCursorScreenPos(), ImVec2 { origin.x + widget_w, ImGui::GetCursorScreenPos().y + k_bar_h } };
-    ImGui::ItemSize(alpha_bb.GetSize());
-    const ImGuiID alpha_id = ImGui::GetID("##alpha");
-    if(ImGui::ItemAdd(alpha_bb, alpha_id)) {
-        if(drag_bar(alpha_bb, alpha_id, m_a)) {
+    const tw::ui::kit::interaction alpha_pointer = tw::ui::kit::interact(alpha_bb, ImGui::GetID("##alpha"));
+    if(alpha_pointer.visible) {
+        if(drag_bar(alpha_bb, alpha_pointer.held, m_a)) {
             m_changed = true;
             rebuild_rgba_from_hsv();
         }
 
-        const ImU32 opaque = wdetail::to_u32(ImVec4 { m_rgba.x, m_rgba.y, m_rgba.z, 1.f });
-        const ImU32 clear = wdetail::to_u32(ImVec4 { m_rgba.x, m_rgba.y, m_rgba.z, 0.f });
+        const ImU32 opaque = paint::to_u32(ImVec4 { m_rgba.x, m_rgba.y, m_rgba.z, 1.f });
+        const ImU32 clear = paint::to_u32(ImVec4 { m_rgba.x, m_rgba.y, m_rgba.z, 0.f });
         ImGui::RenderColorRectWithAlphaCheckerboard(
             draw, alpha_bb.Min, alpha_bb.Max, 0, k_bar_h * 0.5f, ImVec2 { 0.f, 0.f }, k_rounding);
         // Alpha grows left -> right, matching the marker position.
         add_rect_gradient(draw, alpha_bb.Min, alpha_bb.Max, clear, opaque, false, k_rounding);
-        draw->AddRect(alpha_bb.Min, alpha_bb.Max, wdetail::to_u32(theme::border), k_rounding);
+        draw->AddRect(alpha_bb.Min, alpha_bb.Max, paint::to_u32(theme::border), k_rounding);
         draw_bar_marker(draw, alpha_bb, m_a);
     }
 

@@ -87,6 +87,18 @@ namespace TweakerCore.Tests.Scripting
         }
 
         [Test]
+        public void TheOrderFromScriptsCfgComesFirstAndMissingBundledScriptsLast()
+        {
+            _game.Script("a.lua", "").Script("b.lua", "").Script("c.lua", "").ShippedScript("hud.lua", "-- @name HUD\n");
+            var config = ScriptsConfig.Load(_game.Engine);
+            config.SetOrder(new[] { "c.lua", "hud.lua", "a.lua" });
+            config.Save();
+
+            var names = GameScripts.Scan(_game.Engine, _game.Payload).Select(s => s.FileName);
+            Assert.That(names, Is.EqualTo(new[] { "c.lua", "a.lua", "b.lua", "hud.lua", "puzzlepro_hud.lua" }));
+        }
+
+        [Test]
         public void BackupsAreListedInTheOrderTheyWereMade()
         {
             _game.Script("a.lua", "").Script("a.lua.old.10", "").Script("a.lua.old", "").Script("a.lua.old.2", "").Script("a.lua.oldish", "");

@@ -1,14 +1,10 @@
 #include "ui/widgets/toggle.hxx"
 
+#include "ui/kit/interact.hxx"
+#include "ui/kit/paint.hxx"
 #include "ui/theme.hxx"
-#include "ui/widgets/detail/draw.hxx"
 
 #include <imgui_internal.h>
-
-namespace
-{
-constexpr int k_slide_ms = 200;
-} // namespace
 
 namespace tw::ui::widgets
 {
@@ -21,65 +17,97 @@ void toggle::set_size(ImVec2 size) noexcept
     m_size = size;
 }
 
-void toggle::retarget(float target)
+ImVec2 toggle::size() const noexcept
 {
-    m_thumb_tween = tweeny::from(m_thumb_t).to(target).during(k_slide_ms).via(tweeny::easing::cubicOut);
+    return m_size;
 }
 
-void toggle::set_checked(bool checked) noexcept
+void toggle::set_checked(bool checked)
 {
+    if(!m_drawn) {
+        snap(checked);
+        return;
+    }
     if(m_checked == checked) {
         return;
     }
     m_checked = checked;
-    retarget(m_checked ? 1.f : 0.f);
+    m_thumb.set(m_checked);
+}
+
+void toggle::snap(bool checked) noexcept
+{
+    m_checked = checked;
+    m_thumb.snap(checked ? 1.f : 0.f);
+}
+
+void toggle::set_enabled(bool enabled) noexcept
+{
+    m_enabled = enabled;
 }
 
 void toggle::update()
 {
     m_changed = false;
+    m_drawn = true;
 
     ImGui::PushID(m_id.c_str());
 
-    const ImVec2 size = detail::resolve_size(m_size, 40.f, 22.f);
+    const ImVec2 size = kit::paint::resolve_size(m_size, 40.f, 22.f);
     const ImVec2 pos = ImGui::GetCursorScreenPos();
     const ImRect bb { pos, ImVec2 { pos.x + size.x, pos.y + size.y } };
 
-    ImGui::ItemSize(bb);
-    const ImGuiID imgui_id = ImGui::GetID("##toggle");
-    if(!ImGui::ItemAdd(bb, imgui_id)) {
+    const kit::interaction pointer = kit::interact(bb, ImGui::GetID("##toggle"), kit::placement::flow, m_enabled);
+    m_hovered = pointer.hovered;
+    m_held = pointer.held;
+    if(!pointer.visible) {
         ImGui::PopID();
         return;
     }
 
-    m_hovered = false;
-    m_held = false;
-    const bool pressed = ImGui::ButtonBehavior(bb, imgui_id, &m_hovered, &m_held);
-    if(pressed) {
+    if(pointer.clicked) {
         m_checked = !m_checked;
         m_changed = true;
-        retarget(m_checked ? 1.f : 0.f);
+        m_thumb.set(m_checked);
     }
 
-    const auto dt = detail::dt_ms();
-    if(!m_thumb_tween.isFinished()) {
-        m_thumb_t = m_thumb_tween.step(dt);
+    m_hover.set(m_hovered);
+    m_press.set(m_held);
+    const float thumb_t = m_thumb.step();
+    const float hover_t = m_hover.step();
+    const float press_t = m_press.step();
+
+    const bool fade = kit::fade_disabled(m_enabled);
+    if(fade) {
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * theme::disabled_alpha);
     }
 
     const float rounding = size.y * 0.5f;
-    const ImVec4 track = detail::lerp(theme::control_track_off, theme::accent_primary, m_thumb_t);
+    const ImVec4 track = kit::paint::lerp(theme::control_track_off, theme::accent_primary, thumb_t);
 
     ImDrawList* draw = ImGui::GetWindowDrawList();
-    detail::add_rect_filled_rounded(draw, bb.Min, bb.Max, detail::to_u32(track), rounding);
+    draw->AddRectFilled(bb.Min, bb.Max, kit::paint::to_u32(track), rounding);
 
+    // Pressed, the thumb stretches toward the side it would travel to (R13) - grows from its own end, so
+    // a thumb resting at the right grows leftwards and the other way round.
+    constexpr float k_stretch = 5.f;
     const float pad = 2.f;
     const float thumb_d = size.y - pad * 2.f;
+    const float stretch = k_stretch * press_t;
     const float travel = size.x - pad * 2.f - thumb_d;
-    const float thumb_x = bb.Min.x + pad + travel * m_thumb_t;
+    const float thumb_x = bb.Min.x + pad + travel * thumb_t - stretch * thumb_t;
     const float thumb_y = bb.Min.y + pad;
     const ImVec2 t_min { thumb_x, thumb_y };
-    const ImVec2 t_max { thumb_x + thumb_d, thumb_y + thumb_d };
-    detail::add_rect_filled_rounded(draw, t_min, t_max, detail::to_u32(theme::control_thumb), thumb_d * 0.5f);
+    const ImVec2 t_max { thumb_x + thumb_d + stretch, thumb_y + thumb_d };
+
+    // Hovered, the thumb glows the way the slider's does (R13).
+    kit::paint::add_circle_glow(
+        draw, ImVec2 { (t_min.x + t_max.x) * 0.5f, (t_min.y + t_max.y) * 0.5f }, thumb_d * 0.5f, theme::accent_primary, hover_t);
+    draw->AddRectFilled(t_min, t_max, kit::paint::to_u32(theme::control_thumb), thumb_d * 0.5f);
+
+    if(fade) {
+        ImGui::PopStyleVar();
+    }
 
     ImGui::PopID();
 }

@@ -34,6 +34,7 @@ local SIG = {
     tw_script_enter       = "int (*)(int, int)",
     tw_script_leave       = "void (*)(int, int, const char*)",
     tw_script_order       = "int (*)(int)",
+    tw_script_file        = "const char* (*)(int)",
     tw_diag               = "void (*)(int, int, const char*, const char*)",
     tw_log                = "void (*)(const char*)",
     tw_notify             = "void (*)(int, const char*)",
@@ -98,6 +99,9 @@ local SIG = {
     tw_hud_icon           = "void (*)(const char*, float, float, float, unsigned int)",
     tw_hud_metric         = "float (*)(int)",
     tw_hud_widget_rect    = "int (*)(int, float*)",
+    tw_hud_occupied       = "int (*)(float*, int*, int)",
+    tw_hud_claim          = "void (*)(float, float, float, float)",
+    tw_hud_place          = "int (*)(float, float, int, float, float*)",
 }
 
 local C = {}
@@ -198,7 +202,7 @@ tw.draw_frame_count = 0
 -- Docs/scripting/api.json, and twllink checks a project's `"api"` against that. Raise it when a name
 -- is added - names are never taken away (Docs/scripting/limits.md, "Versions and stability") - and
 -- lua_vm.cxx reads it from here, so this line is its only definition.
-tw.api_version = 1
+tw.api_version = 2
 
 function tw.log(msg) C_log(tostring(msg)) end
 
@@ -628,6 +632,7 @@ local C_hud_text_glow, C_hud_measure, C_hud_measure_fnt = C.tw_hud_text_glow, C.
 local C_hud_rect, C_hud_rect_corner, C_hud_rect_glow = C.tw_hud_rect, C.tw_hud_rect_corners, C.tw_hud_rect_glow
 local C_hud_rect_grad, C_hud_line, C_hud_icon = C.tw_hud_rect_gradient, C.tw_hud_line, C.tw_hud_icon
 local C_hud_metric, C_hud_widget_rect = C.tw_hud_metric, C.tw_hud_widget_rect
+local C_hud_occupied, C_hud_claim, C_hud_place, C_script_file = C.tw_hud_occupied, C.tw_hud_claim, C.tw_hud_place, C.tw_script_file
 local C_font_count, C_font_name = C.tw_font_count, C.tw_font_name
 local C_theme_count, C_theme_name, C_theme_color = C.tw_theme_count, C.tw_theme_name, C.tw_theme_color
 
@@ -836,6 +841,65 @@ function tw.hud.widget(name)
     if C_hud_widget_rect(id, rect_out) == 0 then return nil end
     return rect_out[0], rect_out[1], rect_out[2], rect_out[3]
 end
+
+-- **Sharing the screen with other scripts** (Docs/Internal/script-coexistence.md §4). Every tw.hud.*
+-- drawing call is measured in C and noted against the script that made it, so a script asking where things
+-- are gets an answer nobody had to declare. The rule that makes it work is the run order: a script sees the
+-- scripts above it, which have drawn this frame, and the ones below make room for it.
+local OCCUPIED_MAX = 256
+local occupied_boxes = ffi.new("float[?]", OCCUPIED_MAX * 4)
+local occupied_by = ffi.new("int[?]", OCCUPIED_MAX)
+
+-- Chrome as tw.hud.widget names it; C hands it out as -1 - its widget number.
+local CHROME = { [-1] = "notefeed", [-2] = "pins", [-3] = "watermark", [-4] = "menu" }
+
+-- File names by script id, read once each: an id names the same file for the whole session.
+local FILES = {}
+local function owner_name(by)
+    local name = CHROME[by] or FILES[by]
+    if name == nil then
+        name = ffi.string(C_script_file(by))
+        FILES[by] = name
+    end
+    return name
+end
+
+-- What is already on screen this frame, as a list of { x0, y0, x1, y1, by }: the overlay's own chrome
+-- (`by` "notefeed", "pins", "watermark", "menu"), then everything the scripts above this one drew or
+-- claimed, `by` their file name - nearby pieces of one script merged into one box. Not this script's own.
+-- A fresh list every call; call it once per frame and keep what you need.
+function tw.hud.occupied()
+    local n = C_hud_occupied(occupied_boxes, occupied_by, OCCUPIED_MAX)
+    local list = {}
+    for i = 0, n - 1 do
+        local b = i * 4
+        list[i + 1] = {
+            x0 = occupied_boxes[b], y0 = occupied_boxes[b + 1], x1 = occupied_boxes[b + 2], y1 = occupied_boxes[b + 3],
+            by = owner_name(occupied_by[i]),
+        }
+    end
+    return list
+end
+
+-- Takes a box for this frame without drawing in it: a widget that fades out, blinks, or is not drawn
+-- every frame keeps its place, and the scripts below do not move in and back out. Call it every frame
+-- the box should stay taken; only from on_frame.
+function tw.hud.claim(x0, y0, x1, y1)
+    C_hud_claim(x0, y0, x1, y1)
+end
+
+local CORNERS = { top_left = 0, top_right = 1, bottom_left = 2, bottom_right = 3 }
+
+-- Finds the free spot nearest to a corner for a w x h box and takes it, as if drawn: returns its x0, y0,
+-- or nil when nothing fits. `margin` (default 8) is kept from the screen edges and from everything taken -
+-- the chrome except the menu, which comes and goes, the scripts above, and this script's own earlier
+-- boxes this frame, so two widgets of one script placed at one corner stack instead of overlapping.
+function tw.hud.place(w, h, corner, margin)
+    local where = CORNERS[corner or "top_left"]
+    if where == nil then error("unknown corner: " .. tostring(corner), 2) end
+    if C_hud_place(w, h, where, margin or 8, size_out) == 0 then return nil end
+    return size_out[0], size_out[1]
+end
 )LUA";
 
 // ---------------------------------------------------------------------------------------------------
@@ -906,7 +970,7 @@ local function may_register(owner, what, fn)
     return window_open(owner, what)
 end
 
--- **Every list below runs in the user's order of scripts** (script-coexistence-roadmap.md §3), and a
+-- **Every list below runs in the user's order of scripts** (script-coexistence.md §3), and a
 -- script's own handlers in the order it registered them. Not in the order of registration across
 -- scripts: a script registers again every time it is reloaded or switched back on, and appending would
 -- move it to the end of everything - the order would last only until the first Reload.

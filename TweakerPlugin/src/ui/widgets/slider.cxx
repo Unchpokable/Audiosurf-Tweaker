@@ -1,7 +1,8 @@
 #include "ui/widgets/slider.hxx"
 
+#include "ui/kit/interact.hxx"
+#include "ui/kit/paint.hxx"
 #include "ui/theme.hxx"
-#include "ui/widgets/detail/draw.hxx"
 
 #include <imgui_internal.h>
 
@@ -20,9 +21,6 @@ constexpr float k_default_w = 200.f;
 // Needed rather than nice to have: the shared palette declares "Light size" over 0.99..1.0, which on
 // a 200px track is a whole range inside one and a half pixels.
 constexpr float k_fine_scale = 0.15f;
-
-constexpr int k_hover_ms = 150;
-constexpr int k_active_ms = 90;
 
 // Decimals from the width of the range rather than a fixed count. The shared palette alone spans
 // "Light size" at 0.99..1.0 and "Light glow" at 1..1000: two decimals make the first read 1.00
@@ -109,7 +107,7 @@ void slider::update()
     const float control_h = (std::max)(k_thumb_r * 2.f, line_h);
     const float row_h = line_h + k_label_gap + control_h;
 
-    const ImVec2 size = detail::resolve_size(m_size, k_default_w, row_h);
+    const ImVec2 size = kit::paint::resolve_size(m_size, k_default_w, row_h);
     const ImVec2 pos = ImGui::GetCursorScreenPos();
     const ImRect bb { pos, ImVec2 { pos.x + size.x, pos.y + size.y } };
 
@@ -121,9 +119,17 @@ void slider::update()
     std::snprintf(value_text, sizeof(value_text), fmt, static_cast<double>(m_editing ? m_edit_value : m_value));
     const ImVec2 value_size = ImGui::CalcTextSize(value_text);
 
+    // The label ends where the widest number this slider can show would start, not where this frame's
+    // number does: otherwise the ellipsis moves back and forth under a drag as digits come and go (R15).
+    char bound_text[32];
+    std::snprintf(bound_text, sizeof(bound_text), fmt, static_cast<double>(m_min));
+    float value_room = ImGui::CalcTextSize(bound_text).x;
+    std::snprintf(bound_text, sizeof(bound_text), fmt, static_cast<double>(m_max));
+    value_room = (std::max)({ value_room, ImGui::CalcTextSize(bound_text).x, value_size.x });
+
     if(!m_label.empty()) {
-        detail::add_text_ellipsis(
-            draw, pos, bb.Max.x - value_size.x - k_value_gap, detail::to_u32(theme::text_secondary), m_label.c_str());
+        kit::paint::add_text_ellipsis(
+            draw, pos, bb.Max.x - value_room - k_value_gap, kit::paint::to_u32(theme::text_secondary), m_label.c_str());
     }
 
     if(m_editing) {
@@ -138,7 +144,7 @@ void slider::update()
         // Zero vertical frame padding keeps the field exactly one line tall, which is what makes the
         // row the same height in both modes - anything else makes the panel jump on a double click.
         ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2 { 6.f, 0.f });
-        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.f);
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, theme::radius::field);
         ImGui::PushStyleColor(ImGuiCol_FrameBg, theme::surface_input);
         ImGui::PushStyleColor(ImGuiCol_FrameBgHovered, theme::surface_hover);
         ImGui::PushStyleColor(ImGuiCol_FrameBgActive, theme::surface_elevated);
@@ -177,35 +183,56 @@ void slider::update()
         return;
     }
 
-    ImGui::ItemSize(bb);
-    const ImGuiID imgui_id = ImGui::GetID("##slider");
-    if(!ImGui::ItemAdd(bb, imgui_id)) {
+    const kit::interaction pointer = kit::interact(bb, ImGui::GetID("##slider"));
+    if(!pointer.visible) {
         ImGui::PopID();
         return;
     }
 
-    bool hovered = false;
-    bool held = false;
-    ImGui::ButtonBehavior(bb, imgui_id, &hovered, &held);
+    const bool hovered = pointer.hovered;
+    const bool held = pointer.held;
 
-    const float control_cy = bb.Min.y + line_h + k_label_gap + control_h * 0.5f;
+    const float lane_top = bb.Min.y + line_h + k_label_gap;
+    const float control_cy = lane_top + control_h * 0.5f;
     const float track_x0 = bb.Min.x + k_thumb_r;
     const float track_x1 = bb.Max.x - k_thumb_r;
     const float track_w = (std::max)(1.f, track_x1 - track_x0);
 
-    // The whole row is the hit target, label included - a 4px track is not something anyone should
-    // have to aim at.
-    if(hovered && ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-        begin_edit();
-        held = false;
-    }
-    else if(held) {
-        const bool shift = ImGui::GetIO().KeyShift;
-        const ImVec2 mouse = ImGui::GetMousePos();
+    // A gesture. The whole row is one item - hover, and a double click anywhere on it opens the edit field -
+    // but only a press on the track's lane moves the value: like any slider, the thumb jumps to the
+    // pointer on the press and follows it until the button comes up, which commits. A press on the label
+    // does nothing. Escape mid-gesture puts back the value the gesture started from and ignores the rest
+    // of it until release.
+    const bool shift = ImGui::GetIO().KeyShift;
+    const ImVec2 mouse = ImGui::GetMousePos();
 
-        // Re-anchor on gesture start and on every Shift transition - without the latter, switching
-        // into fine mode teleports the thumb to where the coarse mapping would have put it.
-        if(!m_was_active || shift != m_was_shift) {
+    if(pointer.left_down) {
+        m_gesture_in_lane = mouse.y >= lane_top;
+        m_gesture_start = m_value;
+        m_gesture_cancelled = false;
+        m_anchor_x = mouse.x;
+        m_anchor_value = m_value;
+        m_was_shift = shift;
+    }
+
+    bool dragging = false;
+    if(pointer.double_clicked) {
+        begin_edit();
+    }
+    else if(held && !m_gesture_cancelled && ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+        m_gesture_cancelled = true;
+        if(m_value != m_gesture_start) {
+            m_value = m_gesture_start;
+            m_changed = true;
+        }
+    }
+    else if(held && m_gesture_in_lane && !m_gesture_cancelled) {
+        dragging = true;
+
+        // Re-anchor on every Shift transition - without that, switching into fine mode teleports the
+        // thumb to where the coarse mapping would have put it. A press with Shift already down starts in
+        // fine mode from the current value rather than jumping.
+        if(shift != m_was_shift) {
             m_anchor_x = mouse.x;
             m_anchor_value = m_value;
             m_was_shift = shift;
@@ -222,49 +249,36 @@ void slider::update()
         }
     }
 
-    if(ImGui::IsItemDeactivated()) {
+    if(ImGui::IsItemDeactivated() && m_gesture_in_lane && !m_gesture_cancelled && !m_editing) {
         m_committed = true;
     }
 
-    const auto dt = detail::dt_ms();
-    if(hovered != m_was_hovered) {
-        m_hover_tween = tweeny::from(m_hover_t).to(hovered ? 1.f : 0.f).during(k_hover_ms).via(tweeny::easing::cubicOut);
-    }
-    if(held != m_was_active) {
-        m_active_tween = tweeny::from(m_active_t).to(held ? 1.f : 0.f).during(k_active_ms).via(tweeny::easing::quadraticOut);
-    }
-    m_was_hovered = hovered;
+    m_hover.set(hovered);
+    m_active.set(dragging);
     m_was_active = held;
+    const float hover_t = m_hover.step();
+    const float active_t = m_active.step();
 
-    if(!m_hover_tween.isFinished()) {
-        m_hover_t = m_hover_tween.step(dt);
-    }
-    if(!m_active_tween.isFinished()) {
-        m_active_t = m_active_tween.step(dt);
-    }
-
-    const ImVec4 value_col = detail::lerp(theme::text_primary, theme::accent_text, m_active_t);
-    draw->AddText(ImVec2 { bb.Max.x - value_size.x, bb.Min.y }, detail::to_u32(value_col), value_text);
+    const ImVec4 value_col = kit::paint::lerp(theme::text_primary, theme::accent_text, active_t);
+    draw->AddText(ImVec2 { bb.Max.x - value_size.x, bb.Min.y }, kit::paint::to_u32(value_col), value_text);
 
     const float ty0 = control_cy - k_track_h * 0.5f;
     const float ty1 = ty0 + k_track_h;
     const float rounding = k_track_h * 0.5f;
 
-    detail::add_rect_filled_rounded(
-        draw, ImVec2 { track_x0, ty0 }, ImVec2 { track_x1, ty1 }, detail::to_u32(theme::control_track_off), rounding);
+    draw->AddRectFilled(ImVec2 { track_x0, ty0 }, ImVec2 { track_x1, ty1 }, kit::paint::to_u32(theme::control_track_off), rounding);
 
     const float t = span > 0.f ? (m_value - m_min) / span : 0.f;
     const float thumb_cx = track_x0 + t * track_w;
 
     if(thumb_cx > track_x0 + 0.5f) {
-        detail::add_rect_filled_rounded(
-            draw, ImVec2 { track_x0, ty0 }, ImVec2 { thumb_cx, ty1 }, detail::to_u32(theme::accent_primary), rounding);
+        draw->AddRectFilled(ImVec2 { track_x0, ty0 }, ImVec2 { thumb_cx, ty1 }, kit::paint::to_u32(theme::accent_primary), rounding);
     }
 
     const ImVec2 thumb_center { thumb_cx, control_cy };
-    detail::add_circle_glow(draw, thumb_center, k_thumb_r, theme::accent_primary, (std::max)(m_hover_t, m_active_t));
-    draw->AddCircleFilled(thumb_center, k_thumb_r - 1.f + m_active_t, detail::to_u32(theme::control_thumb));
-    draw->AddCircle(thumb_center, k_thumb_r, detail::to_u32(theme::border_strong));
+    kit::paint::add_circle_glow(draw, thumb_center, k_thumb_r, theme::accent_primary, (std::max)(hover_t, active_t));
+    draw->AddCircleFilled(thumb_center, k_thumb_r - 1.f + active_t, kit::paint::to_u32(theme::control_thumb));
+    draw->AddCircle(thumb_center, k_thumb_r, kit::paint::to_u32(theme::border_strong));
 
     ImGui::PopID();
 }

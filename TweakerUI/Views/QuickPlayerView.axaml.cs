@@ -19,6 +19,7 @@ namespace TweakerUI.Views
         public QuickPlayerView()
         {
             InitializeComponent();
+            _autoScroll = new DragAutoScroll(QueueScroll);
 
             QueueListBox.AddHandler(DragDrop.DropEvent, OnDrop);
             QueueListBox.AddHandler(DragDrop.DragOverEvent, OnQueueDragOver);
@@ -43,8 +44,6 @@ namespace TweakerUI.Views
         /// <summary>How far the pointer has to travel before a press on a card becomes a drag rather than a click.</summary>
         private const double DragThreshold = 4;
 
-        private const double AutoScrollMargin = 36;
-        private const double AutoScrollStep = 12;
 
         // DoDragDropAsync takes the original PointerPressedEventArgs, but the drag must not begin on the
         // press itself - that would swallow every plain click on a card into a drag loop. So the press
@@ -58,8 +57,8 @@ namespace TweakerUI.Views
         // queue on every DragOver, and those arrive continuously while the pointer moves.
         private TrackCardViewModel _indicatorCard;
 
-        private DispatcherTimer _autoScrollTimer;
-        private double _autoScrollDelta;
+        // Scrolling while a card is dragged near the top or bottom of the queue (Core/DragAutoScroll).
+        private readonly DragAutoScroll _autoScroll;
 
         private void OnQueuePointerPressed(object sender, PointerPressedEventArgs e)
         {
@@ -131,7 +130,7 @@ namespace TweakerUI.Views
             {
                 card.IsDragged = false;
                 ClearDropIndicator();
-                StopAutoScroll();
+                _autoScroll.Stop();
                 ResetQueuePress();
             }
         }
@@ -149,7 +148,7 @@ namespace TweakerUI.Views
             {
                 e.DragEffects = DragDropEffects.Move;
                 ShowDropIndicator(e);
-                UpdateAutoScroll(e);
+                _autoScroll.Update(e);
             }
             else if (e.DataTransfer?.Contains(DataFormat.File) == true)
             {
@@ -169,7 +168,7 @@ namespace TweakerUI.Views
         private void OnQueueDragLeave(object sender, DragEventArgs e)
         {
             ClearDropIndicator();
-            StopAutoScroll();
+            _autoScroll.Stop();
         }
 
         // Two drops arrive on this list and mean entirely different things: a card from the list itself
@@ -179,7 +178,7 @@ namespace TweakerUI.Views
         private void OnDrop(object sender, DragEventArgs e)
         {
             ClearDropIndicator();
-            StopAutoScroll();
+            _autoScroll.Stop();
 
             if (DataContext is not QuickPlayerViewModel vm)
                 return;
@@ -249,53 +248,6 @@ namespace TweakerUI.Views
         {
             _indicatorCard?.ClearDropIndicator();
             _indicatorCard = null;
-        }
-
-        // Dragging to the very top or bottom of a long playlist otherwise means dropping, scrolling and
-        // dragging again. Driven by a timer rather than by DragOver, because the pointer sitting still
-        // at the edge raises no further events.
-        private void UpdateAutoScroll(DragEventArgs e)
-        {
-            var height = QueueScroll.Bounds.Height;
-            var y = e.GetPosition(QueueScroll).Y;
-
-            if (y < AutoScrollMargin)
-                _autoScrollDelta = -AutoScrollStep;
-            else if (y > height - AutoScrollMargin)
-                _autoScrollDelta = AutoScrollStep;
-            else
-                _autoScrollDelta = 0;
-
-            if (_autoScrollDelta == 0)
-            {
-                StopAutoScroll();
-                return;
-            }
-
-            if (_autoScrollTimer != null)
-                return;
-
-            _autoScrollTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(30) };
-            _autoScrollTimer.Tick += OnAutoScrollTick;
-            _autoScrollTimer.Start();
-        }
-
-        private void OnAutoScrollTick(object sender, EventArgs e)
-        {
-            var offset = QueueScroll.Offset;
-            var max = Math.Max(0, QueueScroll.Extent.Height - QueueScroll.Viewport.Height);
-            QueueScroll.Offset = new Vector(offset.X, Math.Clamp(offset.Y + _autoScrollDelta, 0, max));
-        }
-
-        private void StopAutoScroll()
-        {
-            if (_autoScrollTimer == null)
-                return;
-
-            _autoScrollTimer.Stop();
-            _autoScrollTimer.Tick -= OnAutoScrollTick;
-            _autoScrollTimer = null;
-            _autoScrollDelta = 0;
         }
 
         private static bool IsBelowMidpoint(DragEventArgs e, ListBoxItem item) =>

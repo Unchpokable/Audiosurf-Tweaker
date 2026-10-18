@@ -738,7 +738,7 @@ tw.hud.fonts()   -- { "regular", "semibold" }
 
 ### 2.2 Glow — обязательно
 
-`src/ui/widgets/detail/draw.hxx` **уже** содержит `add_rect_glow`, `add_text_glow`,
+`src/ui/kit/paint.hxx` (бывший `src/ui/widgets/detail/draw.hxx`) **уже** содержит `add_rect_glow`, `add_text_glow`,
 `add_circle_glow` (расходящиеся затухающие копии контура, без шейдеров). Они inline и принимают
 `ImDrawList*`, так что проброс — это обёртка над `ImGui::GetBackgroundDrawList()`.
 
@@ -789,7 +789,7 @@ tw.hud.icon("feat_stealth", x, y, size, colour)   -- -> svg::get_resource("icons
 
 Что даёт: `TweakerPlugin` использует `tweeny::tween<float>` во всех виджетах, с общим `dt_ms()`,
 который аккуратно переносит дробный остаток между кадрами (важно на нескольких тысячах FPS —
-см. комментарий в `draw.hxx`).
+см. комментарий в `ui/kit/anim.hxx`, раньше он был в `draw.hxx`).
 
 Что мешает пробросить:
 

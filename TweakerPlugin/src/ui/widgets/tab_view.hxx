@@ -2,12 +2,12 @@
 
 #include <imgui.h>
 
-#include <libtweeny/tweeny.hxx>
-
 #include <span>
 #include <string>
 #include <string_view>
 #include <vector>
+
+#include "ui/kit/anim.hxx"
 
 namespace tw::ui::widgets
 {
@@ -35,23 +35,19 @@ public:
 
 private:
     struct tab_button_state {
-        float hover_t = 0.f;
-        float press_t = 0.f;
-        float select_t = 0.f;
-        tweeny::tween<float> hover_tween {};
-        tweeny::tween<float> press_tween {};
-        tweeny::tween<float> select_tween {};
-        bool was_hovered = false;
-        bool was_held = false;
-        bool was_selected = false;
+        kit::anim::channel hover { theme::motion::hover };
+        kit::anim::channel select { theme::motion::select };
+
+        // The label as drawn - cut with an ellipsis to the column - and the width it was cut for.
+        std::string fitted;
+        float fitted_for = -1.f;
     };
 
-    void retarget_content(float target);
     void select_tab(int index);
 
     std::string m_id;
     ImVec2 m_size;
-    float m_rounding = 5.f;
+    float m_rounding = theme::radius::panel;
 
     std::vector<std::string> m_labels;
     std::vector<tab_button_state> m_tab_states;
@@ -60,8 +56,8 @@ private:
     int m_previous_tab = -1;
     bool m_selection_changed = false;
 
-    float m_content_t = 1.f;
-    tweeny::tween<float> m_content_tween {};
+    // 1 when one page is showing; runs 0 -> 1 while the selected page fades in over the previous one.
+    kit::anim::channel m_content { theme::motion::transition, 1.f };
 
     bool m_active = false;
     bool m_view_open = false;
@@ -73,5 +69,6 @@ private:
     ImVec2 m_widget_size {};
     ImVec2 m_page_pos {};
     ImVec2 m_page_size {};
+    float m_page_pad = 0.f;
 };
 } // namespace tw::ui::widgets

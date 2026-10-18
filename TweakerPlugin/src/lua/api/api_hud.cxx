@@ -2,14 +2,18 @@
 
 #include "lua/api/api_hud.hxx"
 
+#include "lua/lua_hud_space.hxx"
+#include "lua/lua_registry.hxx"
+#include "lua/lua_sched.hxx"
+
 #include "ui/fonts.hxx"
 #include "ui/image/svg.hxx"
+#include "ui/kit/paint.hxx"
 #include "ui/plugins/interactive/menu.hxx"
 #include "ui/plugins/static/notefeed.hxx"
 #include "ui/plugins/static/pins.hxx"
 #include "ui/plugins/static/watermark.hxx"
 #include "ui/theme.hxx"
-#include "ui/widgets/detail/draw.hxx"
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -57,6 +61,93 @@ ImDrawFlags to_draw_flags(int corners) noexcept
 {
     const ImGuiContext* context = ImGui::GetCurrentContext();
     return context != nullptr && context->WithinFrameScope;
+}
+
+// What one drawing call covered, for tw.hud.occupied (lua_hud_space): the box of the vertices it added
+// to the background draw list, noted against the script whose callback is drawing. Measured from what was
+// drawn rather than from the arguments, so text, glow, icons and thick lines all come out right without a
+// second measurement of their own - it costs a min/max per vertex the call added.
+//
+// Something fully transparent is not recorded - it occupies nothing anyone can see - and neither is
+// drawing outside any script (owner -1).
+class space_probe {
+public:
+    explicit space_probe(bool visible) noexcept : m_owner(visible ? tw::lua::sched::current_owner() : -1)
+    {
+        if(m_owner >= 0) {
+            m_list = ImGui::GetBackgroundDrawList();
+            m_start = m_list->VtxBuffer.Size;
+        }
+    }
+
+    space_probe(const space_probe&) = delete;
+    space_probe& operator=(const space_probe&) = delete;
+
+    ~space_probe()
+    {
+        if(m_owner < 0 || m_list == nullptr) {
+            return;
+        }
+
+        const int end = m_list->VtxBuffer.Size;
+        if(end <= m_start) {
+            return;
+        }
+
+        tw::lua::hud_space::rect box { FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX };
+        for(int i = m_start; i < end; ++i) {
+            const ImVec2 pos = m_list->VtxBuffer.Data[i].pos;
+            box.x0 = std::min(box.x0, pos.x);
+            box.y0 = std::min(box.y0, pos.y);
+            box.x1 = std::max(box.x1, pos.x);
+            box.y1 = std::max(box.y1, pos.y);
+        }
+
+        tw::lua::hud_space::note(m_owner, box);
+    }
+
+private:
+    int m_owner;
+    ImDrawList* m_list = nullptr;
+    int m_start = 0;
+};
+
+// tw_hud_occupied's list on its way to the script's arrays. As big as the prelude's own arrays are.
+std::array<tw::lua::hud_space::entry, 256> g_occupied {};
+
+[[nodiscard]] bool opaque(unsigned int color) noexcept
+{
+    return (color >> IM_COL32_A_SHIFT) != 0;
+}
+
+// Where one overlay widget is this frame - for tw_hud_widget_rect, and as chrome for lua_hud_space.
+bool widget_rect(int which, float& x0, float& y0, float& x1, float& y1) noexcept
+{
+    switch(which) {
+    case tw::lua::api::hud_widget_notefeed:
+        // Always reported, even with no toasts alive: the strip is a reservation, not a measurement
+        // (see notefeed::reserved_rect).
+        tw::ui::plugins::statics::notefeed::reserved_rect(x0, y0, x1, y1);
+        return true;
+    case tw::lua::api::hud_widget_pins:
+        return tw::ui::plugins::statics::pins::last_rect(x0, y0, x1, y1);
+    case tw::lua::api::hud_widget_watermark:
+        return tw::ui::plugins::statics::watermark::last_rect(x0, y0, x1, y1);
+    case tw::lua::api::hud_widget_menu: {
+        ImVec2 pos {};
+        ImVec2 size {};
+        if(!tw::ui::plugins::interactive::menu::window_rect(pos, size)) {
+            return false;
+        }
+        x0 = pos.x;
+        y0 = pos.y;
+        x1 = pos.x + size.x;
+        y1 = pos.y + size.y;
+        return true;
+    }
+    default:
+        return false;
+    }
 }
 
 // Weaker check for the read-only geometry calls: they do not mutate anything, so they only need a
@@ -143,7 +234,7 @@ unsigned int tw_theme_color(int index) noexcept
 
     // Read live rather than cached: the Settings colour pickers edit these in place, and a script
     // that matched the overlay once at load would drift away from it the moment a theme changed.
-    return tw::ui::widgets::detail::to_u32(*g_theme[index].color);
+    return tw::ui::kit::paint::to_u32(*g_theme[index].color);
 }
 
 void tw_hud_text(float x, float y, unsigned int color, const char* text) noexcept
@@ -154,6 +245,7 @@ void tw_hud_text(float x, float y, unsigned int color, const char* text) noexcep
 
     // Background draw list rather than a window: no chrome, no input, and it is drawn whether or not
     // the menu is open - which is what a HUD wants. See Docs/Internal/lua-scripting.md §8.3.
+    const space_probe probe { opaque(color) };
     ImGui::GetBackgroundDrawList()->AddText(ImVec2(x, y), color, text);
 }
 
@@ -172,6 +264,7 @@ void tw_hud_text_sized(float x, float y, unsigned int color, const char* text, f
         size = ImGui::GetFontSize();
     }
 
+    const space_probe probe { opaque(color) };
     ImGui::GetBackgroundDrawList()->AddText(font, size, ImVec2(x, y), color, text);
 }
 
@@ -214,6 +307,7 @@ void tw_hud_rect_corners(
         return;
     }
 
+    const space_probe probe { opaque(color) };
     ImDrawList* draw = ImGui::GetBackgroundDrawList();
     const ImDrawFlags flags = to_draw_flags(corners);
 
@@ -231,7 +325,8 @@ void tw_hud_rect_glow(float x0, float y0, float x1, float y1, unsigned int color
         return;
     }
 
-    tw::ui::widgets::detail::add_rect_glow(
+    const space_probe probe { opaque(color) && strength > 0.01f };
+    tw::ui::kit::paint::add_rect_glow(
         ImGui::GetBackgroundDrawList(), ImVec2(x0, y0), ImVec2(x1, y1), rounding, ImGui::ColorConvertU32ToFloat4(color), strength);
 }
 
@@ -249,6 +344,7 @@ void tw_hud_rect_gradient(
     const unsigned int br = to;
     const unsigned int bl = (vertical != 0) ? to : from;
 
+    const space_probe probe { opaque(from) || opaque(to) };
     ImGui::GetBackgroundDrawList()->AddRectFilledMultiColor(ImVec2(x0, y0), ImVec2(x1, y1), tl, tr, br, bl);
 }
 
@@ -270,7 +366,8 @@ void tw_hud_text_glow(float x,
         return;
     }
 
-    tw::ui::widgets::detail::add_text_glow(ImGui::GetBackgroundDrawList(),
+    const space_probe probe { opaque(text_color) || opaque(glow_color) };
+    tw::ui::kit::paint::add_text_glow(ImGui::GetBackgroundDrawList(),
         ImVec2(x, y),
         text,
         text_color,
@@ -301,6 +398,7 @@ void tw_hud_text_font(float x, float y, unsigned int color, const char* text, fl
         return;
     }
 
+    const space_probe probe { opaque(color) };
     ImGui::GetBackgroundDrawList()->AddText(face, size > 0.f ? size : ImGui::GetFontSize(), ImVec2(x, y), color, text);
 }
 
@@ -350,6 +448,7 @@ void tw_hud_icon(const char* name, float x, float y, float size, unsigned int ti
         return;
     }
 
+    const space_probe probe { opaque(tint) };
     ImGui::GetBackgroundDrawList()->AddImage(
         ImTextureRef { texture }, ImVec2(x, y), ImVec2(x + size, y + size), ImVec2(0.f, 0.f), ImVec2(1.f, 1.f), tint);
 }
@@ -360,6 +459,7 @@ void tw_hud_line(float x0, float y0, float x1, float y1, unsigned int color, flo
         return;
     }
 
+    const space_probe probe { opaque(color) };
     ImGui::GetBackgroundDrawList()->AddLine(ImVec2(x0, y0), ImVec2(x1, y1), color, thickness <= 0.f ? 1.f : thickness);
 }
 
@@ -373,36 +473,7 @@ int tw_hud_widget_rect(int which, float* out) noexcept
     float y0 = 0.f;
     float x1 = 0.f;
     float y1 = 0.f;
-    bool visible = false;
-
-    switch(which) {
-    case hud_widget_notefeed:
-        // Always reported, even with no toasts alive: the strip is a reservation, not a measurement
-        // (see notefeed::reserved_rect).
-        tw::ui::plugins::statics::notefeed::reserved_rect(x0, y0, x1, y1);
-        visible = true;
-        break;
-    case hud_widget_pins:
-        visible = tw::ui::plugins::statics::pins::last_rect(x0, y0, x1, y1);
-        break;
-    case hud_widget_watermark:
-        visible = tw::ui::plugins::statics::watermark::last_rect(x0, y0, x1, y1);
-        break;
-    case hud_widget_menu: {
-        ImVec2 pos {};
-        ImVec2 size {};
-        visible = tw::ui::plugins::interactive::menu::window_rect(pos, size);
-        x0 = pos.x;
-        y0 = pos.y;
-        x1 = pos.x + size.x;
-        y1 = pos.y + size.y;
-        break;
-    }
-    default:
-        return 0;
-    }
-
-    if(!visible) {
+    if(!widget_rect(which, x0, y0, x1, y1)) {
         return 0;
     }
 
@@ -412,6 +483,48 @@ int tw_hud_widget_rect(int which, float* out) noexcept
     out[3] = y1;
 
     return 1;
+}
+
+int tw_hud_occupied(float* boxes, int* by, int capacity) noexcept
+{
+    if(boxes == nullptr || by == nullptr || capacity <= 0) {
+        return 0;
+    }
+
+    const std::span<tw::lua::hud_space::entry> buffer { g_occupied.data(),
+        std::min(g_occupied.size(), static_cast<std::size_t>(capacity)) };
+    const int count = tw::lua::hud_space::occupied(tw::lua::sched::current_owner(), buffer);
+
+    for(int i = 0; i < count; ++i) {
+        const tw::lua::hud_space::entry& item = g_occupied[static_cast<std::size_t>(i)];
+        boxes[i * 4 + 0] = item.box.x0;
+        boxes[i * 4 + 1] = item.box.y0;
+        boxes[i * 4 + 2] = item.box.x1;
+        boxes[i * 4 + 3] = item.box.y1;
+        by[i] = item.by;
+    }
+
+    return count;
+}
+
+void tw_hud_claim(float x0, float y0, float x1, float y1) noexcept
+{
+    if(!inside_frame()) {
+        return;
+    }
+
+    tw::lua::hud_space::note(tw::lua::sched::current_owner(), { std::min(x0, x1), std::min(y0, y1), std::max(x0, x1), std::max(y0, y1) });
+}
+
+int tw_hud_place(float width, float height, int corner, float margin, float* out) noexcept
+{
+    if(out == nullptr || corner < tw::lua::hud_space::corner_top_left || corner > tw::lua::hud_space::corner_bottom_right
+       || !inside_frame()) {
+        return 0;
+    }
+
+    const auto where = static_cast<tw::lua::hud_space::corner>(corner);
+    return tw::lua::hud_space::place(tw::lua::sched::current_owner(), width, height, where, margin, out) ? 1 : 0;
 }
 
 float tw_hud_metric(int which) noexcept
@@ -472,5 +585,24 @@ float tw_hud_metric(int which) noexcept
         return 0.f;
     }
 }
+}
+
+void hud_begin_frame() noexcept
+{
+    if(!imgui_ready()) {
+        return;
+    }
+
+    std::array<tw::lua::hud_space::entry, 4> chrome {};
+    std::size_t count = 0;
+    for(const int which : { hud_widget_notefeed, hud_widget_pins, hud_widget_watermark, hud_widget_menu }) {
+        tw::lua::hud_space::rect box {};
+        if(widget_rect(which, box.x0, box.y0, box.x1, box.y1)) {
+            chrome[count++] = { box, -1 - which };
+        }
+    }
+
+    const ImVec2 viewport = ImGui::GetIO().DisplaySize;
+    tw::lua::hud_space::begin_frame({ 0.f, 0.f, viewport.x, viewport.y }, std::span { chrome.data(), count }, tw::lua::registry::count());
 }
 } // namespace tw::lua::api

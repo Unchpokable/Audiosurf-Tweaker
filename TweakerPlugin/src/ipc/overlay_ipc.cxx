@@ -32,7 +32,8 @@ constexpr std::size_t k_max_fixed_op_tokens = 3;
 // different number treats the handshake as failed (Docs/Internal/plugin-offline-mode.md §5.2).
 //
 // 2: the SCRIPT_* ops (Docs/Internal/overlay-scripts.md).
-constexpr int k_protocol_version = 2;
+// 3: SCRIPT_ORDER, the run order of scripts (Docs/Internal/script-coexistence.md §3).
+constexpr int k_protocol_version = 3;
 
 // Whether Audiosurf Tweaker is connected, and the bridge window it talks through
 // (Docs/Internal/plugin-offline-mode.md §4.5).

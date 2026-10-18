@@ -59,6 +59,7 @@ const entry_point k_entry_points[] = {
     TW_LUA_ENTRY(tw_script_enter),
     TW_LUA_ENTRY(tw_script_leave),
     TW_LUA_ENTRY(tw_script_order),
+    TW_LUA_ENTRY(tw_script_file),
     TW_LUA_ENTRY(tw_diag),
     TW_LUA_ENTRY(tw_log),
     TW_LUA_ENTRY(tw_notify),
@@ -123,6 +124,9 @@ const entry_point k_entry_points[] = {
     TW_LUA_ENTRY(tw_hud_icon),
     TW_LUA_ENTRY(tw_hud_metric),
     TW_LUA_ENTRY(tw_hud_widget_rect),
+    TW_LUA_ENTRY(tw_hud_occupied),
+    TW_LUA_ENTRY(tw_hud_claim),
+    TW_LUA_ENTRY(tw_hud_place),
 };
 
 #undef TW_LUA_ENTRY

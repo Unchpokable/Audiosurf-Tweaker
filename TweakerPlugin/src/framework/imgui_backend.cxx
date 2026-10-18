@@ -209,7 +209,7 @@ bool initialize(IDirect3DDevice9* device, HWND hwnd)
 
         tw::ui::theme::apply_dark();
         tw::ui::theme::from_config(tw::ui::overlay_config::theme_overrides());
-        ImGui::StyleColorsDark();
+        tw::ui::theme::apply_to(ImGui::GetStyle());
 
         g_context_created = true;
         TW_LOG_INFO("imgui_backend: context created (config='{}')", tw::plugin::paths::to_utf8(g_config_path));
@@ -295,6 +295,10 @@ void new_frame()
     ImGui_ImplDX9_NewFrame();
     ImGui_ImplWin32_NewFrame();
     ImGui::NewFrame();
+
+    // A few dozen colour copies: what keeps ImGui's own scrollbars and tooltips in step with a theme edited
+    // live (see theme::sync_colors).
+    tw::ui::theme::sync_colors(ImGui::GetStyle());
 }
 
 void render()

@@ -433,6 +433,35 @@ The viewport minus the overlay's always-on top band. Full width.
 Exact rectangle of one overlay widget this frame. `name` is `"notefeed"`, `"pins"`, `"watermark"` or
 `"menu"`. `nil` when that widget is not on screen. An unknown name raises an error.
 
+The next three share the screen with other scripts (API 2). Every `tw.hud.*` drawing call is measured
+and recorded against the script that made it — nothing to declare. A script sees what the scripts
+**above** it in the run order drew this frame; the ones below have not drawn yet, and make room for it.
+See [Drawing § Sharing the screen](drawing.md#sharing-the-screen).
+
+### `tw.hud.occupied()` → list
+
+What is already on screen this frame, as a list of `{ x0, y0, x1, y1, by }`: first the overlay's
+chrome (`by` is `"notefeed"`, `"pins"`, `"watermark"` or `"menu"`, only those on screen), then the boxes
+of everything the scripts above this one drew or claimed (`by` is the script's file name). Pieces of one
+script closer than a few pixels are merged into one box, so a block of text lines is one box. Never this
+script's own. A new list on every call — call it once per frame.
+
+### `tw.hud.claim(x0, y0, x1, y1)`
+
+Takes a box for this frame without drawing in it, as if something were drawn there. For a widget that
+fades out, blinks, or is not drawn every frame: without it, the scripts below move into its place on the
+frames it is not drawn and back out after. Call it every frame the box should stay taken, from
+`on_frame` — it does nothing anywhere else.
+
+### `tw.hud.place(w, h, corner, margin)` → x0, y0 *or* `nil`
+
+The free spot nearest to `corner` for a `w` × `h` box, and takes it as if drawn. `corner` is
+`"top_left"` (default), `"top_right"`, `"bottom_left"` or `"bottom_right"`; `margin` (default 8) is
+kept from the screen edges and from everything taken. It stays clear of the overlay's chrome — except
+the menu, which comes and goes — of what the scripts above drew, and of what this script itself drew or
+placed earlier this frame, so two boxes placed at one corner stack. `nil` when nothing fits. An unknown
+corner raises an error. Only from `on_frame`.
+
 ---
 
 ## Colours

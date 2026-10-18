@@ -26,6 +26,10 @@ void tw_script_leave(int owner, int kind, const char* error) noexcept;
 // order changes - never per call.
 int tw_script_order(int owner) noexcept;
 
+// A script's file name in Scripts\ ("puzzlepro_hud.lua"); "" for an id that is not a script. What
+// tw.hud.occupied names another script's boxes by - the file, because it is unique and names are not.
+const char* tw_script_file(int owner) noexcept;
+
 // A diagnostic from a script: tw.warn, tw.error and tw.pending, and the channel layer's own "no such
 // channel". `level` is tw::lua::diag::level, `where` is the place it was said from ("hud.lua:88"),
 // and the whole triple is deduplicated - see lua_diag.hxx for what reaches the notefeed and when.
@@ -79,9 +83,8 @@ int tw_group_loaded(const char* name) noexcept;
 int tw_frame() noexcept;
 
 // Seconds elapsed since the previous frame, from the same source the overlay's own animations use
-// (ui/widgets/detail/draw.hxx: dt_ms, which carries the sub-millisecond remainder forward instead
-// of rounding it away - at the several thousand FPS an uncapped window reaches, rounding makes every
-// animation run at a multiple of its intended speed).
+// (ImGui's DeltaTime, which ui/kit/anim.hxx's dt_ms cuts into whole milliseconds for tweeny) - but not
+// rounded: a script integrating `x += v * dt` with whole milliseconds judders (review U3).
 float tw_dt() noexcept;
 
 // One of tweeny's easing curves evaluated at `t`, clamped to [0, 1] and mapped to [0, 1].

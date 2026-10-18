@@ -1,7 +1,7 @@
 #include "ui/widgets/popup_menu.hxx"
 
+#include "ui/kit/paint.hxx"
 #include "ui/theme.hxx"
-#include "ui/widgets/detail/draw.hxx"
 
 #include <algorithm>
 #include <cassert>
@@ -9,9 +9,19 @@
 
 namespace
 {
-constexpr int k_fade_ms = 200;
 constexpr float k_title_pad_x = 10.f;
 constexpr float k_title_pad_y = 6.f;
+
+// A title wider than the content may widen the popup this far and no further; past it the title is cut
+// with an ellipsis (R7) - a track's name should not stretch its context menu across the screen.
+constexpr float k_title_max_w = 320.f;
+
+// Between an anchor (open_at) and the popup.
+constexpr float k_anchor_gap = 4.f;
+
+// Window names are global in ImGui: two popups built with the same id somewhere else would be one window.
+// A creation number keeps every instance its own, and stays the same from run to run.
+int g_popup_serial = 0;
 
 ImVec2 snap_px(ImVec2 p) noexcept
 {
@@ -22,7 +32,8 @@ ImVec2 snap_px(ImVec2 p) noexcept
 namespace tw::ui::widgets
 {
 popup_menu::popup_menu(const char* id, const char* title)
-    : m_id(id ? id : "popup_menu"), m_window_name(std::string("##tw_popup_") + m_id), m_title(title ? title : "")
+    : m_id(id ? id : "popup_menu"), m_window_name(std::string("##tw_popup_") + m_id + "#" + std::to_string(g_popup_serial++)),
+      m_title(title ? title : "")
 {
 }
 
@@ -43,22 +54,23 @@ void popup_menu::set_inner_padding(ImVec2 padding) noexcept
 
 void popup_menu::retarget_opacity(float target)
 {
-    m_opacity_tween = tweeny::from(m_opacity_t).to(target).during(k_fade_ms).via(tweeny::easing::cubicOut);
+    // Always a fresh curve from where the opacity is, even toward the target it already has: a reopen
+    // mid-fade-in restarts the fade. channel::set() would skip that, so this is restart().
+    m_opacity.restart(m_opacity.value(), target);
 }
 
 void popup_menu::step_opacity()
 {
-    const auto dt = detail::dt_ms();
-    if(!m_opacity_tween.isFinished()) {
-        m_opacity_t = m_opacity_tween.step(dt);
+    if(m_opacity.moving()) {
+        m_opacity.step();
     }
     else {
         // Snap to endpoint — finished tweens can leave a tiny epsilon that keeps opened() true forever.
-        m_opacity_t = m_want_open ? 1.f : 0.f;
+        m_opacity.snap(m_want_open ? 1.f : 0.f);
     }
 
-    if(!m_want_open && m_opacity_t <= 0.001f) {
-        m_opacity_t = 0.f;
+    if(!m_want_open && m_opacity.value() <= 0.001f) {
+        m_opacity.snap(0.f);
         m_interactive = false;
         m_had_focus = false;
         // Keep m_frame_size so the next open() can SetNextWindowSize and avoid ImGui's default 400x400 flash.
@@ -67,12 +79,27 @@ void popup_menu::step_opacity()
 
 bool popup_menu::opened() const noexcept
 {
-    return m_want_open || m_opacity_t > 0.001f;
+    return m_want_open || m_opacity.value() > 0.001f;
 }
 
 void popup_menu::open()
 {
+    m_anchored = false;
     m_origin = snap_px(ImGui::GetMousePos());
+    start_open();
+}
+
+void popup_menu::open_at(ImVec2 anchor_min, ImVec2 anchor_max)
+{
+    m_anchored = true;
+    m_anchor_min = anchor_min;
+    m_anchor_max = anchor_max;
+    m_origin = snap_px(ImVec2 { anchor_min.x, anchor_max.y + k_anchor_gap });
+    start_open();
+}
+
+void popup_menu::start_open()
+{
     clamp_origin_to_viewport(m_frame_size.x > 1.f ? m_frame_size : ImVec2 { 1.f, 1.f });
 
     m_want_open = true;
@@ -85,15 +112,15 @@ void popup_menu::open()
     // the reopened popup would render behind the host (looks like a one-frame flash then nothing).
     m_bring_to_front_frames = 2;
 
-    if(m_opacity_t <= 0.001f) {
-        m_opacity_t = 0.f;
+    if(m_opacity.value() <= 0.001f) {
+        m_opacity.snap(0.f);
     }
     retarget_opacity(1.f);
 }
 
 void popup_menu::close()
 {
-    if(!m_want_open && m_opacity_t <= 0.001f) {
+    if(!m_want_open && m_opacity.value() <= 0.001f) {
         return;
     }
 
@@ -108,6 +135,14 @@ void popup_menu::clamp_origin_to_viewport(ImVec2 frame_size) noexcept
 
     frame_size.x = std::max(frame_size.x, 1.f);
     frame_size.y = std::max(frame_size.y, 1.f);
+
+    // Anchored and out of room below: above the anchor instead, if that fits - sliding up over the anchor
+    // would cover what the popup belongs to.
+    if(m_anchored) {
+        const float below = m_anchor_max.y + k_anchor_gap;
+        const float above = m_anchor_min.y - k_anchor_gap - frame_size.y;
+        m_origin.y = (below + frame_size.y > display.y && above >= 0.f) ? above : below;
+    }
 
     if(m_origin.x + frame_size.x > display.x) {
         m_origin.x = display.x - frame_size.x;
@@ -141,6 +176,8 @@ void popup_menu::poll_dismiss()
     }
 
     const bool clicked = ImGui::IsMouseClicked(ImGuiMouseButton_Left) || ImGui::IsMouseClicked(ImGuiMouseButton_Right);
+    // Plain geometry on purpose, not kit::interact/hovering: the question is "did this click land outside
+    // the popup's own frame", and whatever window it landed on instead is exactly what does not matter.
     if(clicked && !ImGui::IsMouseHoveringRect(m_frame_min, m_frame_max, false)) {
         close();
     }
@@ -157,28 +194,33 @@ void popup_menu::paint_chrome(ImVec2 frame_min, ImVec2 frame_max) const
     ImDrawList* draw = ImGui::GetWindowDrawList();
 
     // Body: muted surface (darker than elevated) so button/list_item press/hover accents stay readable.
-    detail::add_rect_filled_rounded(draw, frame_min, frame_max, detail::to_u32(theme::surface), rounding);
-    detail::add_rect_glow(draw, frame_min, frame_max, rounding, theme::accent_primary, 0.35f);
-    draw->AddRect(frame_min, frame_max, detail::to_u32(theme::accent_border), rounding);
+    draw->AddRectFilled(frame_min, frame_max, kit::paint::to_u32(theme::surface), rounding);
+
+    // The frame is the window's own rect, and the window clips to it - the glow lies wholly outside, so
+    // it gets a clip of its own, not intersected with the window's.
+    const ImVec2 reach { kit::paint::glow_reach, kit::paint::glow_reach };
+    draw->PushClipRect(ImVec2 { frame_min.x - reach.x, frame_min.y - reach.y }, ImVec2 { frame_max.x + reach.x, frame_max.y + reach.y });
+    kit::paint::add_rect_glow(draw, frame_min, frame_max, rounding, theme::accent_primary, 0.35f);
+    draw->PopClipRect();
+    draw->AddRect(frame_min, frame_max, kit::paint::to_u32(theme::accent_border), rounding);
 
     if(m_title_h <= 0.f || m_title.empty()) {
         return;
     }
 
     const ImVec2 title_max { frame_max.x, frame_min.y + m_title_h };
-    draw->AddRectFilled(frame_min, title_max, detail::to_u32(theme::accent_soft), rounding, ImDrawFlags_RoundCornersTop);
-    // Flat bottom edge of the title band (cover the rounded bottom of the top-only fill).
-    draw->AddRectFilled(
-        ImVec2 { frame_min.x, title_max.y - rounding }, ImVec2 { frame_max.x, title_max.y }, detail::to_u32(theme::accent_soft));
+    // One fill: RoundCornersTop already leaves the bottom edge square. A second rect "flattening" it used to
+    // overlap the first by the rounding's height, and accent_soft is translucent - the overlap showed as a
+    // lighter strip, which at a window radius of 10 cut through the title text.
+    draw->AddRectFilled(frame_min, title_max, kit::paint::to_u32(theme::accent_soft), rounding, ImDrawFlags_RoundCornersTop);
     draw->AddLine(
-        ImVec2 { frame_min.x + 1.f, title_max.y }, ImVec2 { frame_max.x - 1.f, title_max.y }, detail::to_u32(theme::accent_border));
+        ImVec2 { frame_min.x + 1.f, title_max.y }, ImVec2 { frame_max.x - 1.f, title_max.y }, kit::paint::to_u32(theme::accent_border));
 
-    const ImVec2 title_size = ImGui::CalcTextSize(m_title.c_str());
     const ImVec2 title_pos = snap_px(ImVec2 {
         frame_min.x + k_title_pad_x,
-        frame_min.y + (m_title_h - title_size.y) * 0.5f,
+        frame_min.y + (m_title_h - ImGui::GetFontSize()) * 0.5f,
     });
-    draw->AddText(title_pos, detail::to_u32(theme::accent_text), m_title.c_str());
+    kit::paint::add_text_ellipsis(draw, title_pos, frame_max.x - k_title_pad_x, kit::paint::to_u32(theme::accent_text), m_title.c_str());
 }
 
 void popup_menu::begin()
@@ -257,17 +299,24 @@ void popup_menu::begin()
         }
     }
 
-    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * m_opacity_t);
+    ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * m_opacity.value());
     m_alpha_pushed = true;
 
     const ImVec2 win_pos = ImGui::GetWindowPos();
 
-    // Paint chrome first (previous-frame size) so content never sits on a stock ImGui surface.
-    if(m_frame_size.x > 1.f && m_frame_size.y > 1.f) {
-        ImVec2 frame_min = snap_px(win_pos);
-        ImVec2 frame_max = snap_px(ImVec2 { win_pos.x + m_frame_size.x, win_pos.y + m_frame_size.y });
-        paint_chrome(frame_min, frame_max);
+    // Escape closes the popup - unless something in it is being edited or dragged: an edit field and a
+    // dragged slider each take Escape to cancel themselves, and one key press should not do both.
+    if(m_interactive && m_want_open && !ImGui::IsAnyItemActive() && ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows)
+        && ImGui::IsKeyPressed(ImGuiKey_Escape, false)) {
+        close();
     }
+
+    // Content first, into the upper channel; the chrome goes under it at end(), at this frame's size (R14).
+    // Painting the chrome here, from the previous frame's size, put it on top of the content on the first
+    // frame and a frame behind every change of size after that.
+    m_splitter.Split(ImGui::GetWindowDrawList(), 2);
+    m_splitter.SetCurrentChannel(ImGui::GetWindowDrawList(), 1);
+    m_split = true;
 
     const float content_top = win_pos.y + m_title_h + m_inner_padding.y;
     ImGui::SetCursorScreenPos(ImVec2 { win_pos.x + m_inner_padding.x, content_top });
@@ -297,10 +346,10 @@ void popup_menu::end()
     ImVec2 frame_min = win_pos;
     ImVec2 frame_max { content_max.x + m_inner_padding.x, content_max.y + m_inner_padding.y };
 
-    // Title can be wider than content — expand frame so the header label isn't clipped.
+    // A title wider than the content widens the frame, up to k_title_max_w; past that it is cut (R7).
     if(m_title_h > 0.f && !m_title.empty()) {
-        const ImVec2 title_size = ImGui::CalcTextSize(m_title.c_str());
-        const float title_right = win_pos.x + k_title_pad_x + title_size.x + k_title_pad_x;
+        const float title_w = std::min(ImGui::CalcTextSize(m_title.c_str()).x, k_title_max_w);
+        const float title_right = win_pos.x + k_title_pad_x + title_w + k_title_pad_x;
         if(title_right > frame_max.x) {
             frame_max.x = title_right;
         }
@@ -316,9 +365,12 @@ void popup_menu::end()
     frame_min = snap_px(frame_min);
     frame_max = snap_px(frame_max);
 
-    // First open frame (no prior size): chrome was skipped in begin — draw it now; next frame begin paints first.
-    if(m_frame_size.x <= 1.f || m_frame_size.y <= 1.f) {
+    if(m_split) {
+        ImDrawList* draw = ImGui::GetWindowDrawList();
+        m_splitter.SetCurrentChannel(draw, 0);
         paint_chrome(frame_min, frame_max);
+        m_splitter.Merge(draw);
+        m_split = false;
     }
 
     m_frame_min = frame_min;

@@ -130,6 +130,15 @@ description, and a badge saying where it came from:
   plugin did not answer): the switches are locked and a banner says so. Switch the script in the
   game's overlay instead.
 
+**The order of the rows is the order the scripts run in** — top first, the same list the overlay's
+Scripts tab shows (see [Getting started § The order scripts run in](getting-started.md#the-order-scripts-run-in)
+for why it matters). To change it, drag a row by the handle on its left (the six dots) and drop it where
+the line shows. Like the switch, it depends on the game: with the game closed, the order goes into
+`scripts.cfg`; with the game connected, the rows move at once and the game confirms (or the list goes back
+after a few seconds, and the Tweaker tells you); with the game running but not connected, the handles are
+locked. Bundled scripts that are not installed stay at the bottom and have no handle — they have no place
+until they are in the game.
+
 While connected, a row also shows what the game says about the script when there is something to say:
 **Failed:** with the error, **Suspended:** with the reason (see
 [Getting started § When something goes wrong](getting-started.md#when-something-goes-wrong)). The full

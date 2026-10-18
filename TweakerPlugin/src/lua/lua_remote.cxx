@@ -21,12 +21,15 @@ enum class command_kind : std::uint8_t {
     reload,
     rescan,
     sync,
+    order,
 };
 
 struct command {
     command_kind kind = command_kind::sync;
     std::string file;
     bool enabled = false;
+    // SCRIPT_ORDER's file names, top first.
+    std::vector<std::string> files;
 };
 
 // Written by the IPC thread, emptied by the engine thread. `g_mail` is what keeps the empty case to one
@@ -41,6 +44,9 @@ tw::lua::remote::present_fn g_present = nullptr;
 // What the host was last told, per script id; empty where nothing was sent yet. Engine thread only.
 std::vector<std::optional<std::string>> g_sent;
 std::uint32_t g_seen_revision = 0;
+
+// The SCRIPT_ORDER line the host was last sent; empty when none was. Engine thread only.
+std::string g_sent_order;
 
 void post(command entry)
 {
@@ -111,16 +117,34 @@ tw::lua::script* resolve(std::string_view file, bool& rescanned) noexcept
     return entry;
 }
 
+// The run order as one line: every record, missing ones included, top first (script-coexistence.md
+// §3). The whole order rather than what moved: it is one short line, sent only when the order changed, and
+// the host never has to rebuild it from pieces.
+std::string order_line()
+{
+    std::string line = "SCRIPT_ORDER";
+    for(const int id : tw::lua::registry::order()) {
+        if(const tw::lua::script* const entry = tw::lua::registry::find(id); entry != nullptr) {
+            line += ' ';
+            line += tw::ui::wire::percent_encode(entry->file);
+        }
+    }
+
+    return line;
+}
+
 // Tells the host what changed since it was last told - or, with `full`, everything, closed by
 // SCRIPT_SYNCED. `forced` are ids whose state goes out even if it did not change: a SCRIPT_SET or
 // SCRIPT_RELOAD is answered always, because the answer is also the confirmation. `unknown` are files a
-// command named that are not there even after a rescan.
-void flush(bool full, std::span<const int> forced, std::span<const std::string> unknown)
+// command named that are not there even after a rescan. `order_asked` is the same for SCRIPT_ORDER: the
+// order goes out whether or not the host's request changed it.
+void flush(bool full, std::span<const int> forced, std::span<const std::string> unknown, bool order_asked = false)
 {
     g_seen_revision = tw::lua::registry::revision();
 
     if(!connected()) {
         g_sent.clear();
+        g_sent_order.clear();
         return;
     }
 
@@ -149,6 +173,12 @@ void flush(bool full, std::span<const int> forced, std::span<const std::string> 
         send_state(file, "false missing");
     }
 
+    // After the states, so a host that lays the order over its rows already has a row for every name in it.
+    if(std::string order = order_line(); full || order_asked || order != g_sent_order) {
+        (void)g_send(order);
+        g_sent_order = std::move(order);
+    }
+
     if(full) {
         (void)g_send(std::format("SCRIPT_SYNCED {}", count));
     }
@@ -158,6 +188,7 @@ void carry_out(std::span<const command> commands)
 {
     bool full = false;
     bool rescanned = false;
+    bool order_asked = false;
     std::vector<int> forced;
     std::vector<std::string> unknown;
 
@@ -195,10 +226,17 @@ void carry_out(std::span<const command> commands)
         case command_kind::sync:
             full = true;
             break;
+
+        // Names the plugin does not know are skipped by set_order, not looked for: the order is of the
+        // scripts the plugin has, and a file it has not seen yet goes last when a rescan finds it.
+        case command_kind::order:
+            tw::lua::registry::set_order(entry.files);
+            order_asked = true;
+            break;
         }
     }
 
-    flush(full, forced, unknown);
+    flush(full, forced, unknown, order_asked);
 }
 } // namespace
 
@@ -233,6 +271,19 @@ void handle_op(std::string_view op, std::string_view rest)
 
     if(op == "SCRIPT_RESCAN") {
         post(command { command_kind::rescan, {}, false });
+        return;
+    }
+
+    if(op == "SCRIPT_ORDER") {
+        command entry { command_kind::order, {}, false };
+        for(std::string_view tail_files = rest; !tail_files.empty();) {
+            const auto [name, after] = split_token(tail_files);
+            if(!name.empty()) {
+                entry.files.push_back(tw::ui::wire::percent_decode(name));
+            }
+            tail_files = after;
+        }
+        post(std::move(entry));
         return;
     }
 }

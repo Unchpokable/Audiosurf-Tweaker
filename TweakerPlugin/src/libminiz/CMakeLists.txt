@@ -20,8 +20,10 @@ target_include_directories(libminiz PUBLIC
 # structures declared in miniz.h, so a consumer compiled without them would disagree with the library
 # about where a field is. Setting them here is what makes that impossible.
 #
-#   NO_ARCHIVE_WRITING_APIS - nothing here creates a zip. Removing the writer takes the deflate
-#                             compressor with it, which is most of the library's size.
+#   NO_ARCHIVE_WRITING_APIS - nothing here creates a zip. This removes only the zip writer: the deflate
+#                             compressor (tdefl) stays, and smoke_test's snapshot stand writes its PNGs
+#                             with it (smoke/shots.cxx) - do not add MINIZ_NO_DEFLATE_APIS. The DLL never
+#                             calls tdefl, so the linker drops it there.
 #   NO_STDIO                - the archive is read into memory by sky_vfs before miniz sees it. Not
 #                             only unnecessary but wanted: a file miniz held open would be a file the
 #                             author cannot overwrite while the game has the sky loaded, and

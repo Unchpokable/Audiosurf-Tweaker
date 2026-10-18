@@ -17,6 +17,11 @@
 // overlay, a failed load, a suspension in the scheduler, a Resume - only bumps the revision; none of them
 // sends anything itself, so a suspension decided in the middle of a hooked channel call costs that call
 // one increment.
+//
+// **The run order travels the same way** (protocol 3, script-coexistence.md §3): SCRIPT_ORDER from
+// the host is lua_registry::set_order, and SCRIPT_ORDER back - the whole order - goes out with the full list,
+// whenever the order differs from what the host was last sent, and always in answer to the host's, which is
+// how the host knows its drag landed.
 namespace tw::lua::remote
 {
 using send_fn = bool (*)(std::string_view op_line);

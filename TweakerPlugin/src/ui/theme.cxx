@@ -205,6 +205,96 @@ void from_config(std::string_view config) noexcept
     }
 }
 
+void apply_to(ImGuiStyle& style) noexcept
+{
+    ImGui::StyleColorsDark(&style);
+
+    // R9: without a border the text fields (number_input, the slider's edit field, the picker's hex)
+    // had none, though each pushes a border colour for it.
+    style.FrameBorderSize = 1.f;
+    style.FrameRounding = radius::field;
+    style.GrabRounding = radius::field;
+
+    // Tooltips and ImGui's own popups: a small window, the card's corner.
+    style.PopupRounding = radius::row;
+    style.PopupBorderSize = 1.f;
+    style.WindowRounding = radius::window;
+
+    // A slimmer bar with a pill for a grab - the stock 14 px read as a desktop scrollbar dropped into the
+    // overlay. ScrollbarPadding stays: it is what keeps the pill off the bar's edges.
+    style.ScrollbarSize = 10.f;
+    style.ScrollbarRounding = 5.f;
+
+    sync_colors(style);
+}
+
+void sync_colors(ImGuiStyle& style) noexcept
+{
+    ImVec4* const c = style.Colors;
+    const ImVec4 none { 0.f, 0.f, 0.f, 0.f };
+
+    c[ImGuiCol_Text] = text_primary;
+    c[ImGuiCol_TextDisabled] = text_muted;
+    c[ImGuiCol_TextLink] = accent_text;
+    c[ImGuiCol_TextSelectedBg] = accent_selection;
+    c[ImGuiCol_InputTextCursor] = accent_text;
+
+    c[ImGuiCol_WindowBg] = surface;
+    c[ImGuiCol_ChildBg] = none;
+    c[ImGuiCol_PopupBg] = surface_elevated;
+    c[ImGuiCol_Border] = border;
+    c[ImGuiCol_BorderShadow] = none;
+    c[ImGuiCol_MenuBarBg] = surface_soft;
+    c[ImGuiCol_TitleBg] = surface_muted;
+    c[ImGuiCol_TitleBgActive] = surface_elevated;
+    c[ImGuiCol_TitleBgCollapsed] = surface_muted;
+
+    c[ImGuiCol_FrameBg] = surface_input;
+    c[ImGuiCol_FrameBgHovered] = surface_hover;
+    c[ImGuiCol_FrameBgActive] = surface_elevated;
+
+    // The track is the surface it sits on; only the grab is drawn, and it lights up the way the rest of the
+    // overlay does - accent on the drag.
+    c[ImGuiCol_ScrollbarBg] = none;
+    c[ImGuiCol_ScrollbarGrab] = border_strong;
+    c[ImGuiCol_ScrollbarGrabHovered] = text_faint;
+    c[ImGuiCol_ScrollbarGrabActive] = accent_primary;
+
+    c[ImGuiCol_CheckMark] = accent_primary;
+    c[ImGuiCol_SliderGrab] = accent_primary;
+    c[ImGuiCol_SliderGrabActive] = accent_text;
+    c[ImGuiCol_Button] = surface_soft;
+    c[ImGuiCol_ButtonHovered] = surface_hover;
+    c[ImGuiCol_ButtonActive] = accent_pressed;
+    c[ImGuiCol_Header] = accent_soft;
+    c[ImGuiCol_HeaderHovered] = accent_hover;
+    c[ImGuiCol_HeaderActive] = accent_selected;
+
+    c[ImGuiCol_Separator] = border_divider;
+    c[ImGuiCol_SeparatorHovered] = border_strong;
+    c[ImGuiCol_SeparatorActive] = accent_primary;
+    c[ImGuiCol_ResizeGrip] = none;
+    c[ImGuiCol_ResizeGripHovered] = accent_hover;
+    c[ImGuiCol_ResizeGripActive] = accent_primary;
+
+    c[ImGuiCol_Tab] = surface_soft;
+    c[ImGuiCol_TabHovered] = surface_hover;
+    c[ImGuiCol_TabSelected] = accent_soft;
+    c[ImGuiCol_TabSelectedOverline] = accent_primary;
+    c[ImGuiCol_TabDimmed] = surface_muted;
+    c[ImGuiCol_TabDimmedSelected] = surface_soft;
+    c[ImGuiCol_TabDimmedSelectedOverline] = border_strong;
+
+    c[ImGuiCol_TableHeaderBg] = surface_elevated;
+    c[ImGuiCol_TableBorderStrong] = border_strong;
+    c[ImGuiCol_TableBorderLight] = border;
+    c[ImGuiCol_TableRowBg] = none;
+    c[ImGuiCol_TableRowBgAlt] = surface_row;
+
+    c[ImGuiCol_DragDropTarget] = accent_primary;
+    c[ImGuiCol_NavCursor] = accent_primary;
+}
+
 std::string to_config() noexcept
 {
     std::ostringstream out;

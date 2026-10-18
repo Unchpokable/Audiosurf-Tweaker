@@ -85,6 +85,34 @@ namespace TweakerCore.Tests.Scripting
         }
 
         [Test]
+        public void WritesTheOrderPercentEncoded()
+        {
+            Assert.That(ScriptWire.Order(new[] { "my script.lua", "c.lua" }), Is.EqualTo("SCRIPT_ORDER my%20script.lua c.lua"));
+            Assert.That(ScriptWire.Order(new string[0]), Is.EqualTo("SCRIPT_ORDER"));
+        }
+
+        [Test]
+        public void ReadsTheOrderThePluginSends()
+        {
+            // The exact line TweakerPlugin/harness/remote expects the plugin to send.
+            Assert.That(ScriptWire.TryParseOrder("SCRIPT_ORDER my%20script.lua c.lua d.lua", out var order), Is.True);
+            Assert.That(order, Is.EqualTo(new[] { "my script.lua", "c.lua", "d.lua" }));
+
+            Assert.That(ScriptWire.TryParseOrder("SCRIPT_ORDER", out order), Is.True);
+            Assert.That(order, Is.Empty);
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase("SCRIPT_ORDERS a.lua")]
+        [TestCase("SCRIPT_SYNCED 3")]
+        public void AnythingElseIsNotAnOrder(string line)
+        {
+            Assert.That(ScriptWire.TryParseOrder(line, out var order), Is.False);
+            Assert.That(order, Is.Null);
+        }
+
+        [Test]
         public void ReadsTheEndOfTheList()
         {
             Assert.That(ScriptWire.TryParseSynced("SCRIPT_SYNCED 3", out var count), Is.True);

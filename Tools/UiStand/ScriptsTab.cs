@@ -49,7 +49,7 @@ static class ScriptsTab
                 {
                     vm.GameRunning = true;
                     foreach (var row in vm.Scripts)
-                        row.CanToggle = false;
+                        { row.CanToggle = false; row.CanReorder = false; }
                     typeof(ScriptsViewModel).GetMethod("UpdateNotice", BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(vm, null);
                 });
             }
@@ -67,6 +67,7 @@ static class ScriptsTab
             SetTexturesPath(Path.Combine(engine, "textures"));
 
             failures += CheckToggle(engine);
+            failures += CheckOrder(engine);
             failures += CheckLive(outDir, engine);
         }
         finally
@@ -161,6 +162,69 @@ static class ScriptsTab
         return failures;
     }
 
+    // --- П2: the run order, no game (script-coexistence.md §3) ------------------------------------------
+    //
+    // The rows follow scripts.cfg's order= lines, and a drag writes them - and only them - the way the plugin reads
+    // them. The view's drag handlers only turn a drop into MoveScript's index, the same arithmetic as Quick Player's.
+
+    static readonly string[] ByName =
+        { "lost_map.lua", "my_hud.lua", "old_thing.lua", "puzzlepro_hud.lua", "quick_probe.lua", "ring_pulse.lua", "song_meter.lua" };
+
+    static int CheckOrder(string engine)
+    {
+        var failures = 0;
+        void Check(bool ok, string what)
+        {
+            if (ok)
+                return;
+            Console.WriteLine("FAIL " + what);
+            failures++;
+        }
+
+        var cfg = Path.Combine(engine, "TweakerStuff", "Config", "scripts.cfg");
+        var before = File.ReadAllText(cfg);
+        var vm = Load();
+        string[] Rows() => vm.Scripts.Select(r => r.FileName).ToArray();
+        ScriptRowViewModel Row(string file) => vm.Scripts.Single(r => r.FileName == file);
+
+        Check(Rows().SequenceEqual(ByName), "with no order= lines the rows are by name, the uninstalled one last: " + string.Join(", ", Rows()));
+        Check(!Row("song_meter.lua").HasPlace && !vm.MoveScript(Row("song_meter.lua"), 0), "a script that is not installed has no place and cannot be moved");
+
+        if (vm.GameRunning)
+        {
+            Check(!vm.MoveScript(Row("ring_pulse.lua"), 0) && File.ReadAllText(cfg) == before, "with Audiosurf running and no link, a drag is refused");
+            Console.WriteLine("note: Audiosurf is running - checked that reordering is refused; close it to check the write");
+            vm.SetActive(false);
+            vm.Dispose();
+            return failures;
+        }
+
+        Check(Row("ring_pulse.lua").CanReorder, "with no game, rows can be dragged");
+        Check(vm.MoveScript(Row("ring_pulse.lua"), 0), "a drag to the top is taken");
+        Check(Rows().First() == "ring_pulse.lua" && Rows().Last() == "song_meter.lua", "the row moves at once: " + string.Join(", ", Rows()));
+
+        var text = File.ReadAllText(cfg);
+        Check(text.Contains("order=ring_pulse.lua\norder=lost_map.lua\norder=my_hud.lua\norder=old_thing.lua\norder=puzzlepro_hud.lua\norder=quick_probe.lua\n"),
+            "scripts.cfg gets the whole order, the uninstalled one left out:\n" + text);
+        Check(text.Contains("script.old_thing.lua=0") && text.Contains("engine.settle_ms=900"), "and keeps everything else:\n" + text);
+
+        Check(vm.MoveScript(Row("lost_map.lua"), 99), "a drop past the end is the end");
+        Check(Rows()[^2] == "lost_map.lua" && Rows()[^1] == "song_meter.lua", "- of the scripts that have a place: " + string.Join(", ", Rows()));
+        Check(!vm.MoveScript(Row("my_hud.lua"), Array.IndexOf(Rows(), "my_hud.lua")), "a drop where it already is changes nothing");
+        vm.SetActive(false);
+        vm.Dispose();
+
+        var again = Load();
+        Check(again.Scripts.Select(r => r.FileName).SequenceEqual(new[]
+              { "ring_pulse.lua", "my_hud.lua", "old_thing.lua", "puzzlepro_hud.lua", "quick_probe.lua", "lost_map.lua", "song_meter.lua" }),
+            "a fresh scan reads the same order back: " + string.Join(", ", again.Scripts.Select(r => r.FileName)));
+        again.SetActive(false);
+        again.Dispose();
+
+        File.WriteAllText(cfg, before);
+        return failures;
+    }
+
     // --- С5b: the game connected -------------------------------------------------------------------------------
     //
     // A fake plugin behind ScriptsOverlayBridge: every line the tab sends is recorded, and the plugin's answers
@@ -208,6 +272,8 @@ static class ScriptsTab
                      "SCRIPT_STATE puzzlepro_hud.lua true running",
                      "SCRIPT_STATE quick_probe.lua false missing",
                      "SCRIPT_STATE ring_pulse.lua true failed ring_pulse.lua%3A3%3A%20attempt%20to%20index%20a%20nil%20value%20%28field%20%27rings%27%29",
+                     // gone.lua: a script whose file was deleted while the game ran - the plugin keeps its place, the tab has no row for it.
+                     "SCRIPT_ORDER ring_pulse.lua my_hud.lua gone.lua lost_map.lua old_thing.lua puzzlepro_hud.lua quick_probe.lua",
                      "SCRIPT_SYNCED 6",
                  })
             ScriptsOverlayBridge.Receive(line);
@@ -229,6 +295,10 @@ static class ScriptsTab
         Check(Row("quick_probe.lua").LiveText.Contains("has not picked this file up"), "a file the game has not seen says so: " + Row("quick_probe.lua").LiveText);
         Check(!Row("my_hud.lua").HasLiveText, "a running script needs no caption");
         Check(Row("my_hud.lua").CanToggle && !Row("song_meter.lua").CanToggle, "switches move with the game up - except for a script that is not installed");
+        string Rows() => string.Join(" ", vm.Scripts.Select(r => r.FileName));
+        Check(Rows() == "ring_pulse.lua my_hud.lua lost_map.lua old_thing.lua puzzlepro_hud.lua quick_probe.lua song_meter.lua",
+            "the rows follow the game's order, the uninstalled one last: " + Rows());
+        Check(Row("my_hud.lua").CanReorder && !Row("song_meter.lua").CanReorder, "rows can be dragged with the game up - except one that is not installed");
 
         // Pending, as it looks: one row waiting, one failed, one suspended.
         Row("puzzlepro_hud.lua").Enabled = false;
@@ -277,6 +347,40 @@ static class ScriptsTab
         ScriptsOverlayBridge.Receive("SCRIPT_STATE my_hud.lua true running");
         Pump();
 
+        // П2: the order. A drag asks the plugin with the whole order - its own, with the row moved in it, so gone.lua
+        // keeps its place - shows the new order at once, and waits for the plugin's SCRIPT_ORDER.
+        var orderTimedOut = 0;
+        EventHandler onOrderTimeout = (_, _) => orderTimedOut++;
+        ScriptsOverlayBridge.OrderTimedOut += onOrderTimeout;
+        ScriptsOverlayBridge.ConfirmTimeout = TimeSpan.FromSeconds(30);
+        sent.Clear();
+        Check(vm.MoveScript(Row("quick_probe.lua"), 0), "a drag with the game connected is taken");
+        Pump();
+        Check(sent.SequenceEqual(new[] { "SCRIPT_ORDER quick_probe.lua ring_pulse.lua my_hud.lua gone.lua lost_map.lua old_thing.lua puzzlepro_hud.lua" }),
+            "and asks the plugin with its whole order: [" + string.Join(", ", sent) + "]");
+        Check(Rows().StartsWith("quick_probe.lua ring_pulse.lua") && ScriptsOverlayBridge.IsOrderPending, "the rows show it at once, waiting: " + Rows());
+        Check(File.ReadAllText(cfg) == cfgBefore, "the host does not write the order to scripts.cfg while the game is connected");
+
+        ScriptsOverlayBridge.Receive("SCRIPT_ORDER quick_probe.lua ring_pulse.lua my_hud.lua gone.lua lost_map.lua old_thing.lua puzzlepro_hud.lua");
+        Pump();
+        Check(!ScriptsOverlayBridge.IsOrderPending && Rows().StartsWith("quick_probe.lua ring_pulse.lua"), "the plugin's answer settles it");
+
+        ScriptsOverlayBridge.ConfirmTimeout = TimeSpan.FromMilliseconds(200);
+        vm.MoveScript(Row("puzzlepro_hud.lua"), 0);
+        Pump();
+        Check(Rows().StartsWith("puzzlepro_hud.lua"), "an unanswered drag shows its order while it waits");
+        Pump(500);
+        Check(Rows().StartsWith("quick_probe.lua ring_pulse.lua") && orderTimedOut == 1 && !ScriptsOverlayBridge.IsOrderPending,
+            "and goes back to the game's order when nobody answers, telling the user: " + Rows() + ", timed out " + orderTimedOut);
+
+        // A drag in the overlay: the plugin says so on its own, and the rows follow.
+        ScriptsOverlayBridge.Receive("SCRIPT_ORDER old_thing.lua quick_probe.lua ring_pulse.lua my_hud.lua gone.lua lost_map.lua puzzlepro_hud.lua");
+        Pump();
+        Check(Rows() == "old_thing.lua quick_probe.lua ring_pulse.lua my_hud.lua lost_map.lua puzzlepro_hud.lua song_meter.lua",
+            "an order from the overlay moves the rows: " + Rows());
+        ScriptsOverlayBridge.OrderTimedOut -= onOrderTimeout;
+        ScriptsOverlayBridge.ConfirmTimeout = TimeSpan.FromSeconds(30);
+
         // Refresh is also "rescan in the game".
         sent.Clear();
         vm.RefreshCommand.Execute(null);
@@ -290,6 +394,8 @@ static class ScriptsTab
         Pump();
         Check(!vm.Live && !Row("ring_pulse.lua").HasLiveText && !Row("my_hud.lua").CanToggle, "losing the link forgets the game's word and locks the switches");
         Check(vm.HasNotice && vm.Notice.Contains("not connected"), "and the notice says why: " + vm.Notice);
+        Check(Rows() == string.Join(" ", ByName) && !Row("my_hud.lua").CanReorder && !vm.MoveScript(Row("my_hud.lua"), 0),
+            "and the rows go back to scripts.cfg's order, locked: " + Rows());
 
         ScriptsOverlayBridge.RequestTimedOut -= onTimeout;
         ScriptsOverlayBridge.ConfirmTimeout = TimeSpan.FromSeconds(5);

@@ -92,6 +92,59 @@ namespace TweakerCore.Tests.Scripting
         }
 
         [Test]
+        public void ReadsTheOrderThePluginWrote()
+        {
+            WriteConfig("script.b.lua=0\n\n# The order scripts run in\norder=c.lua\n order = a.lua \norder=\norder=c.lua\n# order=z.lua\norderx=y.lua\n");
+
+            Assert.That(ScriptsConfig.Load(_game.Engine).Order, Is.EqualTo(new[] { "c.lua", "a.lua" }));
+        }
+
+        [Test]
+        public void NoOrderLinesIsAnEmptyOrder()
+        {
+            WriteConfig("script.a.lua=0\n");
+
+            Assert.That(ScriptsConfig.Load(_game.Engine).Order, Is.Empty);
+        }
+
+        [Test]
+        public void SettingTheOrderReplacesItsLinesWhereTheyWere()
+        {
+            WriteConfig("# header\nscript.a.lua=0\n\n# The order\norder=a.lua\norder=b.lua\n\nengine.settle_ms=900\n");
+            var config = ScriptsConfig.Load(_game.Engine);
+            config.SetOrder(new[] { "b.lua", "a.lua", "c.lua" });
+            config.Save();
+
+            Assert.That(File.ReadAllText(ConfigPath),
+                Is.EqualTo("# header\nscript.a.lua=0\n\n# The order\norder=b.lua\norder=a.lua\norder=c.lua\n\nengine.settle_ms=900\n"));
+        }
+
+        [Test]
+        public void TheFirstOrderGoesAtTheEndWithThePluginsComment()
+        {
+            WriteConfig("script.a.lua=0\n");
+            var config = ScriptsConfig.Load(_game.Engine);
+            config.SetOrder(new[] { "b.lua", "a.lua" });
+            config.Save();
+
+            Assert.That(File.ReadAllText(ConfigPath),
+                Is.EqualTo("script.a.lua=0\n\n# The order scripts run in, top first. Set by dragging rows in the Scripts tab;\n"
+                           + "# scripts not listed run after these, by file name.\norder=b.lua\norder=a.lua\n"));
+            Assert.That(ScriptsConfig.Load(_game.Engine).Order, Is.EqualTo(new[] { "b.lua", "a.lua" }));
+        }
+
+        [Test]
+        public void DisablingAfterAnOrderStaysWithTheScriptLines()
+        {
+            WriteConfig("script.a.lua=0\n\norder=b.lua\norder=a.lua\n");
+            var config = ScriptsConfig.Load(_game.Engine);
+            config.SetEnabled("b.lua", false);
+            config.Save();
+
+            Assert.That(File.ReadAllText(ConfigPath), Is.EqualTo("script.a.lua=0\nscript.b.lua=0\n\norder=b.lua\norder=a.lua\n"));
+        }
+
+        [Test]
         public void DisablingTwiceWritesOneLine()
         {
             var config = ScriptsConfig.Load(_game.Engine);

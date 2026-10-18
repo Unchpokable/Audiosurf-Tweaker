@@ -11,6 +11,9 @@
 
     <Styles.Resources>
         <StreamGeometry x:Key="IconFolder">M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z</StreamGeometry>
+        <!-- Two columns of three dots, the same handle the overlay's Scripts tab draws. Dots are zero-length
+        strokes with round caps, so they stay round at any stroke width. -->
+        <StreamGeometry x:Key="IconGrip">M2 2h.01 M7 2h.01 M2 7h.01 M7 7h.01 M2 12h.01 M7 12h.01</StreamGeometry>
     </Styles.Resources>
 
     <Style Selector="Path.SMIcon">
@@ -48,6 +51,30 @@
     <Style Selector="Border.SMRow ToggleButton.Switch:disabled">
         <Setter Property="Opacity" Value="0.4"/>
     </Style>
+    <!-- The handle a row is dragged by to change the run order (script-coexistence.md §3). The whole left
+    strip of the row, not only the dots: a target the height of a row is easy to hit, and the rest of the row
+    keeps its own clicks. Locked with the switch - same fade - while the game runs without a link. -->
+    <Style Selector="Border.SMGrip">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Margin" Value="-6,-4,8,-4"/>
+        <Setter Property="Cursor" Value="SizeNorthSouth"/>
+    </Style>
+    <Style Selector="Border.SMGrip Path">
+        <Setter Property="Stroke" Value="{DynamicResource TextFaintBrush}"/>
+        <Setter Property="StrokeThickness" Value="3"/>
+        <Setter Property="StrokeLineCap" Value="Round"/>
+        <Setter Property="Stretch" Value="None"/>
+        <Setter Property="HorizontalAlignment" Value="Center"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Border.SMGrip:pointerover Path">
+        <Setter Property="Stroke" Value="{DynamicResource TextSecondaryBrush}"/>
+    </Style>
+    <Style Selector="Border.SMGrip:disabled">
+        <Setter Property="Opacity" Value="0.4"/>
+        <Setter Property="Cursor" Value="Arrow"/>
+    </Style>
+
     <!-- A bundled script that is not on disk: listed so it can be restored, its text dimmed so it does not read
     as installed. Only the text - the restore button is the one thing to do on that row. -->
     <Style Selector="Border.SMRow.Missing StackPanel.SMText">

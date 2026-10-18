@@ -2,10 +2,10 @@
 
 #include <imgui.h>
 
-#include <libtweeny/tweeny.hxx>
-
 #include <string>
 #include <string_view>
+
+#include "ui/kit/anim.hxx"
 
 namespace tw::ui::widgets
 {
@@ -19,6 +19,11 @@ public:
 
     // Captures GetMousePos() as the top-left corner and starts fade-in.
     void open();
+
+    // Opens under the rect of whatever opened it - a button, a row - left edges aligned, or above it when
+    // there is no room below. For a popup that belongs to a control, where the pointer's position is an
+    // accident of where on the control it was clicked.
+    void open_at(ImVec2 anchor_min, ImVec2 anchor_max);
     // Starts fade-out; input is disabled immediately (NoInputs).
     void close();
 
@@ -29,6 +34,7 @@ public:
     void end();
 
 private:
+    void start_open();
     void retarget_opacity(float target);
     void step_opacity();
     void poll_dismiss();
@@ -38,7 +44,7 @@ private:
     std::string m_id;
     std::string m_window_name;
     std::string m_title;
-    float m_rounding = 5.f;
+    float m_rounding = theme::radius::window;
     ImVec2 m_inner_padding { 8.f, 8.f };
 
     bool m_want_open = false;
@@ -50,10 +56,17 @@ private:
     // whatever window was clicked to trigger it.
     int m_bring_to_front_frames = 0;
 
-    float m_opacity_t = 0.f;
-    tweeny::tween<float> m_opacity_tween {};
+    kit::anim::channel m_opacity { theme::motion::transition };
 
     ImVec2 m_origin {};
+    bool m_anchored = false;
+    ImVec2 m_anchor_min {};
+    ImVec2 m_anchor_max {};
+
+    // Content goes into channel 1 and the chrome, drawn at end() once this frame's size is known, into
+    // channel 0 under it (R14).
+    ImDrawListSplitter m_splitter;
+    bool m_split = false;
     ImVec2 m_frame_size {};
     ImVec2 m_frame_min {};
     ImVec2 m_frame_max {};

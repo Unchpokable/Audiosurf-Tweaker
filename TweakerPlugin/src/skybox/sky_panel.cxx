@@ -5,12 +5,14 @@
 #include "skybox/sky_program.hxx"
 #include "skybox/sky_ui.hxx"
 
+#include "ui/kit/anim.hxx"
+#include "ui/kit/interact.hxx"
+#include "ui/kit/paint.hxx"
 #include "ui/plugins/interactive/menu.hxx"
 #include "ui/plugins/static/notefeed.hxx"
 #include "ui/theme.hxx"
 #include "ui/widgets/button.hxx"
 #include "ui/widgets/color_field.hxx"
-#include "ui/widgets/detail/draw.hxx"
 #include "ui/widgets/slider.hxx"
 #include "ui/widgets/tab_view.hxx"
 
@@ -19,7 +21,7 @@
 namespace
 {
 namespace theme = tw::ui::theme;
-namespace detail = tw::ui::widgets::detail;
+namespace paint = tw::ui::kit::paint;
 namespace menu = tw::ui::plugins::interactive::menu;
 
 using tw::ui::widgets::button;
@@ -27,15 +29,12 @@ using tw::ui::widgets::color_field;
 using tw::ui::widgets::slider;
 using tw::ui::widgets::tab_view;
 
-// Chrome measurements taken from menu.cxx rather than invented - the panel has to read as the same
-// window family, and two windows disagreeing by two pixels of title bar look like a bug.
-constexpr float k_rounding = 5.f;
-constexpr float k_title_h = 32.f;
-constexpr float k_padding = 10.f;
+// The chrome itself is kit::paint::window_begin, the menu's.
+constexpr float k_title_h = tw::ui::theme::space::title_h;
+constexpr float k_padding = tw::ui::theme::space::window_pad;
 constexpr float k_width = 320.f;
 constexpr float k_dock_gap = 8.f;
 constexpr float k_footer_h = 28.f;
-constexpr float k_close_size = 22.f;
 
 // Heading for parameters declared before any `group` line. They are drawn first, which is where the
 // annotation puts them, and "General" is the only honest name for a bucket the author did not name.
@@ -43,6 +42,7 @@ constexpr const char* k_ungrouped = "General";
 
 bool g_open = false;
 bool g_focus_pending = false;
+tw::ui::kit::anim::channel g_close_hover { tw::ui::theme::motion::hover };
 
 // One knob, addressed the way skybox::set_layer_param wants it.
 //
@@ -167,7 +167,7 @@ void rebuild(std::span<tw::skybox::sky_program* const> layers)
     // set_tabs is heavy and must run outside begin()/end() - both satisfied here, this only ever
     // runs on a program or recompile change.
     g_tabs.set_tabs(labels);
-    g_tabs.set_rounding(k_rounding);
+    g_tabs.set_rounding(theme::radius::panel);
 
     for(std::size_t i = 0; i < g_pages.size(); ++i) {
         if(g_pages[i].label == g_selected_label) {
@@ -231,46 +231,16 @@ void draw_param_rows(std::span<tw::skybox::sky_program* const> layers, const std
     }
 }
 
-// Bordered scroll container, the same recipe list_view and the Player tab use for their panels.
+// The body of a package with one group: the same framed region a tab_view's content is, so a package does
+// not change its background when its author adds a second group.
 void begin_plain_body(float height)
 {
-    ImGui::PushStyleColor(ImGuiCol_ChildBg, theme::surface_muted);
-    ImGui::PushStyleColor(ImGuiCol_Border, theme::border);
-    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, k_rounding);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2 { 8.f, 8.f });
-    ImGui::BeginChild("##sky_param_body", ImVec2 { 0.f, height }, ImGuiChildFlags_Borders);
+    paint::scroll_body_begin("##sky_param_body", ImVec2 { 0.f, height }, theme::space::content_pad, theme::radius::panel);
 }
 
 void end_plain_body()
 {
-    ImGui::EndChild();
-    ImGui::PopStyleVar(2);
-    ImGui::PopStyleColor(2);
-}
-
-// Two strokes rather than an SVG: there is no close.svg in assets/icons, and the menu's own resize
-// grip is hand-drawn for the same reason - one shape used once does not need to become an asset.
-bool draw_close_button(ImDrawList* draw, ImVec2 title_max, float title_y)
-{
-    const ImVec2 slot { title_max.x - k_padding - k_close_size, title_y + (k_title_h - k_close_size) * 0.5f };
-
-    ImGui::SetCursorScreenPos(slot);
-    ImGui::InvisibleButton("##close", ImVec2 { k_close_size, k_close_size });
-
-    const bool hovered = ImGui::IsItemHovered();
-    const bool clicked = ImGui::IsItemClicked(ImGuiMouseButton_Left);
-
-    const ImVec2 center { slot.x + k_close_size * 0.5f, slot.y + k_close_size * 0.5f };
-    if(hovered) {
-        draw->AddCircleFilled(center, k_close_size * 0.5f, detail::to_u32(theme::surface_hover));
-    }
-
-    const ImU32 col = detail::to_u32(hovered ? theme::text_primary : theme::text_muted);
-    constexpr float k_arm = 4.5f;
-    draw->AddLine(ImVec2 { center.x - k_arm, center.y - k_arm }, ImVec2 { center.x + k_arm, center.y + k_arm }, col, 1.6f);
-    draw->AddLine(ImVec2 { center.x - k_arm, center.y + k_arm }, ImVec2 { center.x + k_arm, center.y - k_arm }, col, 1.6f);
-
-    return clicked;
+    paint::scroll_body_end();
 }
 
 // Right of the menu by preference, left when that would run off the screen. Never floating on its
@@ -365,39 +335,19 @@ void draw(const status& status) noexcept
         g_focus_pending = false;
     }
 
-    constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove
-                                       | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings
-                                       | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
-
-    // Border colour zeroed as well as its size, and NoNav set: see the long note in menu.cxx - a
-    // NoBackground window still draws a square border and a nav highlight, both of which peek out
-    // from under the rounded corners this paints itself.
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, k_rounding);
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4 { 0.f, 0.f, 0.f, 0.f });
-    ImGui::Begin("##tweaker_sky_params", nullptr, flags);
-    ImGui::PopStyleColor();
-    ImGui::PopStyleVar(2);
+    // The menu's own chrome: the panel is a wing of the menu and has to read as the same window family.
+    const ImRect title_bar = paint::window_begin("##tweaker_sky_params", layers.front()->display_name.c_str(), true);
 
     const ImVec2 p_min = ImGui::GetWindowPos();
     const ImVec2 win_size = ImGui::GetWindowSize();
     const ImVec2 p_max { p_min.x + win_size.x, p_min.y + win_size.y };
 
-    ImDrawList* draw = ImGui::GetWindowDrawList();
-    draw->AddRectFilled(p_min, p_max, detail::to_u32(theme::surface), k_rounding);
-    draw->AddRect(p_min, p_max, detail::to_u32(theme::border_window), k_rounding);
-
-    const ImVec2 title_max { p_max.x, p_min.y + k_title_h };
-    draw->AddRectFilled(p_min, title_max, detail::to_u32(theme::surface_elevated), k_rounding, ImDrawFlags_RoundCornersTop);
-
-    const float title_text_y = p_min.y + (k_title_h - ImGui::GetFontSize()) * 0.5f;
-    detail::add_text_ellipsis(draw,
-        ImVec2 { p_min.x + 12.f, title_text_y },
-        title_max.x - k_padding - k_close_size - 8.f,
-        detail::to_u32(theme::text_primary),
-        layers.front()->display_name.c_str());
-
-    if(draw_close_button(draw, title_max, p_min.y)) {
+    // On press, not on release - as it always has been.
+    const ImRect close_slot = paint::close_button_rect(title_bar);
+    const tw::ui::kit::interaction close_pointer = tw::ui::kit::interact(close_slot, ImGui::GetID("##close"));
+    g_close_hover.set(close_pointer.hovered);
+    paint::close_button(ImGui::GetWindowDrawList(), close_slot, g_close_hover.step());
+    if(close_pointer.left_down) {
         close();
     }
 
@@ -405,7 +355,7 @@ void draw(const status& status) noexcept
     const float content_h = win_size.y - k_title_h - k_padding * 2.f;
     const float body_h = (std::max)(60.f, content_h - k_footer_h - ImGui::GetStyle().ItemSpacing.y);
 
-    ImGui::SetCursorScreenPos(ImVec2 { p_min.x + k_padding, title_max.y + k_padding });
+    ImGui::SetCursorScreenPos(ImVec2 { p_min.x + k_padding, title_bar.Max.y + k_padding });
 
     if(g_pages.size() > 1) {
         g_tabs.set_size(ImVec2 { content_w, body_h });

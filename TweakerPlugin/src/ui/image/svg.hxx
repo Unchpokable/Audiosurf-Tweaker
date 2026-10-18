@@ -11,8 +11,8 @@
 // fixed set of sizes in one go, so a draw call is a hash lookup and never a rasterization.
 //
 // Assets are authored monochrome (white + alpha) - colour comes from the theme at draw time, via
-// the ImU32 tint ImGui multiplies into the image (see widgets/detail/draw.hxx's
-// add_image_keep_aspect). See Docs/Internal/tweaker-plugin-widgets.md.
+// the tint ImGui multiplies into the image (see ui/kit/paint.hxx's icon). See
+// Docs/Internal/tweaker-plugin-widgets.md.
 //
 // Renderer-agnostic: uploads go through ui/gpu_texture, so this works identically in the DLL (D3D9)
 // and in smoke_test (OpenGL).
@@ -69,7 +69,7 @@ void invalidate() noexcept;
 void update() noexcept;
 
 // Key is the full resource path, e.g. "icons/skin.svg". A miss returns an empty image whose every
-// texture is ImTextureID_Invalid, which callers can pass straight to add_image_keep_aspect - it
+// texture is ImTextureID_Invalid, which callers can pass straight to kit::paint::icon - it
 // draws nothing rather than failing.
 [[nodiscard]] image get_resource(std::string_view resource_key) noexcept;
 } // namespace tw::ui::image::svg

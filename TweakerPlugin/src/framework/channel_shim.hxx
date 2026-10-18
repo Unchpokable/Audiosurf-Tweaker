@@ -71,7 +71,7 @@ using call_hook_fn = bool (*)(A3d_Channel* channel, void* user, phase when);
 //
 // **`order` decides who runs first** among the subscribers of one channel, lower first, in both
 // phases; equal keys run in the order they subscribed. The scripting layer passes where the owning
-// script runs in the user's order (Docs/Internal/script-coexistence-roadmap.md §3.2) - not the moment of
+// script runs in the user's order (Docs/Internal/script-coexistence.md §3.2) - not the moment of
 // subscribing, which a group being rebuilt or a script being reloaded would reshuffle. Callers with no
 // opinion leave it at 0 and get subscription order.
 bool subscribe(A3d_Channel* channel, A3d_ChannelGroup* group, call_hook_fn hook, void* user, std::uint64_t order = 0) noexcept;

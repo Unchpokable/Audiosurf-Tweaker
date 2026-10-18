@@ -205,8 +205,8 @@
                                                 giving the card a top/bottom border, which would push the row's content
                                                 2px sideways every time the pointer crossed a card. Inset horizontally so
                                                 the ends stay inside the row's rounded corners. -->
-                                                <Border Classes="QPDropLine" VerticalAlignment="Top" IsVisible="{Binding DropBefore}"/>
-                                                <Border Classes="QPDropLine" VerticalAlignment="Bottom" IsVisible="{Binding DropAfter}"/>
+                                                <Border Classes="DropLine" VerticalAlignment="Top" IsVisible="{Binding DropBefore}"/>
+                                                <Border Classes="DropLine" VerticalAlignment="Bottom" IsVisible="{Binding DropAfter}"/>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>

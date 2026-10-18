@@ -1,4 +1,6 @@
 # Visual smoke harness for the real TweakerPlugin overlay UI (Win32 + OpenGL3) - see main.cxx.
+# Run without arguments it is an interactive window; with --shots/--compare it is the snapshot stand
+# (shots.hxx, Docs/Internal/tweaker-plugin-widgets.md, "Снимочный стенд").
 # Not part of the default ALL build — request explicitly:
 #   cmake --build --preset x86-release --target smoke_test
 # or:
@@ -8,6 +10,10 @@ set(IMGUI_DIR "${CMAKE_SOURCE_DIR}/ImGui")
 
 add_executable(smoke_test EXCLUDE_FROM_ALL
     main.cxx
+    fake_host.cxx
+    gl_texture.cxx
+    shots.cxx
+    scenes.cxx
     "${IMGUI_DIR}/backends/imgui_impl_win32.cpp"
     "${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp"
 )
@@ -16,12 +22,15 @@ target_include_directories(smoke_test PRIVATE
     "${IMGUI_DIR}/backends"
 )
 
+# libminiz for the PNG encoder (shots.cxx); shell32 for CommandLineToArgvW (main.cxx).
 target_link_libraries(smoke_test PRIVATE
     tweaker_ui
     tweaker_resource
     libstb
+    libminiz
     opengl32
     gdi32
+    shell32
 )
 
 # Embed the same packed assets as the DLL so resource::initialize can be tested.

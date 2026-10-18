@@ -18,7 +18,7 @@ namespace TweakerCore.Scripting
     /// the directory listing spells it.
     ///
     /// Writing is an edit, not a rewrite: only the <c>script.&lt;file&gt;</c> lines of the script being switched
-    /// change. The plugin's own rewrite keeps the disabled list and the <c>engine.*</c> tuning lines; the host
+    /// change, or the <c>order=</c> lines when the order does (<see cref="SetOrder"/>). The plugin's own rewrite keeps the disabled list and the <c>engine.*</c> tuning lines; the host
     /// has no reason to be the one that drops a comment or a line it does not understand.
     /// </summary>
     public sealed class ScriptsConfig
@@ -27,6 +27,15 @@ namespace TweakerCore.Scripting
         public const string ConfigFolderName = "Config";
 
         private const string ScriptKeyPrefix = "script.";
+        private const string OrderKey = "order";
+
+        // Word for word what the plugin writes above its order= lines (lua_config.cxx, save), so a file the host wrote
+        // and one the plugin wrote read the same.
+        private static readonly string[] OrderHeader =
+        {
+            "# The order scripts run in, top first. Set by dragging rows in the Scripts tab;",
+            "# scripts not listed run after these, by file name."
+        };
 
         private static readonly string[] Header =
         {
@@ -95,6 +104,50 @@ namespace TweakerCore.Scripting
             _lines.Insert(at < 0 ? LastHeaderComment() + 1 : at + 1, ScriptKeyPrefix + scriptFileName + "=0");
         }
 
+        /// <summary>
+        /// The run order the user set (Docs/Internal/script-coexistence.md §3): the <c>order=</c> lines, top
+        /// first, read the way the plugin reads them - an empty value is skipped, a name given twice keeps its first
+        /// place. Empty until somebody reordered: then the order is by file name (<see cref="ScriptOrder.Arrange"/>).
+        /// </summary>
+        public IReadOnlyList<string> Order
+        {
+            get
+            {
+                var result = new List<string>();
+                foreach (var line in _lines)
+                {
+                    if (ParseOrder(line, out var name) && !result.Contains(name))
+                        result.Add(name);
+                }
+                return result;
+            }
+        }
+
+        /// <summary>
+        /// Replaces the order in memory; <see cref="Save"/> writes it. The new lines go where the old ones were, so
+        /// the plugin's comment above them stays with them; a file that had none gets the plugin's block at the end.
+        /// </summary>
+        public void SetOrder(IEnumerable<string> fileNames)
+        {
+            var at = _lines.FindIndex(line => ParseOrder(line, out _));
+            _lines.RemoveAll(line => ParseOrder(line, out _));
+
+            var block = fileNames.Select(name => OrderKey + "=" + name).ToList();
+            if (block.Count == 0)
+                return;
+
+            if (at < 0)
+            {
+                if (_lines.Count == 0)
+                    _lines.AddRange(Header);
+                _lines.Add("");
+                _lines.AddRange(OrderHeader);
+                at = _lines.Count;
+            }
+
+            _lines.InsertRange(Math.Min(at, _lines.Count), block);
+        }
+
         public void Save()
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_path));
@@ -133,6 +186,27 @@ namespace TweakerCore.Scripting
 
             name = key.Slice(ScriptKeyPrefix.Length).ToString();
             value = text.Slice(eq + 1).Trim(" \t\r").ToString();
+            return true;
+        }
+
+        /// <summary>One <c>order=&lt;file&gt;</c> line, read like <see cref="Parse"/>. An empty name is not an order line.</summary>
+        private static bool ParseOrder(string line, out string name)
+        {
+            name = null;
+
+            var text = line.AsSpan().Trim(" \t\r");
+            if (text.IsEmpty || text[0] == '#')
+                return false;
+
+            var eq = text.IndexOf('=');
+            if (eq < 0 || !text.Slice(0, eq).Trim(" \t\r").SequenceEqual(OrderKey))
+                return false;
+
+            var value = text.Slice(eq + 1).Trim(" \t\r");
+            if (value.IsEmpty)
+                return false;
+
+            name = value.ToString();
             return true;
         }
 

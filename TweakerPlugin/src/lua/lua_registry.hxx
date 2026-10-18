@@ -65,7 +65,7 @@ bool set_enabled(int id, bool enabled) noexcept;
 // quietly turn the script off in scripts.cfg, or the fixed build after it would not run.
 void reload(int id) noexcept;
 
-// **The order scripts run in** (Docs/Internal/script-coexistence-roadmap.md §3) - ids, first to run
+// **The order scripts run in** (Docs/Internal/script-coexistence.md §3) - ids, first to run
 // first. Separate from the id on purpose: the id is what everything holds for the session, the place
 // is what the user changes by dragging a row.
 //

@@ -8,8 +8,8 @@ namespace TweakerUI.Core
 {
     /// <summary>
     /// The host half of the scripts protocol (Docs/Internal/overlay-scripts.md, script-manager.md §7): what
-    /// the running plugin says each script is doing, the switches waiting for its confirmation, and the commands
-    /// that go the other way. OverlayHelper only carries the lines; ScriptWire spells them.
+    /// the running plugin says each script is doing, its run order, the switches and the drag waiting for its
+    /// confirmation, and the commands that go the other way. OverlayHelper only carries the lines; ScriptWire spells them.
     ///
     /// One per application and static, like OverlayHelper, because two tabs use it - Scripts switches and shows
     /// state, Script Dev asks for a reload after installing - and the state has to be there whichever of them is on
@@ -28,8 +28,18 @@ namespace TweakerUI.Core
             public int Generation;
         }
 
+        private sealed class PendingOrder
+        {
+            public IReadOnlyList<string> Files;
+            public int Generation;
+        }
+
         private static readonly Dictionary<string, ScriptLiveState> _states = new Dictionary<string, ScriptLiveState>(StringComparer.Ordinal);
         private static readonly Dictionary<string, Pending> _pending = new Dictionary<string, Pending>(StringComparer.Ordinal);
+
+        // The run order the plugin last sent (SCRIPT_ORDER), and a drag still waiting for it to confirm.
+        private static IReadOnlyList<string> _order;
+        private static PendingOrder _pendingOrder;
 
         private static Func<string, bool> _send = OverlayHelper.SendScripts;
         private static Func<bool> _connected = () => OverlayHelper.LinkState == PluginLinkState.Connected;
@@ -54,6 +64,19 @@ namespace TweakerUI.Core
 
         /// <summary>A switch went unconfirmed and was dropped; the argument is the file. UI thread.</summary>
         public static event EventHandler<string> RequestTimedOut;
+
+        /// <summary>A new order went unconfirmed and was dropped; the rows go back to the plugin's. UI thread.</summary>
+        public static event EventHandler OrderTimedOut;
+
+        /// <summary>
+        /// The run order to show (Docs/Internal/script-coexistence.md §3): a drag waiting for confirmation,
+        /// else what the plugin last said; null when it has said nothing. File names, top first, including scripts
+        /// whose files went away during the session.
+        /// </summary>
+        public static IReadOnlyList<string> Order => _pendingOrder?.Files ?? _order;
+
+        /// <summary>A drag was sent and the plugin has not answered yet.</summary>
+        public static bool IsOrderPending => _pendingOrder != null;
 
         internal static void Initialize()
         {
@@ -85,6 +108,8 @@ namespace TweakerUI.Core
             IsSynced = false;
             _states.Clear();
             _pending.Clear();
+            _order = null;
+            _pendingOrder = null;
             _generation++;
             Changed?.Invoke(null, EventArgs.Empty);
         }
@@ -103,11 +128,39 @@ namespace TweakerUI.Core
                 return;
             }
 
+            // Any order is the answer to a drag, like any state is to a switch: the plugin answers every SCRIPT_ORDER
+            // with the order it now has, and that - not what was asked - is what the rows should show.
+            if (ScriptWire.TryParseOrder(line, out var order))
+            {
+                _order = order;
+                _pendingOrder = null;
+                Changed?.Invoke(null, EventArgs.Empty);
+                return;
+            }
+
             if (ScriptWire.TryParseSynced(line, out _))
             {
                 IsSynced = true;
                 Changed?.Invoke(null, EventArgs.Empty);
             }
+        }
+
+        /// <summary>
+        /// Asks the plugin to run the scripts in this order - the whole order, top first. Shown at once and waits for
+        /// the plugin's SCRIPT_ORDER, which also writes scripts.cfg; without an answer within
+        /// <see cref="ConfirmTimeout"/> the rows go back. A second drag while one waits replaces it. Returns false
+        /// when the plugin could not be asked at all.
+        /// </summary>
+        public static bool RequestOrder(IReadOnlyList<string> fileNames)
+        {
+            if (!IsLive || !_send(ScriptWire.Order(fileNames)))
+                return false;
+
+            var pending = new PendingOrder { Files = fileNames, Generation = ++_generation };
+            _pendingOrder = pending;
+            Changed?.Invoke(null, EventArgs.Empty);
+            _ = ExpireOrderAsync(pending.Generation);
+            return true;
         }
 
         /// <summary>What the plugin last said about a file, or null.</summary>
@@ -174,6 +227,21 @@ namespace TweakerUI.Core
                 Logger.Log("Scripts", $"the game did not confirm switching {fileName} within {ConfirmTimeout.TotalSeconds:F0} s");
                 Changed?.Invoke(null, EventArgs.Empty);
                 RequestTimedOut?.Invoke(null, fileName);
+            });
+        }
+
+        private static async Task ExpireOrderAsync(int generation)
+        {
+            await Task.Delay(ConfirmTimeout).ConfigureAwait(false);
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (_pendingOrder == null || _pendingOrder.Generation != generation)
+                    return;
+
+                _pendingOrder = null;
+                Logger.Log("Scripts", $"the game did not confirm the new script order within {ConfirmTimeout.TotalSeconds:F0} s");
+                Changed?.Invoke(null, EventArgs.Empty);
+                OrderTimedOut?.Invoke(null, EventArgs.Empty);
             });
         }
     }

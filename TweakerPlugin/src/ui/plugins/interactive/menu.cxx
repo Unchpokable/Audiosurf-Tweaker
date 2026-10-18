@@ -3,8 +3,6 @@
 // message from whichever harness owns the message pump (see menu.hxx, toggle_visible()).
 #include <imgui.h>
 
-#include <libtweeny/tweeny.hxx>
-
 #include <algorithm>
 #include <atomic>
 #include <span>
@@ -12,6 +10,10 @@
 #include <vector>
 
 #include "ui/plugins/interactive/menu.hxx"
+
+#include "ui/kit/anim.hxx"
+#include "ui/kit/interact.hxx"
+#include "ui/kit/paint.hxx"
 
 #include "ui/overlay_config.hxx"
 
@@ -22,26 +24,26 @@
 #include "ui/theme.hxx"
 
 #include "ui/widgets/button.hxx"
-#include "ui/widgets/color_picker.hxx"
-#include "ui/widgets/detail/draw.hxx"
+#include "ui/widgets/color_field.hxx"
 #include "ui/widgets/item_group.hxx"
 #include "ui/widgets/list_view.hxx"
-#include "ui/widgets/popup_menu.hxx"
+#include "ui/widgets/segmented.hxx"
 #include "ui/widgets/tab_view.hxx"
 #include "ui/widgets/toggle.hxx"
 
 namespace
 {
 using tw::ui::widgets::button;
-using tw::ui::widgets::color_picker;
+using tw::ui::widgets::color_field;
 using tw::ui::widgets::item_group;
 using tw::ui::widgets::list_item_content;
 using tw::ui::widgets::list_view;
-using tw::ui::widgets::popup_menu;
+using tw::ui::widgets::segmented;
 using tw::ui::widgets::tab_view;
 using tw::ui::widgets::toggle;
 
 namespace theme = tw::ui::theme;
+namespace paint = tw::ui::kit::paint;
 
 // Live theme color editor (Settings tab) - one row per tw::ui::theme field, grouped into
 // item_group boxes matching the section comments in theme.hxx.
@@ -51,21 +53,16 @@ struct theme_color_entry {
     ImVec4* color;     // direct pointer into tw::ui::theme - edits apply live
 };
 
+// The same color_field the Skybox palette uses (review U9): a left click on the swatch opens the picker
+// under it, and the theme is saved once per gesture rather than on every frame of a drag.
 struct theme_color_row {
     const theme_color_entry* entry;
-    popup_menu popup;
-    color_picker picker;
+    color_field field;
 
-    // Hover-glow animation state (button.cxx-style tween: retarget on hover-state change, step
-    // via detail::dt_ms() every frame) - purely a discoverability affordance for the RMB popup.
-    bool was_hovered = false;
-    float hover_t = 0.f;
-    tweeny::tween<float> hover_tween {};
-
-    explicit theme_color_row(const theme_color_entry& e)
-        : entry(&e), popup((std::string("menu_theme_popup_") + e.key).c_str(), e.label),
-          picker((std::string("menu_theme_picker_") + e.key).c_str(), ImVec2 { 260.f, 0.f })
+    explicit theme_color_row(const theme_color_entry& e) : entry(&e), field((std::string("menu_theme_") + e.key).c_str())
     {
+        field.set_label(e.label);
+        field.set_swatch_first(true);
     }
 };
 
@@ -137,12 +134,9 @@ const theme_color_entry k_text_colors[] = {
     { "text_on_accent", "Text On Accent", &theme::text_on_accent },
 };
 
-constexpr float k_rounding = 5.f;
-constexpr float k_title_h = 32.f;
-constexpr float k_resize_grip = 16.f;
-constexpr float k_padding = 10.f;
+constexpr float k_title_h = tw::ui::theme::space::title_h;
+constexpr float k_padding = tw::ui::theme::space::window_pad;
 constexpr float k_theme_group_gap = 12.f; // horizontal gap between theme item_groups sharing a row
-constexpr int k_swatch_hover_ms = 150;    // matches button.cxx's k_hover_ms
 constexpr ImVec2 k_min_size { 320.f, 260.f };
 constexpr const char* k_title = "Audiosurf Tweaker";
 
@@ -203,10 +197,8 @@ std::vector<std::string> g_last_skin_names;
 
 std::vector<theme_group> g_theme_groups;
 
-button g_feed_left { "menu_feed_left", { 90.f, 28.f } };
-button g_feed_right { "menu_feed_right", { 90.f, 28.f } };
-button g_pins_left { "menu_pins_left", { 90.f, 28.f } };
-button g_pins_right { "menu_pins_right", { 90.f, 28.f } };
+segmented g_feed_side { "menu_feed_side" };
+segmented g_pins_side { "menu_pins_side" };
 button g_theme_reset_btn { "menu_theme_reset", { 100.f, 28.f } };
 toggle g_offline_pin_toggle { "menu_offline_pin" };
 
@@ -224,7 +216,11 @@ void ensure_widgets_ready()
     }
 
     g_tabs.set_tabs(labels);
-    g_tabs.set_rounding(k_rounding);
+    g_tabs.set_rounding(tw::ui::theme::radius::panel);
+
+    static const std::string_view k_side_labels[] = { "Left", "Right" };
+    g_feed_side.set_options(k_side_labels);
+    g_pins_side.set_options(k_side_labels);
 
     g_tweak_toggles.clear();
     g_tweak_toggles.reserve(tw::ui::overlay_state::k_tweak_count);
@@ -277,7 +273,12 @@ void draw_skins_tab(const tw::ui::overlay_state::cache& snapshot)
     }
 
     const std::string_view display_skin = tw::ui::pending_actions::skin_display_name(snapshot);
-    ImGui::TextUnformatted(display_skin.empty() ? "Current skin: (none)" : ("Current skin: " + std::string(display_skin)).c_str());
+    if(display_skin.empty()) {
+        ImGui::TextUnformatted("Current skin: (none)");
+    }
+    else {
+        ImGui::Text("Current skin: %.*s", static_cast<int>(display_skin.size()), display_skin.data());
+    }
     ImGui::Spacing();
 
     // Clicking a row only moves the local highlight - it does NOT send NOTIFY_SKIN by itself.
@@ -292,12 +293,17 @@ void draw_skins_tab(const tw::ui::overlay_state::cache& snapshot)
 
     const int selected = g_skins_list.selected_index();
     const bool has_selection = selected >= 0 && static_cast<std::size_t>(selected) < g_last_skin_names.size();
-    const std::string selected_name = has_selection ? g_last_skin_names[static_cast<std::size_t>(selected)] : std::string {};
+    const std::string_view selected_name =
+        has_selection ? std::string_view { g_last_skin_names[static_cast<std::size_t>(selected)] } : std::string_view {};
     const bool already_current = has_selection && selected_name == display_skin;
     const bool pending = tw::ui::pending_actions::has_pending_skin();
+    const bool can_apply = has_selection && !already_current && !pending;
 
+    // Disabled rather than ignoring the click (review R12): nothing picked, the current skin picked, or an
+    // install already on its way.
+    g_skins_apply_btn.set_enabled(can_apply);
     g_skins_apply_btn.update(pending ? "Applying..." : "Apply");
-    if(g_skins_apply_btn.clicked() && has_selection && !already_current && !pending) {
+    if(g_skins_apply_btn.clicked() && can_apply) {
         tw::ui::pending_actions::request_skin(selected_name);
     }
 }
@@ -309,13 +315,11 @@ void draw_tweaks_tab(const tw::ui::overlay_state::cache& snapshot)
         const bool enabled = tw::ui::pending_actions::tweak_display_enabled(snapshot, ids[i]);
         g_tweak_toggles[i].set_checked(enabled); // no-op if unchanged - see toggle::set_checked
 
-        ImGui::AlignTextToFramePadding();
-        ImGui::TextUnformatted(tw::ui::overlay_state::tweak_display_name(ids[i]).data());
+        const ImRect label = paint::label_row(tw::ui::overlay_state::tweak_display_name(ids[i]).data(), g_tweak_toggles[i].size());
         if(tw::ui::overlay_state::is_tweak_quick_player(snapshot, ids[i])) {
-            ImGui::SameLine();
-            ImGui::TextColored(theme::accent_secondary, "QP");
+            ImGui::GetWindowDrawList()->AddText(
+                ImVec2 { label.Max.x + ImGui::GetStyle().ItemSpacing.x, label.Min.y }, paint::to_u32(theme::accent_secondary), "QP");
         }
-        ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetCursorPosX() - 44.f);
         g_tweak_toggles[i].update();
         if(g_tweak_toggles[i].changed()) {
             // Cheap idempotent write (unlike a skin install) - fires straight from the click, no
@@ -325,87 +329,41 @@ void draw_tweaks_tab(const tw::ui::overlay_state::cache& snapshot)
     }
 }
 
-void draw_side_row(const char* label,
-    tw::ui::overlay_config::side current,
-    button& left_btn,
-    button& right_btn,
-    void (*setter)(tw::ui::overlay_config::side))
+// A side as a two-chip strip (review U9) rather than two buttons with "[*]" on the current one.
+void draw_side_row(const char* label, tw::ui::overlay_config::side current, segmented& strip, void (*setter)(tw::ui::overlay_config::side))
 {
     using tw::ui::overlay_config::side;
 
-    ImGui::TextUnformatted(label);
-    left_btn.set_label(current == side::left ? "Left [*]" : "Left");
-    left_btn.update();
-    if(left_btn.clicked()) {
-        setter(side::left);
-        tw::ui::overlay_config::request_save();
-    }
-    ImGui::SameLine();
-    right_btn.set_label(current == side::right ? "Right [*]" : "Right");
-    right_btn.update();
-    if(right_btn.clicked()) {
-        setter(side::right);
+    strip.set_selected(current == side::right ? 1 : 0); // no-op if unchanged, never raises changed()
+    paint::label_row(label, ImVec2 { strip.width(), strip.height() });
+    strip.update();
+    if(strip.changed()) {
+        setter(strip.selected() == 1 ? side::right : side::left);
         tw::ui::overlay_config::request_save();
     }
 }
 
-// Serializes the live (possibly edited) theme and writes it to disk - called after every color
-// change and after a Default reset, mirroring how draw_side_row saves right after each setter.
+// Serializes the live (possibly edited) theme and marks the config for saving - called once per colour
+// gesture (color_field::committed) and after a Default reset, mirroring how draw_side_row saves right after
+// each setter.
 void persist_theme()
 {
     tw::ui::overlay_config::set_theme_overrides(tw::ui::theme::to_config());
     tw::ui::overlay_config::request_save();
 }
 
-// One row: outlined circle swatch (live-reflects *entry->color) + label; RMB opens a popup_menu
-// with a color_picker bound directly to the same theme field, so edits apply/persist instantly.
+// One theme colour. Applied on every change - the overlay recolours under the drag - and saved when the
+// gesture ends.
 void draw_theme_color_row(theme_color_row& row)
 {
-    ImGui::PushID(row.entry->key);
-
-    const float d = ImGui::GetFrameHeight();
-    const ImVec2 cursor = ImGui::GetCursorScreenPos();
-    ImGui::InvisibleButton("##swatch", ImVec2 { d, d });
-
-    // Hover-glow affordance (RMB-for-picker isn't otherwise discoverable) - same tween pattern as
-    // button::retarget_hover/update, just driving a glow instead of a fill color.
-    const bool hovered = ImGui::IsItemHovered();
-    if(hovered != row.was_hovered) {
-        row.hover_tween = tweeny::from(row.hover_t).to(hovered ? 1.f : 0.f).during(k_swatch_hover_ms).via(tweeny::easing::cubicOut);
-        row.was_hovered = hovered;
+    row.field.set_color(*row.entry->color); // ignored while the picker is open
+    row.field.update();
+    if(row.field.changed()) {
+        *row.entry->color = row.field.color();
     }
-    if(!row.hover_tween.isFinished()) {
-        row.hover_t = row.hover_tween.step(tw::ui::widgets::detail::dt_ms());
+    if(row.field.committed()) {
+        persist_theme();
     }
-
-    const ImVec2 center { cursor.x + d * 0.5f, cursor.y + d * 0.5f };
-    ImDrawList* draw = ImGui::GetWindowDrawList();
-
-    // Glow tint forces full alpha - several theme colors are intentionally low/zero-alpha overlay
-    // tints (e.g. accent_ghost, accent_soft) and would otherwise render an invisible glow.
-    const ImVec4 glow_tint { row.entry->color->x, row.entry->color->y, row.entry->color->z, 1.f };
-    tw::ui::widgets::detail::add_circle_glow(draw, center, d * 0.5f, glow_tint, row.hover_t);
-    draw->AddCircleFilled(center, d * 0.5f - 1.5f, tw::ui::widgets::detail::to_u32(*row.entry->color));
-    draw->AddCircle(center, d * 0.5f, tw::ui::widgets::detail::to_u32(theme::border));
-
-    if(hovered && ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
-        row.popup.open();
-    }
-
-    ImGui::SameLine();
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted(row.entry->label);
-
-    if(row.popup.opened()) {
-        row.popup.begin();
-        row.picker.update(*row.entry->color); // bidirectional bind straight into theme::*
-        if(row.picker.changed()) {
-            persist_theme();
-        }
-        row.popup.end();
-    }
-
-    ImGui::PopID();
 }
 
 // Masonry (shortest-column-first) layout: unlike a row-based flow, this lets a short group (e.g.
@@ -517,19 +475,13 @@ void grow_to_fit(ImVec2 wanted)
 
 void draw_settings_tab()
 {
-    draw_side_row("Notefeed / watermark corner",
-        tw::ui::overlay_config::feed_side(),
-        g_feed_left,
-        g_feed_right,
-        &tw::ui::overlay_config::set_feed_side);
+    draw_side_row("Notefeed / watermark corner", tw::ui::overlay_config::feed_side(), g_feed_side, &tw::ui::overlay_config::set_feed_side);
     ImGui::Spacing();
-    draw_side_row("Pins side", tw::ui::overlay_config::pins_side(), g_pins_left, g_pins_right, &tw::ui::overlay_config::set_pins_side);
+    draw_side_row("Pins side", tw::ui::overlay_config::pins_side(), g_pins_side, &tw::ui::overlay_config::set_pins_side);
     ImGui::Spacing();
 
     g_offline_pin_toggle.set_checked(tw::ui::overlay_config::offline_pin()); // no-op if unchanged
-    ImGui::AlignTextToFramePadding();
-    ImGui::TextUnformatted("Show \"Offline\" pin");
-    ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetCursorPosX() - 44.f);
+    paint::label_row("Show \"Offline\" pin", g_offline_pin_toggle.size());
     g_offline_pin_toggle.update();
     if(g_offline_pin_toggle.changed()) {
         tw::ui::overlay_config::set_offline_pin(g_offline_pin_toggle.checked());
@@ -540,8 +492,7 @@ void draw_settings_tab()
     ImGui::Separator();
     ImGui::Spacing();
 
-    ImGui::TextUnformatted("Color theme");
-    ImGui::SameLine(ImGui::GetContentRegionAvail().x + ImGui::GetCursorPosX() - 100.f);
+    paint::label_row("Color theme", g_theme_reset_btn.size());
     g_theme_reset_btn.update("Default");
     if(g_theme_reset_btn.clicked()) {
         tw::ui::theme::apply_dark();
@@ -555,8 +506,6 @@ void draw_settings_tab()
 
 namespace tw::ui::plugins::interactive::menu
 {
-namespace detail = tw::ui::widgets::detail;
-
 void initialize() noexcept
 {
     g_widgets_ready = false;
@@ -657,44 +606,18 @@ void update(const tw::ui::overlay_state::cache& snapshot, const tw::ui::qp::stat
     ImGui::SetNextWindowPos(g_pos, ImGuiCond_Always);
     ImGui::SetNextWindowSize(g_size, ImGuiCond_Always);
 
-    constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove
-                                       | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoSavedSettings
-                                       | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+    const ImRect title_bar = paint::window_begin("##tweaker_menu", k_title);
 
-    // NoBackground only skips ImGui's own ImGuiCol_WindowBg fill - it still draws its own
-    // straight-cornered ImGuiCol_Border outline (WindowBorderSize=0 below) and, since the window
-    // can take nav focus, a keyboard-nav highlight rect (NoNav above) - both independent of
-    // NoBackground and both peeked out from under our rounded corners as a stray gray edge. Belt
-    // and suspenders: zero the border color too, not just its size. Our own AddRect border below
-    // is the only outline that should ever show.
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.f);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, k_rounding);
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4 { 0.f, 0.f, 0.f, 0.f });
-    ImGui::Begin("##tweaker_menu", nullptr, flags);
-    ImGui::PopStyleColor();
-    ImGui::PopStyleVar(2);
-
-    const ImVec2 win_pos = ImGui::GetWindowPos();
     const ImVec2 win_size = ImGui::GetWindowSize();
-    const ImVec2 p_min = win_pos;
-    const ImVec2 p_max { win_pos.x + win_size.x, win_pos.y + win_size.y };
-
+    const ImVec2 p_min = ImGui::GetWindowPos();
+    const ImVec2 p_max { p_min.x + win_size.x, p_min.y + win_size.y };
     ImDrawList* draw = ImGui::GetWindowDrawList();
-    draw->AddRectFilled(p_min, p_max, detail::to_u32(theme::surface), k_rounding);
-    draw->AddRect(p_min, p_max, detail::to_u32(theme::border_window), k_rounding);
-
-    const ImVec2 title_min = p_min;
-    const ImVec2 title_max { p_max.x, p_min.y + k_title_h };
-    draw->AddRectFilled(title_min, title_max, detail::to_u32(theme::surface_elevated), k_rounding, ImDrawFlags_RoundCornersTop);
-
-    const ImVec2 title_text_size = ImGui::CalcTextSize(k_title);
-    draw->AddText(
-        ImVec2 { title_min.x + 12.f, title_min.y + (k_title_h - title_text_size.y) * 0.5f }, detail::to_u32(theme::text_primary), k_title);
 
     // Drag-move: hit-test the title bar, own the whole gesture (window has NoMove - ImGui never
-    // does this for us).
-    const bool mouse_in_title = ImGui::IsMouseHoveringRect(title_min, title_max);
-    if(!g_dragging_move && !g_dragging_resize && mouse_in_title && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+    // does this for us). Through kit::interact rather than raw rect geometry: a popup lying over the
+    // title bar must take its own click, not start a window drag underneath it as well.
+    const tw::ui::kit::interaction title = tw::ui::kit::interact(title_bar, ImGui::GetID("##title"), tw::ui::kit::placement::overlay);
+    if(!g_dragging_move && !g_dragging_resize && title.left_down) {
         g_dragging_move = true;
         g_drag_start_mouse = ImGui::GetMousePos();
         g_drag_start_value = g_pos;
@@ -712,21 +635,12 @@ void update(const tw::ui::overlay_state::cache& snapshot, const tw::ui::qp::stat
         }
     }
 
-    // Drag-resize: bottom-right corner grip. The hit region covers the full corner (easy to grab),
-    // but the visual affordance is a few inset diagonal dashes rather than a solid triangle
-    // touching the true corner point - a filled triangle anchored at p_max pokes out past the
-    // rounded background's silhouette there (the background's corner curve cuts inward before
-    // reaching p_max), reading as a stray straight-edged nub.
-    const ImVec2 grip_min { p_max.x - k_resize_grip, p_max.y - k_resize_grip };
-    const ImVec2 grip_anchor { p_max.x - k_rounding - 2.f, p_max.y - k_rounding - 2.f };
-    const ImU32 grip_col = detail::to_u32(theme::border_strong);
-    for(int i = 0; i < 3; ++i) {
-        const float d = static_cast<float>(i) * 4.5f + 3.f;
-        draw->AddLine(ImVec2 { grip_anchor.x - d, grip_anchor.y + 2.f }, ImVec2 { grip_anchor.x + 2.f, grip_anchor.y - d }, grip_col, 1.5f);
-    }
-
-    const bool mouse_in_grip = ImGui::IsMouseHoveringRect(grip_min, p_max);
-    if(!g_dragging_move && !g_dragging_resize && mouse_in_grip && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+    // Drag-resize: bottom-right corner grip. The part of the corner the tab_view's content child covers
+    // belongs to the child (its scrollbar ends there); the grip answers in the strip the child leaves free.
+    paint::resize_grip(draw, p_max);
+    const tw::ui::kit::interaction grip =
+        tw::ui::kit::interact(paint::resize_grip_rect(p_max), ImGui::GetID("##resize"), tw::ui::kit::placement::overlay);
+    if(!g_dragging_move && !g_dragging_resize && grip.left_down) {
         g_dragging_resize = true;
         g_drag_start_mouse = ImGui::GetMousePos();
         g_drag_start_value = g_size;
@@ -747,7 +661,7 @@ void update(const tw::ui::overlay_state::cache& snapshot, const tw::ui::qp::stat
         }
     }
 
-    ImGui::SetCursorScreenPos(ImVec2 { p_min.x + k_padding, title_max.y + k_padding });
+    ImGui::SetCursorScreenPos(ImVec2 { p_min.x + k_padding, title_bar.Max.y + k_padding });
     const float content_w = win_size.x - k_padding * 2.f;
     const float content_h = win_size.y - k_title_h - k_padding * 2.f;
 

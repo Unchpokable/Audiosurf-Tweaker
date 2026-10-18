@@ -102,7 +102,7 @@ warning (TW0109). That is how a misspelt module name, or a file you forgot to wi
   "author": "you",
   "version": "1.0.0",
   "description": "What it does, on one line.",
-  "api": 1,
+  "api": 2,
 
   // Everything below is optional; these are the defaults.
   "build": {
@@ -125,7 +125,7 @@ Comments and trailing commas are allowed.
 | `name` | What the Scripts tab shows. Change it freely. |
 | `author`, `description` | Shown in the Scripts tab. |
 | `version` | **`MAJOR.MINOR.PATCH`, strictly**: three whole numbers, no leading zeros, no `-beta`. |
-| `api` | The version of the `tw` API the script is written against. `1` today. |
+| `api` | The version of the `tw` API the script is written against. `2` today: API 2 added `tw.hud.occupied`, `tw.hud.claim` and `tw.hud.place`. `twllink --new` writes the current one. |
 | `build.comments` | `"keep"` or `"strip"`. See [Comments](#comments). |
 | `build.embed` | Text files from the project to carry inside the script as comments — see [Embedding files](#embedding-files). |
 | `diagnostics.warnings_as_errors` | Fail the build on any warning. |
@@ -269,7 +269,7 @@ with the file and the line, instead of failing in the game:
 
 ```lua
 local f = io.open("notes.txt")        -- error TW0301: 'io' is not available to scripts
-tw.hud.txt(20, 20, "hi")              -- error TW0302: 'tw.hud.txt' does not exist in API 1 - did you mean 'tw.hud.text'?
+tw.hud.txt(20, 20, "hi")              -- error TW0302: 'tw.hud.txt' does not exist in API 2 - did you mean 'tw.hud.text'?
 tw.state_cache = {}                   -- error TW0304: writes into the tw every script shares
 counter = 0                           -- warning TW0305: assigned without 'local'
 local n = mathh.floor(1.5)            -- warning TW0306: 'mathh' is not a global
@@ -294,7 +294,7 @@ fields reached through a variable (`local hud = tw.hud; hud.txt()`) are not — 
 
 `"api"` in `twproject.json` is the version of the `tw` API your script is written against;
 `tw.api_version` in the game is the version the Tweaker provides. The built script carries yours in
-its header (`-- @api 1`), and a Tweaker with an older API **does not run the script** — its row says
+its header (`-- @api 2`), and a Tweaker with an older API **does not run the script** — its row says
 which version it needs — instead of letting it fail on the first name that version does not have.
 
 A name added in a later API than your project's `"api"` is a warning (TW0303): using it means the

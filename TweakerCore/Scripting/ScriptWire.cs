@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
 namespace TweakerCore.Scripting
 {
@@ -38,6 +41,7 @@ namespace TweakerCore.Scripting
         private const string RescanOp = "SCRIPT_RESCAN";
         private const string StateOp = "SCRIPT_STATE";
         private const string SyncedOp = "SCRIPT_SYNCED";
+        private const string OrderOp = "SCRIPT_ORDER";
 
         public static string Set(string fileName, bool enabled) =>
             $"{SetOp} {Uri.EscapeDataString(fileName)} {(enabled ? "true" : "false")}";
@@ -45,6 +49,30 @@ namespace TweakerCore.Scripting
         public static string Reload(string fileName) => $"{ReloadOp} {Uri.EscapeDataString(fileName)}";
 
         public static string Rescan() => RescanOp;
+
+        /// <summary>
+        /// "SCRIPT_ORDER &lt;file&gt; ..." - the run order, top first (protocol 3, Docs/Internal/script-coexistence.md §3).
+        /// The plugin puts these names first and every script it has that is not named after them, in the order it had.
+        /// </summary>
+        public static string Order(IEnumerable<string> fileNames)
+        {
+            var line = new StringBuilder(OrderOp);
+            foreach (var fileName in fileNames)
+                line.Append(' ').Append(Uri.EscapeDataString(fileName));
+            return line.ToString();
+        }
+
+        /// <summary>"SCRIPT_ORDER [file ...]" from the plugin: its whole run order, top first. No names is an empty order, not a malformed line.</summary>
+        public static bool TryParseOrder(string line, out IReadOnlyList<string> fileNames)
+        {
+            fileNames = null;
+            var tokens = Split(line);
+            if (tokens.Length == 0 || tokens[0] != OrderOp)
+                return false;
+
+            fileNames = tokens.Skip(1).Select(Unescape).ToArray();
+            return true;
+        }
 
         /// <summary>"SCRIPT_STATE &lt;file&gt; &lt;true|false&gt; &lt;status&gt; [message]". Anything else, or a status this build does not know, is not a state.</summary>
         public static bool TryParseState(string line, out ScriptLiveState state)

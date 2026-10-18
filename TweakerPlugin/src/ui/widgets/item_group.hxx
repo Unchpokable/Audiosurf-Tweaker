@@ -5,6 +5,8 @@
 #include <string>
 #include <string_view>
 
+#include "ui/theme.hxx"
+
 namespace tw::ui::widgets
 {
 class item_group {
@@ -22,12 +24,14 @@ public:
 private:
     std::string m_id;
     std::string m_group_title;
-    float m_rounding = 5.f;
+    float m_rounding = theme::radius::panel;
     ImVec2 m_outer_padding { 0.f, 4.f };
     ImVec2 m_inner_padding { 8.f, 8.f };
 
     bool m_active = false;
     ImVec2 m_origin {};
     float m_title_h = 0.f;
+    float m_saved_content_max_x = 0.f;
+    float m_saved_work_max_x = 0.f;
 };
 } // namespace tw::ui::widgets

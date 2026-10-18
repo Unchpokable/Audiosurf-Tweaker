@@ -44,8 +44,9 @@ namespace TweakerUI.Core
         /// handshake, not a degraded one - both sides would otherwise keep talking past each other in a protocol
         /// neither fully implements. Plugin side: k_protocol_version in src/ipc/overlay_ipc.cxx.
         /// 2: the SCRIPT_* ops (Docs/Internal/overlay-scripts.md).
+        /// 3: SCRIPT_ORDER, the run order of scripts (Docs/Internal/script-coexistence.md §3).
         /// </summary>
-        private const int ExpectedProtocolVersion = 2;
+        private const int ExpectedProtocolVersion = 3;
 
         // Must match TweakerPlugin's presence::claim() (src/plugin/presence.cxx) exactly, including the
         // deliberate absence of any version or path component - the point is that a newer host can still

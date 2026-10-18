@@ -17,7 +17,7 @@ Audiosurf Tweaker — сторонний инструмент для игры Au
 `Docs/Internal/plugin-offline-mode.md`, и его §0 написан так, чтобы его читали первым. Протокол
 оверлея (`TW_OVL`, host ↔ asbridge ↔ TweakerPlugin) — `Docs/Internal/overlay-protocol.md`; его Quick Player-половина (операции `QP_*`, вкладка Player) —
 `Docs/Internal/overlay-quickplayer.md`; скриптовая (операции `SCRIPT_*`, протокол 2; реализована с обеих
-сторон и принята 03.10.2026) — `Docs/Internal/overlay-scripts.md`. Skybox Replacer (подмена скайсферы игры на cube map, плюс
+сторон и принята 03.10.2026; `SCRIPT_ORDER` — протокол 3) — `Docs/Internal/overlay-scripts.md`. Skybox Replacer (подмена скайсферы игры на cube map, плюс
 весь реверс её загрузки и отрисовки) — `Docs/Internal/skybox-replacer.md`; ресёрч и план
 процедурного (шейдерного) неба — `Docs/Internal/skybox-procedural.md`; замена процедурного
 шума запечённым объёмом и текстуры на базовом слое (что померено, чем за это заплачено в картинке) —
@@ -37,9 +37,15 @@ Audiosurf Tweaker — сторонний инструмент для игры Au
 `TweakerUI`** (вкладки Scripts и Script Dev, связь с плагином по `SCRIPT_*`; сделан и принят 03.10.2026) —
 `Docs/Internal/script-manager.md`: руководство по модулю — как он устроен, что в каком файле, решения и
 почему, `twllink` как CLI; в 2.5 тысячи строк плана движка заглядывать только за деталями, на которые оно
-ссылается. **План в работе** (с 05.10.2026) — `Docs/Internal/script-coexistence-roadmap.md`: как скрипты
-уживаются друг с другом — порядок выполнения, который задаёт пользователь (П1 плагин, П2 TweakerUI), и
-`tw.hud.occupied`/`claim`/`place` — где в HUD уже занято (П3); начинать с его блока «где мы сейчас».
+ссылается. **Как скрипты разных авторов уживаются друг с другом** — порядок выполнения, который задаёт
+только пользователь (`order=` в `scripts.cfg`, перетаскивание в оверлее и TweakerUI, `SCRIPT_ORDER`), и
+`tw.hud.occupied`/`claim`/`place` — где в HUD уже занято (план П1–П3 выполнен и принят 18.10.2026) —
+`Docs/Internal/script-coexistence.md`: руководство — модель, что в каком файле, решения и почему, как проверять.
+**UI оверлея** — `Docs/Internal/tweaker-plugin-widgets.md`: виджеты и слой под ними (`ui/kit/`: метрики в
+теме, `anim`, `interact`, `paint`), правила для нового кода и снимочный стенд `smoke_test --shots`; перед
+любой правкой в `src/ui/` или ручной отрисовкой в стиле оверлея — начинать с него. Почему слой устроен так
+и находки ревью `R1–R17`/`U1–U9`, на которые ссылается код, — `Docs/Internal/overlay-widgets-history.md`
+(план В0–В7 выполнен и принят 17.10.2026).
 
 **Пользовательская** документация по скриптовому API (в отличие от всего вышеперечисленного —
 на английском, для тех, кто пишет скрипты и делится ими) — `Docs/scripting.md` и `Docs/scripting/`:
@@ -122,7 +128,8 @@ clouds (спрайтовый слой, `place()`/`fill()`), limits (цена, з
   `PluginInstall/` (установка плагина в игру) и `Scripting/` — модель модуля скриптов
   (`script-manager.md` §4): шапки и `scripts.cfg` читаются **ровно как в плагине**, каталог
   `Scripts\` игры, проекты `twllink` и клиент его CLI, редакторы (`ScriptEditors`: поиск установленных,
-  запуск с `DevTools\Binaries` в `PATH` и `AUDIOSURF_DIR` — пользовательский `PATH` не трогается) и
+  запуск с `DevTools\Binaries` в `PATH` и `AUDIOSURF_DIR` — пользовательский `PATH` не трогается),
+  `ScriptOrder` (порядок выполнения как в плагине: строки `order=`, затем по имени) и
   `ScriptWire` — грамматика `SCRIPT_*` хоста (С5b; состояние и ожидание подтверждений —
   `TweakerUI/Core/ScriptsOverlayBridge`, транспорт — `OverlayHelper`).
 - **`AudiosurfInterface`** — управляемый клиент протокола игры: `GameProtocol`, `GameConfigState`
@@ -387,7 +394,21 @@ src/ui/           — overlay_state (кэш состояния, generation-count
                     скриптового ABI), gpu_texture (единственная
                     точка подключения рендер-бэкенда для текстур), texture_cache (растр, лениво),
                     ui/image/ (SVG-иконки через LunaSVG, запекаются заранее — см.
-                    tweaker-plugin-widgets.md), ui/plugins/, ui/widgets/
+                    tweaker-plugin-widgets.md), ui/plugins/, ui/widgets/; theme.hxx кроме цветов
+                    держит метрики (theme::space, theme::radius — рамки выражены как «что внутри +
+                    отступ», правило концентричных углов; theme::motion/timing, disabled_alpha) и
+                    отдаёт стиль ImGui: apply_to (раз на свежем контексте, вместо StyleColorsDark) и
+                    sync_colors (каждый кадр — живая правка темы доходит до скроллбаров и тултипов)
+src/ui/kit/       — слой ПОД виджетами, им пользуются и виджеты, и ручная отрисовка (меню, плеер,
+                    Scripts, панель неба): anim (dt_ms — кадровые часы, channel — одно анимированное
+                    значение, focus_pair — подсветка строк списка без собственного состояния), interact
+                    (interact() — всё, на что нажимают; hovering() — фон, на котором лежат другие
+                    элементы), paint (рецепты без состояния: строка-карточка, область с прокруткой,
+                    хром окна с крестиком и уголком, пилюля, «подпись + контрол», иконка, кружок цвета,
+                    свечения с glow_reach; ImVec4-цвет — из темы, рецепт сам применяет Style.Alpha один
+                    раз, ImU32 — уже готовый). Своих tween'ов, ButtonBehavior, IsMouseHoveringRect и
+                    ручных копий рецептов вне kit не пишут; число — из theme::radius/space, не литерал.
+                    См. tweaker-plugin-widgets.md
 src/ui/qp/        — Quick Player: qp_catalog (зеркала теги/персонажи/режимы), qp_state (модель +
                     generation-кэш, как overlay_state), qp_wire (грамматика QP_* в обе стороны),
                     qp_pending (optimistic reverse-sync). См. overlay-quickplayer.md
@@ -439,7 +460,7 @@ src/lua/          — LuaJIT-скриптинг поверх src/engine/ (сво
                     Scripts\, id = индекс, вкл/выкл/перезагрузка; ПОРЯДОК ВЫПОЛНЕНИЯ — отдельно от id, задаёт
                     только пользователь (перетаскиванием, строки `order=` в scripts.cfg), по нему идут тела на
                     старте, все списки пролога и подписчики канала; reload/переключение место не меняют —
-                    script-coexistence-roadmap.md §3; скрипты в куче, в векторе — unique_ptr,
+                    script-coexistence.md §3; скрипты в куче, в векторе — unique_ptr,
                     поэтому script* живёт весь сеанс; rescan() только дописывает в конец, пропавший файл —
                     запись `missing`, номера не сдвигаются; reload НЕ пишет scripts.cfg; revision() —
                     счётчик изменений для хоста; метаданные из
@@ -463,7 +484,13 @@ src/lua/          — LuaJIT-скриптинг поверх src/engine/ (сво
                     описание — «...» и подсказка), lua_remote (SCRIPT_* от хоста: разбор на IPC-потоке
                     только кладёт команду в ящик, pump() в начале lua_host::draw_frame её исполняет и
                     шлёт SCRIPT_STATE по сдвигу registry::revision() — источники изменений, включая
-                    приостановку в lua_sched, только двигают счётчик). Выключение скрипта = on_unload + снятие его подписок
+                    приостановку в lua_sched, только двигают счётчик), lua_hud_space (что занято в HUD за
+                    этот кадр — tw.hud.occupied/claim/place: каждый вызов tw.hud.* в api_hud меряется по
+                    вершинам, добавленным в draw list, и записывается на скрипт, чей колбэк идёт
+                    (sched::current_owner); близкие рамки скрипта склеиваются, не больше 16 на скрипт,
+                    без аллокаций в кадре; хром оверлея кладёт api::hud_begin_frame в начале кадра; скрипт
+                    видит хром и тех, кто выше по порядку, place обходит и своё, но не меню; без ImGui —
+                    гоняется harness/hudspace). Выключение скрипта = on_unload + снятие его подписок
                     и возврат оригинальных vtable, а не спящий хук; включение = повторный запуск
                     файла с диска, оно же горячая перезагрузка. Скрипты — loose-файлы
                     в engine\TweakerStuff\Scripts\, не ресурсы: их правят без пересборки; в бандл
@@ -514,6 +541,11 @@ cmake --build --preset smoke         # smoke_test: визуальный Win32+Op
                                       # (EXCLUDE_FROM_ALL, не входит в обычный build)
 ```
 
+`smoke_test` без аргументов — интерактивное окно. С аргументами — **снимочный стенд** оверлея:
+`--shots <dir>` снимает все сцены (виджеты во всех состояниях, меню, плеер, попапы) в PNG, детерминированно,
+`--compare <a> <b> [--diff <d>]` сравнивает два каталога попиксельно. Правишь `src/ui/` — сними до и после и
+сравни. Устройство и сцены — `tweaker-plugin-widgets.md`, «Снимочный стенд», код — `smoke/shots.cxx`, `smoke/scenes.cxx`.
+
 **Оффлайн-харнессы** — `TweakerPlugin/harness/`, вне CMake, свой `README.md`. Каждый
 линкует настоящий `.cxx` плагина и работает без игры и без девайса; `harness\run.bat` собирает и
 прогоняет сюиты с проверками, `run.bat build` — вдобавок инструменты (рендер превью, замеры
@@ -531,7 +563,10 @@ cmake --build --preset smoke         # smoke_test: визуальный Win32+Op
 `lua_diag.cxx`, `lua_script.cxx` против заглушек (бюджеты ошибок и времени — последнее настоящим
 временем, ~1 с; дедупликация, маршруты в ленту; `lua_linemap.cxx` и путь карты через `diag::report`). Реестр глазами хоста — `harness/remote/remotetest`:
 настоящие `lua_registry.cxx`, `lua_remote.cxx`, `lua_script.cxx` над настоящей временной папкой (rescan,
-стабильные номера и адреса, порядок выполнения, ящик `SCRIPT_*`, что и когда уходит хосту), без `luajit.lib`. Правишь `src/lua/*`, `src/engine/*` или `assets/scripts/*` — прогони. Часть требует собранного плагина: они
+стабильные номера и адреса, порядок выполнения, ящик `SCRIPT_*`, что и когда уходит хосту), без `luajit.lib`.
+Место в HUD — `harness/hudspace/spacetest`: настоящий `lua_hud_space.cxx` (склейка рамок, предел на скрипт,
+обрезка по экрану, кто что видит, куда `place` ставит рамку); заглушечный PCH держит `<windows.h>`, потому что
+он определяет `near`/`far` — имя-макрос ломает сборку плагина, и сюита это ловит. Правишь `src/lua/*`, `src/engine/*` или `assets/scripts/*` — прогони. Часть требует собранного плагина: они
 линкуются с `build/x86-release/luajit.lib`.
 
 **`TweakerPlugin/harness/` при этом в `.gitignore`** (строка 12) — каталог не в репозитории, правки

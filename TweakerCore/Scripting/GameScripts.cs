@@ -66,8 +66,8 @@ namespace TweakerCore.Scripting
         private const string BackupSuffix = ".old";
 
         /// <summary>
-        /// Every script on disk, sorted by file name the way the plugin sorts them, followed by the bundle's
-        /// scripts that are not on disk. <paramref name="payloadDirectory"/> may be null or missing - then
+        /// Every script on disk, in the run order the plugin starts with - scripts.cfg's <c>order=</c> lines, then by
+        /// file name (<see cref="ScriptOrder.Arrange"/>) - followed by the bundle's scripts that are not on disk. <paramref name="payloadDirectory"/> may be null or missing - then
         /// nothing is restorable and nothing is missing.
         /// </summary>
         public static IReadOnlyList<GameScript> Scan(string engineDirectory, string payloadDirectory)
@@ -90,7 +90,7 @@ namespace TweakerCore.Scripting
             var manifest = PluginDeployManifest.Load(engineDirectory);
             var config = ScriptsConfig.Load(engineDirectory);
 
-            foreach (var file in files.Where(IsScript).OrderBy(name => name, StringComparer.Ordinal))
+            foreach (var file in ScriptOrder.Arrange(files.Where(IsScript), config.Order))
             {
                 var path = Path.Combine(folder, file);
                 var hash = TryHash(path);

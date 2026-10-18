@@ -2,9 +2,9 @@
 
 #include <imgui.h>
 
-#include <libtweeny/tweeny.hxx>
-
 #include <string>
+
+#include "ui/kit/anim.hxx"
 
 namespace tw::ui::widgets
 {
@@ -34,9 +34,11 @@ public:
     [[nodiscard]] bool clicked() const noexcept;
     [[nodiscard]] bool hovered() const noexcept;
 
+    // What a row shows inside its card - icon, text, the smaller second line - for a list that draws its
+    // rows itself (list_view) and so looks exactly like one made of list_items.
+    static void draw_content(ImDrawList* draw, const ImVec2& min, const ImVec2& max, const list_item_content& content);
+
 private:
-    void retarget_hover(float target);
-    void retarget_select(float target);
     void draw_frame(const list_item_content& content);
 
     std::string m_id;
@@ -46,13 +48,9 @@ private:
     bool m_selected = false;
     bool m_hovered = false;
     bool m_held = false;
-    bool m_was_hovered = false;
-    bool m_was_selected = false;
     bool m_clicked = false;
 
-    float m_hover_t = 0.f;
-    float m_select_t = 0.f;
-    tweeny::tween<float> m_hover_tween {};
-    tweeny::tween<float> m_select_tween {};
+    kit::anim::channel m_hover { theme::motion::hover };
+    kit::anim::channel m_select { theme::motion::select };
 };
 } // namespace tw::ui::widgets

@@ -1,5 +1,5 @@
 ---@meta
--- The Audiosurf Tweaker scripting API (tw.*), for Lua Language Server. API 1.
+-- The Audiosurf Tweaker scripting API (tw.*), for Lua Language Server. API 2.
 --
 -- Generated from Docs/scripting/api.json and Docs/scripting/api-reference.md; do not edit.
 -- In a project made by `twllink --new` this is already wired up (.luarc.json). Elsewhere, add the
@@ -453,6 +453,14 @@ function tw.vector_ch(group, name) end
 ---`tw.warn(message)`
 function tw.warn(msg) end
 
+---Takes a box for this frame without drawing in it, as if something were drawn there. For a widget
+---that fades out, blinks, or is not drawn every frame: without it, the scripts below move into its
+---place on the frames it is not drawn and back out after. Call it every frame the box should stay
+---taken, from `on_frame` — it does nothing anywhere else.
+---
+---`tw.hud.claim(x0, y0, x1, y1)`
+function tw.hud.claim(x0, y0, x1, y1) end
+
 ---A table of corner masks for `tw.hud.rect`: `none`, `top_left`, `top_right`, `bottom_left`,
 ---`bottom_right`, `top`, `bottom`, `left`, `right`, `all`. They are plain bits, so they add:
 ---`tw.hud.corners.top_left + tw.hud.corners.bottom_right`.
@@ -509,6 +517,25 @@ function tw.hud.line(x0, y0, x1, y1, color, thickness) end
 ---
 ---`tw.hud.measure(text, size, font)` → width, height
 function tw.hud.measure(text, size, font) end
+
+---What is already on screen this frame, as a list of `{ x0, y0, x1, y1, by }`: first the overlay's
+---chrome (`by` is `"notefeed"`, `"pins"`, `"watermark"` or `"menu"`, only those on screen), then the
+---boxes of everything the scripts above this one drew or claimed (`by` is the script's file name).
+---Pieces of one script closer than a few pixels are merged into one box, so a block of text lines is
+---one box. Never this script's own. A new list on every call — call it once per frame.
+---
+---`tw.hud.occupied()` → list
+function tw.hud.occupied() end
+
+---The free spot nearest to `corner` for a `w` × `h` box, and takes it as if drawn. `corner` is
+---`"top_left"` (default), `"top_right"`, `"bottom_left"` or `"bottom_right"`; `margin` (default 8) is
+---kept from the screen edges and from everything taken. It stays clear of the overlay's chrome —
+---except the menu, which comes and goes — of what the scripts above drew, and of what this script
+---itself drew or placed earlier this frame, so two boxes placed at one corner stack. `nil` when
+---nothing fits. An unknown corner raises an error. Only from `on_frame`.
+---
+---`tw.hud.place(w, h, corner, margin)` → x0, y0 or nil
+function tw.hud.place(w, h, corner, margin) end
 
 ---`rounding` is the corner radius (default 0). `thickness` ≤ 0 (the default) fills; positive strokes
 ---an outline of that width. `corners` selects which corners the radius applies to and defaults to all

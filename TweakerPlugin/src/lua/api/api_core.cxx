@@ -14,8 +14,6 @@
 
 #include "plugin/diagnostics.hxx"
 
-#include "ui/widgets/detail/draw.hxx"
-
 #include <imgui.h>
 
 namespace
@@ -68,6 +66,12 @@ void tw_script_leave(int owner, int kind, const char* error) noexcept
 int tw_script_order(int owner) noexcept
 {
     return tw::lua::registry::place_of(owner);
+}
+
+const char* tw_script_file(int owner) noexcept
+{
+    const tw::lua::script* const script = tw::lua::registry::find(owner);
+    return script != nullptr ? script->file.c_str() : "";
 }
 
 void tw_diag(int owner, int level, const char* where, const char* message) noexcept
@@ -184,10 +188,11 @@ float tw_dt() noexcept
         return 0.f;
     }
 
-    // Milliseconds from the overlay's own frame clock rather than ImGui::GetIO().DeltaTime, so a
-    // script's animation and an overlay widget's animation cannot disagree about how long a frame
-    // was. dt_ms carries the sub-millisecond remainder forward, which is the whole reason it exists.
-    return static_cast<float>(tw::ui::widgets::detail::dt_ms()) * 0.001f;
+    // The overlay's frame clock itself, unrounded (review U3). The overlay's animations step tweeny in whole
+    // milliseconds (kit::anim::dt_ms, which carries the remainder forward), but a script integrates
+    // `x += v * dt` on its own, and whole milliseconds made that judder: at 144 Hz dt alternated 6 and 7 ms.
+    // Same source, so a script and a widget still agree on how much time has gone by.
+    return ImGui::GetIO().DeltaTime;
 }
 
 float tw_ease(int curve, float t) noexcept

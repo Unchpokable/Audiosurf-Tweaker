@@ -144,6 +144,26 @@
         <Setter Property="Background" Value="{DynamicResource AccentSelectedBrush}"/>
     </Style>
 
+    <!-- Drag to reorder (Quick Player's queue, the Scripts tab; the code-behind side is in each view, the edge
+    scrolling in Core/DragAutoScroll). Were Quick Player's QPTrackCard.Dragged and QPDropLine until a second
+    list needed them.
+
+    The row being dragged fades rather than disappearing: it is still where it was until the drop lands, and
+    hiding it would make the list look like it had already moved. -->
+    <Style Selector="Border.Dragged">
+        <Setter Property="Opacity" Value="0.45"/>
+    </Style>
+    <!-- Insertion line, drawn by the row the pointer is over, at its top or bottom edge. Placed by the list so it
+    sits in the gap between rows - it reads as "between these two" rather than as part of a row - and inset
+    horizontally so its ends stay inside the rows' rounded corners. -->
+    <Style Selector="Border.DropLine">
+        <Setter Property="Height" Value="2"/>
+        <Setter Property="Margin" Value="6,0"/>
+        <Setter Property="CornerRadius" Value="1"/>
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
+        <Setter Property="IsHitTestVisible" Value="False"/>
+    </Style>
+
     <!-- Text button in the accent wash: Settings' Browse…/Select…, Script Dev's Build/Create. Was Settings'
     STBrowseButton until a second tab needed it; the margin Settings puts between it and its path field stays
     there as a modifier. -->

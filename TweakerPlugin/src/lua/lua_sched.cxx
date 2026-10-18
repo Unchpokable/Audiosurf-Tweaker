@@ -64,6 +64,8 @@ std::uint32_t g_frame = 0;
 // corrupt the outer one's measurement. Deeper than this is not measured at all rather than wrongly.
 constexpr int k_max_depth = 8;
 std::array<std::int64_t, k_max_depth> g_started {};
+// Whose callback each level is: what tw.hud.* drawing is attributed to (lua_hud_space).
+std::array<int, k_max_depth> g_owners {};
 int g_depth = 0;
 
 double g_ms_per_tick = 0.0;
@@ -369,6 +371,7 @@ bool enter(int owner, int kind) noexcept
 
         if(g_depth < k_max_depth) [[likely]] {
             g_started[static_cast<std::size_t>(g_depth)] = now_ticks();
+            g_owners[static_cast<std::size_t>(g_depth)] = owner;
         }
         ++g_depth;
     }
@@ -447,6 +450,15 @@ void unload(int owner) noexcept
     });
 
     tw::lua::api::unsubscribe_owner(owner);
+}
+
+int current_owner() noexcept
+{
+    if(g_depth <= 0 || g_depth > k_max_depth) [[unlikely]] {
+        return -1;
+    }
+
+    return g_owners[static_cast<std::size_t>(g_depth - 1)];
 }
 
 void reorder() noexcept

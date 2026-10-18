@@ -38,61 +38,73 @@
                     <TextBlock Grid.Row="1" Classes="EmptyState" TextWrapping="Wrap" MaxWidth="460"
                                Text="{Binding EmptyText}" IsVisible="{Binding IsEmpty}"/>
 
-                    <ScrollViewer Grid.Row="1" IsVisible="{Binding !IsEmpty}" HorizontalScrollBarVisibility="Disabled">
-                        <ItemsControl ItemsSource="{Binding Scripts}">
+                    <!-- Rows are in the run order and dragged by the handle on their left to change it
+                    (script-coexistence.md §3; ScriptsView.axaml.cs). Named for the drag handlers. -->
+                    <ScrollViewer Grid.Row="1" x:Name="ScriptsScroll" IsVisible="{Binding !IsEmpty}" HorizontalScrollBarVisibility="Disabled">
+                        <ItemsControl x:Name="ScriptsList" ItemsSource="{Binding Scripts}" DragDrop.AllowDrop="True">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="models:ScriptRowViewModel">
-                                    <Border Classes="SMRow" Classes.Missing="{Binding IsMissing}">
-                                        <Grid ColumnDefinitions="*,Auto,Auto">
-                                            <StackPanel Grid.Column="0" Classes="SMText" Margin="0,0,12,0">
-                                                <StackPanel Orientation="Horizontal">
-                                                    <TextBlock Classes="SMTitle" Text="{Binding Title}"/>
-                                                    <Border Classes="SMBadge Bundled" IsVisible="{Binding IsBundled}"
-                                                            ToolTip.Tip="Comes with Tweaker, unchanged. Plugin updates keep it current.">
-                                                        <TextBlock Text="Bundled"/>
-                                                    </Border>
-                                                    <Border Classes="SMBadge Edited" IsVisible="{Binding IsEdited}"
-                                                            ToolTip.Tip="Comes with Tweaker and was changed since. The next plugin update keeps your version as a .old copy and puts the bundled one back.">
-                                                        <TextBlock Text="Bundled, edited"/>
-                                                    </Border>
-                                                    <Border Classes="SMBadge" IsVisible="{Binding IsUsers}"
-                                                            ToolTip.Tip="Not from Tweaker - yours, or built and installed from a project. Updates never touch it.">
-                                                        <TextBlock Text="Yours"/>
-                                                    </Border>
-                                                    <Border Classes="SMBadge" IsVisible="{Binding IsProjectBuild}" ToolTip.Tip="{Binding ProjectBuildHint}">
-                                                        <TextBlock Text="Project build"/>
-                                                    </Border>
-                                                    <Border Classes="SMBadge Missing" IsVisible="{Binding IsMissing}"
-                                                            ToolTip.Tip="Comes with Tweaker but is not in the game - deleted, or never installed. Restore puts it back.">
-                                                        <TextBlock Text="Not installed"/>
-                                                    </Border>
+                                    <!-- The lines sit in the 8px gap between rows: the row's own bottom margin below it,
+                                    the previous row's above - hence the offsets. -->
+                                    <Panel>
+                                        <Border Classes="SMRow" Classes.Missing="{Binding IsMissing}" Classes.Dragged="{Binding IsDragged}">
+                                            <Grid ColumnDefinitions="22,*,Auto,Auto">
+                                                <Border Grid.Column="0" Classes="SMGrip" IsVisible="{Binding HasPlace}" IsEnabled="{Binding CanReorder}"
+                                                        ToolTip.Tip="Drag to change the order. Scripts run top to bottom.">
+                                                    <Path Data="{StaticResource IconGrip}"/>
+                                                </Border>
+                                                <StackPanel Grid.Column="1" Classes="SMText" Margin="0,0,12,0">
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Classes="SMTitle" Text="{Binding Title}"/>
+                                                        <Border Classes="SMBadge Bundled" IsVisible="{Binding IsBundled}"
+                                                                ToolTip.Tip="Comes with Tweaker, unchanged. Plugin updates keep it current.">
+                                                            <TextBlock Text="Bundled"/>
+                                                        </Border>
+                                                        <Border Classes="SMBadge Edited" IsVisible="{Binding IsEdited}"
+                                                                ToolTip.Tip="Comes with Tweaker and was changed since. The next plugin update keeps your version as a .old copy and puts the bundled one back.">
+                                                            <TextBlock Text="Bundled, edited"/>
+                                                        </Border>
+                                                        <Border Classes="SMBadge" IsVisible="{Binding IsUsers}"
+                                                                ToolTip.Tip="Not from Tweaker - yours, or built and installed from a project. Updates never touch it.">
+                                                            <TextBlock Text="Yours"/>
+                                                        </Border>
+                                                        <Border Classes="SMBadge" IsVisible="{Binding IsProjectBuild}" ToolTip.Tip="{Binding ProjectBuildHint}">
+                                                            <TextBlock Text="Project build"/>
+                                                        </Border>
+                                                        <Border Classes="SMBadge Missing" IsVisible="{Binding IsMissing}"
+                                                                ToolTip.Tip="Comes with Tweaker but is not in the game - deleted, or never installed. Restore puts it back.">
+                                                            <TextBlock Text="Not installed"/>
+                                                        </Border>
+                                                    </StackPanel>
+                                                    <TextBlock Classes="SMSubtitle" Text="{Binding Subtitle}"/>
+                                                    <TextBlock Classes="SMDescription" Text="{Binding Description}" IsVisible="{Binding HasDescription}"/>
+                                                    <TextBlock Classes="SMLive" Classes.Failed="{Binding LiveFailed}" Classes.Suspended="{Binding LiveSuspended}"
+                                                               Text="{Binding LiveText}" IsVisible="{Binding HasLiveText}"/>
+                                                    <TextBlock Classes="SMBackups" Text="{Binding BackupsText}" IsVisible="{Binding HasBackups}"
+                                                               ToolTip.Tip="{Binding BackupsHint}"/>
                                                 </StackPanel>
-                                                <TextBlock Classes="SMSubtitle" Text="{Binding Subtitle}"/>
-                                                <TextBlock Classes="SMDescription" Text="{Binding Description}" IsVisible="{Binding HasDescription}"/>
-                                                <TextBlock Classes="SMLive" Classes.Failed="{Binding LiveFailed}" Classes.Suspended="{Binding LiveSuspended}"
-                                                           Text="{Binding LiveText}" IsVisible="{Binding HasLiveText}"/>
-                                                <TextBlock Classes="SMBackups" Text="{Binding BackupsText}" IsVisible="{Binding HasBackups}"
-                                                           ToolTip.Tip="{Binding BackupsHint}"/>
-                                            </StackPanel>
 
-                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" Margin="0,0,12,0">
-                                                <Button Classes="IconButton" Command="{Binding RestoreCommand}" IsVisible="{Binding CanRestore}"
-                                                        ToolTip.Tip="{Binding RestoreHint}">
-                                                    <Path Classes="SMIcon" Data="{StaticResource IconReset}"/>
-                                                </Button>
-                                                <Button Classes="IconButton" Command="{Binding ShowInFolderCommand}" IsVisible="{Binding !IsMissing}"
-                                                        ToolTip.Tip="Show the file in Explorer">
-                                                    <Path Classes="SMIcon" Data="{StaticResource IconFolder}"/>
-                                                </Button>
-                                            </StackPanel>
+                                                <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" Margin="0,0,12,0">
+                                                    <Button Classes="IconButton" Command="{Binding RestoreCommand}" IsVisible="{Binding CanRestore}"
+                                                            ToolTip.Tip="{Binding RestoreHint}">
+                                                        <Path Classes="SMIcon" Data="{StaticResource IconReset}"/>
+                                                    </Button>
+                                                    <Button Classes="IconButton" Command="{Binding ShowInFolderCommand}" IsVisible="{Binding !IsMissing}"
+                                                            ToolTip.Tip="Show the file in Explorer">
+                                                        <Path Classes="SMIcon" Data="{StaticResource IconFolder}"/>
+                                                    </Button>
+                                                </StackPanel>
 
-                                            <ToggleButton Grid.Column="2" Classes="Switch" VerticalAlignment="Center"
-                                                          IsChecked="{Binding Enabled, Mode=TwoWay}"
-                                                          IsEnabled="{Binding CanToggle}"
-                                                          IsVisible="{Binding !IsMissing}"
-                                                          ToolTip.Tip="Run this script in the game"/>
-                                        </Grid>
-                                    </Border>
+                                                <ToggleButton Grid.Column="3" Classes="Switch" VerticalAlignment="Center"
+                                                              IsChecked="{Binding Enabled, Mode=TwoWay}"
+                                                              IsEnabled="{Binding CanToggle}"
+                                                              IsVisible="{Binding !IsMissing}"
+                                                              ToolTip.Tip="Run this script in the game"/>
+                                            </Grid>
+                                        </Border>
+                                        <Border Classes="DropLine" VerticalAlignment="Top" Margin="6,-5,6,0" IsVisible="{Binding DropBefore}"/>
+                                        <Border Classes="DropLine" VerticalAlignment="Bottom" Margin="6,0,6,3" IsVisible="{Binding DropAfter}"/>
+                                    </Panel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>

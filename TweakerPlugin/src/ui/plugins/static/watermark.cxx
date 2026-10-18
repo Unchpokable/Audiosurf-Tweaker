@@ -1,9 +1,9 @@
 #include "ui/plugins/static/watermark.hxx"
 
+#include "ui/kit/paint.hxx"
 #include "ui/overlay_config.hxx"
 #include "ui/texture_cache.hxx"
 #include "ui/theme.hxx"
-#include "ui/widgets/detail/draw.hxx"
 
 #include <imgui.h>
 
@@ -32,7 +32,7 @@ bool g_rect_valid = false;
 
 namespace tw::ui::plugins::statics::watermark
 {
-namespace detail = tw::ui::widgets::detail;
+namespace paint = tw::ui::kit::paint;
 
 void initialize() noexcept
 {
@@ -73,26 +73,26 @@ void update() noexcept
     g_rect[3] = p_max.y;
     g_rect_valid = true;
 
-    detail::add_rect_glow(draw, p_min, p_max, k_rounding, theme::accent_primary, 1.f);
+    paint::add_rect_glow(draw, p_min, p_max, k_rounding, theme::accent_primary, 1.f);
 
     const ImVec4 bg { theme::surface.x, theme::surface.y, theme::surface.z, theme::surface.w * 0.85f };
-    draw->AddRectFilled(p_min, p_max, detail::to_u32(bg), k_rounding);
-    draw->AddRect(p_min, p_max, detail::to_u32(theme::accent_border), k_rounding);
+    draw->AddRectFilled(p_min, p_max, paint::to_u32(bg), k_rounding);
+    draw->AddRect(p_min, p_max, paint::to_u32(theme::accent_border), k_rounding);
 
     float cursor_x = p_min.x + k_pad_x;
     if(icon != ImTextureID_Invalid) {
         const ImVec2 icon_min { cursor_x, p_min.y + (k_height - k_icon_size) * 0.5f };
         const ImVec2 icon_max { icon_min.x + k_icon_size, icon_min.y + k_icon_size };
-        detail::add_image_keep_aspect(draw, icon, ImVec2 { 0.f, 0.f }, icon_min, icon_max);
+        paint::add_image_keep_aspect(draw, icon, ImVec2 { 0.f, 0.f }, icon_min, icon_max);
         cursor_x = icon_max.x + 8.f;
     }
 
     const ImVec2 label_pos { cursor_x, p_min.y + (k_height - label_size.y) * 0.5f };
-    draw->AddText(label_pos, detail::to_u32(theme::text_primary), k_label);
+    draw->AddText(label_pos, paint::to_u32(theme::text_primary), k_label);
     cursor_x += label_size.x + 10.f;
 
     const ImVec2 fps_pos { cursor_x, p_min.y + (k_height - fps_size.y) * 0.5f };
-    draw->AddText(fps_pos, detail::to_u32(theme::text_muted), fps_buf);
+    draw->AddText(fps_pos, paint::to_u32(theme::text_muted), fps_buf);
 }
 
 bool last_rect(float& x0, float& y0, float& x1, float& y1) noexcept

@@ -2,12 +2,12 @@
 
 #include <imgui.h>
 
-#include <libtweeny/tweeny.hxx>
-
 #include <span>
 #include <string>
 #include <string_view>
 #include <vector>
+
+#include "ui/kit/anim.hxx"
 
 namespace tw::ui::widgets
 {
@@ -41,12 +41,16 @@ public:
     // owns the real value (the same contract as toggle::set_checked). Does not raise changed().
     void set_selected(int index) noexcept;
 
+    // A disabled strip does not hover or change, and is drawn faded (theme::disabled_alpha) (R12).
+    void set_enabled(bool enabled) noexcept;
+
     void update();
 
     // Width the strip will occupy, from the same measurement update() uses. Shrink-to-content
     // widgets otherwise cannot be laid out against anything: the Quick Player transport row spreads
     // its leftover width between groups, which means knowing their widths before drawing them.
     [[nodiscard]] float width() const;
+    [[nodiscard]] float height() const noexcept;
 
     [[nodiscard]] int selected() const noexcept;
 
@@ -61,17 +65,14 @@ public:
 
 private:
     struct chip_state {
-        float hover_t = 0.f;
-        float select_t = 0.f;
-        tweeny::tween<float> hover_tween;
-        tweeny::tween<float> select_tween;
-        bool was_hovered = false;
-        bool was_selected = false;
+        kit::anim::channel hover { theme::motion::hover };
+        kit::anim::channel select { theme::motion::select };
+        float width = 0.f; // this frame's, measured at the top of update()
     };
 
     std::string m_id;
     float m_height;
-    float m_rounding = 8.f;
+    float m_rounding = theme::radius::control;
 
     [[nodiscard]] float chip_width(std::size_t index) const;
 
@@ -82,5 +83,6 @@ private:
     int m_selected = 0;
     int m_hovered_index = -1;
     bool m_changed = false;
+    bool m_enabled = true;
 };
 } // namespace tw::ui::widgets

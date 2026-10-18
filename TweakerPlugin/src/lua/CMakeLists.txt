@@ -5,6 +5,7 @@
 # Docs/Internal/lua-engine-fix-roadmap.md.
 target_sources(TweakerPlugin PRIVATE
     lua_host.cxx
+    lua_hud_space.cxx
     lua_vm.cxx
     lua_prelude.cxx
     lua_registry.cxx

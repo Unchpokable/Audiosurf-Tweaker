@@ -1,7 +1,7 @@
 -- @name        Order Probe B
 -- @description Shows where it runs in the script order - pair it with Order Probe A
 --
--- A probe for the run order (Docs/Internal/script-coexistence-roadmap.md §3), not a script anyone
+-- A probe for the run order (Docs/Internal/script-coexistence.md §3), not a script anyone
 -- wants running while they play. Copy it and order_probe_a.lua flat into Scripts\ and open the
 -- overlay's Scripts tab.
 --

@@ -5,6 +5,7 @@
 #include "engine/engine_state.hxx"
 
 #include "lua/api/api_hooks.hxx"
+#include "lua/api/api_hud.hxx"
 #include "lua/lua_config.hxx"
 #include "lua/lua_diag.hxx"
 #include "lua/lua_registry.hxx"
@@ -123,6 +124,9 @@ void draw_frame() noexcept
     io.ConfigErrorRecoveryEnableAssert = false;
     io.ConfigErrorRecoveryEnableTooltip = false;
 
+    // What is taken on the HUD starts over every frame, with the chrome as the overlay laid it out just now
+    // (tw.hud.occupied - lua_hud_space).
+    tw::lua::api::hud_begin_frame();
     tw::lua::sched::draw_frame();
 
     io.ConfigErrorRecoveryEnableAssert = previous_assert;

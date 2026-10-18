@@ -28,6 +28,9 @@ namespace TweakerUI.ViewModels
     ///    to 5 s for the plugin to confirm - without an answer it springs back;
     ///  - the game, not connected (syncing off, or the plugin did not answer): locked, and the tab says why.
     ///
+    /// The rows are in the run order (Docs/Internal/script-coexistence.md §3) and are dragged to change it,
+    /// with the same three modes as the switch (<see cref="MoveScript"/>).
+    ///
     /// Live only while visible: <see cref="SetActive"/> starts the folder watchers and the game-running poll
     /// and stops them again, so a tab nobody is looking at costs nothing.
     /// </summary>
@@ -46,6 +49,9 @@ namespace TweakerUI.ViewModels
         private bool _active;
         private int _scanGeneration;
 
+        // The last scan, in scripts.cfg's run order: what the rows follow whenever the plugin's order is not there.
+        private IReadOnlyList<GameScript> _scanned = Array.Empty<GameScript>();
+
         public ScriptsViewModel()
         {
             _gamePoll = new DispatcherTimer { Interval = GamePollInterval };
@@ -63,6 +69,9 @@ namespace TweakerUI.ViewModels
             ScriptsOverlayBridge.RequestTimedOut += (_, file) =>
                 ApplicationNotificationManager.Manager.ShowWarning("Scripts",
                     $"The game did not confirm switching {file}. The switch is back where it was - try again, or use the game's overlay.");
+            ScriptsOverlayBridge.OrderTimedOut += (_, _) =>
+                ApplicationNotificationManager.Manager.ShowWarning("Scripts",
+                    "The game did not confirm the new order. The list is back the way the game has it - try again, or use the game's overlay.");
             Live = ScriptsOverlayBridge.IsLive;
         }
 
@@ -179,7 +188,8 @@ namespace TweakerUI.ViewModels
 
             Watch(engine);
             HasScriptsFolder = engine != null && Directory.Exists(PluginInstallation.ScriptsPath(engine));
-            Merge(scripts);
+            _scanned = scripts;
+            Merge(Arranged());
             AnyRestorable = Scripts.Any(row => row.CanRestore);
 
             if (engine == null)
@@ -206,16 +216,121 @@ namespace TweakerUI.ViewModels
         {
             row.ApplyLive(ScriptsOverlayBridge.StateOf(row.FileName), ScriptsOverlayBridge.PendingOf(row.FileName));
             row.CanToggle = CanSwitch(row);
+            row.CanReorder = CanSwitch(row);
         }
 
-        /// <summary>The plugin said something, a switch was confirmed or dropped, or the link came or went.</summary>
+        /// <summary>The plugin said something, a switch or a drag was confirmed or dropped, or the link came or went.</summary>
         private void ApplyLive()
         {
             Live = ScriptsOverlayBridge.IsLive;
             foreach (var row in Scripts)
                 ApplyLive(row);
+            ArrangeRows();
             UpdateSummary();
             UpdateNotice();
+        }
+
+        /// <summary>
+        /// The last scan in the order to show (Docs/Internal/script-coexistence.md §3): with the game connected,
+        /// the plugin's order - a drag waiting for it included - and otherwise scripts.cfg's, which the scan already
+        /// follows. Bundled scripts that are not installed have no place and stay at the bottom.
+        /// </summary>
+        private IReadOnlyList<GameScript> Arranged()
+        {
+            var order = Live ? ScriptsOverlayBridge.Order : null;
+            if (order == null)
+                return _scanned;
+
+            var rank = new Dictionary<string, int>(StringComparer.Ordinal);
+            for (var i = 0; i < order.Count; i++)
+                rank.TryAdd(order[i], i);
+
+            // OrderBy is stable: a file the plugin has not seen yet keeps its scan position among the others like it.
+            return _scanned.Where(s => !s.IsMissing)
+                           .OrderBy(s => rank.TryGetValue(s.FileName, out var place) ? place : int.MaxValue)
+                           .Concat(_scanned.Where(s => s.IsMissing))
+                           .ToList();
+        }
+
+        /// <summary>Moves the rows into <see cref="Arranged"/>'s order without touching anything else about them.</summary>
+        private void ArrangeRows()
+        {
+            var desired = Arranged();
+            for (var i = 0; i < desired.Count && i < Scripts.Count; i++)
+            {
+                for (var j = i; j < Scripts.Count; j++)
+                {
+                    if (!string.Equals(Scripts[j].FileName, desired[i].FileName, StringComparison.Ordinal))
+                        continue;
+                    if (j != i)
+                        Scripts.Move(j, i);
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// A row was dropped at <paramref name="to"/> - an index into the scripts that have a place, as they are with
+        /// the row already lifted out (ObservableCollection.Move's terms; anything past the end is the end). The same
+        /// three modes as the switch: no game - scripts.cfg is written here; the game connected - the plugin is asked
+        /// (SCRIPT_ORDER) and the rows show the new order until it answers; the game without a link - refused.
+        /// Returns whether the order changed.
+        /// </summary>
+        public bool MoveScript(ScriptRowViewModel row, int to)
+        {
+            var engine = PluginService.EngineDirectory;
+            if (engine == null || row == null || !row.HasPlace || !row.CanReorder)
+                return false;
+
+            var placed = Scripts.Where(r => r.HasPlace).ToList();
+            var from = placed.IndexOf(row);
+            to = Math.Clamp(to, 0, placed.Count - 1);
+            if (from < 0 || from == to)
+                return false;
+
+            var before = placed.Select(r => r.FileName).ToList();
+            placed.RemoveAt(from);
+            placed.Insert(to, row);
+            var next = to + 1 < placed.Count ? placed[to + 1].FileName : null;
+
+            if (ScriptsOverlayBridge.IsLive)
+            {
+                // Moved within the plugin's own order, not rebuilt from the rows: it can hold a script whose file went
+                // away during the session, which has no row here and must keep its place.
+                var order = ScriptOrder.Move(ScriptsOverlayBridge.Order ?? before, row.FileName, next);
+                if (ScriptsOverlayBridge.RequestOrder(order))
+                    return true;
+
+                ApplicationNotificationManager.Manager.ShowError("Scripts",
+                    "Could not reach the plugin in the game. Change the order in the game's overlay (Scripts tab).");
+                return false;
+            }
+
+            UpdateGameRunning();
+            if (GameRunning)
+            {
+                ApplicationNotificationManager.Manager.ShowInformation("Scripts",
+                    "Audiosurf is running and Tweaker is not connected to its plugin - change the order in the game's overlay (Scripts tab).");
+                return false;
+            }
+
+            try
+            {
+                var config = ScriptsConfig.Load(engine);
+                config.SetOrder(placed.Select(r => r.FileName));
+                config.Save();
+            }
+            catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException)
+            {
+                ApplicationNotificationManager.Manager.ShowError("Scripts", "Could not write scripts.cfg: " + exception.Message);
+                return false;
+            }
+
+            // Rows with a place come first, so their index among those is their index in the list. The watcher on
+            // Config\ rescans after this, and the scan reads the same order back.
+            Scripts.Move(from, to);
+            _scanned = Scripts.Select(r => r.Script).ToList();
+            return true;
         }
 
         /// <summary>Updates the list in place: rows keep their identity, so the view keeps its scroll and hover.</summary>
@@ -259,7 +374,10 @@ namespace TweakerUI.ViewModels
 
             GameRunning = running;
             foreach (var row in Scripts)
+            {
                 row.CanToggle = CanSwitch(row);
+                row.CanReorder = CanSwitch(row);
+            }
             UpdateNotice();
 
             // The game rewrites scripts.cfg on its way through a session; what it left is worth a fresh look.

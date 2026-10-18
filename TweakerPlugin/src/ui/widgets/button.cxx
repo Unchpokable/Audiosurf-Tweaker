@@ -1,16 +1,15 @@
 #include "ui/widgets/button.hxx"
 
 #include "ui/image/svg.hxx"
+#include "ui/kit/interact.hxx"
+#include "ui/kit/paint.hxx"
 #include "ui/theme.hxx"
-#include "ui/widgets/detail/draw.hxx"
 
 #include <imgui_internal.h>
 
 namespace
 {
-constexpr float k_rounding = 8.f;
-constexpr int k_hover_ms = 150;
-constexpr int k_press_ms = 90;
+constexpr float k_rounding = tw::ui::theme::radius::control;
 constexpr float k_icon_gap = 6.f; // between icon and label; unused when the button is icon-only
 
 // Icons are baked at 16/24/32 (see ui/image/svg.hxx's k_baked_sizes), and landing on one of those
@@ -33,6 +32,16 @@ void button::set_size(ImVec2 size) noexcept
     m_size = size;
 }
 
+ImVec2 button::size() const noexcept
+{
+    return m_size;
+}
+
+void button::set_enabled(bool enabled) noexcept
+{
+    m_enabled = enabled;
+}
+
 void button::set_label(std::string_view label)
 {
     m_label.assign(label.begin(), label.end());
@@ -43,69 +52,48 @@ void button::set_icon(std::string_view resource_key)
     m_icon_key.assign(resource_key.begin(), resource_key.end());
 }
 
-void button::retarget_hover(float target)
-{
-    m_hover_tween = tweeny::from(m_hover_t).to(target).during(k_hover_ms).via(tweeny::easing::cubicOut);
-}
-
-void button::retarget_press(float target)
-{
-    m_press_tween = tweeny::from(m_press_t).to(target).during(k_press_ms).via(tweeny::easing::quadraticOut);
-}
-
 void button::update(const char* label)
 {
     m_clicked = false;
 
     ImGui::PushID(m_id.c_str());
 
-    const ImVec2 size = detail::resolve_size(m_size, 120.f, 32.f);
+    const ImVec2 size = kit::paint::resolve_size(m_size, 120.f, 32.f);
     const ImVec2 pos = ImGui::GetCursorScreenPos();
     const ImRect bb { pos, ImVec2 { pos.x + size.x, pos.y + size.y } };
 
-    ImGui::ItemSize(bb);
-    const ImGuiID imgui_id = ImGui::GetID("##btn");
-    if(!ImGui::ItemAdd(bb, imgui_id)) {
+    const kit::interaction pointer = kit::interact(bb, ImGui::GetID("##btn"), kit::placement::flow, m_enabled);
+    m_hovered = pointer.hovered;
+    m_held = pointer.held;
+    m_clicked = pointer.clicked;
+    if(!pointer.visible) {
         ImGui::PopID();
         return;
     }
 
-    m_hovered = false;
-    m_held = false;
-    m_clicked = ImGui::ButtonBehavior(bb, imgui_id, &m_hovered, &m_held);
+    m_hover.set(m_hovered);
+    m_press.set(m_held);
+    const float hover_t = m_hover.step();
+    const float press_t = m_press.step();
 
-    if(m_hovered != m_was_hovered) {
-        retarget_hover(m_hovered ? 1.f : 0.f);
-    }
-    if(m_held != m_was_held) {
-        retarget_press(m_held ? 1.f : 0.f);
-    }
+    const ImVec4 hover_col = kit::paint::lerp(theme::surface_soft, theme::accent_primary, 0.35f * hover_t);
+    const ImVec4 fill = kit::paint::lerp(hover_col, theme::accent_pressed, press_t);
+    const ImVec4 text_col = kit::paint::lerp(theme::text_primary, theme::text_on_accent, press_t);
 
-    m_was_hovered = m_hovered;
-    m_was_held = m_held;
-
-    // Own floats are source of truth — tweeny::from(x) does not init peek()/current.
-    const auto dt = detail::dt_ms();
-    if(!m_hover_tween.isFinished()) {
-        m_hover_t = m_hover_tween.step(dt);
-    }
-    if(!m_press_tween.isFinished()) {
-        m_press_t = m_press_tween.step(dt);
-    }
-
-    const ImVec4 hover_col = detail::lerp(theme::surface_soft, theme::accent_primary, 0.35f * m_hover_t);
-    const ImVec4 fill = detail::lerp(hover_col, theme::accent_pressed, m_press_t);
-    const ImVec4 text_col = detail::lerp(theme::text_primary, theme::text_on_accent, m_press_t);
-
-    const float scale = 1.f - 0.04f * m_press_t;
+    const float scale = 1.f - 0.04f * press_t;
     const ImVec2 center { (bb.Min.x + bb.Max.x) * 0.5f, (bb.Min.y + bb.Max.y) * 0.5f };
     const ImVec2 half { (bb.Max.x - bb.Min.x) * 0.5f * scale, (bb.Max.y - bb.Min.y) * 0.5f * scale };
     const ImVec2 r_min { center.x - half.x, center.y - half.y };
     const ImVec2 r_max { center.x + half.x, center.y + half.y };
 
+    const bool fade = kit::fade_disabled(m_enabled);
+    if(fade) {
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * theme::disabled_alpha);
+    }
+
     ImDrawList* draw = ImGui::GetWindowDrawList();
-    detail::add_rect_filled_rounded(draw, r_min, r_max, detail::to_u32(fill), k_rounding);
-    draw->AddRect(r_min, r_max, detail::to_u32(theme::accent_border), k_rounding);
+    draw->AddRectFilled(r_min, r_max, kit::paint::to_u32(fill), k_rounding);
+    draw->AddRect(r_min, r_max, kit::paint::to_u32(theme::accent_border), k_rounding);
 
     const char* text = label ? label : m_label.c_str();
     const bool has_text = text[0] != '\0';
@@ -123,16 +111,18 @@ void button::update(const char* label)
     float cursor_x = center.x - group_w * 0.5f;
 
     if(has_icon) {
-        const ImVec2 icon_min { cursor_x, center.y - icon_px * 0.5f };
-        const ImVec2 icon_max { icon_min.x + icon_px, icon_min.y + icon_px };
-        // Assets are monochrome white, so tinting with the label colour is what keeps the icon on
-        // theme and in step with the press animation.
-        detail::add_image_keep_aspect(draw, icon, ImVec2 { 0.f, 0.f }, icon_min, icon_max, detail::to_u32(text_col));
+        // Tinted with the label colour: that is what keeps the icon on theme and in step with the press
+        // animation.
+        kit::paint::icon(draw, icon, ImVec2 { cursor_x, center.y - icon_px * 0.5f }, icon_px, text_col);
         cursor_x += icon_px + (has_text ? k_icon_gap : 0.f);
     }
 
     if(has_text) {
-        draw->AddText(ImVec2 { cursor_x, center.y - text_size.y * 0.5f }, detail::to_u32(text_col), text);
+        draw->AddText(ImVec2 { cursor_x, center.y - text_size.y * 0.5f }, kit::paint::to_u32(text_col), text);
+    }
+
+    if(fade) {
+        ImGui::PopStyleVar();
     }
 
     ImGui::PopID();

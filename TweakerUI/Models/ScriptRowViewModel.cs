@@ -91,6 +91,34 @@ namespace TweakerUI.Models
         [ObservableProperty]
         private bool canToggle;
 
+        /// <summary>
+        /// The row has a place in the run order: a script in the game. A bundled one that is not installed has none -
+        /// the plugin does not know it - and stays at the bottom without a handle.
+        /// </summary>
+        public bool HasPlace => !_script.IsMissing;
+
+        /// <summary>Whether the tab lets the row be dragged right now - the same three modes as the switch; set by the tab.</summary>
+        [ObservableProperty]
+        private bool canReorder;
+
+        // Transient drag-to-reorder state, driven entirely by ScriptsView's drag handlers and cleared when the drag
+        // ends - the same as Quick Player's queue cards, and drawn the same way, with the shared DropLine and Dragged.
+        [ObservableProperty]
+        private bool dropBefore;
+
+        [ObservableProperty]
+        private bool dropAfter;
+
+        /// <summary>This row is the one being dragged; the view dims it while it is in flight.</summary>
+        [ObservableProperty]
+        private bool isDragged;
+
+        public void ClearDropIndicator()
+        {
+            DropBefore = false;
+            DropAfter = false;
+        }
+
         public bool Enabled
         {
             get => _enabled;

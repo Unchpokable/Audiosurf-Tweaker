@@ -55,6 +55,49 @@ Note the direction of the relationship: scripts draw **last**, so script output 
 overlay chrome. The geometry is for lining yourself up, not for the overlay's benefit. Staying tidy
 is your script's job.
 
+### Sharing the screen
+
+A player runs your HUD next to somebody else's, and two widgets in the same corner draw over each
+other. Three calls (API 2 — put `-- @api 2` in the header, or let `twllink` do it) let a script see
+what is already on screen and find room:
+
+```lua
+-- Somewhere near the top-right corner that nothing else is using.
+local w, h = 260, 64
+local x, y = tw.hud.place(w, h, "top_right")
+if x then
+    tw.hud.rect(x, y, x + w, y + h, tw.alpha(tw.theme("surface"), 0.9), 8)
+    tw.hud.text(x + 12, y + 12, "my widget")
+end
+```
+
+What makes it work is that **everything you draw is measured** — every `tw.hud.*` call is recorded
+against your script, with nothing to declare — and that **scripts draw in the run order** the player
+set in the Scripts tab ([Getting started](getting-started.md#the-order-scripts-run-in)). A script sees
+the overlay's chrome and whatever the scripts above it drew this frame; the scripts below it have not
+drawn yet, and it is their turn to make room. If every HUD finds its place with `tw.hud.place`, they
+stack up in a corner in the order the player chose, instead of on top of each other.
+
+- **`tw.hud.place(w, h, corner, margin)`** returns the top-left of the free spot nearest to the corner,
+  or `nil` when nothing fits, and takes that spot for you. It keeps `margin` (8 by default) from the
+  screen edges and from everything taken — your own earlier boxes this frame too, so two widgets placed
+  at one corner stack. It ignores the menu: a HUD that jumped every time the player opened it would be
+  worse than one the menu covers.
+- **`tw.hud.occupied()`** is the raw list, `{ x0, y0, x1, y1, by }` each — `by` is a chrome name
+  (`"notefeed"`, `"menu"`, …) or another script's file name. For a layout `place` does not cover: a
+  strip along an edge, a widget that docks to whatever is there.
+- **`tw.hud.claim(x0, y0, x1, y1)`** takes a box without drawing in it. Without it, a widget that is
+  fading out, blinking, or skipped for a frame frees its spot for that frame, and every script below
+  jumps into it and back.
+
+All three are about **this frame**: positions are worked out again every frame, so call `place` every
+frame rather than once at load. If a script above stops drawing — its run ended, the player turned it
+off — yours moves into the space it left. Smooth the move yourself if it matters (`tw.ease`), or have
+the script above `claim` its spot.
+
+What none of this sees: the game's own HUD — score, combo, the progress bar. The game draws it itself,
+past the overlay, so keep away from it the same way you always have.
+
 ## Text
 
 ```lua

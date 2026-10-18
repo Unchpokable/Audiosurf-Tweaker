@@ -75,6 +75,10 @@ bool resume(int owner) noexcept;
 // boundary.
 void unload(int owner) noexcept;
 
+// The script whose callback is running right now, innermost first; -1 when none is (or the layer's own
+// is). One load: tw.hud.* asks on every drawing call, to know whose box it drew (lua_hud_space).
+[[nodiscard]] int current_owner() noexcept;
+
 // The run order changed (lua_registry::move / set_order): re-sorts the prelude's callback lists and the
 // subscribers of every hooked channel, so the new order holds from the next callback on. Asks the
 // registry where each script runs, so the registry must already have the new order.

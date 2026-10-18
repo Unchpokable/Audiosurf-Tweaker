@@ -1,10 +1,10 @@
 #include "ui/plugins/static/pins.hxx"
 
 #include "ui/image/svg.hxx"
+#include "ui/kit/paint.hxx"
 #include "ui/overlay_config.hxx"
 #include "ui/pending_actions.hxx"
 #include "ui/theme.hxx"
-#include "ui/widgets/detail/draw.hxx"
 
 #include <imgui.h>
 
@@ -55,7 +55,7 @@ std::string g_status;
 
 namespace tw::ui::plugins::statics::pins
 {
-namespace detail = tw::ui::widgets::detail;
+namespace paint = tw::ui::kit::paint;
 
 void initialize() noexcept
 {
@@ -148,10 +148,10 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
         g_rect[2] = std::max(g_rect[2], p_max.x);
 
         const ImVec4 bg { theme::surface.x, theme::surface.y, theme::surface.z, theme::surface.w * 0.55f };
-        draw->AddRectFilled(p_min, p_max, detail::to_u32(bg), k_rounding);
+        draw->AddRectFilled(p_min, p_max, paint::to_u32(bg), k_rounding);
 
         ImVec4 accent = theme::accent_primary;
-        ImU32 text_color = IM_COL32_WHITE;
+        ImVec4 text_color { 1.f, 1.f, 1.f, 1.f };
         float glow = 1.f;
 
         switch(label.style) {
@@ -159,24 +159,21 @@ void update(const tw::ui::overlay_state::cache& snapshot) noexcept
                 break;
             case pin_style::quick_player:
                 accent = theme::accent_secondary;
-                text_color = detail::to_u32(theme::accent_secondary);
+                text_color = theme::accent_secondary;
                 break;
             case pin_style::muted:
-                text_color = detail::to_u32(theme::text_muted);
+                text_color = theme::text_muted;
                 glow = 0.35f;
                 break;
         }
 
         if(icon != ImTextureID_Invalid) {
-            // Assets are monochrome white, so tinting with the label's own colour is what keeps the
-            // icon on-theme (see ui/image/svg.hxx).
-            const ImVec2 icon_min { p_min.x + k_pad_x, p_min.y + (k_row_h - k_icon_size) * 0.5f };
-            const ImVec2 icon_max { icon_min.x + k_icon_size, icon_min.y + k_icon_size };
-            detail::add_image_keep_aspect(draw, icon, ImVec2 { 0.f, 0.f }, icon_min, icon_max, text_color);
+            // Tinted with the label's own colour, which is what keeps the icon on-theme (see ui/image/svg.hxx).
+            paint::icon(draw, icon, ImVec2 { p_min.x + k_pad_x, p_min.y + (k_row_h - k_icon_size) * 0.5f }, k_icon_size, text_color);
         }
 
         const ImVec2 text_pos { p_min.x + k_pad_x + icon_advance, p_min.y + (k_row_h - text_size.y) * 0.5f };
-        detail::add_text_glow(draw, text_pos, label.text.c_str(), text_color, accent, glow);
+        paint::add_text_glow(draw, text_pos, label.text.c_str(), paint::to_u32(text_color), accent, glow);
 
         y += k_row_h + k_row_gap;
     }

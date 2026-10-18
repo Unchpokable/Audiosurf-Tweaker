@@ -17,6 +17,9 @@ add_library(tweaker_ui STATIC
     gpu_texture.cxx
     texture_cache.cxx
     image/svg.cxx
+    kit/anim.cxx
+    kit/interact.cxx
+    kit/paint.cxx
     widgets/button.cxx
     widgets/toggle.cxx
     widgets/segmented.cxx
