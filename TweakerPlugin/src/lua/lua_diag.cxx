@@ -4,6 +4,7 @@
 
 #include "engine/engine_state.hxx"
 
+#include "lua/lua_log.hxx"
 #include "lua/lua_registry.hxx"
 #include "lua/lua_sched.hxx"
 
@@ -186,6 +187,26 @@ void log_first(int owner, level severity, std::string_view where, std::string_vi
         TW_LOG_ERROR("lua [{}] {}: {}", who, where, message);
         break;
     }
+
+    // The script log gets the whole message - the traceback the tab only shows in a tooltip. A fatal record of the
+    // layer's own is a dispatcher that broke, not a suspension.
+    const std::string_view kind = severity == level::fatal && owner < 0 ? std::string_view { "fatal" } : tw::lua::diag::name(severity);
+    tw::lua::log::write(owner, kind, where, message);
+}
+
+// A record that keeps repeating is said again in the script log at its 10th, 100th, 1000th... occurrence: the log
+// shows that it is still happening and how often, in a handful of lines however long the session runs.
+bool is_milestone(std::uint32_t count) noexcept
+{
+    if(count < 10) {
+        return false;
+    }
+
+    while(count % 10 == 0) {
+        count /= 10;
+    }
+
+    return count == 1;
 }
 
 // The routing table in the header, for a record's first occurrence (and every fatal one).
@@ -231,11 +252,9 @@ void evict(owner_log& log)
         log.entries.erase(victim);
     }
 }
-} // namespace
 
-namespace tw::lua::diag
-{
-void report(int owner, level severity, std::string_view where, std::string_view message) noexcept
+// report() and note(): the same record, and `log_each` decides whether a repeat is news for the script log.
+void file_record(int owner, level severity, std::string_view where, std::string_view message, bool log_each) noexcept
 {
     // A bundled script's positions go back to its sources before anything else sees them - the dedup
     // key included, so a record is keyed by the line the author will actually go and fix. Nothing is
@@ -270,6 +289,12 @@ void report(int owner, level severity, std::string_view where, std::string_view 
             log_first(owner, severity, where, message);
             route(*log, owner, record);
         }
+        else if(log_each) {
+            tw::lua::log::write(owner, tw::lua::diag::name(severity), where, message);
+        }
+        else if(is_milestone(record.count)) [[unlikely]] {
+            tw::lua::log::writef(owner, "repeated", where, "{} - {} times since f{}", record.text, record.count, record.first_frame);
+        }
         return;
     }
 
@@ -292,11 +317,25 @@ void report(int owner, level severity, std::string_view where, std::string_view 
     log_first(owner, severity, where, message);
     route(*log, owner, log->entries.back());
 }
+} // namespace
+
+namespace tw::lua::diag
+{
+void report(int owner, level severity, std::string_view where, std::string_view message) noexcept
+{
+    file_record(owner, severity, where, message, false);
+}
+
+void note(int owner, std::string_view where, std::string_view message) noexcept
+{
+    file_record(owner, level::info, where, message, true);
+}
 
 void notify(int owner, std::string_view message) noexcept
 {
     owner_log* const log = log_of(owner, true);
     if(push_capped(*log, owner, message)) {
+        tw::lua::log::write(owner, "notify", {}, message);
         return;
     }
 

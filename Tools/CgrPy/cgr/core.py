@@ -1,6 +1,6 @@
 """Quest3D .cgr container + channel-graph reader for Audiosurf.
 
-Layers (see Docs/Internal/reversing-journal-lua.md):
+Layers (Lua journal, https://github.com/Unchpokable/Audiosurf-Tweaker/blob/HEAD/Docs/Internal/reversing-journal-lua.md):
   L0: ACTF/ZIOS/ZINS/ZICB     ZICB payload = zlib stream
   L1: ACTF/NECL/NECT/NEOS/NECB  NECB payload = chunk stream XOR 0x04
   L2: chunk stream, TAG(4 ASCII) + u32 len + payload; DGCG/ESCH nest.

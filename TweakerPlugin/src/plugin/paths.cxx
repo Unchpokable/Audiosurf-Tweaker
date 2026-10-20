@@ -16,6 +16,7 @@ std::filesystem::path g_skyboxes_dir;
 std::filesystem::path g_sky_configs_dir;
 std::filesystem::path g_scripts_dir;
 std::filesystem::path g_logs_dir;
+std::filesystem::path g_script_data_dir;
 
 std::filesystem::path executable_path() noexcept
 {
@@ -68,6 +69,7 @@ bool resolve() noexcept
     g_sky_configs_dir = g_skybox_replacer_root / L"SkyConfigs";
     g_scripts_dir = g_stuff_root / L"Scripts";
     g_logs_dir = g_stuff_root / L"Logs";
+    g_script_data_dir = g_stuff_root / L"ScriptData";
 
     return true;
 }
@@ -131,6 +133,11 @@ const std::filesystem::path& scripts_dir() noexcept
 const std::filesystem::path& logs_dir() noexcept
 {
     return g_logs_dir;
+}
+
+const std::filesystem::path& script_data_dir() noexcept
+{
+    return g_script_data_dir;
 }
 
 std::filesystem::path config_file(std::wstring_view name)

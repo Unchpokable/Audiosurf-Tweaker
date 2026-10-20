@@ -1,9 +1,9 @@
 """List what a module exports and imports.
 
-    uvrun symbols <module>                 # exports
-    uvrun symbols <module> vector          # exports whose name contains "vector"
-    uvrun symbols <module> --imports       # imports, grouped by DLL
-    uvrun symbols --type "Array Vector" --imports
+    cgrpy symbols <module>                 # exports
+    cgrpy symbols <module> vector          # exports whose name contains "vector"
+    cgrpy symbols <module> --imports       # imports, grouped by DLL
+    cgrpy symbols --type "Array Vector" --imports
 
 **Imports are the cheap way to find a C++ type's parent.** A channel-type DLL imports its base
 class's constructor and destructor from the base class's own DLL, so the import list answers "what

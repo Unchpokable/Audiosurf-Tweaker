@@ -8,9 +8,12 @@
 #include "lua/api/api_hud.hxx"
 #include "lua/lua_config.hxx"
 #include "lua/lua_diag.hxx"
+#include "lua/lua_log.hxx"
 #include "lua/lua_registry.hxx"
 #include "lua/lua_remote.hxx"
 #include "lua/lua_sched.hxx"
+#include "lua/lua_storage.hxx"
+#include "lua/lua_tabs.hxx"
 #include "lua/lua_vm.hxx"
 
 #include "plugin/diagnostics.hxx"
@@ -52,9 +55,17 @@ void initialize() noexcept
         return;
     }
 
+    // The script log for this session, before the VM: a VM that does not come up is the first thing it should say.
+    // Only when there is a Scripts directory at all - a game without scripts gets no file about them.
+    tw::lua::log::open(tw::plugin::paths::logs_dir(), std::format("TweakerPlugin {}, {}", TW_PLUGIN_VERSION, LUAJIT_VERSION));
+
     if(!tw::lua::vm::initialize()) {
+        tw::lua::log::write(-1, "fatal", {}, std::format("the scripting layer did not start: {}", tw::lua::vm::last_error()));
+        tw::lua::log::close();
         return;
     }
+
+    tw::lua::log::write(-1, "info", {}, std::format("scripting API {}", tw::lua::vm::api_version()));
 
     tw::lua::config::load(tw::plugin::paths::config_file(L"scripts.cfg"));
 
@@ -71,6 +82,9 @@ void initialize() noexcept
     }
 
     tw::lua::sched::initialize();
+
+    // Before any script runs: a body may read its settings.
+    tw::lua::storage::initialize(tw::plugin::paths::script_data_dir());
 
     // The other half of the group registry's job: a subscription whose group went away is put back
     // into waiting rather than left pointing at freed memory, and attached again when it returns.
@@ -92,9 +106,14 @@ void shutdown() noexcept
     tw::lua::api::clear_subscriptions();
 
     tw::lua::sched::shutdown();
+    tw::lua::tabs::clear();
+
+    // After the scripts are gone from the scheduler, before the VM: whatever they wrote last is written now.
+    tw::lua::storage::shutdown();
     tw::lua::vm::shutdown();
     tw::lua::registry::clear();
     tw::lua::diag::clear_all();
+    tw::lua::log::close();
 }
 
 void draw_frame() noexcept
@@ -106,6 +125,13 @@ void draw_frame() noexcept
     if(tw::lua::vm::state() == nullptr) [[unlikely]] {
         return;
     }
+
+    // What the storage writer could not write, into the scripts' messages.
+    tw::lua::storage::pump();
+
+    // The scripts' tabs as the menu should show them from the next frame on - after the host's commands, which can
+    // reload a script, and before this frame's callbacks, which cannot declare anything (lua_tabs).
+    tw::lua::tabs::begin_frame();
 
     // The backstop around the whole dispatch, not one per script - see lua_sched.hxx for why a
     // script cannot leave an ImGui stack pushed and so needs no snapshot of its own. ID scope first,
@@ -134,6 +160,9 @@ void draw_frame() noexcept
 
     ImGui::ErrorRecoveryTryToRecoverState(&saved);
     ImGui::PopID();
+
+    // Last: a tab dropped this frame - a Reload from the Scripts tab, inside the menu's frame - is freed only now.
+    tw::lua::tabs::end_frame();
 }
 
 bool is_running() noexcept

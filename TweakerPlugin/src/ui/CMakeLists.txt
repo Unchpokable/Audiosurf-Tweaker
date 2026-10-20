@@ -32,6 +32,7 @@ add_library(tweaker_ui STATIC
     widgets/popup_menu.cxx
     widgets/color_picker.cxx
     widgets/color_field.cxx
+    form/form.cxx
     plugins/static/notefeed.cxx
     plugins/static/pins.cxx
     plugins/static/watermark.cxx

@@ -161,7 +161,7 @@ echo "    $LEGACY_EXE -> $TWEAKER_OUT"
 # --- 3. twllink: the Lua project linker, Native AOT ----------------------------------------------
 # One self-contained exe with no runtime to install (Docs/Internal/lua-engine-fix-roadmap.md §9.2,
 # §9.9). It goes to DevTools/Binaries/ beside TweakerUI.exe - the folder the Script Dev tab runs it from
-# and puts on an editor's PATH (Docs/Internal/script-manager-roadmap.md §5, С1). Not part of
+# and puts on an editor's PATH (Docs/Internal/script-manager.md §8.1). Not part of
 # PluginPayload/ - it is a tool of the host, and the game never sees it. Published into its own
 # folder and only the exe is taken: Native AOT leaves ~16 MB of symbols next to it.
 LINKER_PROJ="$REPO_ROOT/TweakerLuaLinker/TweakerLuaLinker.csproj"
@@ -175,6 +175,22 @@ fi
 mkdir -p "$DEVTOOLS_OUT"
 cp -f "$LINKER_OUT/twllink.exe" "$DEVTOOLS_OUT/"
 echo "    $LINKER_OUT/twllink.exe -> $DEVTOOLS_OUT"
+
+# --- 4. The rest of DevTools/: CgrPy ---------------------------------------------------------
+# What goes in is decided by TweakerUI.csproj's CopyDevTools target, which stages it as DevToolsPayload/
+# (Docs/Internal/dev-bundle-roadmap.md §3.1); this only carries it over, as with PluginPayload/ above.
+# The freshest of the bin/ trees is the one with the newest DevToolsPayload.stamp - the publish above
+# has just written it. The files inside cannot tell: Copy keeps their source timestamps.
+echo "==> Locating DevToolsPayload/ (CgrPy) from the TweakerUI build"
+DEVTOOLS_STAMP="$(find "$REPO_ROOT/TweakerUI/bin" -type f -name "DevToolsPayload.stamp" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)"
+if [ -z "$DEVTOOLS_STAMP" ]; then
+    echo "ERROR: DevToolsPayload.stamp not found under TweakerUI/bin - did TweakerUI.csproj's CopyDevTools target run?" >&2
+    exit 1
+fi
+DEVTOOLS_PAYLOAD="$(dirname "$DEVTOOLS_STAMP")/DevToolsPayload"
+mkdir -p "$TWEAKER_OUT/DevTools"
+cp -rf "$DEVTOOLS_PAYLOAD/." "$TWEAKER_OUT/DevTools/"
+echo "    $DEVTOOLS_PAYLOAD -> $TWEAKER_OUT/DevTools"
 
 # --- Summary ---------------------------------------------------------------------------------
 FILE_COUNT="$(find "$DIST_DIR" -type f | wc -l)"

@@ -101,14 +101,17 @@ namespace TweakerCore.Tests.Scripting
         }
 
         [Test]
-        public void TheEditorGetsTwllinkFirstOnPathAndTheGameFolder()
+        public void TheEditorGetsTheToolFoldersFirstOnPathAndTheGameFolder()
         {
             Touch("Local", "Programs", "Microsoft VS Code", "Code.exe");
             var editor = ScriptEditors.Detect(_search).Single();
 
-            var info = ScriptEditors.StartInfo(editor, @"C:\p\my_hud", null, 0, 0, @"C:\Tweaker\DevTools\Binaries", @"D:\Games\Audiosurf");
+            var tools = new[] { @"C:\Tweaker\DevTools\Binaries", @"C:\Tweaker\DevTools\CgrPy" };
+            var info = ScriptEditors.StartInfo(editor, @"C:\p\my_hud", null, 0, 0, tools, @"D:\Games\Audiosurf");
 
-            Assert.That(info.Environment["PATH"], Does.StartWith(@"C:\Tweaker\DevTools\Binaries" + Path.PathSeparator));
+            Assert.That(info.Environment["PATH"],
+                Does.StartWith(@"C:\Tweaker\DevTools\Binaries" + Path.PathSeparator + @"C:\Tweaker\DevTools\CgrPy" + Path.PathSeparator),
+                "twllink and cgrpy, in that order, ahead of everything the user had");
             Assert.That(info.Environment["Path"], Is.EqualTo(info.Environment["PATH"]), "one variable, whatever its case");
             Assert.That(info.Environment["AUDIOSURF_DIR"], Is.EqualTo(@"D:\Games\Audiosurf"));
             Assert.That(info.UseShellExecute, Is.False, "the environment only reaches a process started without the shell");
@@ -122,7 +125,7 @@ namespace TweakerCore.Tests.Scripting
             var editor = ScriptEditors.Detect(_search).Single();
             var inherited = Environment.GetEnvironmentVariable("AUDIOSURF_DIR");
 
-            var info = ScriptEditors.StartInfo(editor, @"C:\p", null, 0, 0, @"C:\bin", null);
+            var info = ScriptEditors.StartInfo(editor, @"C:\p", null, 0, 0, new[] { @"C:\bin" }, null);
 
             Assert.That(info.Environment.TryGetValue("AUDIOSURF_DIR", out var value) ? value : null, Is.EqualTo(inherited));
         }
@@ -137,7 +140,7 @@ namespace TweakerCore.Tests.Scripting
             TouchAll();
             var editor = ScriptEditors.Detect(_search).Single(e => e.Id == id);
 
-            var info = ScriptEditors.StartInfo(editor, @"C:\p", "src/draw/rail.lua", 12, 5, @"C:\bin", null);
+            var info = ScriptEditors.StartInfo(editor, @"C:\p", "src/draw/rail.lua", 12, 5, new[] { @"C:\bin" }, null);
 
             Assert.That(info.ArgumentList, Is.EqualTo(expected));
             Assert.That(info.WorkingDirectory, Is.EqualTo(@"C:\p"));
@@ -149,7 +152,7 @@ namespace TweakerCore.Tests.Scripting
             TouchAll();
             var editor = ScriptEditors.Detect(_search).Single(e => e.Id == "vscode");
 
-            var info = ScriptEditors.StartInfo(editor, @"C:\p", "twproject.json", 0, 0, @"C:\bin", null);
+            var info = ScriptEditors.StartInfo(editor, @"C:\p", "twproject.json", 0, 0, new[] { @"C:\bin" }, null);
 
             Assert.That(info.ArgumentList.Last(), Is.EqualTo(@"C:\p\twproject.json:1:1"));
         }

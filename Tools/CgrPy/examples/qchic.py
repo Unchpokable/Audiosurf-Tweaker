@@ -1,6 +1,6 @@
-"""CHIC (ingoreTreeCountState_, +0x60) per channel - the flag graph.py discards.
+r"""CHIC (ingoreTreeCountState_, +0x60) per channel - the flag graph.py discards.
 
-    uv run python qchic.py
+    cgrpy examples\qchic.py
 
 graph.py lists CHIC in HEADER and drops it, so `channel.chunks` never contains it and
 any test written against `chunks` silently answers "absent" for every channel in the
@@ -9,7 +9,8 @@ project. This re-walks the raw chunk stream instead.
 CHIC = 1 means "do not memoise" - the channel recomputes on every read within a frame,
 which is what lets the game's own ForLoop walk an Array Value column. CHIC = 0 (or no
 chunk) means it IS memoised, and a second read in the same frame returns the first
-read's value unless the memo is invalidated by hand (lua_channels::read_array).
+read's value unless the memo is invalidated by hand (TweakerPlugin: `bust_memo` in
+src/engine/channel_ref, used by src/engine/family/fam_table).
 """
 import collections
 import struct

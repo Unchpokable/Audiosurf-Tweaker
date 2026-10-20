@@ -294,7 +294,7 @@ Audiosurf\engine\
    |  |- SkyConfigs\
    |     |- <stem>.json             <- настройки конкретного неба (было Skies\)
    |- Scripts\                      <- *.lua
-   |- Logs\                         <- TweakerPlugin.log (Р-18)
+   |- Logs\                         <- TweakerPlugin.log (Р-18); scripts-<дата_время>.log, по файлу на сеанс (dev-bundle-roadmap.md §3.4)
    |- DISABLE                       <- необязательный файл аварийного выключения (Р-17)
    |- .deploy.json                  <- манифест хоста (§6.2), плагин его не читает
 ```

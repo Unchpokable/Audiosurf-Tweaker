@@ -1,14 +1,23 @@
-r"""Mesh toolkit CLI for the Audiosurf .cgr corpus.
+r"""Meshes in the game's .cgr files: inventory, export to OBJ, and splicing a mesh back in.
 
-    uv run python meshes.py inventory  [engine_dir] [out.csv]
-    uv run python meshes.py export     <file.cgr> <ordinal> <out.obj>
-    uv run python meshes.py exportall  <file.cgr> <out_dir>
-    uv run python meshes.py replace    <file.cgr> <ordinal> <in.obj> <out.cgr>
-    uv run python meshes.py verify     [engine_dir]
+    cgrpy meshes inventory  [engine_dir] [out.csv]     every mesh blob -> a CSV (default out\meshes.csv here)
+    cgrpy meshes export     <file.cgr> <ordinal> <out.obj>
+    cgrpy meshes exportall  <file.cgr> <out_dir>
+    cgrpy meshes replace    <file.cgr> <ordinal> <in.obj> <out.cgr> [--not-live]
+    cgrpy meshes verify     [engine_dir]               the round-trip baseline
 
-`ordinal` is the mesh's position in the file's L2 chunk stream, as printed by
-`inventory` / `exportall`. It is not the channel index -- see cgr/patch.py for
-why (one channel record can hold several mesh blobs).
+`ordinal` is the mesh's position in the file's chunk stream, as printed by `inventory` / `exportall`. It is
+not the channel index - one channel record can hold several mesh blobs (cgr/patch.py).
+
+**`replace` writes a .cgr, and a broken .cgr is a broken game.** It refuses to write anywhere that looks
+like the Steam install of the game - a path with "steam", "steamapps" or the app id 12900 in it, or a
+Steam .vdf/.acf file in a folder above (cgr.paths.is_live_game). Work on a copy of the file and copy the
+result in yourself, knowing that Steam's "Verify integrity of game files" puts the original back. If the
+target is a copy that only looks live (a folder called "Audiosurf_Steam", say), add `--not-live`.
+
+Where it was used: the geometry journal - 930 mesh blobs inventoried, and `verify` is the baseline
+(893 re-encode byte-exact, 930 OBJ round-trip, 0 problems on the Steam release).
+https://github.com/Unchpokable/Audiosurf-Tweaker/blob/HEAD/Docs/Internal/reversing-journal-geometry.md
 """
 
 import csv
@@ -19,9 +28,7 @@ from cgr import container, patch
 from cgr.core import load_channel_types
 from cgr.graph import parse_graph
 
-from cgr.paths import engine_dir
-
-ENGINE = engine_dir()
+from cgr.paths import engine_dir, is_live_game
 
 
 def _types(root):
@@ -40,8 +47,8 @@ def _channel_types(core, types, name):
         return {}
 
 
-def inventory(root=ENGINE, out="out/meshes.csv"):
-    root = Path(root)
+def inventory(root=None, out="out/meshes.csv"):
+    root = Path(root) if root else engine_dir()
     types = _types(root)
     rows = []
     for p in sorted(root.rglob("*.cgr")):
@@ -74,16 +81,23 @@ def inventory(root=ENGINE, out="out/meshes.csv"):
         w.writeheader()
         w.writerows(rows)
     good = [r for r in rows if not r["error"]]
-    print(f"{len(rows)} mesh blobs in {len(set(r['file'] for r in rows))} files -> {outp}")
+    print(f"{len(rows)} mesh blobs in {len(set(r['file'] for r in rows))} files -> {outp.resolve()}")
     print(f"  decoded {len(good)}, failed {len(rows) - len(good)}")
     print(f"  {sum(r['verts'] for r in good)} vertices, {sum(r['tris'] for r in good)} triangles")
     return rows
 
 
+def _mesh_ref(refs, ordinal, path):
+    if not str(ordinal).isdigit() or int(ordinal) >= len(refs):
+        sys.exit(f"{path} has {len(refs)} mesh blob(s), ordinals 0-{len(refs) - 1}: no #{ordinal}. "
+                 "`cgrpy meshes exportall` lists them." if refs else f"{path} holds no meshes.")
+    return refs[int(ordinal)]
+
+
 def export(path, ordinal, out):
     core, _ = container.unwrap_file(path)
     refs = patch.scan_meshes(core)
-    m = patch.read_mesh(core, refs[int(ordinal)])
+    m = patch.read_mesh(core, _mesh_ref(refs, ordinal, path))
     Path(out).write_text(m.to_obj(), encoding="utf-8")
     print(f"mesh #{ordinal} {m.name!r}: {m.vertex_count}v {m.triangle_count}t -> {out}")
 
@@ -107,11 +121,14 @@ def exportall(path, outdir):
     print(f"{n} meshes -> {outdir}")
 
 
-def replace(path, ordinal, objfile, out):
+def replace(path, ordinal, objfile, out, *flags):
     from cgr.mesh import Mesh
+    if is_live_game(out) and "--not-live" not in flags:
+        sys.exit(f"refusing to write {Path(out).resolve()}: it looks like the Steam install of the game, and a\n"
+                 "broken .cgr breaks the game. Write to a copy instead. If this really is a copy, add --not-live.")
     core, env = container.unwrap_file(path)
     refs = patch.scan_meshes(core)
-    r = refs[int(ordinal)]
+    r = _mesh_ref(refs, ordinal, path)
     old = patch.read_mesh(core, r)
     m = Mesh.from_obj(Path(objfile).read_text(encoding="utf-8"), name=r.channel_name)
     m.uv_offsets = old.uv_offsets or m.uv_offsets
@@ -125,9 +142,9 @@ def replace(path, ordinal, objfile, out):
           f"{m.vertex_count}v/{m.triangle_count}t   written {out}")
 
 
-def verify(root=ENGINE):
+def verify(root=None):
     """Every mesh must decode, re-encode byte-identically, and OBJ round-trip."""
-    root = Path(root)
+    root = Path(root) if root else engine_dir()
     tot = enc_ok = obj_ok = 0
     bad = []
     for p in sorted(root.rglob("*.cgr")):
@@ -164,7 +181,10 @@ def verify(root=ENGINE):
         print("   ", b)
 
 
+COMMANDS = dict(inventory=inventory, export=export, exportall=exportall, replace=replace, verify=verify)
+
 if __name__ == "__main__":
-    cmd = sys.argv[1] if len(sys.argv) > 1 else "inventory"
-    dict(inventory=inventory, export=export, exportall=exportall,
-         replace=replace, verify=verify)[cmd](*sys.argv[2:])
+    if len(sys.argv) < 2 or sys.argv[1] not in COMMANDS:
+        print(__doc__)
+        raise SystemExit(2)
+    COMMANDS[sys.argv[1]](*sys.argv[2:])

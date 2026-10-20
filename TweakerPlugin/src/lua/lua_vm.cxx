@@ -6,6 +6,8 @@
 #include "lua/api/api_core.hxx"
 #include "lua/api/api_hooks.hxx"
 #include "lua/api/api_hud.hxx"
+#include "lua/api/api_storage.hxx"
+#include "lua/api/api_ui.hxx"
 #include "lua/lua_prelude.hxx"
 
 #include "plugin/diagnostics.hxx"
@@ -31,6 +33,7 @@ constexpr const char* k_export_names[] = {
     "unload_owner",
     "run_script",
     "reorder",
+    "dispatch_ui",
 };
 
 std::array<int, std::size(k_export_names)> g_exports = [] {
@@ -40,7 +43,7 @@ std::array<int, std::size(k_export_names)> g_exports = [] {
 }();
 
 // **The C side of the ABI, and the only list of it.** Every function a script can reach, by the name
-// the prelude binds it under (tw.abi in lua_prelude.cxx), which is its C name.
+// the prelude binds it under (tw.abi, prelude/abi.lua), which is its C name.
 //
 // Keyed by name rather than by position, and checked in both directions when the prelude starts: a
 // name here that the prelude has no signature for, or one the prelude binds that is missing here,
@@ -127,6 +130,30 @@ const entry_point k_entry_points[] = {
     TW_LUA_ENTRY(tw_hud_occupied),
     TW_LUA_ENTRY(tw_hud_claim),
     TW_LUA_ENTRY(tw_hud_place),
+
+    // api_ui
+    TW_LUA_ENTRY(tw_ui_tab),
+    TW_LUA_ENTRY(tw_ui_add),
+    TW_LUA_ENTRY(tw_ui_range),
+    TW_LUA_ENTRY(tw_ui_options),
+    TW_LUA_ENTRY(tw_ui_items),
+    TW_LUA_ENTRY(tw_ui_height),
+    TW_LUA_ENTRY(tw_ui_get),
+    TW_LUA_ENTRY(tw_ui_set),
+    TW_LUA_ENTRY(tw_ui_text),
+    TW_LUA_ENTRY(tw_ui_flags),
+    TW_LUA_ENTRY(tw_ui_tab_visible),
+    TW_LUA_ENTRY(tw_ui_next_event),
+
+    // api_storage
+    TW_LUA_ENTRY(tw_storage_read),
+    TW_LUA_ENTRY(tw_storage_write),
+    TW_LUA_ENTRY(tw_storage_read_json),
+    TW_LUA_ENTRY(tw_storage_write_json),
+    TW_LUA_ENTRY(tw_storage_exists),
+    TW_LUA_ENTRY(tw_storage_remove),
+    TW_LUA_ENTRY(tw_storage_list),
+    TW_LUA_ENTRY(tw_storage_error),
 };
 
 #undef TW_LUA_ENTRY
@@ -244,7 +271,7 @@ bool initialize() noexcept
         return false;
     }
 
-    // The sandbox is the prelude's last section now (lua_prelude.cxx, tw.sandbox), so it has already
+    // The sandbox is the prelude's last section now (tw.sandbox, prelude/sandbox.lua), so it has already
     // run. What is left to take from the prelude is the version it declares - its only definition.
     lua_getglobal(lua, "tw");
     lua_getfield(lua, -1, "api_version");

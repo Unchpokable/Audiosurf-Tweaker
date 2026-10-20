@@ -36,11 +36,21 @@ void color_field::set_color(const ImVec4& rgba) noexcept
 {
     // While the popup is up the picker owns the value: the caller is echoing back what this widget
     // told it one frame ago, and letting that land would fight the drag in progress.
-    if(m_popup.opened()) {
+    if(active()) {
         return;
     }
 
     m_color = rgba;
+}
+
+bool color_field::active() const noexcept
+{
+    return m_popup.opened();
+}
+
+void color_field::set_enabled(bool enabled) noexcept
+{
+    m_enabled = enabled;
 }
 
 void color_field::update()
@@ -48,7 +58,18 @@ void color_field::update()
     m_changed = false;
     m_committed = false;
 
+    // Switched off with the picker up: the picker goes. What it already changed stays changed - it was
+    // reported as it happened - and the commit below still closes the gesture.
+    if(!m_enabled && m_popup.opened()) {
+        m_popup.close();
+    }
+
     ImGui::PushID(m_id.c_str());
+
+    const bool fade = kit::fade_disabled(m_enabled);
+    if(fade) {
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * theme::disabled_alpha);
+    }
 
     const float d = m_diameter > 0.f ? m_diameter : ImGui::GetFrameHeight();
     const ImVec2 pos = ImGui::GetCursorScreenPos();
@@ -70,7 +91,8 @@ void color_field::update()
         kit::paint::add_text_ellipsis(draw, text_pos, text_max, kit::paint::to_u32(theme::text_secondary), m_label.c_str());
     }
 
-    const kit::interaction pointer = kit::interact(ImRect { swatch_min, swatch_max }, ImGui::GetID("##swatch"), kit::placement::overlay);
+    const kit::interaction pointer =
+        kit::interact(ImRect { swatch_min, swatch_max }, ImGui::GetID("##swatch"), kit::placement::overlay, m_enabled);
 
     // On the press, not the release, and under the swatch rather than at the pointer: the picker belongs
     // to this colour, and where on the swatch the click landed is an accident.
@@ -90,6 +112,11 @@ void color_field::update()
     // The swatch is a hit area at a computed place (placement::overlay); the row is claimed here, so the next
     // field lands under it.
     ImGui::Dummy(ImVec2 { row_w, d });
+
+    // Before the popup: it is a window of its own, and a closing one fading out is not part of this row.
+    if(fade) {
+        ImGui::PopStyleVar();
+    }
 
     if(m_popup.opened()) {
         m_popup.begin();

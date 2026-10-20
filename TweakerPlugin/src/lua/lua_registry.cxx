@@ -5,6 +5,7 @@
 #include "lua/api/api_hooks.hxx"
 #include "lua/lua_config.hxx"
 #include "lua/lua_diag.hxx"
+#include "lua/lua_log.hxx"
 #include "lua/lua_sched.hxx"
 #include "lua/lua_vm.hxx"
 
@@ -120,13 +121,18 @@ bool run(tw::lua::script& script) noexcept
 // run(), plus the rule for a body that throws: whatever it registered before it threw goes too. A
 // half-run script is not a script that runs half its features; it is a failed one. `enabled` is left
 // as it was - the caller decides whether a failure switches the script off.
-bool launch(tw::lua::script& script) noexcept
+//
+// `verb` is what the script log calls it - loaded, switched on, reloaded. The error itself is already there, in
+// full, from lua_diag; this line says what became of the script.
+bool launch(tw::lua::script& script, std::string_view verb) noexcept
 {
     if(run(script)) {
+        tw::lua::log::event(script.id, verb);
         return true;
     }
 
     tw::lua::sched::unload(script.id);
+    tw::lua::log::writef(script.id, "script", {}, "{}: failed, not running", verb);
     return false;
 }
 
@@ -139,6 +145,20 @@ void stop(tw::lua::script& script) noexcept
     script.error.clear();
     tw::lua::reset_health(script);
     tw::lua::diag::clear(script.id);
+}
+
+// "puzzlepro_hud.lua, particles.lua" - the run order, for the script log.
+std::string order_text()
+{
+    std::string text;
+    for(const int id : g_order) {
+        if(!text.empty()) {
+            text += ", ";
+        }
+        text += g_scripts[static_cast<std::size_t>(id)]->file;
+    }
+
+    return text.empty() ? std::string { "(none)" } : text;
 }
 
 void index_places() noexcept
@@ -199,6 +219,8 @@ void apply(std::vector<int> order) noexcept
     tw::lua::registry::changed();
 
     TW_LOG_INFO("lua: run order changed - {} script(s)", g_order.size());
+    tw::lua::log::write(-1, "script", {}, "run order: " + order_text());
+    tw::lua::log::flush();
 }
 } // namespace
 
@@ -218,21 +240,25 @@ void load_all(const std::filesystem::path& directory) noexcept
 
     initial_order();
 
+    tw::lua::log::write(-1, "script", {}, std::format("{} script(s) in Scripts, run order: {}", g_scripts.size(), order_text()));
+
     // In run order, so that what one body does at the top level - a notification, a log line - comes
     // out in the order everything else will run in.
     for(const int id : g_order) {
         const std::unique_ptr<script>& entry = g_scripts[static_cast<std::size_t>(id)];
         if(!entry->enabled) {
             TW_LOG_INFO("lua: {} is disabled - not loading", entry->file);
+            tw::lua::log::event(entry->id, "switched off in scripts.cfg - not loaded");
             continue;
         }
 
         // A script that fails here stays switched on, so that the next toggle or reload retries it.
-        if(launch(*entry)) {
+        if(launch(*entry, "loaded")) {
             TW_LOG_INFO("lua: loaded {}", entry->file);
         }
     }
 
+    tw::lua::log::flush();
     changed();
 }
 
@@ -270,6 +296,7 @@ void rescan() noexcept
                 entry.missing = true;
                 ++gone;
                 TW_LOG_INFO("lua: {} is gone from Scripts - unloaded", entry.file);
+                tw::lua::log::event(entry.id, "gone from Scripts - unloaded");
             }
             continue;
         }
@@ -281,8 +308,9 @@ void rescan() noexcept
             entry.enabled = tw::lua::config::enabled(entry.file);
             ++back;
             TW_LOG_INFO("lua: {} is back in Scripts{}", entry.file, entry.enabled ? "" : " - disabled, not loading");
+            tw::lua::log::event(entry.id, entry.enabled ? "back in Scripts" : "back in Scripts - switched off, not loaded");
             if(entry.enabled) {
-                (void)launch(entry);
+                (void)launch(entry, "loaded");
             }
         }
     }
@@ -304,12 +332,16 @@ void rescan() noexcept
 
         ++added;
         TW_LOG_INFO("lua: {} is new in Scripts{}", entry.file, entry.enabled ? "" : " - disabled, not loading");
+        tw::lua::log::event(entry.id, entry.enabled ? "new in Scripts" : "new in Scripts - switched off, not loaded");
         if(entry.enabled) {
-            (void)launch(entry);
+            (void)launch(entry, "loaded");
         }
     }
 
     TW_LOG_INFO("lua: rescan - {} new, {} gone, {} back, {} script(s) in all", added, gone, back, g_scripts.size());
+    tw::lua::log::write(
+        -1, "script", {}, std::format("rescan: {} new, {} gone, {} back, {} script(s) in all", added, gone, back, g_scripts.size()));
+    tw::lua::log::flush();
     changed();
 }
 
@@ -384,6 +416,8 @@ bool set_enabled(int id, bool enabled) noexcept
         changed();
 
         TW_LOG_INFO("lua: disabled {}", entry->file);
+        tw::lua::log::event(entry->id, "switched off");
+        tw::lua::log::flush();
         return false;
     }
 
@@ -398,14 +432,16 @@ bool set_enabled(int id, bool enabled) noexcept
 
     // A toggle that did not take springs back - the user asked for "on" and did not get it, and
     // scripts.cfg keeps whatever it said before.
-    if(!launch(*entry)) {
+    if(!launch(*entry, "switched on")) {
         entry->enabled = false;
+        tw::lua::log::flush();
         changed();
         return false;
     }
 
     tw::lua::config::set_enabled(entry->file, true);
     tw::lua::config::save();
+    tw::lua::log::flush();
     changed();
 
     TW_LOG_INFO("lua: enabled {}", entry->file);
@@ -422,6 +458,8 @@ void reload(int id) noexcept
     // Off stays off: a fresh header for the tab, nothing run.
     if(!entry->enabled) {
         read_header(*entry);
+        tw::lua::log::event(entry->id, "reload: switched off - header read again, nothing run");
+        tw::lua::log::flush();
         changed();
         return;
     }
@@ -430,13 +468,16 @@ void reload(int id) noexcept
     stop(*entry);
     read_header(*entry);
 
-    if(launch(*entry)) {
+    if(launch(*entry, "reloaded")) {
         TW_LOG_INFO("lua: reloaded {}", entry->file);
     }
     else {
         TW_LOG_INFO("lua: reloaded {} - it failed: {}", entry->file, entry->error);
     }
 
+    // Now rather than within the writer's tenth of a second: a reload is what an author's save sets off, and if
+    // the new code takes the game down on its first frame, this is the last thing the log should have.
+    tw::lua::log::flush();
     changed();
 }
 

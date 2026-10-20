@@ -44,11 +44,12 @@ namespace TweakerLuaLinker.Api
                 foreach (var (key, entry) in api.Types.Where(t => t.Key.StartsWith(type + ":", StringComparison.Ordinal)).OrderBy(t => t.Key, StringComparer.Ordinal))
                 {
                     var method = key[(type.Length + 1)..];
-                    var entries = ForType(type, ApiReference.TypesOf("handle").Contains(type) ? Docs(docs, "handle:" + method)
-                        : ApiReference.TypesOf("array").Contains(type) ? Docs(docs, "array:" + method)
-                        : Docs(docs, "mute:" + method));
+                    var receiver = ApiReference.ReceiversOf(type).FirstOrDefault(r => docs.ContainsKey(r + ":" + method));
+                    var entries = ForType(type, receiver != null ? Docs(docs, receiver + ":" + method) : []);
                     w.Append('\n');
                     Describe(w, entries);
+                    if (entry.Returns != null)
+                        w.Append("---@return tw.").Append(entry.Returns).Append('\n');
                     w.Append("function ").Append(type).Append(':').Append(method).Append('(').Append(Params(entry)).Append(") end\n");
                 }
             }

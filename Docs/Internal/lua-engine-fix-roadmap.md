@@ -122,8 +122,9 @@
 
 **Где что лежит в коде** (чтобы не искать): жизненный цикл — `src/engine/engine_state.cxx`, группы —
 `engine_groups.cxx`, каналы — `channel_ref.cxx` + `family/fam_*.cxx`. Скриптовый слой — карта в шапке
-`src/lua/lua_host.hxx`; диспетчеры — в прологе, `src/lua/lua_prelude.cxx`, секция `tw.callbacks`
-(её же читает `harness/lua/ljtest`); бюджеты и приостановка — `lua_sched.cxx`; единственный список
+`src/lua/lua_host.hxx`; диспетчеры — в прологе, секция `tw.callbacks`, `src/lua/prelude/callbacks.lua`
+(её же гоняет `harness/lua/ljtest`; с 20.10.2026 пролог — файлы `src/lua/prelude/*.lua`, а не литералы
+`lua_prelude.cxx`, `script-tabs.md` §3.9); бюджеты и приостановка — `lua_sched.cxx`; единственный список
 C-точек входа — `k_entry_points` в `lua_vm.cxx`, сигнатуры к ним — таблица `SIG` в секции `tw.abi`
 пролога. Обоснование каждого решения — в комментариях рядом с кодом; этот документ отвечает на
 «зачем», код — на «почему именно так».

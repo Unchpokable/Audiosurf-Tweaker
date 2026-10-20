@@ -13,7 +13,7 @@
 
 namespace tw::lua
 {
-// Which callback a script is running. Shared with the prelude (the K_* constants in lua_prelude.cxx)
+// Which callback a script is running. Shared with the prelude (the K_* constants in prelude/callbacks.lua)
 // and passed through tw_script_enter/leave, so the numbering is ABI: append, never renumber.
 enum class callback : int {
     frame = 0,
@@ -24,9 +24,10 @@ enum class callback : int {
     state = 5,
     group = 6,
     unload = 7,
+    ui = 8, // a script's own control changed, or its button was clicked (tw.ui, lua_tabs) - on_change / on_click
 };
 
-inline constexpr int k_callback_count = 8;
+inline constexpr int k_callback_count = 9;
 
 [[nodiscard]] const char* callback_name(callback kind) noexcept;
 

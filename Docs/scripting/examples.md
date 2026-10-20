@@ -2,16 +2,16 @@
 
 [← back to the index](../scripting.md)
 
-Three scripts that were written to answer a question about the game, not to do anything for a player.
-They are here rather than in your `Scripts\` folder for exactly that reason — nobody wants a probe
-running while they play — but they are the most honest documentation of the API there is: each one
-was used to establish something the rest of these pages now states as fact.
+Scripts that were written to answer a question — about the game, or about the API itself — not to do
+anything for a player. They are here rather than in your `Scripts\` folder for exactly that reason —
+nobody wants a probe running while they play — but they are the most honest documentation of the API
+there is: each one was used to establish something the rest of these pages now states as fact.
 
 Copy any of them into `engine\TweakerStuff\Scripts\`, open the overlay's Scripts tab — press
 **Rescan** if the game was already running — and switch it on. See [Getting started](getting-started.md) if that layout is new to you.
 
 The full versions, with the whole investigation written out in comments, live in the repository under
-`TweakerPlugin/assets/scripts/dev/`.
+[`TweakerPlugin/assets/scripts/dev/`](https://github.com/Unchpokable/Audiosurf-Tweaker/tree/HEAD/TweakerPlugin/assets/scripts/dev).
 
 ---
 
@@ -250,6 +250,116 @@ Two details in there are worth more than the measurement:
 
 ---
 
+## A settings tab that survives a restart
+
+**Demonstrates:** `tw.ui.tab` with every kind of control, `on_change` and `committed`, `on_click`,
+`tw.storage.read_json` / `write_json`, and a card on the HUD that follows the tab. The script is
+`dev/ui_probe.lua`; it was written to check menu tabs and storage end to end in the game, and it is the
+shortest complete answer to "how do I give my script settings".
+
+Settings first, read while the script loads — and a file that does not read is worth one line to the
+player, not a failure. `exists` tells the first run (no file, nothing to say) from a spoiled file:
+
+```lua
+local DEFAULTS = { show = true, scale = 1, corner = "Top right", accent = tw.theme("accent_text"), rows = 3 }
+
+local cfg = {}
+if tw.storage.exists("settings.json") then
+    local loaded, why = tw.storage.read_json("settings.json")
+    if loaded then
+        cfg = loaded
+    else
+        tw.notify("UI Probe: starting from defaults - " .. why)
+    end
+end
+
+local function setting(key)
+    if cfg[key] == nil then return DEFAULTS[key] end
+    return cfg[key]
+end
+```
+
+`setting()` rather than `cfg.show or true`: `or` would turn a saved `false` back into `true`.
+
+The tab is declared once, at the top level, with the saved values as initial values:
+
+```lua
+local tab = tw.ui.tab{ label = "UI Probe" }
+
+local look   = tab:group("Look")
+local show   = look:toggle{ label = "Show the card", value = setting("show") }
+local scale  = look:slider{ label = "Card scale", min = 0.5, max = 2, value = setting("scale") }
+local corner = look:choice{ label = "Corner", options = { "Top left", "Top right", "Bottom" }, value = setting("corner") }
+local accent = look:color{ label = "Accent", value = setting("accent") }
+local rows   = look:number{ label = "Rows on the card", min = 1, max = 8, value = setting("rows") }
+
+local events = tab:list{ label = "Events", height = 150 }
+local reset  = tab:button{ label = "Reset to defaults" }
+```
+
+Saving happens where the change is final (`note()` adds a line to the Events list; the excerpts here are
+shortened from the file). While the slider is dragged the handler hears every value with
+`committed = false` — the probe lists them, which is the easiest way to see the difference — and saves
+only on the release:
+
+```lua
+local function save()
+    cfg.show, cfg.scale, cfg.corner = show:get(), scale:get(), corner:get().text
+    cfg.accent, cfg.rows = accent:get(), rows:get()
+    local ok, why = tw.storage.write_json("settings.json", cfg)
+    if not ok then tw.warn("settings not saved: " .. why) end
+end
+
+for name, control in pairs({ show = show, scale = scale, corner = corner, accent = accent, rows = rows }) do
+    control:on_change(function(value, committed)
+        note(name .. " -> " .. tostring(value) .. (committed and "" or "  (dragging)"))
+        if committed then save() end
+    end)
+end
+```
+
+Reset is a button and a handful of `:set()` calls. `:set()` raises no `on_change`, so the handler saves
+by itself:
+
+```lua
+reset:on_click(function()
+    show:set(DEFAULTS.show)
+    scale:set(DEFAULTS.scale)
+    corner:set(DEFAULTS.corner)
+    accent:set(DEFAULTS.accent)
+    rows:set(DEFAULTS.rows)
+    save()
+end)
+```
+
+And the card reads the controls every frame — `:get()` is one call, and `corner:get()` returns the same
+option table each time, so this makes no garbage:
+
+```lua
+tw.on_frame(function()
+    if not show:get() then return end
+    local k = scale:get()
+    local where = ({ "top_left", "top_right", "bottom_right" })[corner:get().index]
+    local x, y = tw.hud.place(260 * k, 80 * k, where)
+    if x == nil then return end
+    tw.hud.rect(x, y, x + 260 * k, y + 80 * k, tw.alpha(tw.theme("surface"), 0.92), 8 * k)
+    tw.hud.text(x + 14 * k, y + 8 * k, "UI Probe", accent:get(), 16 * k)
+end)
+```
+
+Two details worth keeping:
+
+- **Save a choice by its text**, not its number. Insert an option in the middle of the list in the
+  next version of your script and every saved number points at the wrong one; a text that is gone is
+  caught — the choice stays at its first option and the Scripts tab says why.
+- **The probe also has a "Fail five times" button**, which throws from `on_frame` five frames running.
+  That is the error budget: the script is suspended, its tab dims and its page switches off as a whole,
+  and Resume in the Scripts tab brings both back. Worth pressing once, to know what your players see when
+  your script breaks.
+
+---
+
 ## Next
 
-[Reading and writing the game](channels.md) — the rules these three were written to establish.
+[Reading and writing the game](channels.md) — the rules the first three were written to establish;
+[Menu tabs](menus.md) and [Saving data](storage.md) — the whole of what the last one touches.

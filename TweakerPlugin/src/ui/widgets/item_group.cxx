@@ -88,6 +88,11 @@ void item_group::set_inner_padding(ImVec2 padding) noexcept
     m_inner_padding = padding;
 }
 
+void item_group::set_fill_width(bool fill_width) noexcept
+{
+    m_fill_width = fill_width;
+}
+
 void item_group::begin()
 {
     assert(!m_active && "item_group::begin() called while already active");
@@ -141,6 +146,13 @@ void item_group::end()
     const float frame_top = m_origin.y + (m_title_h > 0.f ? m_title_h * 0.5f : 0.f);
     ImVec2 frame_min { m_origin.x, frame_top };
     ImVec2 frame_max { content_max.x + m_inner_padding.x, content_max.y + m_inner_padding.y };
+
+    // Filling, the right edge is where the space the group was opened in ends, less the same outer padding the
+    // left edge is in by - a section across the whole page. Content wider than that still widens it: a frame
+    // never cuts through what it holds.
+    if(m_fill_width) {
+        frame_max.x = (std::max)(frame_max.x, m_saved_work_max_x - m_outer_padding.x);
+    }
 
     if(frame_max.x < frame_min.x + 1.f) {
         frame_max.x = frame_min.x + 1.f;

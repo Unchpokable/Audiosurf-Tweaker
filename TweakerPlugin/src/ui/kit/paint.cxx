@@ -228,6 +228,22 @@ ImRect label_block(std::string_view label, const ImVec2& control)
     return ImRect { text_pos, ImVec2 { text_pos.x + text_size.x, text_pos.y + text_size.y } };
 }
 
+void paragraph(std::string_view text, const ImVec4& color)
+{
+    const ImVec2 start = ImGui::GetCursorScreenPos();
+    const float wrap_w = (std::max)(1.f, ImGui::GetContentRegionAvail().x);
+    const float font = ImGui::GetFontSize();
+
+    const char* begin = text.data();
+    const char* end = begin + text.size();
+    const ImVec2 size = text.empty() ? ImVec2 { 0.f, font } : ImGui::CalcTextSize(begin, end, false, wrap_w);
+    if(!text.empty()) {
+        ImGui::GetWindowDrawList()->AddText(ImGui::GetFont(), font, start, to_u32(color), begin, end, wrap_w);
+    }
+
+    ImGui::Dummy(ImVec2 { (std::max)(1.f, size.x), (std::max)(font, size.y) });
+}
+
 ImVec2 pill_size(const char* text) noexcept
 {
     return ImVec2 { ImGui::CalcTextSize(text).x + k_pill_pad_x * 2.f, pill_height() };

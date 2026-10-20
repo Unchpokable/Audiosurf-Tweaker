@@ -73,15 +73,19 @@ class Project:
     def __init__(self, engine_dir, files=None):
         self.root = Path(engine_dir)
         self.types = load_channel_types(self.root / "channels.lst")
-        paths = files if files else sorted(self.root.rglob("*.cgr"))
+        if files:
+            paths = [Path(p) for p in files]
+        else:
+            from .cache import game_files
+
+            paths = [p for _, p in game_files(self.root)]
         self.groups = {}
         self.errors = {}
         for p in paths:
-            p = Path(p)
             try:
                 g = Group(p, self.types, self.root)
                 self.groups[g.rel] = g
-            except Exception as e:  # a few Cache/Web files are truncated downloads
+            except Exception as e:
                 self.errors[str(p)] = repr(e)
         # A CHES record names the producer either by file ("Highway.cgr") or by
         # bare group name ("Achievements", "StatCollector"); "StartGroup" is the
@@ -97,6 +101,30 @@ class Project:
     @staticmethod
     def path_stem(f):
         return f[:-4] if f.lower().endswith(".cgr") else f
+
+    def find_group(self, name):
+        """A group by any name a person would use for it: `Render/RenderCommon.cgr`, `RenderCommon.cgr`,
+        `RenderCommon`, or `StartGroup` for the root - the same looseness as `tw.*` in scripts.
+
+        Raises KeyError with the nearest names when there is no match or more than one."""
+        if name in self.groups:
+            return self.groups[name]
+        lowered = name.replace("\\", "/").lower()
+        for rel, g in self.groups.items():
+            if rel.lower() == lowered:
+                return g
+        hits = []
+        for g in self.by_file.get(name, []) or [g for g in self.groups.values()
+                                                 if lowered in (g.file.lower(), self.path_stem(g.file).lower())]:
+            if g not in hits:
+                hits.append(g)
+        if len(hits) == 1:
+            return hits[0]
+        if hits:
+            raise KeyError(f"{name!r} is more than one group: {', '.join(g.rel for g in hits)} - give the path")
+        near = sorted(rel for rel in self.groups if lowered in rel.lower())[:8]
+        hint = f" Did you mean: {', '.join(near)}?" if near else ""
+        raise KeyError(f"no group called {name!r}.{hint}")
 
     # ---------------------------------------------------------------- imports
     def imports(self, group):

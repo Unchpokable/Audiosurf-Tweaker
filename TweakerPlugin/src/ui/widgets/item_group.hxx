@@ -18,6 +18,11 @@ public:
     void set_outer_padding(ImVec2 padding) noexcept;
     void set_inner_padding(ImVec2 padding) noexcept;
 
+    // By default the frame is its content plus inner padding - what the theme editor's masonry of groups
+    // needs. Filling, it spans the whole width it was opened in (less the outer padding, on both sides): a
+    // section of a settings page, the same width whatever is inside it. Height stays the content's.
+    void set_fill_width(bool fill_width) noexcept;
+
     void begin();
     void end();
 
@@ -27,6 +32,7 @@ private:
     float m_rounding = theme::radius::panel;
     ImVec2 m_outer_padding { 0.f, 4.f };
     ImVec2 m_inner_padding { 8.f, 8.f };
+    bool m_fill_width = false;
 
     bool m_active = false;
     ImVec2 m_origin {};

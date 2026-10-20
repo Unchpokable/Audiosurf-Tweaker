@@ -143,6 +143,20 @@ mkdir -p "$DEVTOOLS_OUT"
 cp -f "$LINKER_OUT/twllink.exe" "$LINKER_OUT/twllink.pdb" "$DEVTOOLS_OUT/"
 echo "    $LINKER_OUT/twllink.exe (+ .pdb) -> $DEVTOOLS_OUT"
 
+# --- 4. The rest of DevTools/: CgrPy ---------------------------------------------------------
+# As in Deploy.sh: CopyDevTools in TweakerUI.csproj decides what goes in, this carries DevToolsPayload/
+# over from the freshest bin/ tree (the newest DevToolsPayload.stamp).
+echo "==> Locating DevToolsPayload/ (CgrPy) from the TweakerUI build"
+DEVTOOLS_STAMP="$(find "$REPO_ROOT/TweakerUI/bin" -type f -name "DevToolsPayload.stamp" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)"
+if [ -z "$DEVTOOLS_STAMP" ]; then
+    echo "ERROR: DevToolsPayload.stamp not found under TweakerUI/bin - did TweakerUI.csproj's CopyDevTools target run?" >&2
+    exit 1
+fi
+DEVTOOLS_PAYLOAD="$(dirname "$DEVTOOLS_STAMP")/DevToolsPayload"
+mkdir -p "$TWEAKER_OUT/DevTools"
+cp -rf "$DEVTOOLS_PAYLOAD/." "$TWEAKER_OUT/DevTools/"
+echo "    $DEVTOOLS_PAYLOAD -> $TWEAKER_OUT/DevTools"
+
 # --- Summary ---------------------------------------------------------------------------------
 FILE_COUNT="$(find "$DIST_DIR" -type f | wc -l)"
 TOTAL_SIZE_MB="$(find "$DIST_DIR" -type f -printf '%s\n' | awk '{sum+=$1} END {printf "%.1f", sum/1048576}')"

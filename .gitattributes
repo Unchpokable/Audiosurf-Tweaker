@@ -61,3 +61,8 @@
 #*.PDF   diff=astextplain
 #*.rtf   diff=astextplain
 #*.RTF   diff=astextplain
+
+# Tools/CgrPy launchers: the bash one must stay LF on Windows too (bash reads a CR as part of the
+# command), the cmd one CRLF.
+Tools/CgrPy/cgrpy text eol=lf
+Tools/CgrPy/cgrpy.cmd text eol=crlf

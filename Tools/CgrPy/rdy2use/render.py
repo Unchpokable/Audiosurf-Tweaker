@@ -1,6 +1,7 @@
 r"""Trace the draw path of a Quest3D scene node.
 
-The renderable triple is always the same shape (see reversing-journal-geometry.md §4.3):
+The renderable triple is always the same shape (geometry journal §4.3,
+https://github.com/Unchpokable/Audiosurf-Tweaker/blob/HEAD/Docs/Internal/reversing-journal-geometry.md):
 
     3D Object   port0 -> Motion/Matrix     transform
                 port2 -> Surface
@@ -11,12 +12,9 @@ The renderable triple is always the same shape (see reversing-journal-geometry.m
 `chain()` walks that downwards from any node; `callers()` walks upwards to find
 what actually invokes it each frame. Both follow cross-group import stubs.
 
-    uv run python render.py chain   <group.cgr> <channel>
-    uv run python render.py callers <group.cgr> <channel>
-    uv run python render.py texusers <group.cgr> <channel>
+See USAGE below for the commands.
 """
 
-import pickle
 import sys
 from collections import defaultdict
 
@@ -28,10 +26,15 @@ _P = None
 def P():
     global _P
     if _P is None:
-        from cgr.paths import project_pickle
+        from cgr.cache import load_project
 
-        _P = pickle.load(open(project_pickle(), "rb"))
+        _P = load_project()
     return _P
+
+
+def G(rel):
+    """A group by path, file name or short name (Project.find_group); a Group passes through."""
+    return P().find_group(rel) if isinstance(rel, str) else rel
 
 
 def label(g, c):
@@ -59,7 +62,7 @@ def resolve(g, c):
 
 
 def chain(rel, idx, depth=0, seen=None, maxd=7, port=None):
-    g = P().groups[rel] if isinstance(rel, str) else rel
+    g = G(rel)
     # NB: str has an .index method, so duck-typing on it picks the wrong branch
     c = idx if hasattr(idx, "chunks") else g.get(int(idx))
     seen = seen if seen is not None else set()
@@ -96,7 +99,7 @@ def _rev(g):
 
 def callers(rel, idx, depth=0, seen=None, maxd=8):
     """Walk upwards to whatever drives this node each frame."""
-    g = P().groups[rel] if isinstance(rel, str) else rel
+    g = G(rel)
     idx = int(idx)
     seen = seen if seen is not None else set()
     key = (g.rel, idx)
@@ -126,7 +129,7 @@ def callers(rel, idx, depth=0, seen=None, maxd=8):
 
 def texusers(rel, idx):
     """Every Surface that ends up using this texture channel, through switches."""
-    g = P().groups[rel]
+    g = G(rel)
     rev = _rev(g)
     front = [(int(idx), [])]
     out = []
@@ -156,7 +159,7 @@ def find(rel, name):
     dozens of channels called `Set Vector`, and TrafficCommander has two different Values both called
     `TrafficType`. A tool that quietly returned the first would be wrong exactly when it matters.
     """
-    g = P().groups[rel]
+    g = G(rel)
     needle = name.lower()
     hits = sorted(
         (c for c in g.channels.values() if needle in (c.name or "").lower()),
@@ -166,31 +169,42 @@ def find(rel, name):
     for c in hits:
         print(f"  #{c.index:<6} {c.type_name:<22} {c.name}")
 
-    print(f"{len(hits)} match(es) in {rel}")
+    print(f"{len(hits)} match(es) in {g.rel}")
     if len(hits) > 1:
         print("NOTE: more than one - pick by index, and say in any note WHY that one.")
 
 
 COMMANDS = dict(find=find, chain=chain, callers=callers, texusers=texusers)
 
-USAGE = """Trace the draw path of a Quest3D scene node. Needs the cache: run `uvrun build_proj` once.
+USAGE = """Trace the draw path of a Quest3D scene node. Needs the cache: run `cgrpy build_proj` once.
+A group can be named by its path, its file name or its short name: `RenderCommon` is enough.
 
-    uvrun render find     <group.cgr> <name>    # channel indices matching a name
-    uvrun render chain    <group.cgr> <index>   # down: Surface -> geometry / material / texture
-    uvrun render callers  <group.cgr> <index>   # up: who invokes it each frame, imports included
-    uvrun render texusers <group.cgr> <index>   # which Surfaces use this texture
+    cgrpy render find     <group.cgr> <name>    # channel indices matching a name
+    cgrpy render chain    <group.cgr> <index>   # down: Surface -> geometry / material / texture
+    cgrpy render callers  <group.cgr> <index>   # up: who invokes it each frame, imports included
+    cgrpy render texusers <group.cgr> <index>   # which Surfaces use this texture
 
 The last three take an **index**, not a name, and `find` is how you get one. That split is
 deliberate: channel names are not unique within a group, so resolving one silently would pick a
 channel you did not mean - which is a mistake this project has actually made and paid for.
 
-Where it was used: most of reversing-journal-render.md §5. Working out that `GridColor` colours road
-furniture and the hit flash rather than the puzzle tiles came from `callers` on it, after `chain`
-showed the tiles are drawn down a path whose Surface carries no Material at all."""
+Where it was used: most of the render journal's §5. Working out that `GridColor` (three channels of
+that name in RenderCommon) colours road furniture and the hit flash rather than the puzzle tiles came
+from `callers` on #202, after `chain` showed the tiles are drawn down a path whose Surface carries no
+Material at all.
+
+    cgrpy render find RenderCommon GridColor
+    cgrpy render callers RenderCommon 202
+
+Render journal (working notes, in Russian):
+https://github.com/Unchpokable/Audiosurf-Tweaker/blob/HEAD/Docs/Internal/reversing-journal-render.md"""
 
 
 if __name__ == "__main__":
     if len(sys.argv) < 2 or sys.argv[1] not in COMMANDS:
         print(USAGE)
         raise SystemExit(2)
-    COMMANDS[sys.argv[1]](*sys.argv[2:])
+    try:
+        COMMANDS[sys.argv[1]](*sys.argv[2:])
+    except KeyError as error:
+        raise SystemExit(f"render: {error.args[0]}")

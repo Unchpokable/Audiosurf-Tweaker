@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# cgrpy - run a CgrPy tool with its dependencies handled. Pair: cgrpy.cmd (cmd, PowerShell); keep them in step.
+#
+#   ./cgrpy                          list the tools
+#   ./cgrpy chtypes array            rdy2use/chtypes.py with "array"
+#   ./cgrpy vtdump --type "Array Vector"
+#   ./cgrpy examples/qchic.py        anything else, by path
+#
+# All this does is set up the environment and hand the arguments to launcher.py unchanged. uv builds the
+# virtualenv on first use. Everything generated stays inside this folder (.venv, .cache) - uv's own cache
+# and the Python it may download included, unless you have pointed UV_CACHE_DIR / UV_PYTHON_INSTALL_DIR
+# somewhere yourself.
+
+set -e
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Under Git Bash uv and Python are Windows programs: give them C:/... paths, not /c/...
+if pwd -W >/dev/null 2>&1; then
+    root="$(cd "$here" && pwd -W)"
+else
+    root="$here"
+fi
+
+export PYTHONIOENCODING=utf-8
+export UV_CACHE_DIR="${UV_CACHE_DIR:-$root/.cache/uv}"
+export UV_PYTHON_INSTALL_DIR="${UV_PYTHON_INSTALL_DIR:-$root/.cache/python}"
+
+if ! command -v uv >/dev/null 2>&1; then
+    cat >&2 <<'MSG'
+cgrpy needs uv, and README.md says so in its very first section.
+
+    winget install --id=astral-sh.uv -e
+
+Then open a new terminal, so that uv is on its PATH, and run this again. uv sets up Python and
+everything else by itself; see https://docs.astral.sh/uv/ for other ways to install it.
+MSG
+    exit 1
+fi
+
+exec uv run --quiet --project "$root" python "$root/launcher.py" "$@"

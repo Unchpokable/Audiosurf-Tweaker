@@ -1100,6 +1100,12 @@ Do_CollectMatchesOnTimer (#113) -> Do_ManageCollectionTimer (#455)
 | `Puzzle::BlocksSlidThisFrame?` | 441 | пока блоки едут — таймер **стоит** |
 | `SpecialPurpose::MatchCollectionTicks` | 710 | длина окна; имя уникально |
 
+**Второй флаг заморозки — похоже, мёртвый** (19.10.2026, `cgrpy`): `HintmanEliteFreezingMatchCollection?` (#921) ставит
+в 1 только `Do_IncreaseMatchCollectionTimer` (#718), под `IfElse` #717 (`PlayerLevel > 1 && NumMatchedBlocks > 0`), под
+`Do_ExtendCollectionTime` (#879) ← `IfElse` #869 ← `Trigger` #866 по `RMB?` — а у #866 родителей в группе нет
+(`query parents SpecialPurpose 866`). Остаток старой способности; в живой игре не проверялось. Скрипту всё равно:
+`MatchTimer` читается как есть.
+
 **Осталось до проверки = `MatchCollectionTicks - MatchTimer`.** Значение может уйти в минус на кадр
 (проход срабатывает по превышению) и выше окна (`Do_ResetMatchingTimer` вычитает целое окно, а не
 клампит) — оба края надо зажимать.
@@ -1275,6 +1281,49 @@ Do_HitColor:
 
 Полная россыпь точек начисления — в `Temp/Dumped/_work/analysis/puzzle_logic.txt`.
 
+### 5.1 Счёт Mono — две ступени (18.10.2026)
+
+Повод — агент из обвязки Ф4b (`dev-bundle-roadmap.md`) объяснил «игроку на Mono», что каскад его не касается,
+«потому что у Mono нет матчей». Неправда, и владелец поправил по игре: у Mono **есть доска и матчи** — всё
+цветное совпадает со всем цветным (`Do_NinjaMagic` перекрашивает трафик в жёлтый или камень, §4), серый — камень и
+не совпадает ни с чем; каскад и тайминги сжигания — общие с Puzzle (окно сбора у Mono свои числа: Mono 15, Mono
+Pro 17, Mono Ninja 28 тиков, см. справочник). Счёт — **двухступенчатый**, сверено CgrPy:
+
+1. **Сбор цветного блока** — сразу, в обход матчей: `Puzzle::Do_NinjaHitBonus` (#1224) при `Ninja? &&
+   !PreventMonoStealthAndCumulativePoints?` на цветном → `Do_HitColor` (#1228): `Do_UpdatePoints(UpdatePoints_Delta =
+   ScoreDelta)`, где `Puzzle::ScoreDelta` (#984) = `SpecialPurpose::NinjaBonusPointsOnCarHit` (#987), затем
+   `SpecialPurpose::Do_IncrementNinjaBonusPoints` (#989): `NinjaBonusPointsOnCarHit := MIN(cap, + step)`.
+   На камне — `Do_HitStone` (#1226) → `Do_ResetNinjaBonusPoints` (#990): обратно в **1**; в Ironmode ещё и
+   `Do_RemoveOneColorFromBuffer`. Шаг и потолок — по лиге (`LeagueID`):
+
+   | Лига | шаг (ChannelSwitch #1155) | потолок (ChannelSwitch #1117) |
+   |---|---|---|
+   | Casual (0) | 1 | 66 |
+   | Pro (1) | 4 | 200 |
+   | Elite (2) | `NinjaBonusDeltaPerHit` #993 = 4, писателей нет | 200 |
+
+   Владелец помнил «+1 за каждый следующий, до 200» — это шаг Casual и потолок Pro/Elite; граф говорит как в таблице,
+   и владелец подтвердил: цифры графа верные, его — по памяти (19.10.2026). То же про цену матча ниже.
+   Песенный тег, который поднимает `PreventMonoStealthAndCumulativePoints?`, выключает эту ступень целиком (и Stealth).
+2. **Матчи** — обычным проходом сбора с каскадом. Цена блока у Mono — плоская: `StatCollector::Do_GenerateColorPointValues`
+   (#119) заполняет `Stats: ColorPointValues` через ChannelSwitch #757 по `Ninja?`, и у Mono это
+   `SpecialPurpose::NinjaBlockValue` (#1232) = **4** для всех цветов (пять писателей; четыре ставят 4, #1294 — из
+   тега песни, 0…20). Владелец помнил «по стоимости жёлтого из Puzzle» — жёлтый Puzzle стоит 5 (ChannelSwitch #128),
+   у Mono 4.
+
+Не разобрано: `Puzzle::Do_RewardMono` (#163) — ветка `CallSelected` #161 по `StartGroup::GameMode == 2`, частица с
+`MonoScoreIncrementAmount` = 3; жива ли она в нынешнем Mono — не проверено. `Puzzle::CurrentNinjaPointsPerTile` (#1235,
+огибающая по кольцу трассы) никем не импортируется.
+
+```
+cgrpy query dec Puzzle Do_NinjaHitBonus --depth 4
+cgrpy query dec SpecialPurpose Do_IncrementNinjaBonusPoints
+cgrpy query switch SpecialPurpose 1155
+cgrpy query switch SpecialPurpose 1117
+cgrpy query switch StatCollector 757
+cgrpy query writers SpecialPurpose NinjaBlockValue
+```
+
 ---
 
 ## 6. `Actors/Player.cgr`
@@ -1399,7 +1448,7 @@ Aco_FloatChannel::GetFloat() / SetFloat(float)            -> float
 | `examples/genall.py` | генерация всего набора артефактов |
 
 Полный индекс с примерами и указанием, где какой инструмент пригодился, — `Tools/CgrPy/README.md`.
-Запуск через `Tools/CgrPy/uvrun.bat`, зависимости ставит `uv` сам.
+Запуск через `Tools/CgrPy/cgrpy` (`cgrpy.cmd` в cmd), зависимости ставит `uv` сам.
 
 Выгрузки — `Temp/Dumped/_work/analysis/`:
 

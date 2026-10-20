@@ -89,7 +89,11 @@ namespace TweakerLuaLinker.Tests
                     on_frame = function(fn) frame = fn end,
                     on_call = function() end,
                     theme = function() return 0 end,
-                    hud = { safe = function() return 0, 0, 100, 100 end, text = function(x, y, s) io.write(s) end },
+                    hud = {
+                        measure = function() return 10, 10 end,
+                        place = function() return 0, 0 end,
+                        text = function(x, y, s) io.write(s) end,
+                    },
                 }
                 """;
             var run = LuaRunner.Run(stub + "\n" + result.Bundle + "\nframe()\n");

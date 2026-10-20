@@ -135,6 +135,19 @@ New-Item -ItemType Directory -Force -Path $devToolsOut | Out-Null
 Copy-Item (Join-Path $linkerOut "twllink.exe"), (Join-Path $linkerOut "twllink.pdb") -Destination $devToolsOut -Force
 Write-Host "    $(Join-Path $linkerOut 'twllink.exe') (+ .pdb) -> $devToolsOut"
 
+# --- 4. The rest of DevTools\: CgrPy -----------------------------------------------------------
+# As in Deploy.ps1: CopyDevTools in TweakerUI.csproj decides what goes in, this carries DevToolsPayload\
+# over from the freshest bin\ tree (the newest DevToolsPayload.stamp).
+Write-Host "==> Locating DevToolsPayload\ (CgrPy) from the TweakerUI build"
+$devToolsStamp = Get-ChildItem -Path (Join-Path $repoRoot "TweakerUI\bin") -Recurse -File -Filter "DevToolsPayload.stamp" -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if (-not $devToolsStamp) { throw "DevToolsPayload.stamp not found under TweakerUI\bin - did TweakerUI.csproj's CopyDevTools target run?" }
+$devToolsPayload = Join-Path $devToolsStamp.DirectoryName "DevToolsPayload"
+$devToolsRoot = Join-Path $tweakerOut "DevTools"
+New-Item -ItemType Directory -Force -Path $devToolsRoot | Out-Null
+Copy-Item (Join-Path $devToolsPayload "*") -Destination $devToolsRoot -Recurse -Force
+Write-Host "    $devToolsPayload -> $devToolsRoot"
+
 # --- Summary ------------------------------------------------------------------------------------
 $stats = Get-ChildItem $distDir -Recurse -File | Measure-Object -Property Length -Sum
 Write-Host "`n==> Debug bundle ready at $distDir"

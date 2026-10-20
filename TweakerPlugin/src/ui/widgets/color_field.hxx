@@ -38,6 +38,13 @@ public:
     // an owner echoing its own state back cannot fight the picker.
     void set_color(const ImVec4& rgba) noexcept;
 
+    // Whether the picker owns the colour right now - exactly when set_color() is ignored (see slider::active).
+    [[nodiscard]] bool active() const noexcept;
+
+    // Off: the swatch takes no click, an open picker closes, and the row is dimmed to theme::disabled_alpha
+    // unless an enclosing BeginDisabled() already dimmed it (R12, as button).
+    void set_enabled(bool enabled) noexcept;
+
     void update();
 
     [[nodiscard]] ImVec4 color() const noexcept;
@@ -63,5 +70,6 @@ private:
 
     bool m_changed = false;
     bool m_committed = false;
+    bool m_enabled = true;
 };
 } // namespace tw::ui::widgets

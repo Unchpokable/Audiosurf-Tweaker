@@ -1,0 +1,12 @@
+{
+  "format": 1,
+  "version": 5,
+  "skills": [
+    { "name": "audiosurf-grill", "optional": false },
+    { "name": "tweaker-lua-api", "optional": false },
+    { "name": "audiosurf-game-files", "optional": false },
+    { "name": "cgrpy", "optional": false },
+    { "name": "audiosurf-in-game-loop", "optional": false },
+    { "name": "audiosurf-binaries", "optional": true }
+  ]
+}

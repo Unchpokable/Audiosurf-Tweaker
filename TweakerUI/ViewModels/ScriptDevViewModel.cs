@@ -30,8 +30,11 @@ namespace TweakerUI.ViewModels
         /// <summary>Quiet time after the last change before a rebuild: one save is often several writes.</summary>
         private static readonly TimeSpan RebuildSettle = TimeSpan.FromMilliseconds(300);
 
-        /// <summary>Folders of a project that are not its sources: twllink's output and editor state.</summary>
-        private static readonly string[] IgnoredFolders = { "build", ".twllink", ".git", ".vscode", ".vs", ".idea" };
+        /// <summary>
+        /// Folders of a project that are not its sources: twllink's output, editor state, and the AI agent setup -
+        /// opening a project rewrites .tweaker\local.json, which must not count as a save.
+        /// </summary>
+        private static readonly string[] IgnoredFolders = { "build", ".twllink", ".git", ".vscode", ".vs", ".idea", ".tweaker", ".agents", ".claude" };
 
         private readonly ScriptProjects _projects;
         private readonly Twllink _twllink;
@@ -131,6 +134,8 @@ namespace TweakerUI.ViewModels
                 OnPropertyChanged(nameof(CanInstall));
                 OnPropertyChanged(nameof(InstallHint));
                 _ = DetectEditorsAsync();
+                _ = DetectUvAsync();
+                _ = RefreshAgentsAsync();
             }
         }
 
@@ -175,7 +180,9 @@ namespace TweakerUI.ViewModels
             // Picking a project in the list is leaving whatever form was open: its details are what was asked for.
             IsCreating = false;
             IsEditing = false;
+            IsAgentPanelOpen = false;
             Watch();
+            _ = RefreshAgentsAsync();
         }
 
         partial void OnRebuildOnSaveChanged(bool value) => Watch();
@@ -260,6 +267,7 @@ namespace TweakerUI.ViewModels
             NewId = "";
             _idTyped = false;
             NewTemplate = Templates[0];
+            ResetNewAgentChoice();
             NewNameProblem = null;
             NewIdProblem = null;
             CreateProblem = null;
@@ -313,6 +321,9 @@ namespace TweakerUI.ViewModels
             {
                 Busy = false;
             }
+
+            // The project exists whatever happens here; a kit problem is reported, not a failed Create.
+            await SetUpNewProjectAsync(path, name);
 
             IsCreating = false;
             _projects.Remember(path);
@@ -703,7 +714,7 @@ namespace TweakerUI.ViewModels
             if (!await ConfirmRunningEditorAsync(editor))
                 return;
 
-            var info = ScriptEditors.StartInfo(editor, row.Root, file, line, column, DevTools.Binaries, PluginService.GameRootDirectory);
+            var info = ScriptEditors.StartInfo(editor, row.Root, file, line, column, DevTools.ToolFolders, PluginService.GameRootDirectory);
             var error = ScriptEditors.Launch(info, out var process);
             if (error != null)
             {

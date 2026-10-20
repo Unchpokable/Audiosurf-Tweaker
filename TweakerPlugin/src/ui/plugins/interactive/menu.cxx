@@ -168,6 +168,20 @@ struct extra_tab {
 
 std::vector<extra_tab> g_extra_tabs;
 
+// Tabs that come and go - see menu.hxx::set_dynamic_tabs. After the extra tabs, so neither the built-in
+// indices nor the handles add_extra_tab returned ever move.
+struct dynamic_entry {
+    std::string key;
+    std::string label;
+    tw::ui::plugins::interactive::menu::dynamic_tab_draw_fn draw = nullptr;
+    int token = 0;
+    bool enabled = true;
+};
+
+std::vector<dynamic_entry> g_dynamic_tabs;   // the strip as it is
+std::vector<dynamic_entry> g_pending_tabs;   // the next list, applied at the top of update()
+bool g_dynamic_pending = false;
+
 tab_view g_tabs { "menu_tabs" };
 list_view g_skins_list { "menu_skins" };
 button g_skins_apply_btn { "menu_skins_apply", { 100.f, 28.f } };
@@ -202,20 +216,87 @@ segmented g_pins_side { "menu_pins_side" };
 button g_theme_reset_btn { "menu_theme_reset", { 100.f, 28.f } };
 toggle g_offline_pin_toggle { "menu_offline_pin" };
 
+constexpr std::string_view k_builtin_labels[] = { "Skins", "Tweaks", "Player", "Settings" };
+
+int first_dynamic_tab() noexcept
+{
+    return k_first_extra_tab + static_cast<int>(g_extra_tabs.size());
+}
+
+// The strip from scratch: built-in, extra, dynamic - each appended, never inserted. k_player_tab and the
+// literal indices in update() are positional, and anything that shifted them would silently draw the wrong page.
+void rebuild_tab_strip(int selected)
+{
+    std::vector<std::string_view> labels { std::begin(k_builtin_labels), std::end(k_builtin_labels) };
+    for(const extra_tab& tab : g_extra_tabs) {
+        labels.emplace_back(tab.label);
+    }
+    for(const dynamic_entry& tab : g_dynamic_tabs) {
+        labels.emplace_back(tab.label);
+    }
+
+    g_tabs.set_tabs(labels, selected);
+
+    const int first = first_dynamic_tab();
+    for(std::size_t i = 0; i < g_dynamic_tabs.size(); ++i) {
+        g_tabs.set_tab_id(first + static_cast<int>(i), g_dynamic_tabs[i].key);
+        g_tabs.set_tab_enabled(first + static_cast<int>(i), g_dynamic_tabs[i].enabled);
+    }
+}
+
+// The list set_dynamic_tabs left, put into the strip - here, at the top of update() and outside the tab_view,
+// because that call may come from inside a page (menu.hxx).
+void apply_dynamic_tabs()
+{
+    if(!g_dynamic_pending) {
+        return;
+    }
+    g_dynamic_pending = false;
+
+    const int first = first_dynamic_tab();
+
+    // The same tabs, maybe relabelled or re-dimmed - the usual case: a script reloaded, and declared what it
+    // had. Nothing is rebuilt, so nothing on screen starts over.
+    bool same = g_pending_tabs.size() == g_dynamic_tabs.size();
+    for(std::size_t i = 0; same && i < g_pending_tabs.size(); ++i) {
+        same = g_pending_tabs[i].key == g_dynamic_tabs[i].key;
+    }
+    if(same) {
+        for(std::size_t i = 0; i < g_pending_tabs.size(); ++i) {
+            g_tabs.set_label(first + static_cast<int>(i), g_pending_tabs[i].label);
+            g_tabs.set_tab_enabled(first + static_cast<int>(i), g_pending_tabs[i].enabled);
+        }
+        g_dynamic_tabs.swap(g_pending_tabs);
+        return;
+    }
+
+    // A different list. The selection follows its tab by key; a tab that is gone hands it to the one before
+    // it, which may be the last fixed tab.
+    const int selected = g_tabs.selected_tab();
+    const bool on_dynamic = selected >= first && selected - first < static_cast<int>(g_dynamic_tabs.size());
+    int next = selected;
+    if(on_dynamic) {
+        const std::string& key = g_dynamic_tabs[static_cast<std::size_t>(selected - first)].key;
+        next = selected - 1;
+        for(std::size_t i = 0; i < g_pending_tabs.size(); ++i) {
+            if(g_pending_tabs[i].key == key) {
+                next = first + static_cast<int>(i);
+                break;
+            }
+        }
+    }
+
+    g_dynamic_tabs.swap(g_pending_tabs);
+    rebuild_tab_strip((std::min)(next, first + static_cast<int>(g_dynamic_tabs.size()) - 1));
+}
+
 void ensure_widgets_ready()
 {
     if(g_widgets_ready) {
         return;
     }
 
-    // The extra tab is appended, never inserted: k_player_tab and the literal indices in update()
-    // are positional, and anything that shifted them would silently draw the wrong page.
-    std::vector<std::string_view> labels { "Skins", "Tweaks", "Player", "Settings" };
-    for(const extra_tab& tab : g_extra_tabs) {
-        labels.emplace_back(tab.label);
-    }
-
-    g_tabs.set_tabs(labels);
+    rebuild_tab_strip(-1);
     g_tabs.set_rounding(tw::ui::theme::radius::panel);
 
     static const std::string_view k_side_labels[] = { "Left", "Right" };
@@ -558,6 +639,28 @@ int add_extra_tab(std::string_view label, extra_tab_draw_fn draw) noexcept
     return k_first_extra_tab + static_cast<int>(g_extra_tabs.size()) - 1;
 }
 
+void set_dynamic_tabs(std::span<const dynamic_tab> tabs) noexcept
+{
+    g_pending_tabs.clear();
+    g_pending_tabs.reserve(tabs.size());
+    for(const dynamic_tab& tab : tabs) {
+        if(tab.draw == nullptr) {
+            continue;
+        }
+        g_pending_tabs.push_back(dynamic_entry { std::string { tab.key }, std::string { tab.label }, tab.draw, tab.token, tab.enabled });
+    }
+    g_dynamic_pending = true;
+}
+
+std::vector<std::string> fixed_tab_labels()
+{
+    std::vector<std::string> labels { std::begin(k_builtin_labels), std::end(k_builtin_labels) };
+    for(const extra_tab& tab : g_extra_tabs) {
+        labels.push_back(tab.label);
+    }
+    return labels;
+}
+
 bool window_rect(ImVec2& pos, ImVec2& size) noexcept
 {
     if(!g_visible.load(std::memory_order_relaxed)) {
@@ -583,6 +686,7 @@ bool extra_tab_selected(int handle) noexcept
 void update(const tw::ui::overlay_state::cache& snapshot, const tw::ui::qp::state::cache& qp_snapshot) noexcept
 {
     ensure_widgets_ready();
+    apply_dynamic_tabs();
 
     // Settings edited through this menu are written to disk lazily: every mutation marks the
     // config dirty, and the actual file write happens here, on the first frame where no mouse
@@ -706,6 +810,20 @@ void update(const tw::ui::overlay_state::cache& snapshot, const tw::ui::qp::stat
             g_tabs.end_view();
         }
     }
+
+    // A dynamic tab's draw may call set_dynamic_tabs - that only fills the pending list, so this one stays put.
+    const int first_dynamic = first_dynamic_tab();
+    float dynamic_need = 0.f;
+    for(std::size_t i = 0; i < g_dynamic_tabs.size(); ++i) {
+        const int index = first_dynamic + static_cast<int>(i);
+        if(g_tabs.begin_view(index)) {
+            const float need = g_dynamic_tabs[i].draw(g_dynamic_tabs[i].token);
+            if(index == g_tabs.selected_tab()) {
+                dynamic_need = need;
+            }
+            g_tabs.end_view();
+        }
+    }
     g_tabs.end();
 
     ImGui::End();
@@ -722,6 +840,17 @@ void update(const tw::ui::overlay_state::cache& snapshot, const tw::ui::qp::stat
         // Grow only on the way in. Re-applying it every frame would undo any deliberate enlargement
         // the user made, and the clamp above already stops the window going the other way.
         if(g_last_tab != k_player_tab) {
+            grow_to_fit(g_active_min_size);
+        }
+    }
+    else if(dynamic_need > 0.f) {
+        // A dynamic tab whose page has something that does not shrink (ui::form::min_width - a strip of chips).
+        // Measured, not estimated: the nav column as laid out this frame, the page's padding and borders,
+        // the window's.
+        const float page_w = g_tabs.nav_width() + dynamic_need + tw::ui::theme::space::content_pad * 2.f + 2.f;
+        const float wanted_w = (std::min)(ImGui::GetIO().DisplaySize.x, page_w + k_padding * 2.f);
+        g_active_min_size = ImVec2 { (std::max)(k_min_size.x, wanted_w), k_min_size.y };
+        if(g_last_tab != g_tabs.selected_tab()) {
             grow_to_fit(g_active_min_size);
         }
     }

@@ -28,6 +28,10 @@ public:
     // never animates - the change did not come from anyone looking at the list.
     void set_selected(int index) noexcept;
 
+    // Off: rows take neither hover nor click (the list still scrolls), and the whole list is dimmed to
+    // theme::disabled_alpha unless an enclosing BeginDisabled() already dimmed it (R12, as button).
+    void set_enabled(bool enabled) noexcept;
+
     void update();
 
     [[nodiscard]] int selected_index() const noexcept;
@@ -42,6 +46,7 @@ private:
 
     int m_selected_index = -1;
     bool m_selection_changed = false;
+    bool m_enabled = true;
 
     kit::anim::focus_pair<int> m_hover { theme::motion::hover, -1 };
     kit::anim::focus_pair<int> m_select { theme::motion::select, -1 };

@@ -28,8 +28,8 @@
 | `TweakerPlugin/src/lua/lua_config` | строки `order=` в `scripts.cfg`: `order()`, `set_order()`, запись в `save()` |
 | `TweakerPlugin/src/lua/lua_registry` | места скриптов: `order()`, `place_of(id)`, `move(id, place)`, `set_order(files)`; на старте `initial_order()`, при перестановке `apply()` |
 | `TweakerPlugin/src/lua/lua_sched` | `reorder()` — пересортировать пролог и подписчиков; `current_owner()` — чей колбэк идёт |
-| `TweakerPlugin/src/lua/lua_prelude.cxx` (`tw.callbacks`) | места в записях обработчиков (`enlist`, `place_in`, `runs_before`), `exports.reorder` |
-| `TweakerPlugin/src/lua/lua_prelude.cxx` (`tw.hud`) | `tw.hud.occupied`, `tw.hud.claim`, `tw.hud.place` |
+| `TweakerPlugin/src/lua/prelude/callbacks.lua` (`tw.callbacks`) | места в записях обработчиков (`enlist`, `place_in`, `runs_before`), `exports.reorder` |
+| `TweakerPlugin/src/lua/prelude/hud.lua` (`tw.hud`) | `tw.hud.occupied`, `tw.hud.claim`, `tw.hud.place` |
 | `TweakerPlugin/src/lua/api/api_core` | `tw_script_order(owner)`, `tw_script_file(owner)` |
 | `TweakerPlugin/src/lua/api/api_hooks` | ключ порядка подписки (`order_key`), `reorder_subscriptions()` |
 | `TweakerPlugin/src/framework/channel_shim` | подписчики канала по ключу порядка: `subscribe(..., order)`, `reorder(order_fn)` |

@@ -173,8 +173,15 @@ namespace TweakerLuaLinker.Project
                                 return -- not in a run, or the game has not loaded that group yet
                             end
 
-                            local x, y = tw.hud.safe()
-                            tw.hud.text(x + 20, y + 20, text.score(score), tw.theme("text_primary"))
+                            -- The free spot nearest the corner: clear of the overlay's widgets and of the scripts that
+                            -- drew before this one, and taken as soon as it is returned. Never a fixed position.
+                            local line = text.score(score)
+                            local w, h = tw.hud.measure(line)
+                            local x, y = tw.hud.place(w, h, "top_left", 20)
+                            if x == nil then
+                                return -- no room this frame
+                            end
+                            tw.hud.text(x, y, line, tw.theme("text_primary"))
                         end)
 
                         """);
@@ -202,22 +209,33 @@ namespace TweakerLuaLinker.Project
 
                 case "hook":
                     yield return ("src/main.lua", header + """
-                        -- Counts collected blocks by hooking the game's own collection handler, and draws the count.
+                        -- Counts collected blocks by hooking the game's own collection handlers, and draws the count.
                         local collected = 0
 
-                        -- "after": the handler has run, so the block really was collected.
-                        tw.on_call("TrafficCommander", "Do_CollectCar", "after", function()
+                        local function one_more()
                             collected = collected + 1
-                        end)
+                        end
 
-                        -- Restarting a song from the pause menu fires this and nothing else.
-                        tw.on_call("StatCollector", "Do_ResetSimpleStats", "after", function()
+                        -- "after": the handler has run, so the block really was collected. Two handlers: a power-up
+                        -- block goes to Do_CollectQuestionBox and never reaches Do_CollectCar.
+                        tw.on_call("TrafficCommander", "Do_CollectCar", "after", one_more)
+                        tw.on_call("TrafficCommander", "Do_CollectQuestionBox", "after", one_more)
+
+                        -- A new song fires the first; restarting from the pause menu fires only the second.
+                        local function run_started()
                             collected = 0
-                        end)
+                        end
+                        tw.on_call("StatCollector", "Do_ResetStats", "after", run_started)
+                        tw.on_call("StatCollector", "Do_ResetSimpleStats", "after", run_started)
 
                         tw.on_frame(function()
-                            local x, y = tw.hud.safe()
-                            tw.hud.text(x + 20, y + 20, string.format("Blocks collected: %d", collected), tw.theme("text_primary"))
+                            local line = string.format("Blocks collected: %d", collected)
+                            local w, h = tw.hud.measure(line)
+                            local x, y = tw.hud.place(w, h, "top_left", 20)
+                            if x == nil then
+                                return -- no room this frame
+                            end
+                            tw.hud.text(x, y, line, tw.theme("text_primary"))
                         end)
 
                         """);

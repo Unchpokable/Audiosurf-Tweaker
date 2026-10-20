@@ -112,6 +112,11 @@ ImRect label_row(const char* label, const ImVec2& control);
 // centred on the label's first line. Whatever comes next lands under the label, at the row's left edge.
 ImRect label_block(std::string_view label, const ImVec2& control);
 
+// A paragraph on its own: text wrapped to the width that is left, in a theme colour, claiming its height. For
+// prose between controls - a note under a section, a status line a script keeps current. Empty text still
+// takes one line, so a status that is cleared does not pull everything under it up.
+void paragraph(std::string_view text, const ImVec4& color);
+
 // A small label on its own ground - a Quick Player track's tags, a Scripts row's state. One geometry, two
 // colourings: neutral (theme::surface_badge under theme::text_muted) for labels that only inform, and
 // tinted (the tint at 18% under the tint itself) for labels whose colour is the message. pill_size() is

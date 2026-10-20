@@ -1,7 +1,14 @@
-import pickle, collections
-from cgr.project import *
+r"""Who writes each run statistic: every Set Value in StatCollector, by its target port.
+
+    cgrpy examples\writers.py          (needs `cgrpy build_proj` first; writes out\stat_writers.txt here)
+
+The shape most graph questions reduce to. An example rather than a tool: it hardcodes the group it was
+written for - copy it and change that.
+"""
+import collections, os
+from cgr.cache import load_project
 from cgr.decomp import Decompiler
-P = pickle.load(open("proj.pkl","rb"))
+P = load_project()
 sc = P.groups["Scores/StatCollector.cgr"]
 D  = Decompiler(P, sc, max_depth=4)
 
@@ -34,6 +41,7 @@ def ctx(i, hops=4):
         if c and c.name and c.name.startswith("Do_"): return c.name
     return ""
 
+os.makedirs("out", exist_ok=True)
 with open("out/stat_writers.txt","w",encoding="utf-8") as f:
     f.write("RUN STAT VECTOR (targets of master reset Set Value #11)\n"+"="*76+"\n")
     for s in stats:

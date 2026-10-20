@@ -26,16 +26,47 @@ Pixels, origin top-left, `y` growing downward.
 
 ```lua
 local w, h = tw.hud.size()                  -- the whole viewport
-local x0, y0, x1, y1 = tw.hud.safe()        -- the part free of overlay chrome
 ```
 
-`tw.hud.safe()` is the viewport with the overlay's own top band (the toast column and the watermark)
-removed. It is full width, so a bottom-right corner is `x1, y1`:
+**Where a widget goes: ask what is taken, not where the "free area" is.** Everything already on screen — the
+overlay's notification feed, pins, watermark and menu, and the boxes of every script drawn before yours — is a
+rectangle, and the API hands you those rectangles ([Sharing the screen](#sharing-the-screen)):
+
+- a widget that can live in a corner — **`tw.hud.place(w, h, corner)`** finds the nearest free spot and takes it;
+- a widget with a place of its own — top centre, where the game's score was; above the song title — is positioned
+  from the viewport, checked against **`tw.hud.occupied()`**, and held with **`tw.hud.claim`**.
 
 ```lua
-local _, _, x1, y1 = tw.hud.safe()
-tw.hud.text(x1 - 200, y1 - 40, "bottom right-ish")
+-- Top centre, from the viewport: the overlay's widgets live in the corners, so this is normally free -
+-- but it is checked, not assumed.
+local function taken(x0, y0, x1, y1)
+    for _, r in ipairs(tw.hud.occupied()) do
+        if x0 < r.x1 and r.x0 < x1 and y0 < r.y1 and r.y0 < y1 then
+            return r.by
+        end
+    end
+end
+
+local sw = tw.hud.size()
+local x0, y0 = (sw - 400) / 2, 8
+local x1, y1 = x0 + 400, y0 + 90
+if taken(x0, y0, x1, y1) == nil then
+    tw.hud.claim(x0, y0, x1, y1)
+    -- ... draw the strip
+end
 ```
+
+**`tw.hud.safe()` is the old, coarse answer** — kept, but not for layout. It is the viewport minus one full-width band
+as tall as the overlay's top chrome, the notification column included: everything under the feed's height counts as
+taken across the whole screen. A widget measured from it lands far down, over the track and the oncoming blocks,
+even where nothing is above it. PuzzlePRO HUD's score strip landed there first, and so did the first HUD an AI agent
+built from these manuals; `occupied()` and `place()` exist for exactly this. `safe()` still answers "somewhere
+nothing of the overlay can ever be", for a debug readout that must not move.
+
+**Text over the game needs something behind it.** The sky behind the HUD can be white, and a skybox pack can make it
+anything; white text on it is not text. The game puts a solid bar behind its own score for this reason. A soft
+backdrop — full strength behind the content, fading out to the sides — reads as the screen getting darker rather
+than as a panel; keep it symmetric, or it changes shape every time the content does.
 
 ### Exact widget geometry
 
@@ -320,9 +351,11 @@ tw.on_frame(function()
     local panel_w = math.max(tw_, vw) + pad * 2
     local panel_h = th + vh + pad * 2 + 4
 
-    local _, _, sx1, sy1 = tw.hud.safe()
-    local x1, y1 = sx1 - 16, sy1 - 16
-    local x0, y0 = x1 - panel_w, y1 - panel_h
+    local x0, y0 = tw.hud.place(panel_w, panel_h, "bottom_right", 16)
+    if x0 == nil then
+        return -- no room this frame
+    end
+    local x1, y1 = x0 + panel_w, y0 + panel_h
 
     tw.hud.rect(x0, y0, x1, y1, tw.alpha(tw.theme("surface"), 0.88), 8)
     tw.hud.rect(x0, y0, x1, y1, tw.theme("border"), 8, 1)
@@ -333,7 +366,8 @@ end)
 ```
 
 Nothing is hardcoded except the padding: it sizes to its text, sits in the corner at any resolution,
-and matches whatever theme the user is running.
+moves up past whatever the overlay or another script already has there, and matches whatever theme the user is
+running.
 
 ## Notifications
 
@@ -347,4 +381,5 @@ Do not call this every frame. It is a notification, not a display.
 
 ## Next
 
-[API reference](api-reference.md), or [Limits, safety and performance](limits.md).
+[Menu tabs](menus.md) — controls of your own in the overlay menu, for the player to set what you draw. Or
+straight to the [API reference](api-reference.md), or [Limits, safety and performance](limits.md).

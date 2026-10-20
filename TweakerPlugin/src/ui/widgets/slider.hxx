@@ -38,6 +38,14 @@ public:
     // fight the gesture in progress.
     void set_value(float value) noexcept;
 
+    // Whether a gesture or the edit field owns the value right now - exactly when set_value() is ignored. For
+    // an owner that keeps its own copy of the value and must not let it drift from what the user is holding.
+    [[nodiscard]] bool active() const noexcept;
+
+    // Off: no hover, no gesture, an open edit field closes without applying, and the whole row is dimmed
+    // to theme::disabled_alpha unless an enclosing BeginDisabled() already dimmed it (R12, as button).
+    void set_enabled(bool enabled) noexcept;
+
     void update();
 
     [[nodiscard]] float value() const noexcept;
@@ -86,5 +94,6 @@ private:
 
     bool m_changed = false;
     bool m_committed = false;
+    bool m_enabled = true;
 };
 } // namespace tw::ui::widgets

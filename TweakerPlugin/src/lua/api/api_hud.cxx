@@ -234,7 +234,13 @@ unsigned int tw_theme_color(int index) noexcept
 
     // Read live rather than cached: the Settings colour pickers edit these in place, and a script
     // that matched the overlay once at load would drift away from it the moment a theme changed.
-    return tw::ui::kit::paint::to_u32(*g_theme[index].color);
+    //
+    // **Packed as a value, not as a colour for drawing** - ColorConvertFloat4ToU32, not paint::to_u32. The
+    // latter applies the style's alpha, which needs an ImGui context, and a script may ask for a theme colour
+    // from its body: in the early load bodies run before the overlay has created one, and paint::to_u32 there
+    // dereferenced a null GImGui and took the game down at startup (found by dev/ui_probe.lua, 20.10.2026). A
+    // value the script keeps should not depend on the style of the moment anyway; tw.hud.* draws it as given.
+    return ImGui::ColorConvertFloat4ToU32(*g_theme[index].color);
 }
 
 void tw_hud_text(float x, float y, unsigned int color, const char* text) noexcept

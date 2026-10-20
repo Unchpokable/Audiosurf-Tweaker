@@ -86,6 +86,56 @@
 	</Target>
 
 	<!--
+	    The rest of the Developer Bundle (Docs/Internal/dev-bundle-roadmap.md §3.1): what ships in DevTools\ beside
+	    twllink: CgrPy (the tools the game was reverse-engineered with), the public docs and AgentKit (what Script
+	    Dev puts into a project for AI agents). This target is the one place that decides what goes in and
+	    where - the deploy scripts copy DevToolsPayload\ as it is, the same rule as PluginPayload\ below.
+
+	    Two copies, on purpose. DevToolsPayload\ is wiped and rebuilt every time, so a file dropped from the
+	    sources stops shipping (the lesson of PluginPayload\, see CopyTweakerPlugin). DevTools\ is what a dev
+	    build of TweakerUI actually runs - the Script Dev tab puts DevTools\CgrPy on an editor's PATH - and it
+	    is only ever added to: it also holds the user's Sources\, recent-projects.txt and CgrPy's own .cache\
+	    (a ~200 MB parse of the game, plus uv's environment), none of which a build may delete.
+
+	    Not taken from Tools\CgrPy: what it generates (.cache, .venv, out, __pycache__) and uv.lock, which the
+	    repository does not track either - uv resolves the two dependencies on first use.
+
+	    Docs\ ships as the public documentation, layout kept so its relative links work (dev-bundle-roadmap.md
+	    §2.11): everything but Internal\ (the Russian working notes - linked from the public pages by GitHub
+	    URL, not shipped) and readme\ (screenshots for the repository's README).
+
+	    AgentKit\ is the one folder of the dev DevTools\ that is replaced rather than added to: nothing in it is the
+	    user's, and a skill file left over from an older kit would be handed to the next project set up from it.
+	-->
+	<PropertyGroup>
+		<CgrPySourceDir>$(MSBuildThisFileDirectory)..\Tools\CgrPy</CgrPySourceDir>
+		<PublicDocsSourceDir>$(MSBuildThisFileDirectory)..\Docs</PublicDocsSourceDir>
+		<AgentKitSourceDir>$(MSBuildThisFileDirectory)..\Tools\AgentKit</AgentKitSourceDir>
+	</PropertyGroup>
+	<Target Name="CopyDevTools" AfterTargets="Build">
+		<ItemGroup>
+			<DevToolsCgrPy Include="$(CgrPySourceDir)\**\*"
+			               Exclude="$(CgrPySourceDir)\.cache\**;$(CgrPySourceDir)\.venv\**;$(CgrPySourceDir)\out\**;$(CgrPySourceDir)\**\__pycache__\**;$(CgrPySourceDir)\uv.lock" />
+			<DevToolsDocs Include="$(PublicDocsSourceDir)\**\*"
+			              Exclude="$(PublicDocsSourceDir)\Internal\**;$(PublicDocsSourceDir)\readme\**" />
+			<DevToolsAgentKit Include="$(AgentKitSourceDir)\**\*" />
+		</ItemGroup>
+		<RemoveDir Directories="$(OutDir)DevToolsPayload" />
+		<Copy SourceFiles="@(DevToolsCgrPy)" DestinationFolder="$(OutDir)DevToolsPayload\CgrPy\%(RecursiveDir)" SkipUnchangedFiles="true" />
+		<Copy SourceFiles="@(DevToolsCgrPy)" DestinationFolder="$(OutDir)DevTools\CgrPy\%(RecursiveDir)" SkipUnchangedFiles="true" />
+		<Copy SourceFiles="@(DevToolsDocs)" DestinationFolder="$(OutDir)DevToolsPayload\Docs\%(RecursiveDir)" SkipUnchangedFiles="true" />
+		<Copy SourceFiles="@(DevToolsDocs)" DestinationFolder="$(OutDir)DevTools\Docs\%(RecursiveDir)" SkipUnchangedFiles="true" />
+		<Copy SourceFiles="@(DevToolsAgentKit)" DestinationFolder="$(OutDir)DevToolsPayload\AgentKit\%(RecursiveDir)" SkipUnchangedFiles="true" />
+		<RemoveDir Directories="$(OutDir)DevTools\AgentKit" />
+		<Copy SourceFiles="@(DevToolsAgentKit)" DestinationFolder="$(OutDir)DevTools\AgentKit\%(RecursiveDir)" SkipUnchangedFiles="true" />
+		<!--
+		    Beside the payload, not in it: how the deploy scripts tell the freshest of the several bin\ trees.
+		    The files themselves cannot say - Copy keeps the source's timestamp, so every tree looks the same age.
+		-->
+		<WriteLinesToFile File="$(OutDir)DevToolsPayload.stamp" Lines="$([System.DateTime]::UtcNow.ToString('o'))" Overwrite="true" />
+	</Target>
+
+	<!--
     Same asbridge.exe pre-build hook as SkinChangerRestyle.csproj (Phase 3c) - AudiosurfHandle spawns
     it next to the exe at runtime, so without this the bridge subprocess is simply missing and the
     connection status sits in a permanent reconnect loop. CMake is still a black box here: no vcxproj,

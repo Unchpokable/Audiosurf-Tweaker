@@ -68,7 +68,7 @@ void slider::set_value(float value) noexcept
     // A gesture in progress owns the value. The panel pushes the authoritative number back every
     // frame, and during a drag that number came from this widget one frame ago - letting it land
     // again would fight the rounding rather than agree with it.
-    if(m_editing || m_was_active) {
+    if(active()) {
         return;
     }
 
@@ -78,6 +78,16 @@ void slider::set_value(float value) noexcept
     }
 
     m_value = clamped;
+}
+
+bool slider::active() const noexcept
+{
+    return m_editing || m_was_active;
+}
+
+void slider::set_enabled(bool enabled) noexcept
+{
+    m_enabled = enabled;
 }
 
 void slider::begin_edit()
@@ -98,7 +108,19 @@ void slider::update()
     m_changed = false;
     m_committed = false;
 
+    // Switched off with the field open: the field goes, without applying what was typed - the same as Escape.
+    if(!m_enabled) {
+        m_editing = false;
+        m_focus_pending = false;
+    }
+
     ImGui::PushID(m_id.c_str());
+
+    // Over the whole row, label included: a disabled slider reads as one dimmed thing (R12).
+    const bool fade = kit::fade_disabled(m_enabled);
+    if(fade) {
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * theme::disabled_alpha);
+    }
 
     const float line_h = ImGui::GetFontSize();
 
@@ -179,12 +201,18 @@ void slider::update()
         // the next parameter lands where it would have without the edit.
         ImGui::SetCursorScreenPos(pos);
         ImGui::Dummy(size);
+        if(fade) {
+            ImGui::PopStyleVar();
+        }
         ImGui::PopID();
         return;
     }
 
-    const kit::interaction pointer = kit::interact(bb, ImGui::GetID("##slider"));
+    const kit::interaction pointer = kit::interact(bb, ImGui::GetID("##slider"), kit::placement::flow, m_enabled);
     if(!pointer.visible) {
+        if(fade) {
+            ImGui::PopStyleVar();
+        }
         ImGui::PopID();
         return;
     }
@@ -280,6 +308,9 @@ void slider::update()
     draw->AddCircleFilled(thumb_center, k_thumb_r - 1.f + active_t, kit::paint::to_u32(theme::control_thumb));
     draw->AddCircle(thumb_center, k_thumb_r, kit::paint::to_u32(theme::border_strong));
 
+    if(fade) {
+        ImGui::PopStyleVar();
+    }
     ImGui::PopID();
 }
 

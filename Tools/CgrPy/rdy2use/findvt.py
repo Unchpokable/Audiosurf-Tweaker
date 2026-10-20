@@ -1,8 +1,8 @@
 """Find vtables a module does NOT export, by their shape.
 
-    uvrun findvt <module>                       # runs of >= 8 consecutive code pointers
-    uvrun findvt <module> --min 23              # at least this many slots
-    uvrun findvt <module> --ret 20:4 --ret 22:0xc  # ...and these slots end in `ret <imm>`
+    cgrpy findvt <module>                       # runs of >= 8 consecutive code pointers
+    cgrpy findvt <module> --min 23              # at least this many slots
+    cgrpy findvt <module> --ret 20:4 --ret 22:0xc  # ...and these slots end in `ret <imm>`
 
 Not every class publishes `??_7Name@@6B@`. An internal one has no symbol at all, so the only handle
 on it is what its table looks like: a run of pointers into `.text`, at a `.rdata` address nothing
@@ -24,7 +24,7 @@ Where it was used: `ArrayConnectItem`, the object an Array Value/Vector channel 
 through. It is implemented in the `Array Unique` DLL and exported by nothing. The call sites showed
 slot 20 taking one argument and slot 22 taking three, so:
 
-    uvrun findvt --type "Array Unique" --min 23 --ret 20:4 --ret 22:0xc
+    cgrpy findvt --type "Array Unique" --min 23 --ret 20:4 --ret 22:0xc
 
 returned exactly one candidate, whose slot 0 turned out to be an exported
 `?GetIfValid@ArrayConnectItem@@...` - which named the class and gave the whole 24-slot table. That

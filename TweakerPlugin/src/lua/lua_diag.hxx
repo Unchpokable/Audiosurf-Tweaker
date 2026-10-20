@@ -14,7 +14,7 @@
 //
 // Where each level goes:
 //
-// | level   | log              | notefeed                                | Scripts tab            |
+// | level   | log, script log  | notefeed                                | Scripts tab            |
 // |---------|------------------|-----------------------------------------|------------------------|
 // | pending | first time       | never                                   | "waiting", while fresh |
 // | info    | first time       | never                                   | yes                    |
@@ -23,6 +23,12 @@
 // |         |                  | the game is up - earlier ones are held  |                        |
 // |         |                  | and said on the first ready frame       |                        |
 // | fatal   | every time       | every time (it is rare by construction) | yes, highlighted       |
+//
+// "log" is the debug console (TW_LOG_*, compiled out of Release); the script log (lua_log) is the file every
+// build writes, and it gets the message in full, traceback included. A record that keeps repeating goes into
+// the script log again at its 10th, 100th, 1000th... occurrence, so the file says it is still happening without
+// saying it every frame. The script log is also not held back while the game loads: the file is for reading
+// afterwards, and an error during loading is exactly what someone will go looking for.
 //
 // On top of that, one cap for everything a script can put into the notefeed - its errors and its own
 // tw.notify calls together: a handful per minute, then one line saying the rest went to the tab.
@@ -58,8 +64,12 @@ struct entry {
 // bump), so it is safe from a callback that fails every frame - which is precisely when it is used.
 void report(int owner, level severity, std::string_view where, std::string_view message) noexcept;
 
+// An info record whose every occurrence goes into the script log - for events the tab shows once but the log has to
+// show each time they happen (Resume: the second one is news too).
+void note(int owner, std::string_view where, std::string_view message) noexcept;
+
 // tw.notify on behalf of a script: straight into the notefeed while under the cap, into the tab as an
-// info record once over it. Owner -1 is not capped.
+// info record once over it. Owner -1 is not capped. What reaches the notefeed reaches the script log too.
 void notify(int owner, std::string_view message) noexcept;
 
 // Errors that happened before the game was up have been held back rather than dropped; this says

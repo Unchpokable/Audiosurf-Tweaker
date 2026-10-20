@@ -1,0 +1,214 @@
+# Reacting and intercepting
+
+[← back to the index](../scripting.md)
+
+Reading channels every frame tells you what the game's state *is*. Hooks tell you when something
+*happened* — and, if you want, stop it happening at all.
+
+## Reacting: `tw.on_call`
+
+```lua
+tw.on_call("TrafficCommander", "Do_CollectCar", function()
+    tw.notify("collected a block")
+end)
+```
+
+Your function runs on the game's own call stack, the instant that channel is called. This is not
+polling: nothing is missed, and there is no frame of latency.
+
+Register at the top level of your script. The subscription is accepted the moment you ask for it,
+even when the group is nowhere to be seen, and the hook is attached as soon as that group appears —
+so it is fine, and expected, to ask for something that does not exist yet.
+
+**And it reattaches by itself.** The game destroys whole groups as you play: the renderer pool is
+dropped and rebuilt on *every single run*. A hook into one of those goes quiet when its group is
+destroyed and comes back when the group does, without the script doing anything. Before, a cached
+pointer into a destroyed group was a crash waiting for the right moment; now it is not a case you
+have to think about.
+
+If you want to know when that happens — to reset a counter, say — use
+[`tw.on_group(name, fn)`](api-reference.md#twon_groupname-fn).
+
+### `after` and `before`
+
+```lua
+tw.on_call(group, name, "after", fn)    -- default
+tw.on_call(group, name, "before", fn)
+tw.on_call(group, name, fn)             -- same as "after"
+```
+
+**`after`** runs once the game's handler has returned. This is what you want almost always: the
+handler has done its work, so whatever it wrote is readable.
+
+```lua
+local colour = tw.float_ch("TrafficCommander", 900)
+
+tw.on_call("TrafficCommander", "Do_CollectCar", "after", function()
+    local c = colour:get()      -- written at the top of the handler; valid now
+    -- ...
+end)
+```
+
+**`before`** runs first, while the state is still whatever the previous frame left. Useful when you
+need the *old* value, and required if you want to cancel.
+
+### Your callback gets no arguments
+
+The game does not pass parameters the way a function call does — a handler's inputs are other
+channels it reads. So the way to know *what* happened is to read the channels the handler works
+with, inside your callback.
+
+Which is why `after` is the default: by then, they hold this event's values.
+
+## Intercepting: returning `false`
+
+A **`before`** handler that returns `false` stops the game's own handler from running.
+
+```lua
+tw.on_call("SomeGroup", "Do_Something", "before", function()
+    return false        -- the game's handler never runs
+end)
+```
+
+Any other return value — including returning nothing — lets it through. That is deliberate: an
+observer can never suppress something by accident, and a callback that hits an error still lets the
+game proceed.
+
+Returning `false` from an `after` handler does nothing. The call it would decline already happened.
+
+**A suppressed call has no `after` phase.** Not for you, and not for any other script watching the
+same channel. `after` means "the original returned", and it did not.
+
+## Switching game behaviour off: `tw.mute`
+
+If all you want is for a channel to stop doing its job, `tw.mute` is the direct way:
+
+```lua
+local medals = tw.mute("XX_gui", "Do_LadderMedalRequirements")
+```
+
+That is the game's in-run medal display, gone. The channel is still in the graph and the game still
+calls it every frame; it simply does nothing.
+
+The returned handle can be flipped without re-hooking:
+
+```lua
+medals:off()        -- let the game do it again
+medals:on()         -- suppress it again
+medals:set(enabled) -- either
+medals:active()     -- is it suppressing right now?
+```
+
+It starts on.
+
+### Why a separate function
+
+`tw.mute` is `tw.on_call(..., "before", function() return false end)` with the round trip into Lua
+removed. The things worth muting are usually render nodes the game calls sixty times a second
+forever, and crossing into the VM that often to answer "no" is pure cost. A mute is a predicted
+branch in native code.
+
+### Choosing what to mute is the whole problem
+
+The API will happily suppress any channel. Whether that is *safe* is a question about the game's
+graph, and nothing here can answer it for you.
+
+The distinction that matters:
+
+- **A channel whose only effect is drawing** can be removed with no consequence. The medal dashboard
+  is a pure render branch — it draws rings and a cover shape and nothing downstream reads anything it
+  produces. Muting it is clean.
+- **A channel whose result something else reads** leaves that reader holding a stale value forever.
+  That is not a crash; it is the game quietly computing wrong answers, which is worse.
+
+Before muting something, find out what else depends on it: `cgrpy query writers` and `cgrpy query
+parents` show who reads and writes around a node, and the [gameplay map](../internals/gameplay-map.md#guixx_gui--the-hud)
+lists the HUD nodes that are safe to mute and the ones that only look like drawing.
+
+Prefer to mute the **most specific** node that achieves what you want. Muting a handler high in the
+tree takes out everything below it, including things you did not mean.
+
+## When several scripts want the same channel
+
+This is expected, not exceptional — install a few scripts and two of them will eventually watch the
+same popular handler. The rules:
+
+- **Every `before` handler runs**, *before* any of them can cancel. So whether your observer sees an
+  event never depends on what else is attached.
+- **They run in the user's order of scripts** — top to bottom in the Scripts tab, which the user
+  changes by dragging rows — and a script's own handlers in the order it registered them. Both phases
+  follow it. A group that is rebuilt every run, a Reload, a toggle: none of them moves a script's place.
+- **Cancellation is an OR.** Any one of them can suppress the call. Two scripts muting the same node
+  compose, and turning one off leaves it muted by the other.
+- **A suppressed call has no `after` phase for anyone.**
+- Then every `after` handler runs.
+
+You cannot detect or override another script, and you cannot set your place. That is intentional —
+the order is the user's, there is no priority to escalate. If your script only works before or after
+another one, say so in its description or documentation.
+
+The Scripts tab shows a count of channels more than one script is attached to, so a user can at least
+see when it is happening.
+
+## Events worth knowing about
+
+| | |
+|---|---|
+| `StatCollector` · `Do_ResetStats` | The **track** is being generated. Fires when a song is loaded — *not* when the player restarts it. |
+| `StatCollector` · `Do_ResetSimpleStats` | The **run** is starting: score, timer and every per-run counter zeroed. Fires on every entry into gameplay, restart included. This is the one to zero your counters on. |
+| `StatCollector` · `Do_ReseteWhiteWildBlocks` | White and wild blocks and power-ups are being placed over the generated track (the typo is the game's). If you care what is actually on the track, this is when it becomes true — and it happens again on every restart, because white placement is re-randomised each time. |
+| `StatCollector` · `Do_CalculateFinalStats` | The run ended and scoring is happening. After this, the final score and `Feat String` are readable. |
+| `TrafficCommander` · `Do_CollectCar` | Your car took a block off the road — through the board, Pointman's buffer, or an Eraser shatter. Not a power-up block: that one is `Do_CollectQuestionBox`. |
+| `Puzzle` · `Do_ResovleLaneCrash` | A block landed in the grid. (The misspelling is the game's.) |
+
+## Events versus state
+
+A genuine design question, and getting it wrong is a classic mistake, so it is worth stating plainly.
+
+**Use state for "what is true right now". Use hooks for "this just happened".**
+
+Say you want your HUD hidden while the player is in a menu. It is tempting to hook the transitions —
+song started, went to menu, paused, unpaused — and keep a flag. Do not. A flag assembled from events
+is only correct if it saw *every* event: enable your script mid-run and it starts out wrong, miss one
+path back to the menu and it stays wrong until the next one.
+
+The game already knows:
+
+```lua
+local state    = tw.float_ch("StartGroup", "StartupState")
+local gameplay = tw.float_ch("StartGroup", "State_Gameplay")
+
+local function playing()
+    local s, g = state:get(), gameplay:get()
+    if s == nil or g == nil then return true end   -- can't tell: don't hide a working widget
+    return math.abs(s - g) < 0.5
+end
+```
+
+Two reads a frame, correct on the first frame, and nothing to desync.
+
+Hooks remain the right tool for moments — `Do_ResetSimpleStats` is an *event*, and there is no state
+to read that means "a run just began".
+
+> Be careful which reset you pick. `Do_ResetStats` sounds like "a run started" and is not: it fires
+> when the **track** is generated, which happens once per song, not once per run. Restarting from
+> the pause menu goes through `Do_ResetSimpleStats` alone, and a counter zeroed only on
+> `Do_ResetStats` carries the previous attempt's numbers into the new one.
+
+## Cleanup
+
+You do not unregister anything. When a script is disabled, everything it registered is removed and
+the game's own dispatch is restored — see
+[Getting started § Turning a script off really turns it off](getting-started.md#turning-a-script-off-really-turns-it-off).
+
+What the Tweaker cannot undo for you is a value your script *wrote* into the game. If you change
+something the game will not reset by itself, put it back in [`tw.on_unload`](api-reference.md#twon_unloadfn),
+which runs when the script is switched off or reloaded, before its hooks are taken out.
+
+Hooks and mutes are registered at the top level or in `tw.on_ready` — not from inside other
+callbacks, where they are refused. A hook that waits for its group already re-attaches by itself, so
+there is nothing a later registration would add.
+
+## Next
+
+[Drawing](drawing.md) — putting something on screen.

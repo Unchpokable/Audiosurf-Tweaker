@@ -1,8 +1,8 @@
 """Dump a C++ vtable out of a module, with slot names resolved from the export table.
 
-    uvrun vtdump <module>                    # every exported ??_7<Class>@@6B@ table
-    uvrun vtdump <module> 0x3130             # the table at that rva
-    uvrun vtdump --type "Array Vector"       # look the module up by channel type name
+    cgrpy vtdump <module>                    # every exported ??_7<Class>@@6B@ table
+    cgrpy vtdump <module> 0x3130             # the table at that rva
+    cgrpy vtdump --type "Array Vector"       # look the module up by channel type name
 
 `<module>` is a path, or a bare file name that will be looked for in `engine/` and
 `engine/channels/`.
@@ -22,6 +22,8 @@ Where it was used: `Aco_Array_Value` and `Aco_Array_Vector` (engine journal §2.
 whether either overrides the setter its family already had, because if they inherited it a table
 write would land in the channel's own scalar and the table would never move. Both override. That one
 dump is what unblocked writing to tables.
+
+Engine journal (working notes, in Russian): https://github.com/Unchpokable/Audiosurf-Tweaker/blob/HEAD/Docs/Internal/reversing-journal-engine.md
 """
 
 import sys

@@ -121,8 +121,9 @@ The distinction that matters:
 - **A channel whose result something else reads** leaves that reader holding a stale value forever.
   That is not a crash; it is the game quietly computing wrong answers, which is worse.
 
-Before muting something, find out what else depends on it. The reverse-engineering notes in
-`Docs/Internal/` are where that information lives.
+Before muting something, find out what else depends on it: `cgrpy query writers` and `cgrpy query
+parents` show who reads and writes around a node, and the [gameplay map](../internals/gameplay-map.md#guixx_gui--the-hud)
+lists the HUD nodes that are safe to mute and the ones that only look like drawing.
 
 Prefer to mute the **most specific** node that achieves what you want. Muting a handler high in the
 tree takes out everything below it, including things you did not mean.
@@ -157,7 +158,7 @@ see when it is happening.
 | `StatCollector` · `Do_ResetSimpleStats` | The **run** is starting: score, timer and every per-run counter zeroed. Fires on every entry into gameplay, restart included. This is the one to zero your counters on. |
 | `StatCollector` · `Do_ReseteWhiteWildBlocks` | White and wild blocks and power-ups are being placed over the generated track (the typo is the game's). If you care what is actually on the track, this is when it becomes true — and it happens again on every restart, because white placement is re-randomised each time. |
 | `StatCollector` · `Do_CalculateFinalStats` | The run ended and scoring is happening. After this, the final score and `Feat String` are readable. |
-| `TrafficCommander` · `Do_CollectCar` | Your car took a block off the road — through the board, Pointman's buffer, or an Eraser shatter. |
+| `TrafficCommander` · `Do_CollectCar` | Your car took a block off the road — through the board, Pointman's buffer, or an Eraser shatter. Not a power-up block: that one is `Do_CollectQuestionBox`. |
 | `Puzzle` · `Do_ResovleLaneCrash` | A block landed in the grid. (The misspelling is the game's.) |
 
 ## Events versus state

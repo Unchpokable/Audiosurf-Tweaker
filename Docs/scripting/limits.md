@@ -47,6 +47,11 @@ several times higher. Hover the chip on your own machine to see your numbers.
 5. **Keep `on_call` handlers short.** They run inside the game's logic, potentially many times a
    second during a run. Accumulate a number; draw it later in `on_frame`.
 
+6. **Read your files while the script loads.** The first [`tw.storage`](storage.md) read of a file that
+   is on disk is a real file read; every read after it, and every write, is a copy in memory. A
+   [menu tab](menus.md) costs your script nothing per frame — the plugin draws it — and `control:get()`
+   is one call, fine in every frame.
+
 Nothing here is exotic. The one genuinely counter-intuitive rule is the first one.
 
 ## Writing to the game
@@ -144,7 +149,7 @@ and the line:
 | Removed | Why |
 |---|---|
 | `ffi` | The raw memory and native-call interface. The plugin uses it to build the fast bindings, then takes it away — a script keeping it would have unrestricted access to the game's address space. |
-| `io`, `os.execute`, `os.remove`, `os.rename`, `os.tmpname`, `os.exit`, `os.getenv`, `os.setlocale` | Filesystem and process access. |
+| `io`, `os.execute`, `os.remove`, `os.rename`, `os.tmpname`, `os.exit`, `os.getenv`, `os.setlocale` | Filesystem and process access. A script's own files go through [`tw.storage`](storage.md) instead: one folder of its own, flat names, a size limit. |
 | `require`, `package`, `dofile`, `loadfile` | Loading code from disk. |
 | `load`, `loadstring` | Compiling code at runtime. |
 | `debug` | A memory- and state-inspection surface. |
@@ -173,11 +178,13 @@ script. Scripts are independent, and the only place they meet is on a shared cha
 are fixed and neither can override the other. This keeps "I installed five scripts and one broke the
 others" out of the design.
 
-**No persistence.** A script cannot write files or save settings between sessions. Everything resets
-when it is reloaded.
+**No direct input.** Scripts cannot read the keyboard or the mouse, and what they draw on the HUD is
+output only. Input a script *can* have comes through controls on its own [menu tab](menus.md): the player
+sets them, the script reads them.
 
-**No input.** Scripts cannot read the keyboard or mouse and cannot draw interactive controls. What
-you draw is output only.
+**No files beyond its own folder.** A script keeps settings and data with [`tw.storage`](storage.md) —
+its own folder, flat names, 8 MiB at most. It cannot reach any other file, read another script's folder,
+or pick a path.
 
 **No access to the Tweaker's own state.** Playlists, skins, tweak toggles and the Quick Player are
 not exposed yet. This is a planned addition rather than a principle.
@@ -188,17 +195,14 @@ management (add, insert, remove) sits one vtable slot away from the cell write a
 not exposed: a row of a game table is an object in the game's model, not a slot in an array.
 
 **No images of your own.** `tw.hud.icon` draws icons **packed into the plugin**, addressed by a bare
-stem that can only reach `icons/*.svg`. A script cannot load a file — not an image, not anything else
-— and the icon set is what ships with the Tweaker.
+stem that can only reach `icons/*.svg`. A script cannot draw a file as an image — not even one in its own
+[storage](storage.md) folder — and the icon set is what ships with the Tweaker.
 
 That is a smaller restriction than "no images" and a deliberate one: reaching the filesystem needs a
 name restriction, a per-script texture lifetime and an invalidation path for when the render device
 is replaced, none of which exist yet. If you want to ship art with a script, say so.
 
 **No arbitrary shapes.** Rectangles and lines, with glow. No circle, no polygon, no path.
-
-**No script-defined menu tabs or settings UI.** A script's only surface is what it draws and the row
-it occupies in the Scripts tab.
 
 ## Failure containment
 
@@ -225,10 +229,11 @@ not counted — every frame is slow there, and that is the game's cost, not the 
 the script's messages with a counter next to it. The notification strip gets an error once, and not
 while the game is still loading — those wait and are shown once it has loaded. Each script can put at
 most five lines a minute into the strip, `tw.notify` included; past that, one line says so and the
-rest go to the tab.
+rest go to the tab. The [script log](getting-started.md#the-script-log) follows the same rule — a
+message is written once, then again at its 10th, 100th and 1000th time — and stops at 4 MiB a session.
 
-**Registration has a window.** Handlers, hooks and mutes can be registered while the script loads and
-from `tw.on_ready`. Anywhere else they are refused and reported once — see
+**Registration has a window.** Handlers, hooks, mutes, menu tabs and their controls can be registered
+while the script loads and from `tw.on_ready`. Anywhere else they are refused and reported once — see
 [API reference § Lifecycle](api-reference.md#lifecycle).
 
 **Suppression fails open.** A `before` handler that errors lets the game's call through. A script can

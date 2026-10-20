@@ -5,6 +5,11 @@
 
 #include <imgui.h>
 
+#include <span>
+#include <string>
+#include <string_view>
+#include <vector>
+
 // Toggleable (Insert key) custom-chrome menu window - Skins/Tweaks/Settings tabs. Fully
 // self-drawn (own background/title bar/drag-move/drag-resize), no stock ImGui window chrome.
 // See Docs/Internal/tweaker-plugin-widgets.md.
@@ -55,6 +60,33 @@ using extra_tab_draw_fn = void (*)();
 //
 // Must be called before the first update(): the tab strip is built once, on the first frame.
 int add_extra_tab(std::string_view label, extra_tab_draw_fn draw) noexcept;
+
+// Draws one dynamic tab's page and returns the narrowest width its content can live with (0: any). The menu
+// holds its window at least that wide while the tab is open, as it does for the Player tab.
+using dynamic_tab_draw_fn = float (*)(int token);
+
+// A tab that comes and goes at any time - a script's (Docs/Internal/script-tabs.md §3.4).
+struct dynamic_tab {
+    std::string_view key;   // its identity across rebuilds: the selection follows it, and its page is keyed on it
+    std::string_view label; // final - the owner resolves clashes with other tabs (fixed_tab_labels)
+    dynamic_tab_draw_fn draw = nullptr;
+    int token = 0;          // handed back to draw
+    bool enabled = true;    // false: the label is dimmed - the page is switched off as a whole
+};
+
+// The whole list of dynamic tabs, in order, replacing the previous one. They come after every built-in and
+// add_extra_tab tab, so those never move.
+//
+// May be called at any time, including from inside update() - a script reloaded from the Scripts tab - because
+// nothing changes here: the list is copied and applied at the start of the next update(), outside the tab
+// strip. A list with the same keys as the one showing only relabels and re-dims; a different one rebuilds the
+// strip and keeps the selected tab by key, or, when that tab is gone, selects the one before it - without a
+// transition either way, since nobody switched pages.
+void set_dynamic_tabs(std::span<const dynamic_tab> tabs) noexcept;
+
+// The labels of the tabs that are always there - the built-in ones and add_extra_tab's, in order. For an owner
+// of dynamic tabs, to tell when one of its labels clashes with them.
+[[nodiscard]] std::vector<std::string> fixed_tab_labels();
 
 // Where the menu window currently is, in screen space. False when the menu is hidden, or before it
 // has ever been shown and picked a position.

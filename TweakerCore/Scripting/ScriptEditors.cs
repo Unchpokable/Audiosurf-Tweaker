@@ -104,8 +104,9 @@ namespace TweakerCore.Scripting
     /// Notepad++, Vim and Neovim. Found in their default install locations and through the shims they put on PATH;
     /// adding one is one more definition below.
     ///
-    /// Launching is where twllink gets into the user's hands: the editor starts with DevTools\Binaries at the front
-    /// of PATH and AUDIOSURF_DIR pointing at the game, so a terminal inside it runs "twllink --install" as it is.
+    /// Launching is where the developer tools get into the user's hands: the editor starts with DevTools\Binaries
+    /// (twllink) and DevTools\CgrPy (cgrpy) at the front of PATH and AUDIOSURF_DIR pointing at the game, so a
+    /// terminal inside it runs "twllink --install" or "cgrpy query ..." as it is.
     /// The user's own PATH is never touched (the owner's decision: writing a rarely used tool into it is not ours
     /// to do, and an editor that is already running would not see it anyway).
     /// </summary>
@@ -221,6 +222,8 @@ namespace TweakerCore.Scripting
         /// How to start <paramref name="editor"/> on a project, or on one of its files at a line
         /// (<paramref name="file"/> relative to the project, '/' separators, as twllink reports it; null for the
         /// project alone). <paramref name="line"/>/<paramref name="column"/> of 0 mean "unknown" and open at the top.
+        /// <paramref name="toolFolders"/> go to the front of PATH in their order - DevTools\Binaries (twllink) and
+        /// DevTools\CgrPy (cgrpy) from the Script Dev tab.
         /// </summary>
         public static ProcessStartInfo StartInfo(
             ScriptEditor editor,
@@ -228,7 +231,7 @@ namespace TweakerCore.Scripting
             string file,
             int line,
             int column,
-            string twllinkFolder,
+            IReadOnlyList<string> toolFolders,
             string gameFolder)
         {
             var info = new ProcessStartInfo(editor.ExecutablePath)
@@ -256,7 +259,8 @@ namespace TweakerCore.Scripting
                 info.ArgumentList.Add(argument);
 
             var path = info.Environment.TryGetValue("PATH", out var existing) ? existing : "";
-            info.Environment["PATH"] = string.IsNullOrEmpty(path) ? twllinkFolder : twllinkFolder + Path.PathSeparator + path;
+            var front = string.Join(Path.PathSeparator, toolFolders.Where(folder => !string.IsNullOrEmpty(folder)));
+            info.Environment["PATH"] = string.IsNullOrEmpty(path) ? front : front + Path.PathSeparator + path;
             if (gameFolder != null)
                 info.Environment["AUDIOSURF_DIR"] = gameFolder;
             return info;

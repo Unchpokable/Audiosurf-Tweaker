@@ -28,6 +28,10 @@ public:
     // authoritative value in every frame without looping against the user's own edits.
     void set_value(int value) noexcept;
 
+    // Off: the field and its steppers take no input and are dimmed to theme::disabled_alpha, unless an
+    // enclosing BeginDisabled() already dimmed them (R12, as button).
+    void set_enabled(bool enabled) noexcept;
+
     void update();
 
     [[nodiscard]] int value() const noexcept;
@@ -46,5 +50,6 @@ private:
     int m_min = 0;
     int m_max = 0;
     bool m_changed = false;
+    bool m_enabled = true;
 };
 } // namespace tw::ui::widgets

@@ -19,13 +19,21 @@ namespace TweakerLuaLinker.Api
     /// this reads it rather than making it any less readable.
     ///
     /// Methods are documented against the value a script holds, not against a type: `handle:get()`
-    /// covers every channel handle, `array:` both array kinds, `mute:` the mute handle. <see cref="TypesOf"/>
-    /// is that mapping, and the one place it is written down.
+    /// covers every channel handle, `array:` both array kinds, `mute:` the mute handle; for script tabs
+    /// (API 3) `tab:` is the tab, `parent:` a tab or a group - what controls are declared on - and `control:`
+    /// any node on it, with `choice:`, `list:`, `button:` and `paragraph:` for what only one kind has.
+    /// <see cref="TypesOf"/> is that mapping, and the one place it is written down. Receivers overlap; where
+    /// two document one method, the narrower one (<see cref="ReceiversOf"/>, narrowest first) describes it.
     /// </summary>
     internal static class ApiReference
     {
         private static readonly Regex _code = new(@"`([^`]+)`", RegexOptions.CultureInvariant);
-        private static readonly Regex _name = new(@"^(tw(?:\.[A-Za-z_][A-Za-z0-9_]*)+|(?:handle|array|mute):[A-Za-z_][A-Za-z0-9_]*)", RegexOptions.CultureInvariant);
+        /// <summary>Every receiver the reference documents methods on.</summary>
+        public static readonly IReadOnlyList<string> Receivers =
+            ["handle", "array", "mute", "tab", "parent", "control", "choice", "list", "button", "paragraph"];
+
+        private static readonly Regex _name = new(
+            @"^(tw(?:\.[A-Za-z_][A-Za-z0-9_]*)+|(?:" + string.Join("|", Receivers) + @"):[A-Za-z_][A-Za-z0-9_]*)", RegexOptions.CultureInvariant);
 
         public static IReadOnlyList<string> TypesOf(string receiver)
         {
@@ -34,8 +42,21 @@ namespace TweakerLuaLinker.Api
                 "handle" => ["FloatHandle", "TextHandle", "VectorHandle", "MatrixHandle"],
                 "array" => ["ArrayHandle", "VectorArrayHandle"],
                 "mute" => ["MuteHandle"],
+                "tab" => ["TabHandle"],
+                "parent" => ["TabHandle", "GroupHandle"],
+                "control" => ["ControlHandle", "ChoiceHandle", "ListHandle", "ButtonHandle", "ParagraphHandle", "GroupHandle", "SeparatorHandle"],
+                "choice" => ["ChoiceHandle"],
+                "list" => ["ListHandle"],
+                "button" => ["ButtonHandle"],
+                "paragraph" => ["ParagraphHandle"],
                 _ => [],
             };
+        }
+
+        /// <summary>The receivers whose methods a handle type has, narrowest first.</summary>
+        public static IReadOnlyList<string> ReceiversOf(string type)
+        {
+            return Receivers.Where(r => TypesOf(r).Contains(type)).OrderBy(r => TypesOf(r).Count).ToList();
         }
 
         public static IReadOnlyList<ReferenceEntry> Parse(string markdown)

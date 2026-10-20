@@ -23,6 +23,11 @@ namespace TweakerUI.Core
         // The editor Script Dev opens projects in, by TweakerCore.Scripting.ScriptEditor.Id; empty until one is
         // chosen (script-manager.md §8.3).
         internal static string ScriptEditor { get; set; }
+        // The new-project form's "Set up for AI agents" and the agents chosen last time (dev-bundle-roadmap.md §2.16):
+        // whatever the user picked when they last set a project up is what the next one starts with.
+        internal static bool ScriptAgentSetup { get; set; }
+        internal static string ScriptAgents { get; set; }
+        internal static bool ScriptAgentBinaries { get; set; }
 
         internal static string WatcherDefaultTemp => @"Storage\temp.tasp";
     }

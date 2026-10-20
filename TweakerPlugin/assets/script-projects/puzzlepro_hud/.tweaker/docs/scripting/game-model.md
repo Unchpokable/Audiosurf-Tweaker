@@ -1,0 +1,364 @@
+# How Audiosurf is built
+
+[← back to the index](../scripting.md)
+
+This is the chapter that makes the rest useful. The API is small; knowing *what to ask it for* is the
+actual skill, and that means understanding how the game is put together.
+
+## The game is a graph, not a program
+
+Audiosurf is built in **Quest3D**, a visual engine where you do not write code — you wire up a graph.
+The whole game, all of it, is roughly 131 000 nodes in that graph. There is no `main()`. There is a
+tree of nodes, and every frame the engine walks it.
+
+A node is called a **channel**. One channel might be:
+
+- a number that something wrote into it (`Points`)
+- a formula over other channels (`A+B`, `MAX(0, x)`)
+- a piece of geometry that draws itself
+- a texture
+- a *handler*: a channel whose job is to call its children in order, which is how the game expresses
+  "do these things, in this sequence"
+
+Every channel has a **name**, a **type**, and a list of **children** — the other channels wired into
+its inputs. That is the whole model.
+
+### Two ways a channel is used
+
+This distinction matters more than any other, because it decides which part of the API you reach for.
+
+**Evaluated for a value.** You ask the channel what it holds and it answers — computing it from its
+children first if it needs to. `StatCollector::Points` evaluates to a number. `Feat String` evaluates
+to text.
+
+> In scripts: `tw.float_ch`, `tw.string_ch`, `tw.vector_ch`. See [Reading and writing the game](channels.md).
+
+**Called as an action.** The game runs the channel for its effects. Nothing meaningful comes back;
+the point is what it did. `TrafficCommander::Do_CollectCar` is called when your car touches a block,
+and what it *does* is remove that block from the road and put it somewhere.
+
+> In scripts: `tw.on_call` and `tw.mute`. See [Reacting and intercepting](hooks.md).
+
+Some channels are both. That is fine and normal.
+
+### Naming conventions the game actually follows
+
+The game's authors were consistent enough to be useful:
+
+| Pattern | Means | Example |
+|---|---|---|
+| `Do_Something` | an action handler — something happens when it is called | `Do_ResetStats` |
+| `Something?` | a flag, 0 or 1 | `GamePaused?`, `Ninja?` |
+| `Index_Something` | a **cursor** into a table (see below) | `Index_TrafficPattern` |
+| `Table: Column` | one column of a table | `Stats: TrafficColorCounts` |
+| `Fetch_Something` | a value pulled from somewhere else | `Fetch_NumberBlocksInPlay` |
+
+Nothing enforces this. But when you are hunting for something, guessing `Do_` + what you want is
+often right.
+
+## Groups
+
+The graph is split across ~161 files called **groups** (`.cgr` files in the game's `engine/` folder).
+A group is a namespace and a unit of loading.
+
+You address a channel as **group + name**:
+
+```lua
+tw.float_ch("StatCollector", "Points")
+```
+
+Groups reference each other, and the game writes that as `StatCollector::Points` in its own tooling.
+Same thing.
+
+**Groups load and unload as you move around the game.** `XX_PauseScreen` is not loaded while you are
+in the main menu. This is the single most common reason a script "does not work" — and it is why
+channel handles resolve lazily and wait rather than failing once at startup.
+
+It is not only the menu, either: some groups are destroyed and built again *while you play*. The
+renderer's group goes on every single run. A handle into one of those goes `nil` and comes back by
+itself, and a hook into one detaches and reattaches by itself. If you want to know when it happens,
+[`tw.on_group(name, fn)`](api-reference.md#twon_groupname-fn) tells you.
+
+**"The game has loaded" is a thing the Tweaker knows, and you do not have to work it out.** Your
+handlers do not run before it. What the layer is waiting for, while it waits, is shown at the top of
+the Scripts tab and readable as [`tw.state()`](api-reference.md#twstate--string).
+
+To see what is loaded right now, call `tw.groups()` — for instance from a few lines that draw the list
+with `tw.hud.text`. Which groups exist at all, loaded or not, `cgrpy query find` answers from outside the
+game. The whole timeline — what loads when, what is destroyed and loaded again — is
+[Start-up and the life of groups](../internals/lifecycle.md).
+
+### Group names are a little loose
+
+A group has a file path (`Scores/StatCollector.cgr`) and a pool name (`StatCollector`). The Tweaker
+will match either, plus the bare file name without path or extension. In practice: **use the short
+name**, `"StatCollector"`, and it works.
+
+One name is not what you would guess: the root group `XX_StartHere.cgr` is called **`StartGroup`**.
+Both work; the game's own cross-references say `StartGroup`.
+
+## Tables and cursors
+
+The game stores lists — the generated track, per-colour counts, playlists — in **Array Tables**. This
+one is genuinely strange the first time and worth reading slowly.
+
+A table column is an `Array Value` channel. But it takes no index argument, because channels do not
+take arguments. Instead:
+
+- the column has a separate **cursor channel** wired into it (conventionally `Index_Something`);
+- you write the row number into the cursor;
+- then you evaluate the column, and it gives you that row.
+
+The game does exactly this in its own logic — a loop writes 0, 1, 2… into the cursor and reads the
+column each time.
+
+Scripts do not do that dance by hand. `tw.array` does it for you, and importantly **puts the cursor
+back** afterwards, because the cursor belongs to the game and leaving it moved corrupts whatever the
+game does next:
+
+```lua
+local counts = tw.array("StatCollector", "Stats: TrafficColorCounts", "Index_TrafficColorCounts")
+
+local reds = counts:get(4)
+```
+
+For columns of vectors, `tw.array_vec` does the same and gives you three numbers.
+
+## The traps
+
+These are not hypothetical. Every one of them cost real debugging time.
+
+### Channel names are not unique
+
+Within a single group, two channels can have the same name. `TrafficCommander` has **two** `Value`
+channels called `TrafficType`, and a lookup by name finds the first one — which is not the one the
+collision handler writes.
+
+When a name is ambiguous, address the channel by its **index** instead:
+
+```lua
+local type_ch = tw.float_ch("TrafficCommander", 900)   -- the right TrafficType
+```
+
+The catch: an index is a position in a specific build of the game. It is more precise and more
+fragile. **Prefer the name wherever the name is unambiguous**, and reach for an index only when you
+have established it is not.
+
+### Some channels look readable and are not
+
+A channel that is a **group parameter** — an input the group receives from whoever called it — reads
+as whatever it happened to hold last, not as the value being passed. `Do_ReportCarCollected` takes a
+colour that way, and a script reading that channel gets the same stale number every time. It looks
+like it works. It does not.
+
+If a value seems frozen or implausible, suspect this, and look for where the value actually comes
+from rather than where it is consumed.
+
+### A value's meaning can depend on when you read it
+
+Some of the game's state is only right at the end of a run. `Stats: TrafficColorCounts` is counted
+when the track is generated — **before** the whites and wilds are placed over coloured blocks — and
+corrected only in the final scoring pass. During a run it is too high on every colour and zero on
+white. A script that reads it mid-run gets a plausible wrong answer.
+
+When accuracy matters, find where the game gets the number from, not where it stores it.
+
+## How to find the thing you want
+
+You will not find most of this by guessing. The workflow that works:
+
+**1. Start from what the game shows you.** If you can see a number on screen, it exists in a channel,
+and it usually has an obvious name.
+
+**2. Read the map.** [Playing Audiosurf](../internals/playing-audiosurf.md) turns what you see and
+what players call it into groups and channels; the [gameplay map](../internals/gameplay-map.md) covers
+the gameplay-critical groups in detail — the whole of `StatCollector`, scoring, medals, the colours, the
+board and the chain — with indices and with the traps.
+
+**3. Ask the graph.** `cgrpy query find "<part of a name>"` searches every group at once,
+`cgrpy query dec <group> <handler>` shows what a handler does, and `cgrpy query writers <group>
+<channel>` shows where a value really comes from. When a group will not resolve in the game, the answer
+is almost always "it is not loaded right now" or "it is called something else": `tw.groups()` says
+which is loaded, `cgrpy query find` what it is called.
+
+**4. Watch, do not guess.** Hook a `Do_` handler with `tw.on_call` and have it call `tw.notify` when
+it fires. You will learn very quickly whether it means what you thought.
+
+```lua
+tw.on_call("TrafficCommander", "Do_CollectCar", function()
+    tw.notify("collected!")
+end)
+```
+
+## A starting map
+
+Verified working, and enough to build most things. Times when each is meaningful are noted, because
+that is the part that bites.
+
+### `StatCollector` — the run
+
+| Channel | Kind | Notes |
+|---|---|---|
+| `Timer` | number | Seconds into the song. Resets with the run. |
+| `Points` | number | Running score, **without** end-of-run bonuses. |
+| `LargestMatch` | number | Biggest match so far — drives the Match7/11/21 bonuses. |
+| `TotalCarCount` | number | Blocks on the generated track. Grows *during* track generation. |
+| `NumTilesInGrid` | number | Blocks currently on your board. `0` means a Clean Finish is live. |
+| `PointsWithGridBonus` | number | Final score including bonuses. Only meaningful after the run. |
+| `HighestMedalEarned` | number | 0 none, 1 bronze, 2 silver, 3 gold. After the run. |
+| `Feat String` | **text** | Bonuses earned, comma-separated. After the run. |
+| `Do_ResetStats` | action | The **track** is generated. Once per song — *not* on a restart. |
+| `Do_ResetSimpleStats` | action | The **run** starts. Every entry into gameplay, restart included. The "run began" event. |
+| `Do_ReseteWhiteWildBlocks` | action | Whites, wilds and power-ups are placed over the generated track. Re-randomised on every run. (The typo is the game's.) |
+| `Do_CalculateFinalStats` | action | Fires when a run ends and scoring happens. |
+| `Do_UpdatePoints` | action | **Every** change to the score goes through here — ten call sites across eight groups. Hook it and you have seen them all. |
+| `Points_L`, `Points_R` | number | The two halves of a Double Vision score. Meaningless otherwise. |
+| *(index 155)* | number | `UpdatePoints_Color` — the colour the points being awarded belong to. By index: the group has two channels of that name. |
+
+The first three are three different moments and picking the wrong one is a classic mistake — see
+[Reacting and intercepting § Events worth knowing about](hooks.md#events-worth-knowing-about).
+
+### `StartGroup` — the game as a whole
+
+| Channel | Kind | Notes |
+|---|---|---|
+| `StartupState` | number | Which mode the game is in. |
+| `State_Gameplay`, `State_MainMenu`, `State_SongSelector` | number | The constants to compare it against. Comparing beats hardcoding. |
+| `BronzeRequirement`, `SilverRequirement`, `GoldRequirement` | number | Score thresholds for this track and difficulty. |
+| `LeagueID` | number | Difficulty tier, 0-based. |
+
+"Is the player actually playing?" is `StartupState == State_Gameplay`. That is the game's own test.
+
+### `XX_PauseScreen` — pause
+
+`GamePaused?` (number, 0/1), and the actions `Do_Pause`, `Do_Unpause`, `Do_TogglePauseState`. Only
+loaded during gameplay. Asking for it from the menu is fine and silent — an absent group is not a
+mistake, and nothing is reported for one.
+
+### `SpecialPurpose` — the character you picked
+
+`Ninja?`, `Freeride?`, `DumptyScoopDown?` (Pointman's buffer is down), `ShatterStorming?` (Eraser is
+shattering). These are how you tell *which* ability just consumed a block. `useClone?` is on for the
+Double Vision characters, the ones with two scores.
+
+`MatchCollectionTicks` is here too — how long the board waits between match-collection passes. It is
+per character *and* per league (10/10/20 by league, overridden to 15 for Easy Ninja, 50 for Freeride,
+and a dozen others besides), and a song tag can set it outright, so read the channel rather than
+assuming a number.
+
+### `Achievements` — per-colour hit counters, and the rating
+
+`PurplesHit`, `BluesHit`, `GreensHit`, `YellowsHit`, `RedsHit`, `WhitesHit`, `TotalBlocksHit`. Live
+during a run. These are the counters the game's own 95%-of-a-colour bonuses are tested against.
+
+`SkillRating` is also here, written once at the end of a run by `Do_CalcSkillRating`:
+
+```
+MAX(1, ROUND(StatCollector::PointsWithGridBonus / StartGroup::GoldRequirement * 100
+                                                * (StartGroup::LeagueID + 1)))
+```
+
+It is sent to the server and **never displayed**, which makes it a tempting thing for a HUD to
+predict — and an unusually unforgiving one, because the player has nothing to check it against. Two
+of the three terms are not what they look like: `GoldRequirement` is not a property of the song but
+`TotalCarCount × {10, 30, 35}[LeagueID]`, recomputed per run, and `LeagueID` is a property of the
+**character** (0, 1 or 2), not of the difficulty — that is `ChosenDifficulty`, and it selects a
+different set of medal thresholds entirely.
+
+`PointsWithGridBonus` is `Points` plus one `Points × scaler` term per feat earned — all over the raw
+`Points`, never compounded. The Clean Finish term is included whenever `NumTilesInGrid == 0` **at the
+moment scoring happens**, so a live prediction should count it whenever the board is currently
+empty, not treat it as a hypothetical.
+
+### `TrafficCommander` — the road
+
+`Do_CollectCar` fires whenever your car takes a block off the road — through the grid, through
+Pointman's buffer, or through an Eraser shatter — **except a power-up block**, which goes to
+`Do_CollectQuestionBox` instead and leaves a "ghost" copy of another block behind. Hook both; to count
+blocks per colour, count each track row once (`TrafficID`) and the ghosts drop out — the
+[gameplay map](../internals/gameplay-map.md#collecting-a-block) has the details. The colour is in channel
+index `900` (the name `TrafficType` is ambiguous; see the traps).
+
+### `MoneyFloaterCommander` — points on their way to the score
+
+When a match is collected the game does not award the points. It launches a particle that flies to
+the score box, and awards them when the particle lands. So there is a window — the length of the
+flight — in which the match has happened and the score has not moved, and a HUD that wants to show
+the points arriving rather than reporting them afterwards can use it.
+
+| Channel | Kind | Notes |
+|---|---|---|
+| *(index 27)* | action | `Do_LaunchParticle`. Fires at the match, before any points are awarded. |
+| *(index 198)* | action | `Do_EndLifeApplyScore`. The landing; calls `StatCollector::Do_UpdatePoints` immediately after. |
+| `inDisplayedMoney` | number | How many points this particle carries. |
+| `inLaunchColor` | number | Which colour they came from. |
+| `Index_Particles` | number | Cursor of the particle table, and already on the row that matters in both places above: a launch has just filled it, a landing is the loop iteration for it. |
+| `MoneyParticles: SpentLifePercentage` | table | 0 to 1. This particle's own progress. |
+| `MoneyParticles: State` | table | 1 while in flight, 0 once landed. |
+| `MoneyParticles: MoneyValue` | table | The amount it carries. |
+
+Three traps.
+
+**`Launch_DisplayedMoney` and `Launch_Color` are not these channels.** They are the group's declared
+parameters and every caller binds them, but the body reads the `in*` pair instead; the parameters are
+never wired to anything and hold whatever they were born with.
+
+**A particle is launched per matched TILE, not per match.** `Puzzle::Do_LaunchMoneyParticles` loops
+over every block in the collection, so a seven-block match is seven launches carrying the same colour
+and the same amount. The game's own "+N" text never shows seven, because it is built from a
+once-a-frame diff of `PointsByColor` and so merges per colour — anything hooking the launch has to
+merge them itself.
+
+**Each particle has its own random speed**, so tiles collected on the same frame land on different
+frames. `Index_Particles` at the landing is what tells you *which* one, and it is the cheap way to
+know when a colour's points have all arrived.
+
+Do not try to hide the particles by suppressing `XX_gui`'s `Do_RenderMoneyParticles`. That node is
+the loop that ages them and awards the score; suppressing it stops the game scoring at all.
+
+### `XX_gui` — the HUD
+
+Mostly things to take over rather than to read, but one channel is worth knowing: **`PB`** is the
+personal best for this song, already reduced by the game from the local and server records. It is
+written every frame by the same handler that draws the "Best Score" popup, above the branch that
+does the drawing — so it stays current whether or not that popup is on screen.
+
+**It is not a raw score.** `LocalScores::Do_WriteScore` stores `StatCollector::PointsWithGridBonus`,
+the final figure with every bonus applied, and the server copy is the same number uploaded. Comparing
+it against `Points` compares two different quantities and comes out 20-50% short for a whole good
+run. What it compares against is the projection: `Points × (1 + sum of the scalers earned so far)`,
+which is the same thing `Achievements::SkillRating` is built from.
+
+That projection is exactly linear in `Points` — `Do_FindAddBonusPoints` applies each scaler to the
+raw score and never compounds them — so the factor is common to every point in the run and
+distributes. If you want "what is this match worth towards the final score", multiply its raw delta
+by the same factor; the parts still sum to the whole.
+
+`Color1`…`Color5` are the block palette, in reverse order (`ColorID` 0 is `Color5`). They are only
+the palette that is actually in use in a normal run; see the internal notes for the other three.
+
+### `Puzzle` — the board
+
+`LaneCrashColor`, `Fetch_NumberBlocksInPlay`, and the grid machinery. See the internal notes.
+
+The chain — the multiplier the game shows as a growing bar — lives here too, and it is worth knowing
+that none of it is what its names suggest:
+
+| Channel | Kind | Notes |
+|---|---|---|
+| `ChainCount` | number | Consecutive collections, capped at 100. **Not** the multiplier. |
+| *(index 643)* | number | The `Envelope` that turns `ChainCount` into the bonus. Six keys, 0/1/4/10/20/100 → 0/0.5/1.5/2/2.5/3, so the multiplier runs 1.0 to 4.0. It has no name; read it by index and cross-check it against those keys. |
+| `MatchTimer` | number | Ticks since the last match-collection pass. Frozen while blocks are sliding. |
+
+There is no "chain hold" timer. What exists is the collection pass, which runs every
+`SpecialPurpose::MatchCollectionTicks` ticks — and the chain is whatever survives it: a pass that
+finds no match drops the chain, to zero or to half depending on the league. So the time left before
+the chain is judged is `MatchCollectionTicks - MatchTimer`, and both ends of that need clamping: the
+counter can sit a frame past the window, and can be pushed below zero while collection is suppressed.
+
+**Ticks are 25ths of a second.** Every second-valued counter in the game divides by 25 —
+`StatCollector::Timer` is `Timer + StartGroup::PausableTickCount/25`.
+
+## Next
+
+[Reading and writing the game](channels.md) — turning all of this into actual calls.

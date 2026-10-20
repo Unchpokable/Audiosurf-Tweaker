@@ -1,10 +1,16 @@
-"""Generate the full analysis artifact set for StatCollector & friends."""
-import pickle, csv, collections, struct
-from cgr.project import *
+r"""Generate the full analysis artifact set for StatCollector & friends: CSVs and pseudocode, into out\ here.
+
+    cgrpy examples\genall.py          (needs `cgrpy build_proj` first)
+
+An example rather than a tool: it hardcodes the groups it was written for.
+"""
+import csv, collections, struct
+from cgr.cache import load_project
+from cgr.project import group_params
 from cgr.decomp import Decompiler
 from cgr.core import latin1
 
-P = pickle.load(open("proj.pkl", "rb"))
+P = load_project()
 import os
 OUT = "out/"
 os.makedirs(OUT, exist_ok=True)

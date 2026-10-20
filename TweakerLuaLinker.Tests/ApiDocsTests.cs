@@ -51,7 +51,7 @@ namespace TweakerLuaLinker.Tests
             foreach (var method in api.Types.Keys)
             {
                 var (type, name) = (method[..method.IndexOf(':')], method[(method.IndexOf(':') + 1)..]);
-                var receivers = new[] { "handle", "array", "mute" }.Where(r => ApiReference.TypesOf(r).Contains(type));
+                var receivers = ApiReference.ReceiversOf(type);
                 if (!receivers.Any(r => documented.Contains(r + ":" + name)))
                     missing.Add(method);
             }

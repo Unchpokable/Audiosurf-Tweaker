@@ -11,7 +11,10 @@
 //   lua_script    one script: its header and its health
 //   lua_sched     when callbacks run, per-script isolation, the error and time budgets
 //   lua_diag      what the layer has to say about a script, deduplicated and routed
+//   lua_log       the script log, Logs\scripts-<started>.log: what lua_diag, lua_registry and lua_sched said, as a file, off the frame
 //   lua_linemap   a bundled script's .lua.map: bundle positions back to the project's files
+//   lua_tabs      the tabs scripts declare in the menu (tw.ui): forms, handles, the event queue, the menu's list
+//   lua_storage   a script's own files (tw.storage): its folder, limits, the writer thread, JSON as a tape
 //   api/*         the C ABI the prelude binds, one file per area
 //   lua_ui        the Scripts tab
 //

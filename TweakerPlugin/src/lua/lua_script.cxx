@@ -40,6 +40,8 @@ const char* callback_name(callback kind) noexcept
         return "on_group";
     case callback::unload:
         return "on_unload";
+    case callback::ui:
+        return "on_change";
     }
 
     return "callback";

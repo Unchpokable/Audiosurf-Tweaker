@@ -7,6 +7,11 @@
 // returns. That is what lets the scheduler run each script's on_frame under its own pcall without an
 // ImGui recovery snapshot per script: a Lua error cannot land in the middle of a C function, so there
 // is no half-pushed state for one script to leave behind for the next (lua_sched.cxx).
+//
+// **Any of it may be called from a script's body**, and in the early load bodies run before the overlay has
+// created an ImGui context at all. So drawing refuses outside a frame (inside_frame), measuring and metrics answer
+// 0 without a context (imgui_ready), and the palette and font names touch no ImGui state - a new function here
+// that reads GImGui unguarded crashes the game at startup, the way tw_theme_color once did.
 namespace tw::lua::api
 {
 extern "C" {

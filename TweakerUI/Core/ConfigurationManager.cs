@@ -62,6 +62,9 @@ namespace TweakerUI.Core
             Bind("DarkTheme", false, () => Settings.IsDarkTheme, v => Settings.IsDarkTheme = v),
             Bind("SyncOverlayWithTweaker", true, () => Settings.SyncOverlayWithTweaker, v => Settings.SyncOverlayWithTweaker = v),
             Bind("ScriptEditor", "", () => Settings.ScriptEditor, v => Settings.ScriptEditor = v),
+            Bind("ScriptAgentSetup", false, () => Settings.ScriptAgentSetup, v => Settings.ScriptAgentSetup = v),
+            Bind("ScriptAgents", "claude-code,codex,cursor", () => Settings.ScriptAgents, v => Settings.ScriptAgents = v),
+            Bind("ScriptAgentBinaries", false, () => Settings.ScriptAgentBinaries, v => Settings.ScriptAgentBinaries = v),
         };
 
         // Keys that used to be written here and no longer are. Their values are not carried anywhere - the

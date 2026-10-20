@@ -116,7 +116,7 @@ my_hud/
   "author": "you",
   "version": "0.1.0",        // строго MAJOR.MINOR.PATCH
   "description": "One line.",
-  "api": 1,
+  "api": 2,
   "build": { "comments": "keep", "embed": ["LICENSE"] },          // необязательно
   "diagnostics": { "warnings_as_errors": false, "suppress": [] }  // необязательно
 }
@@ -162,7 +162,7 @@ TweakerUI, у `twllink` флага `--watch` нет (§8.8).
   "modules": [ { "name": "main", "file": "src/main.lua" } ],
   "diagnostics": [
     { "severity": "error", "code": "TW0302", "file": "src/main.lua", "line": 3, "column": 11,
-      "message": "'tw.hud.txt' does not exist in API 1 - did you mean 'tw.hud.text'?" }
+      "message": "'tw.hud.txt' does not exist in API 2 - did you mean 'tw.hud.text'?" }
   ],
   "errors": 1, "warnings": 0
 }
@@ -231,7 +231,8 @@ TweakerUI, у `twllink` флага `--watch` нет (§8.8).
   отсутствующее поле дописывается после последнего с тем же отступом.
 - **`ScriptEditors`** — редакторы (§8.3). На каждый одно описание: где искать (стандартные папки, шим в
   `PATH`), аргументы «папка» и «файл на строке», консольный ли, держит ли один процесс, есть ли терминал.
-  `StartInfo` кладёт `DevTools\Binaries` в начало `PATH` и `AUDIOSURF_DIR` = корень игры.
+  `StartInfo` кладёт папки инструментов (`DevTools.ToolFolders`: `DevTools\Binaries`, затем `DevTools\CgrPy`) в
+  начало `PATH` и `AUDIOSURF_DIR` = корень игры.
 
   | Редактор | Где ищется | «Файл на строке» |
   |---|---|---|
@@ -244,6 +245,23 @@ TweakerUI, у `twllink` флага `--watch` нет (§8.8).
 
   Новый редактор — ещё одно описание. `vim.exe` из `Git\usr\bin` исключён: это MSYS-vim самого Git, а не
   установленный редактор.
+- **`AgentKit`**, **`AgentSetup`** — обвязка проекта для AI-агентов (`dev-bundle-roadmap.md` §3.5–3.6; что куда
+  ложится — `Tools/AgentKit/README.md`). `AgentKit.Load` читает `DevTools\AgentKit` (`kit.json`, скиллы, четыре
+  шаблона) и говорит, чем он сломан. `AgentSetup.Apply(проект, имя, AgentChoice, kit, docs, игра, DevTools,
+  replaceEdited)` раскладывает и обновляет; `Status` считает **те же** решения без записи (как `NeedsUpdate` у
+  `PluginInstallation`) — `NotSetUp`/`UpToDate`/`UpdateAvailable`, список правленых и ожидающих файлов. Таблица
+  решений по файлу — та же, что у установки плагина, по манифесту хешей `.tweaker\manifest.json` (коммитится):
+  нетронутое заменяется, правленое остаётся и сообщается (с `replaceEdited` — `.old`-копия и версия набора),
+  удалённое не возвращается, выпавшее из набора или из выбора — уходит, если не тронуто, и забывается, если тронуто.
+  `AGENTS.md` — пользователя: пишется один раз, дальше наш только блок между маркерами (свой хеш `AGENTS.md#tweaker`;
+  убранные маркеры не возвращаются, к чужому `AGENTS.md` блок дописывается в конец с его переводами строк);
+  `CLAUDE.md` — один раз шаблон или `@AGENTS.md` в начало существующего (флаг в манифесте). Текст хешируется **без
+  `\r`**: проект, выписанный git с autocrlf, не должен выглядеть «всё правлено». `WriteLocal` пишет
+  `.tweaker\local.json` (`format`, `game`, `devtools`) только у настроенного проекта и только если он изменился —
+  иначе наблюдатель пересборки получал бы запись на каждое открытие; строку для него в `.gitignore` дописывает `Apply`.
+- **`Uv`** — есть ли `uv` (CgrPy, `dev-bundle-roadmap.md` §2.2): в `PATH` процесса — `Ready`; только в `PATH`
+  пользователя или машины из реестра — `NeedsRestart` (поставлен при запущенном Tweaker, открытые им редакторы его не
+  увидят); нигде — `Missing`. `Uv.InstallCommand` — команда `winget`.
 - **`ScriptWire`** — грамматика `SCRIPT_*` хоста (§7): `Set`/`Reload`/`Rescan`/`Order` пишут команды,
   `TryParseState`/`TryParseSynced`/`TryParseOrder` читают ответы, `ScriptLiveState`/`ScriptLiveStatus`. Без транспорта и
   состояния — чтобы проверяться юнит-тестами против тех же строк, что требует от плагина его харнесс.
@@ -309,9 +327,17 @@ TweakerUI, у `twllink` флага `--watch` нет (§8.8).
 ```
 <TweakerUI>\DevTools\
   Binaries\twllink.exe       компоновщик
+  CgrPy\                     инструменты реверса игры, cgrpy (dev-bundle-roadmap.md §3.2); тоже в PATH редактора
+  Docs\                      публичная документация (dev-bundle-roadmap.md §2.11)
+  AgentKit\                  скиллы и блок AGENTS.md для AI-агентов (dev-bundle-roadmap.md §3.5, Tools/AgentKit)
   Sources\<id>\              проекты, созданные здесь
   recent-projects.txt        проекты, открытые откуда угодно ещё
 ```
+
+Состав поставляемой части `DevTools\` (всё, кроме `Binaries\`) задаёт target `CopyDevTools` в `TweakerUI.csproj`:
+он собирает `DevToolsPayload\` (стирается каждой сборкой) и зеркалит его в `DevTools\` дев-сборки, только
+дописывая — там же `Sources\`, `recent-projects.txt` и 200-мегабайтный `CgrPy\.cache\`. Исключение — `AgentKit\`:
+он заменяется целиком.
 
 ### Проекты — левая колонка
 
@@ -352,6 +378,17 @@ TweakerUI, у `twllink` флага `--watch` нет (§8.8).
     «изменилась папка» (его вызывает само чтение файлов при сборке).
   - Пауза — 300 мс тишины; изменения во время сборки дают **одну** сборку после неё. Задержка — `Task.Delay`
     с номером поколения (§8.16).
+- **AI-агенты** (`ScriptDevViewModel.Agents.cs`, модель — `AgentSetup`, §4). В форме нового проекта — «Set up for AI
+  agents» и переключатели Claude Code / Codex / Cursor / Binaries skill; и то, и выбор запоминаются
+  (`ScriptAgentSetup`, `ScriptAgents`, `ScriptAgentBinaries` в `ConfigurationManager.Bindings`; первый раз — выключено,
+  все три агента без бинарников). Настройка — сразу после `twllink --new`; ошибка набора сообщается, проект остаётся.
+  У выбранного проекта, под действиями, строка состояния («Not set up…», «Set up for … - up to date (kit N)», «kit N
+  is available», «N files to bring up to date», ниже — правленые файлы) и кнопки **Update**, **Use the kit's version**
+  (с подтверждением), **Set up for AI agents** / **Agents…** — панель с теми же переключателями и Apply; без агента
+  Apply недоступна. Состояние считается в фоне при выборе проекта и при показе вкладки; тогда же переписывается
+  `local.json`. Наблюдатель пересборки не считает изменением `.tweaker\`, `.agents\`, `.claude\`.
+- **`uv`** — при каждом показе вкладки `Uv.LocateOnSystem`; нет или нужен перезапуск — карточка над колонками с
+  объяснением и командой `winget` в поле только для чтения (выделить и скопировать). Ставит пользователь (§2.24 плана).
 - **Карточка Editor** — найденные редакторы (`RowList`), выбор запоминается (`ScriptEditor` в
   `ConfigurationManager.Bindings`), поиск повторяется при каждом показе вкладки. Кнопка **Open in
   <редактор>**. Уже запущенный VS Code или Cursor, запущенный не этой сессией Tweaker, — предупреждение с
@@ -583,7 +620,8 @@ Lua-система — модуль плагина, а не хоста. Хоче
 |---|---|
 | модель (`TweakerCore/Scripting`, `RestoreScripts`) | `TweakerCore.Tests/Scripting/`: `ScratchGame` — поддельная папка игры; тесты `Twllink` гоняют **настоящий** `twllink` (проект тестов ссылается на компоновщик, как TweakerUI, и копирует его в `twllink\`); `ScriptWireTests` — те же строки, что `remotetest` |
 | вкладка Scripts | `Tools/UiStand scripts`: настоящая вьюмодель над поддельной игрой (все виды строк, баннеры, пустые состояния, обе темы и ширины), переключатель без игры (запись `scripts.cfg`; если Audiosurf на машине реально запущена — отказ), живой режим против поддельного плагина (`ScriptsOverlayBridge.UseTransport`/`Receive`) |
-| вкладка Script Dev | `Tools/UiStand scriptdev`: настоящий `twllink`; создание, правка манифеста, сборка, ошибка с местом, установка, `SCRIPT_RELOAD` после установки, пересборка по сохранению, высоты поля описания, Neovim без окна — видит ли `twllink` и `AUDIOSURF_DIR` |
+| вкладка Script Dev | `Tools/UiStand scriptdev`: настоящий `twllink`; создание, правка манифеста, сборка, ошибка с местом, установка, `SCRIPT_RELOAD` после установки, пересборка по сохранению, высоты поля описания, Neovim без окна — видит ли `twllink` и `AUDIOSURF_DIR`; AI-агенты на **настоящем** наборе — состояние, панель, файлы и `local.json`, правленый скилл, «Use the kit's version», форма нового проекта и запоминание выбора; карточка `uv` |
+| обвязка для агентов | `TweakerCore.Tests/Scripting/AgentSetupTests` (свой маленький набор: развёртывание, повтор, новый набор, правленый, удалённый, текст вокруг блока, правка в блоке, чужой `AGENTS.md` с CRLF, убранные маркеры, смена выбора, `CLAUDE.md` один раз, выписка с CRLF, выпавший скилл, `local.json`; плюс настоящий `Tools/AgentKit`); содержимое набора — `TweakerLuaLinker.Tests` (`DocsTests`, `AgentKitTests`) |
 | утечки и снимки | `Tools/UiStand tabs` (живые вьюшки после GC), `shoot` + `compare` (попиксельно до/после правки общих стилей) |
 | реестр плагина и ящик | `TweakerPlugin/harness/remote/remotetest` (настоящие `lua_registry`, `lua_remote`, `lua_script`, `wire_text` над временной папкой); `harness/sched/schedtest` — приостановка и Resume двигают ревизию |
 
@@ -623,6 +661,7 @@ Lua-система — модуль плагина, а не хоста. Хоче
 | С4c | 30.09–01.10.2026 | правки по итогам проверки: форма нового проекта, name/id, правка манифеста, удаление проекта, многострочное описание |
 | С5a | 02.10.2026 | плагин: реестр на `unique_ptr`, `rescan`, `lua_remote`, протокол 2, Rescan и «...» в оверлее |
 | С5b | 03.10.2026 | хост: `ScriptWire`, `ScriptsOverlayBridge`, три режима вкладки Scripts, перезагрузка после установки |
+| Ф5 Developer Bundle | 18.10.2026 | AI-агенты в Script Dev (`AgentKit`, `AgentSetup`), карточка `uv`, `cgrpy` в `PATH` редактора — `dev-bundle-roadmap.md` |
 
 Модуль начался с пункта Ф8 `plugin-offline-mode.md` («Восстановить поставляемые скрипты» — не кнопка, а
 модуль) и с проверки Ф5b плана Lua-движка, после которой владелец подтвердил: из голого терминала `twllink`

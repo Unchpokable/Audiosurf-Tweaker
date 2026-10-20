@@ -156,7 +156,7 @@ Write-Host "    $legacyExe -> $tweakerOut"
 # --- 3. twllink: the Lua project linker, Native AOT --------------------------------------------
 # One self-contained exe with no runtime to install (Docs/Internal/lua-engine-fix-roadmap.md §9.2,
 # §9.9). It goes to DevTools\Binaries\ beside TweakerUI.exe - the folder the Script Dev tab runs it from
-# and puts on an editor's PATH (Docs/Internal/script-manager-roadmap.md §5, С1). Not part of
+# and puts on an editor's PATH (Docs/Internal/script-manager.md §8.1). Not part of
 # PluginPayload\ - it is a tool of the host, and the game never sees it. Published into its own
 # folder and only the exe is taken: Native AOT leaves ~16 MB of symbols next to it.
 $linkerProj = Join-Path $repoRoot "TweakerLuaLinker\TweakerLuaLinker.csproj"
@@ -168,6 +168,21 @@ if ($LASTEXITCODE -ne 0) { throw "twllink publish failed - Native AOT links with
 New-Item -ItemType Directory -Force -Path $devToolsOut | Out-Null
 Copy-Item (Join-Path $linkerOut "twllink.exe") -Destination $devToolsOut -Force
 Write-Host "    $(Join-Path $linkerOut 'twllink.exe') -> $devToolsOut"
+
+# --- 4. The rest of DevTools\: CgrPy -----------------------------------------------------------
+# What goes in is decided by TweakerUI.csproj's CopyDevTools target, which stages it as DevToolsPayload\
+# (Docs/Internal/dev-bundle-roadmap.md §3.1); this only carries it over, as with PluginPayload\ above.
+# The freshest of the bin\ trees is the one with the newest DevToolsPayload.stamp - the publish above
+# has just written it. The files inside cannot tell: Copy keeps their source timestamps.
+Write-Host "==> Locating DevToolsPayload\ (CgrPy) from the TweakerUI build"
+$devToolsStamp = Get-ChildItem -Path (Join-Path $repoRoot "TweakerUI\bin") -Recurse -File -Filter "DevToolsPayload.stamp" -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime -Descending | Select-Object -First 1
+if (-not $devToolsStamp) { throw "DevToolsPayload.stamp not found under TweakerUI\bin - did TweakerUI.csproj's CopyDevTools target run?" }
+$devToolsPayload = Join-Path $devToolsStamp.DirectoryName "DevToolsPayload"
+$devToolsRoot = Join-Path $tweakerOut "DevTools"
+New-Item -ItemType Directory -Force -Path $devToolsRoot | Out-Null
+Copy-Item (Join-Path $devToolsPayload "*") -Destination $devToolsRoot -Recurse -Force
+Write-Host "    $devToolsPayload -> $devToolsRoot"
 
 # --- Summary ------------------------------------------------------------------------------------
 $stats = Get-ChildItem $distDir -Recurse -File | Measure-Object -Property Length -Sum

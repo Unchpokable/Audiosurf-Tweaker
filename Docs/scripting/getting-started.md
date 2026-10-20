@@ -23,6 +23,8 @@ Audiosurf/
         scripts.cfg             <- created automatically; remembers which scripts you turned off
       SkyboxReplacer/           <- the Skybox Replacer's own folder, see Docs/skyboxes.md
       Logs/
+      ScriptData/
+        my-script/              <- files my-script.lua keeps with tw.storage, see storage.md
 ```
 
 They are loose files on purpose, not packed into the plugin. You can edit one in a text editor and
@@ -61,6 +63,7 @@ Create `engine\TweakerStuff\Scripts\first.lua`:
 ```lua
 -- @name        First
 -- @description Prints the song timer
+-- @api         2
 
 local timer = tw.float_ch("StatCollector", "Timer")
 
@@ -68,12 +71,17 @@ tw.on_frame(function()
     local t = timer:get()
     if t == nil then return end
 
-    local x, y = tw.hud.safe()
-    tw.hud.text(x + 20, y + 20, string.format("%.1f s", t))
+    local text = string.format("%.1f s", t)
+    local w, h = tw.hud.measure(text)
+    local x, y = tw.hud.place(w, h, "top_left", 20)   -- a free spot, clear of the overlay and other scripts
+    if x == nil then return end
+    tw.hud.text(x, y, text)
 end)
 ```
 
-Start Audiosurf with the Tweaker, start a run, and the song timer appears in the corner.
+Start Audiosurf with the Tweaker, start a run, and the song timer appears in the corner — clear of the notification
+feed when it is showing, because `tw.hud.place` asks what is already on screen
+([Drawing § Coordinates](drawing.md#coordinates)).
 
 Three things are happening, and they are the shape of nearly every script:
 
@@ -242,10 +250,70 @@ Check, in order:
 - Does anything draw? Try `tw.notify("alive")` at the top level — it shows a toast the moment the
   script loads.
 
-`print(...)` works and goes to the plugin log. `tw.notify(...)` shows a toast on screen. In release
-builds the log is stripped, so `tw.warn(...)` — which files the message in your script's row in the
-Scripts tab, with a counter — is the one to reach for when you need to see something in a normal
-install.
+`print(...)` works and goes to the plugin's debug log, which release builds strip. `tw.notify(...)`
+shows a toast on screen. `tw.warn(...)` — which files the message in your script's row in the
+Scripts tab, with a counter, and in the script log below — is the one to reach for when you need to
+see something in a normal install.
+
+### The script log
+
+Everything the Scripts tab and the notification strip tell you is also written to a file, so you can
+read it after the fact — or hand it to whoever is helping you, an AI agent included:
+
+```
+engine\TweakerStuff\Logs\scripts-2026-10-18_21-04-11.log
+```
+
+Every game session gets a file of its own, named by the date and time the game started. A file is
+never renamed or reused, so the one from the session that went wrong is still there, under the same
+name, however many times you have started the game since. To report a problem, attach that file as it
+is. The names sort in time order: the latest session is the last file in the folder. The 20 newest
+sessions are kept, and older ones are deleted when the game starts. Only files named exactly like
+that are deleted, so a log you renamed or copied — `scripts-for-the-issue.log` — stays.
+
+The file is written while the game runs, at most a tenth of a second behind it, and you can open it
+while the game is running.
+
+```
+===== 2026-10-18 21:04:11 TweakerPlugin 0.1.0.0, LuaJIT 2.1.1727870382 =====
+time         frame    kind      script: where: text
+21:04:11.120 f0       info      (layer): scripting API 3
+21:04:11.121 f0       script    (layer): 2 script(s) in Scripts, run order: my_hud.lua, particles.lua
+21:04:11.140 f0       script    my_hud.lua: loaded
+21:04:11.142 f0       script    particles.lua: loaded
+21:04:19.877 f512     engine    (layer): ready (start group XX_StartHere.cgr, 140 groups loaded)
+21:05:02.310 f3120    engine    (layer): busy (start group XX_StartHere.cgr, 152 groups loaded)
+21:05:03.004 f3171    engine    (layer): ready (start group XX_StartHere.cgr, 201 groups loaded)
+21:05:03.020 f3172    warning   my_hud.lua: src/lanes.lua:40: no lane under the car
+21:05:03.180 f3181    repeated  my_hud.lua: src/lanes.lua:40: no lane under the car - 10 times since f3172
+21:05:09.020 f3532    error     my_hud.lua: on_frame: src/draw.lua:12: attempt to index a nil value (local 'row')
+    stack traceback:
+    	src/draw.lua:12: in function <src/draw.lua:8>
+21:05:09.090 f3536    suspended my_hud.lua: suspended - 5 errors in 5 frames, the last: src/draw.lua:12: attempt ...
+21:05:40.552 f5410    script    my_hud.lua: reloaded
+```
+
+What is in it:
+
+- **Every message of a script, in full** — errors with their traceback, `tw.warn`, `tw.error`,
+  `tw.pending`, and the `tw.notify` toasts that were shown. Positions in a script built from a
+  [project](authoring.md) point at your modules (`src/draw.lua:12`), not at the built file. Like the
+  Scripts tab, the log does not repeat itself: the same message from the same place is written once,
+  then again at its 10th, 100th and 1000th time, with the count.
+- **What happened to each script** — loaded, failed, switched on or off, reloaded (which is what a
+  rebuild from Script Dev does), suspended and resumed, found or lost by **Rescan**, and the run order
+  whenever it changes.
+- **What the game was doing** — `engine` lines are the plugin's own view of the game: `ready` once it
+  has loaded, `busy` while it loads something again. A `busy` and the `ready` after it are a run
+  starting.
+
+Every line has the time of day and the engine's frame number — `tw.frame` in your script — so "I saved
+the file, it rebuilt, and on the next run it broke" can be read straight off the file.
+
+Two limits keep it from getting in the way. A session's file stops at 4 MiB, with a line saying so —
+the next game session starts a new one.
+And the log never makes the game wait: if a script floods it faster than it can be written, the
+excess is dropped and a `dropped` line says how many lines were lost.
 
 ## Next
 

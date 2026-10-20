@@ -11,11 +11,13 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdio>
 #include <span>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include "ui/form/form.hxx"
 #include "ui/image/svg.hxx"
 #include "ui/kit/anim.hxx"
 #include "ui/kit/interact.hxx"
@@ -1408,6 +1410,619 @@ void player_character_frame(scene_ctx& ctx)
     }
 }
 
+// ---------------------------------------------------------------------------------------------
+// ui/form - a page of controls described as data, as a script's tab will be (script-tabs.md §3.3).
+// Each scene draws the form on a tab_view page, the way the menu will, and prints what the form reported
+// under it: the events are the half of the form a picture cannot otherwise show.
+// ---------------------------------------------------------------------------------------------
+using ui_kind = tw::ui::form::kind;
+using ui_form = tw::ui::form::form;
+
+// What the form said, one line per event, oldest first - drawn under the page.
+std::vector<std::string> g_form_log;
+
+void log_form_events(const ui_form& f, std::span<const char* const> names)
+{
+    for(const tw::ui::form::event& e : f.events()) {
+        const char* name = e.node >= 0 && e.node < static_cast<int>(names.size()) ? names[static_cast<std::size_t>(e.node)] : "?";
+        char line[160];
+        std::snprintf(line, sizeof(line), "%s = %.3f%s", name, e.value, e.committed ? "   committed" : "");
+        g_form_log.emplace_back(line);
+    }
+}
+
+void draw_form_log(std::size_t keep)
+{
+    ImGui::Spacing();
+    if(g_form_log.empty()) {
+        paint::paragraph("(no events)", theme::text_muted);
+        return;
+    }
+    const std::size_t first = g_form_log.size() > keep ? g_form_log.size() - keep : 0;
+    for(std::size_t i = first; i < g_form_log.size(); ++i) {
+        paint::paragraph(g_form_log[i], theme::text_secondary);
+    }
+}
+
+// The page a script's tab will be: one tab, the form inside its page.
+void draw_form_page(tab_view& tabs, ui_form& f, ImVec2 size, bool page_disabled = false)
+{
+    tabs.set_size(size);
+    tabs.begin();
+    if(tabs.begin_view(0)) {
+        if(page_disabled) {
+            tw::ui::form::begin_disabled();
+        }
+        f.draw();
+        if(page_disabled) {
+            tw::ui::form::end_disabled();
+        }
+        tabs.end_view();
+    }
+    tabs.end();
+}
+
+ImVec2 form_point(const ui_form& f, int node, ImVec2 rel)
+{
+    const ImRect r = f.last_rect(node);
+    return ImVec2 { r.Min.x + (r.Max.x - r.Min.x) * rel.x, r.Min.y + (r.Max.y - r.Min.y) * rel.y };
+}
+
+double packed(const ImVec4& rgba)
+{
+    return static_cast<double>(ImGui::ColorConvertFloat4ToU32(rgba));
+}
+
+// Every kind on one page, two sections; click the toggle, the choice and the button.
+void form_controls_frame(scene_ctx& ctx)
+{
+    static tab_view tabs { "bench_form_tabs" };
+    static ui_form f { "bench_form" };
+    static std::vector<const char*> names;
+    static int show = -1, corner = -1, reset = -1;
+    static bool ready = false;
+    if(!ready) {
+        static const std::string_view k_tab[] = { "PuzzlePRO" };
+        tabs.set_tabs(k_tab);
+
+        const int display = f.add(ui_kind::group, -1, "Display");
+        show = f.add(ui_kind::toggle, display, "Show HUD");
+        f.set_value(show, 1.0);
+        const int scale = f.add(ui_kind::slider, display, "Scale");
+        f.set_range(scale, 0.5, 2.0);
+        f.set_value(scale, 1.0);
+        corner = f.add(ui_kind::choice, display, "Corner");
+        static const std::string_view k_corners[] = { "Left", "Right" };
+        f.set_options(corner, k_corners);
+        const int accent = f.add(ui_kind::color, display, "Accent");
+        f.set_value(accent, packed(theme::accent_primary));
+
+        const int behaviour = f.add(ui_kind::group, -1, "Behaviour");
+        const int rows = f.add(ui_kind::number, behaviour, "Rows");
+        f.set_range(rows, 1.0, 10.0);
+        f.set_value(rows, 5.0);
+        f.add(ui_kind::text, behaviour, "Rows are counted from the top of the board. A long sentence wraps to the section.");
+        const int preset = f.add(ui_kind::list, behaviour, "");
+        const tw::ui::widgets::list_item_content k_items[] = { { .text = "Classic" }, { .text = "Wide" }, { .text = "Compact" } };
+        f.set_items(preset, k_items);
+        f.set_height(preset, 150.f);
+        f.set_value(preset, 1.0);
+
+        f.add(ui_kind::separator, -1, "");
+        reset = f.add(ui_kind::button, -1, "Reset best");
+
+        names = { "Display", "Show HUD", "Scale", "Corner", "Accent", "Behaviour", "Rows", "text", "Preset", "separator", "Reset best" };
+        ready = true;
+    }
+
+    begin_bench(ctx);
+    draw_form_page(tabs, f, ImVec2 { 440.f, 560.f });
+    log_form_events(f, names);
+    draw_form_log(4);
+    end_bench();
+
+    switch(ctx.frame()) {
+        case 8:
+            ctx.capture("idle");
+            ctx.mouse_move(form_point(f, show, ImVec2 { 0.97f, 0.5f }));
+            break;
+        case 20:
+            ctx.capture("toggle-hovered");
+            ctx.mouse_button(ImGuiMouseButton_Left, true);
+            break;
+        case 22:
+            ctx.mouse_button(ImGuiMouseButton_Left, false);
+            break;
+        case 40:
+            ctx.capture("toggle-off");
+            ctx.mouse_move(form_point(f, corner, ImVec2 { 0.97f, 0.5f }));
+            break;
+        case 42:
+            ctx.mouse_button(ImGuiMouseButton_Left, true);
+            break;
+        case 44:
+            ctx.mouse_button(ImGuiMouseButton_Left, false);
+            break;
+        case 60:
+            ctx.capture("choice-right");
+            ctx.mouse_move(form_point(f, reset, ImVec2 { 0.05f, 0.5f }));
+            break;
+        case 62:
+            ctx.mouse_button(ImGuiMouseButton_Left, true);
+            break;
+        case 64:
+            ctx.mouse_button(ImGuiMouseButton_Left, false);
+            break;
+        case 80:
+            ctx.capture("button-clicked");
+            ctx.finish();
+            break;
+        default:
+            break;
+    }
+}
+
+// A slider gesture through the form: press, drag, release; again with Escape; then the number's + stepper.
+void form_events_frame(scene_ctx& ctx)
+{
+    static tab_view tabs { "bench_form_events_tabs" };
+    static ui_form f { "bench_form_events" };
+    static const char* const k_names[] = { "Scale", "Rows" };
+    static int scale = -1, rows = -1;
+    static bool ready = false;
+    if(!ready) {
+        static const std::string_view k_tab[] = { "Events" };
+        tabs.set_tabs(k_tab);
+        scale = f.add(ui_kind::slider, -1, "Scale");
+        f.set_value(scale, 0.2);
+        rows = f.add(ui_kind::number, -1, "Rows");
+        f.set_range(rows, 1.0, 10.0);
+        f.set_value(rows, 5.0);
+        ready = true;
+    }
+
+    begin_bench(ctx);
+    draw_form_page(tabs, f, ImVec2 { 440.f, 140.f });
+    log_form_events(f, k_names);
+    draw_form_log(9);
+    end_bench();
+
+    switch(ctx.frame()) {
+        case 8:
+            ctx.mouse_move(form_point(f, scale, ImVec2 { 0.3f, 0.85f }));
+            break;
+        case 10:
+            ctx.mouse_button(ImGuiMouseButton_Left, true);
+            break;
+        case 14:
+            ctx.mouse_move(form_point(f, scale, ImVec2 { 0.6f, 0.85f }));
+            break;
+        case 18:
+            ctx.capture("dragging");
+            ctx.mouse_button(ImGuiMouseButton_Left, false);
+            break;
+        case 24:
+            ctx.capture("released");
+            ctx.mouse_move(form_point(f, scale, ImVec2 { 0.8f, 0.85f }));
+            break;
+        case 26:
+            ctx.mouse_button(ImGuiMouseButton_Left, true);
+            break;
+        case 30:
+            ctx.key(ImGuiKey_Escape, true);
+            break;
+        case 31:
+            ctx.key(ImGuiKey_Escape, false);
+            break;
+        case 34:
+            ctx.mouse_button(ImGuiMouseButton_Left, false);
+            break;
+        case 40:
+            ctx.capture("escaped");
+            ctx.mouse_move(form_point(f, rows, ImVec2 { 0.99f, 0.5f }));
+            break;
+        case 42:
+            ctx.mouse_button(ImGuiMouseButton_Left, true);
+            break;
+        case 44:
+            ctx.mouse_button(ImGuiMouseButton_Left, false);
+            break;
+        case 60:
+            ctx.capture("stepped");
+            ctx.finish();
+            break;
+        default:
+            break;
+    }
+}
+
+// The owner writes its value every frame; the user drags anyway and wins until release, then the owner's
+// value lands. A toggle the owner switches on mid-scene reports nothing - a programmatic set is not an event.
+void form_program_set_frame(scene_ctx& ctx)
+{
+    static tab_view tabs { "bench_form_set_tabs" };
+    static ui_form f { "bench_form_set" };
+    static const char* const k_names[] = { "Level", "Armed" };
+    static int level = -1, armed = -1;
+    static bool ready = false;
+    if(!ready) {
+        static const std::string_view k_tab[] = { "Owner" };
+        tabs.set_tabs(k_tab);
+        level = f.add(ui_kind::slider, -1, "Level");
+        armed = f.add(ui_kind::toggle, -1, "Armed");
+        ready = true;
+    }
+
+    const int frame = ctx.frame();
+    if(frame >= 10) {
+        f.set_value(level, 0.25); // every frame, as a script pushing its own idea of the value would
+    }
+    if(frame == 12) {
+        f.set_value(armed, 1.0);
+    }
+
+    begin_bench(ctx);
+    draw_form_page(tabs, f, ImVec2 { 440.f, 140.f });
+    log_form_events(f, k_names);
+    draw_form_log(3);
+    end_bench();
+
+    switch(frame) {
+        case 9:
+            ctx.capture("idle");
+            break;
+        case 16:
+            ctx.capture("owner-set");
+            ctx.mouse_move(form_point(f, level, ImVec2 { 0.8f, 0.85f }));
+            break;
+        case 20:
+            ctx.mouse_button(ImGuiMouseButton_Left, true);
+            break;
+        case 30:
+            ctx.capture("user-holding");
+            ctx.mouse_button(ImGuiMouseButton_Left, false);
+            break;
+        case 45:
+            ctx.capture("owner-again");
+            ctx.finish();
+            break;
+        default:
+            break;
+    }
+}
+
+// Disabled, two ways that must look the same: every node switched off on its own (left), and the whole page
+// under form::begin_disabled() as a suspended script's will be (right). Both dim once, to disabled_alpha.
+// The left form also hides a toggle and a whole group, which take no room.
+void build_disabled_form(ui_form& f, bool each)
+{
+    const int display = f.add(ui_kind::group, -1, "Display");
+    const int show = f.add(ui_kind::toggle, display, "Show HUD");
+    f.set_value(show, 1.0);
+    const int hidden = f.add(ui_kind::toggle, display, "Hidden toggle");
+    const int scale = f.add(ui_kind::slider, display, "Scale");
+    f.set_value(scale, 0.6);
+    const int corner = f.add(ui_kind::choice, display, "Corner");
+    static const std::string_view k_corners[] = { "Left", "Right" };
+    f.set_options(corner, k_corners);
+    const int accent = f.add(ui_kind::color, display, "Accent");
+    f.set_value(accent, packed(theme::accent_primary));
+    const int rows = f.add(ui_kind::number, display, "Rows");
+    f.set_value(rows, 5.0);
+    const int note = f.add(ui_kind::text, -1, "A note under the section.");
+    const int list = f.add(ui_kind::list, -1, "");
+    const tw::ui::widgets::list_item_content k_items[] = { { .text = "Classic" }, { .text = "Wide" } };
+    f.set_items(list, k_items);
+    f.set_height(list, 106.f);
+    f.set_value(list, 0.0);
+    const int reset = f.add(ui_kind::button, -1, "Reset best");
+    const int gone = f.add(ui_kind::group, -1, "Hidden group");
+    f.add(ui_kind::toggle, gone, "Inside the hidden group");
+
+    if(each) {
+        for(const int node : { show, scale, corner, accent, rows, note, list, reset }) {
+            f.set_enabled(node, false);
+        }
+        f.set_visible(hidden, false);
+        f.set_visible(gone, false);
+    }
+    else {
+        f.set_visible(hidden, false);
+        f.set_visible(gone, false);
+    }
+}
+
+void form_disabled_frame(scene_ctx& ctx)
+{
+    static tab_view left_tabs { "bench_form_dis_left" };
+    static tab_view right_tabs { "bench_form_dis_right" };
+    static ui_form each { "bench_form_dis_each" };
+    static ui_form page { "bench_form_dis_page" };
+    static bool ready = false;
+    if(!ready) {
+        static const std::string_view k_left[] = { "Each" };
+        static const std::string_view k_right[] = { "Page" };
+        left_tabs.set_tabs(k_left);
+        right_tabs.set_tabs(k_right);
+        build_disabled_form(each, true);
+        build_disabled_form(page, false);
+        ready = true;
+    }
+
+    begin_bench(ctx);
+    const ImVec2 origin = ImGui::GetCursorScreenPos();
+    draw_form_page(left_tabs, each, ImVec2 { 420.f, 520.f });
+    ImGui::SetCursorScreenPos(ImVec2 { origin.x + 440.f, origin.y });
+    draw_form_page(right_tabs, page, ImVec2 { 420.f, 520.f }, true);
+    end_bench();
+
+    switch(ctx.frame()) {
+        case 8:
+            ctx.capture("idle");
+            ctx.mouse_move(form_point(each, 1, ImVec2 { 0.97f, 0.5f }));
+            break;
+        case 30:
+            ctx.capture("hover-on-disabled");
+            ctx.finish();
+            break;
+        default:
+            break;
+    }
+}
+
+// A page narrower than a strip of long chips: the choice goes under its label. Long labels cut, not wrap.
+void form_narrow_frame(scene_ctx& ctx)
+{
+    static tab_view tabs { "bench_form_narrow_tabs" };
+    static ui_form f { "bench_form_narrow" };
+    static bool ready = false;
+    if(!ready) {
+        static const std::string_view k_tab[] = { "Narrow" };
+        tabs.set_tabs(k_tab);
+        const int where = f.add(ui_kind::choice, -1, "Where the panel sits");
+        static const std::string_view k_options[] = { "Top left", "Top right", "Bottom" };
+        f.set_options(where, k_options);
+        const int side = f.add(ui_kind::choice, -1, "Side");
+        static const std::string_view k_sides[] = { "L", "R" };
+        f.set_options(side, k_sides);
+        f.add(ui_kind::toggle, -1, "A toggle whose label is far longer than the page is wide");
+        f.add(ui_kind::slider, -1, "A slider whose label is far longer than the page is wide");
+        f.add(ui_kind::number, -1, "A number with a long label");
+        f.add(ui_kind::button, -1, "A button that says a lot");
+        ready = true;
+    }
+
+    begin_bench(ctx);
+    draw_form_page(tabs, f, ImVec2 { 300.f, 300.f });
+    // What the menu would hold its window at for this page (Т2): the chip strip plus the page's own inset.
+    char line[64];
+    std::snprintf(line, sizeof(line), "min_width() = %.0f", static_cast<double>(f.min_width()));
+    ImGui::Spacing();
+    paint::paragraph(line, theme::text_secondary);
+    end_bench();
+
+    if(ctx.frame() == 8) {
+        ctx.capture("idle");
+        ctx.finish();
+    }
+}
+
+// A tooltip waits for the hover delay; one on a row inside a group wins over the group's own.
+void form_tooltip_frame(scene_ctx& ctx)
+{
+    static tab_view tabs { "bench_form_tip_tabs" };
+    static ui_form f { "bench_form_tip" };
+    static int show = -1, display = -1;
+    static bool ready = false;
+    if(!ready) {
+        static const std::string_view k_tab[] = { "Tips" };
+        tabs.set_tabs(k_tab);
+        display = f.add(ui_kind::group, -1, "Display");
+        f.set_tooltip(display, "The group's own tooltip");
+        show = f.add(ui_kind::toggle, display, "Show HUD");
+        f.set_tooltip(show, "Hides the whole panel without unloading the script");
+        f.add(ui_kind::toggle, display, "No tooltip here");
+        ready = true;
+    }
+
+    begin_bench(ctx);
+    draw_form_page(tabs, f, ImVec2 { 440.f, 150.f });
+    end_bench();
+
+    switch(ctx.frame()) {
+        case 8:
+            ctx.mouse_move(form_point(f, show, ImVec2 { 0.3f, 0.5f }));
+            break;
+        case 20:
+            ctx.capture("waiting");
+            break;
+        case 45:
+            ctx.capture("shown");
+            ctx.mouse_move(form_point(f, show + 1, ImVec2 { 0.3f, 0.5f }));
+            break;
+        case 80:
+            ctx.capture("group-tip");
+            ctx.finish();
+            break;
+        default:
+            break;
+    }
+}
+
+// item_group sized by its content (the theme editor's masonry) and filling the width (a settings section),
+// with a filling group nested in a filling group.
+void item_group_fill_frame(scene_ctx& ctx)
+{
+    static item_group shrink { "bench_fill_shrink", "By content" };
+    static item_group fill { "bench_fill_fill", "Across the page" };
+    static item_group outer { "bench_fill_outer", "Section" };
+    static item_group inner { "bench_fill_inner", "Sub-section" };
+    static toggle a { "bench_fill_a" };
+    static toggle b { "bench_fill_b" };
+    static toggle c { "bench_fill_c" };
+    static bool ready = false;
+    if(!ready) {
+        fill.set_fill_width(true);
+        outer.set_fill_width(true);
+        inner.set_fill_width(true);
+        ready = true;
+    }
+
+    begin_bench(ctx);
+    // Content that does not reach for the width (label_row would): the group is as wide as the toggle and its word.
+    shrink.begin();
+    a.update();
+    ImGui::SameLine();
+    ImGui::TextUnformatted("Option");
+    shrink.end();
+
+    fill.begin();
+    paint::label_row("Option", b.size());
+    b.update();
+    fill.end();
+
+    outer.begin();
+    paint::paragraph("Text in the section.", theme::text_secondary);
+    inner.begin();
+    paint::label_row("Option", c.size());
+    c.update();
+    inner.end();
+    outer.end();
+    end_bench();
+
+    if(ctx.frame() == 8) {
+        ctx.capture("idle");
+        ctx.finish();
+    }
+}
+
+// ---------------------------------------------------------------------------------------------
+// Dynamic menu tabs (menu::set_dynamic_tabs) - scripts' tabs, faked with forms. One storyboard: the tabs
+// appear, one is added under the selection, the selected one is removed, the rest relabelled and dimmed with
+// the same keys, the same list sent again every frame from inside a page (a reload from the Scripts tab),
+// and a page with a strip of chips too wide for the window grows it on the way in.
+// ---------------------------------------------------------------------------------------------
+ui_form g_dyn_forms[] = { ui_form { "dyn_a" }, ui_form { "dyn_b" }, ui_form { "dyn_c" } };
+bool g_dyn_resend_inside = false;
+
+menu::dynamic_tab dyn_tab(int token, std::string_view label, bool enabled = true);
+
+// The list as the scene currently wants it; re-sent from inside page A while g_dyn_resend_inside is on.
+std::vector<menu::dynamic_tab> g_dyn_list;
+
+float draw_dyn_tab(int token)
+{
+    ui_form& f = g_dyn_forms[token];
+    f.draw();
+    if(g_dyn_resend_inside && token == 0) {
+        menu::set_dynamic_tabs(g_dyn_list);
+    }
+    return f.min_width();
+}
+
+constexpr std::string_view k_dyn_keys[] = { "puzzlepro_hud.lua#0", "tracker.lua#0", "wide.lua#0" };
+
+menu::dynamic_tab dyn_tab(int token, std::string_view label, bool enabled)
+{
+    return menu::dynamic_tab { k_dyn_keys[token], label, &draw_dyn_tab, token, enabled };
+}
+
+void send_dyn(std::vector<menu::dynamic_tab> list)
+{
+    g_dyn_list = std::move(list);
+    menu::set_dynamic_tabs(g_dyn_list);
+}
+
+void menu_dynamic_setup(scene_ctx&)
+{
+    {
+        ui_form& f = g_dyn_forms[0];
+        const int display = f.add(ui_kind::group, -1, "Display");
+        const int show = f.add(ui_kind::toggle, display, "Show HUD");
+        f.set_value(show, 1.0);
+        const int scale = f.add(ui_kind::slider, display, "Scale");
+        f.set_range(scale, 0.5, 2.0);
+        f.set_value(scale, 1.0);
+        const int corner = f.add(ui_kind::choice, display, "Corner");
+        static const std::string_view k_corners[] = { "Left", "Right" };
+        f.set_options(corner, k_corners);
+    }
+    {
+        ui_form& f = g_dyn_forms[1];
+        f.add(ui_kind::text, -1, "Tracker page: the tab the storyboard removes while it is selected.");
+        f.add(ui_kind::toggle, -1, "Track misses");
+    }
+    {
+        ui_form& f = g_dyn_forms[2];
+        const int where = f.add(ui_kind::choice, -1, "Where the panel sits");
+        static const std::string_view k_where[] = { "Top left corner", "Top right corner", "Bottom left corner", "Bottom right corner" };
+        f.set_options(where, k_where);
+    }
+
+    tw::ui::overlay_config::set_menu_pos(k_menu_pos);
+    tw::ui::overlay_config::set_menu_size(ImVec2 { 520.f, 420.f });
+    send_dyn({ dyn_tab(0, "PuzzlePRO"), dyn_tab(1, "Tracker") });
+    menu::show_tab(0);
+}
+
+void menu_dynamic_frame(scene_ctx& ctx)
+{
+    const int f = ctx.frame();
+
+    // Between frames, as anything the scripts do happens outside the menu's update.
+    if(f == 2) {
+        menu::show_tab(4); // the first tab after the four built-in ones - smoke_test registers no extra tabs
+    }
+    else if(f == 41) {
+        send_dyn({ dyn_tab(0, "PuzzlePRO"), dyn_tab(1, "Tracker"), dyn_tab(2, "Wide") });
+    }
+    else if(f == 61) {
+        menu::show_tab(5);
+    }
+    else if(f == 101) {
+        send_dyn({ dyn_tab(0, "PuzzlePRO"), dyn_tab(2, "Wide") });
+    }
+    else if(f == 121) {
+        send_dyn({ dyn_tab(0, "PuzzlePRO HUD - Settings"), dyn_tab(2, "Wide", false) });
+    }
+    else if(f == 141) {
+        g_dyn_resend_inside = true;
+    }
+    else if(f == 161) {
+        g_dyn_resend_inside = false;
+        menu::show_tab(5);
+    }
+
+    tw::smoke::draw_overlay(ctx);
+
+    switch(f) {
+        case 40:
+            ctx.capture("shown");
+            break;
+        case 60:
+            ctx.capture("added-under-selection");
+            break;
+        case 100:
+            ctx.capture("tracker-selected");
+            break;
+        case 120:
+            ctx.capture("selected-removed");
+            break;
+        case 140:
+            ctx.capture("relabelled-dimmed");
+            break;
+        case 160:
+            ctx.capture("same-list-resent");
+            break;
+        case 200:
+            ctx.capture("wide-grown");
+            ctx.finish();
+            break;
+        default:
+            break;
+    }
+}
+
 const scene k_scenes[] = {
     { "button", "labelled button through hover/press/release", k_bench_canvas, nullptr, &button_frame },
     { "button-icon", "icon-only button through hover/press/release", k_bench_canvas, nullptr, &button_icon_frame },
@@ -1429,6 +2044,13 @@ const scene k_scenes[] = {
     { "tab-view-overflow", "long labels and more tabs than fit; wheel over the column", k_bench_canvas, nullptr, &tab_view_overflow_frame },
     { "list-view-refresh", "items replaced under a selection and a hover", k_bench_canvas, nullptr, &list_view_refresh_frame },
     { "disabled", "disabled button, toggle, strip; toggle hover and press", k_bench_canvas, nullptr, &disabled_frame },
+    { "form-controls", "ui/form: every kind on a script page; click toggle, choice, button", ImVec2 { 480.f, 720.f }, nullptr, &form_controls_frame },
+    { "form-events", "ui/form: slider drag, Escape mid-drag, number stepper - and what the form reported", ImVec2 { 480.f, 400.f }, nullptr, &form_events_frame },
+    { "form-program-set", "ui/form: owner writes every frame; the user wins the gesture", ImVec2 { 480.f, 260.f }, nullptr, &form_program_set_frame },
+    { "form-disabled", "ui/form: each node off vs the page under begin_disabled; hidden nodes", ImVec2 { 900.f, 560.f }, nullptr, &form_disabled_frame },
+    { "form-narrow", "ui/form: choice under its label on a narrow page; long labels", ImVec2 { 340.f, 370.f }, nullptr, &form_narrow_frame },
+    { "form-tooltip", "ui/form: tooltip after the hover delay; row inside a group wins", ImVec2 { 480.f, 260.f }, nullptr, &form_tooltip_frame },
+    { "item-group-fill", "item_group by content and across the page, nested", ImVec2 { 480.f, 300.f }, nullptr, &item_group_fill_frame },
     { "popup-anchored", "open_at under a button, long title, first frame, Escape", ImVec2 { 480.f, 260.f }, nullptr, &popup_anchored_frame },
     { "paint-icon", "icon on whole/quarter/half pixel; icon button at alpha 1 and 0.5", k_bench_canvas, nullptr, &paint_icon_frame },
     { "paint-rows", "row_background: idle, hover, selected", k_bench_canvas, nullptr, &paint_rows_frame },
@@ -1445,6 +2067,7 @@ const scene k_scenes[] = {
     { "menu-settings", "menu, Settings tab", k_module_canvas, &menu_settings_setup, &menu_frame },
     { "menu-offline", "menu and pins with the host disconnected", k_module_canvas, &menu_offline_setup, &menu_frame },
     { "menu-crossfade", "Skins -> Tweaks, mid-transition and settled", k_module_canvas, &menu_skins_setup, &menu_crossfade_frame },
+    { "menu-dynamic-tabs", "dynamic tabs: add under the selection, remove the selected, relabel, resend from a page, grow", k_module_canvas, &menu_dynamic_setup, &menu_dynamic_frame },
     { "player-rows", "track row hover and selection", k_module_canvas, &menu_player_setup, &player_rows_frame },
     { "player-context", "track context menu: Character, Tags, Mods", k_module_canvas, &menu_player_setup, &player_context_frame },
     { "player-character", "default character popup", k_module_canvas, &menu_player_setup, &player_character_frame },

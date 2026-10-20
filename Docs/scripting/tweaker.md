@@ -55,7 +55,12 @@ The editor opens the project folder with two things set up for it:
 - **`twllink` is on its `PATH`**, so `twllink` works in the editor's own terminal without you
   installing anything or changing your system settings;
 - **`AUDIOSURF_DIR` points at your game**, so `twllink --install` in that terminal knows where to
-  install.
+  install;
+- **`cgrpy` is on its `PATH` too** — the tools the game was reverse-engineered with, for finding the
+  channel you need when the manual does not name it: `cgrpy query find "Undo"`. They need
+  [uv](https://docs.astral.sh/uv/) installed; see the
+  [CgrPy README](https://github.com/Unchpokable/Audiosurf-Tweaker/blob/HEAD/Tools/CgrPy/README.md), which
+  also ships as `DevTools\CgrPy\README.md` next to `TweakerUI.exe`.
 
 In VS Code and Cursor, install the **Lua** extension (by sumneko) and every `tw.*` name completes as
 you type — see [Your editor](authoring.md#your-editor). Notepad++ has no language server, so it gets
@@ -104,6 +109,42 @@ remove it.
 **Remove from this list** forgets a project opened from elsewhere; its files stay where they are.
 **Delete the project** moves a project's folder to the Recycle Bin. Neither touches what you have
 installed into the game: that is the Scripts tab's business.
+
+### AI coding agents
+
+A project can be set up for an AI coding agent — **Claude Code**, **Codex** or **Cursor** — so that the agent
+knows what it is working on: the scripting API, how the game is built inside, the tools, the rules, and that it
+cannot see the game itself. Switch on **Set up for AI agents** when creating a project, or press **Set up for AI
+agents** on any project, and pick the agents. The choice is remembered for the next project.
+
+In practice that means the **Claude Code** or **Codex** extension for Visual Studio Code, or Cursor itself, opened
+on the project from here. Command-line agents and standalone agent apps are not covered yet.
+
+What it writes into the project:
+
+| | |
+|---|---|
+| `AGENTS.md` | What every agent reads first. **It is yours**: write your own notes in it. The Tweaker only ever rewrites the part between `<!-- tweaker:begin -->` and `<!-- tweaker:end -->`, and adds that part to an `AGENTS.md` you already had. |
+| `.agents/skills/` | Six skills: questioning a vague request before any code, the `tw` API and `twllink`, the game's files and what not to touch, CgrPy, checking a change in the game, and — only if you switch on **Binaries skill** — working with the game's native code. |
+| `.tweaker/docs/` | A copy of this manual and of [How Audiosurf works inside](../internals.md), matching your Tweaker. |
+| `.tweaker/manifest.json` | What of the above the Tweaker wrote. Commit it with the project. |
+| `.tweaker/local.json` | Where the game and the Tweaker are on this computer. Rewritten every time the Tweaker opens the project, and added to `.gitignore`. |
+| `CLAUDE.md`, `.claude/skills/` | Only with Claude Code, which does not read the files above by itself. `CLAUDE.md` is yours after it is written; it only pulls in `AGENTS.md`. |
+
+**Updates.** A newer Tweaker may bring newer skills or docs; the project's row then says so and has **Update**.
+Files you changed are kept as you left them, and the row lists them. **Use the kit's version** replaces them with
+the Tweaker's and keeps yours next to each as a `.old` copy. A file you deleted stays deleted.
+
+**What it does not do.** The Tweaker writes no settings of any agent and no MCP configuration, and installs
+nothing; neither do the skills — when a tool is missing, the agent tells you what to install. The agent cannot
+see the game: it builds and installs, and asks you to look. What it can read is the
+[script log](getting-started.md#the-script-log).
+
+### uv, for CgrPy
+
+`cgrpy` needs [uv](https://docs.astral.sh/uv/), which the Tweaker does not ship. When it is missing, Script Dev
+says so at the top, with the command to install it: `winget install --id=astral-sh.uv -e`. Restart the Tweaker
+afterwards, so that the editors it opens find it.
 
 ## Scripts: what is installed
 

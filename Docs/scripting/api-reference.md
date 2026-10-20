@@ -426,7 +426,10 @@ The viewport, in pixels.
 
 ### `tw.hud.safe()` → x0, y0, x1, y1
 
-The viewport minus the overlay's always-on top band. Full width.
+The viewport minus the overlay's always-on top band. Full width. Coarse: the band is as tall as the
+notification column and spans the whole screen, so it is not for layout — position widgets with
+`tw.hud.place`, or check a position of your own against `tw.hud.occupied` (below and
+[Drawing § Coordinates](drawing.md#coordinates)).
 
 ### `tw.hud.widget(name)` → x0, y0, x1, y1 *or* `nil`
 
@@ -493,6 +496,201 @@ widget.
 
 ---
 
+## Menu tabs
+
+A script's own tab in the overlay menu, and the controls on it (API 3). The whole story — where tabs go,
+what happens on Reload, saving the values — is [Menu tabs](menus.md); this is every name.
+
+Declaring a tab or a control is a registration: in the script's body or `tw.on_ready`, nowhere else.
+Everything else here works from anywhere, any time. Handles are named below by what they are: `tab`, a
+`parent` (a tab or a group — what controls are declared on), any `control`, and the kinds with methods of
+their own — `choice`, `list`, `button`, `paragraph`. Every method that changes something returns the
+handle, so calls chain.
+
+### `tw.ui.tab(opts)` → tab
+
+A new tab in the menu, after the overlay's own and after the tabs of scripts that run before yours.
+`opts` is `{ label = ... }`, or the label as a bare string; no label names the tab after your script. A
+label that clashes with another tab's is shown as `<your script's name> - <label>`. Declared outside the
+registration window, it returns an inert tab whose controls are inert too.
+
+### `tab:label(text)` → tab
+
+Changes the tab's label, from the next frame. Clashes are worked out again.
+
+### `tab:visible()` → boolean
+
+Whether the tab was on screen this frame or the last. For deciding whether a status text is worth
+building; reading values never needs it.
+
+### `parent:group(opts)` → group
+
+A framed section across the page, titled by `opts.label` (or the bare string). Takes every constructor a
+tab takes; groups nest two deep at most.
+
+### `parent:toggle(opts)` → control
+
+A switch; its value is `true` or `false`. `opts.value` — the initial value, default `false`.
+
+### `parent:slider(opts)` → control
+
+A number in a range, dragged. `opts.min` (0), `opts.max` (1), `opts.value` (default `min`, clamped into
+the range). While it is being dragged, `on_change` hears the values with `committed = false`.
+
+### `parent:number(opts)` → control
+
+A whole number in a range. `opts.min` (0), `opts.max` (100), `opts.value` (default `min`, rounded and
+clamped).
+
+### `parent:choice(opts)` → choice
+
+One of several options, as a strip of chips. `opts.options` — the options, a list of strings (required).
+`opts.value` — the initial option, by its text or its number; default the first, and the first, with a
+warning, for one that is not there.
+
+### `parent:color(opts)` → control
+
+A colour, with a picker. Its value is packed the way [`tw.rgb`](#twrgbr-g-b-a--colour) returns colours
+and every `tw.hud.*` call takes them. `opts.value` — default white.
+
+### `parent:button(opts)` → button
+
+A button labelled `opts.label`. It has no value; clicks go to [`button:on_click`](#buttonon_clickfn--button).
+
+### `parent:text(opts)` → paragraph
+
+A paragraph of text, wrapped to the page, in the overlay's secondary text colour. `opts.text`, or the text
+as a bare string.
+
+### `parent:separator()` → separator
+
+A line across the page.
+
+### `parent:list(opts)` → list
+
+A list of rows, one of which the player can select. `opts.items` — the rows: strings, or
+`{ text = ..., sub = ... }` for a row with a smaller second line. `opts.value` — the selected row, from 1;
+none by default. `opts.height` — in pixels, 160 by default.
+
+Every constructor also takes `label`, `tooltip`, `enabled = false` (shown, but takes no input) and
+`visible = false` (takes no room).
+
+### `control:get()` → value
+
+The control's current value: `true`/`false` for a toggle, a number for a slider or a number, a packed colour for a colour.
+Cheap enough for every frame, and available before the game has loaded. A handle that was refused, or
+whose script has been unloaded, answers with its initial value.
+
+### `control:set(value)` → control
+
+Sets the value from your script. Clamped and rounded like the initial value; nothing happens when it is
+the same; **never** calls `on_change`. Ignored while the player is dragging that control — the player
+wins.
+
+### `control:on_change(fn)` → control
+
+`fn(value, committed)` whenever the player changes the control — `value` as `:get()` returns it,
+`committed` true once the change is final (always, except while a slider or a colour is still being
+dragged). Runs in the same overlay frame, before `on_frame`, and only once the game has loaded; several
+changes before it can run come as one, with the last value. A registration: body or `tw.on_ready` only.
+
+### `control:enable(on)` → control
+
+Switches the control (or a whole group) on, or off with `false`: a switched-off control shows its value
+and takes no input.
+
+### `control:show(on)` → control
+
+Shows the control (or a whole group), or hides it with `false`: a hidden one takes no room.
+
+### `control:label(text)` → control
+
+Changes the label - a control's, a group's title, a paragraph's text.
+
+### `control:tooltip(text)` → control
+
+Changes the tooltip shown when the pointer rests on the row; `nil` or `""` for none.
+
+### `choice:get()` → `{ text, index }`
+
+The selected option, as `{ text = "Right", index = 2 }`, indices from 1. One table per option, the same
+table on every call — compare `.text` or `.index`, and do not change it.
+
+### `choice:set(option)` → choice
+
+Selects an option by its text or its number. One that is not there leaves the choice as it was, with a
+warning in the Scripts tab.
+
+### `choice:options(labels)` → choice
+
+Replaces the options. The selection keeps its number, clamped into the new count; option tables you
+held from before are no longer the choice's.
+
+### `list:get()` → number *or* `nil`
+
+The selected row's number, from 1, or `nil` when no row is selected.
+
+### `list:set(row)` → list
+
+Selects a row by its number, or none with `nil`.
+
+### `list:items(rows)` → list
+
+Replaces the rows - strings, or `{ text = ..., sub = ... }`. A selection past the new end is dropped.
+
+### `button:on_click(fn)` → button
+
+`fn()` on every click, in the same overlay frame. A registration, like `on_change`.
+
+### `paragraph:set(text)` → paragraph
+
+Replaces the paragraph's text. Setting the same text every frame costs a comparison.
+
+---
+
+## Storage
+
+A script's own files, in `engine\TweakerStuff\ScriptData\<script file without .lua>\` (API 3). Where,
+which names, how much, and when a write reaches the disk: [Saving data](storage.md).
+
+Every function returns `nil` and a one-line reason when it fails — a missing file is the usual first-run
+case, not an error. A `name` is letters, digits, `_`, `.` and `-`, up to 64, not starting with a dot; one
+that is not a string is a Lua error at your line.
+
+### `tw.storage.read_text(name)` → string *or* `nil`, reason
+
+The file's contents, byte for byte. The first read of a file on disk reads it; after that it comes from
+memory.
+
+### `tw.storage.write_text(name, text)` → `true` *or* `nil`, reason
+
+Replaces the file's contents. Returns at once: the plugin writes it to disk within a tenth of a second,
+through a temporary file. Up to 1 MiB a file, 64 files and 8 MiB a script.
+
+### `tw.storage.read_json(name)` → value *or* `nil`, reason
+
+The file as Lua values: objects become tables with string keys, arrays sequences from 1, `null` a missing
+key. A file that is not JSON is `nil` and why.
+
+### `tw.storage.write_json(name, value)` → `true` *or* `nil`, reason
+
+Writes a table as indented JSON, keys sorted. Refuses, with the reason, what JSON cannot hold: NaN and
+infinities, mixed or non-sequential keys, functions, a table inside itself, nesting deeper than 64.
+
+### `tw.storage.exists(name)` → boolean
+
+Whether the file is there - on disk, or written and not yet saved.
+
+### `tw.storage.remove(name)` → `true` *or* `nil`, reason
+
+Deletes the file.
+
+### `tw.storage.list()` → table of strings
+
+The names of the script's files, sorted.
+
+---
+
 ## Output and diagnostics
 
 ### `tw.notify(message)`
@@ -503,7 +701,9 @@ the script's messages in the Scripts tab.
 
 ### `tw.log(message)`
 
-Writes to the plugin log. **Stripped from release builds**, so it is a development tool only.
+Writes to the plugin's debug log. **Stripped from release builds**, so it is a development tool only —
+and it does not go to the [script log](getting-started.md#the-script-log) either. For a message you need
+to see in a normal install, use `tw.warn`.
 
 `print` is an alias for this.
 
@@ -511,8 +711,8 @@ Writes to the plugin log. **Stripped from release builds**, so it is a developme
 ### `tw.error(message)`
 ### `tw.pending(message)`
 
-Messages for the script's author, filed in the script's row in the Scripts tab — which, unlike the
-log, exists in a normal install. All three remember where they were said from (`myhud.lua:88`), and
+Messages for the script's author, filed in the script's row in the Scripts tab and in the
+[script log](getting-started.md#the-script-log) — which, unlike `tw.log`, exist in a normal install. All three remember where they were said from (`myhud.lua:88`), and
 saying the same thing from the same place again only increases a counter next to it: calling one of
 these every frame is one line, not thousands.
 
@@ -574,7 +774,7 @@ not resolve".
 
 ### `tw.api_version` → number
 
-The version of this API: `1` today, raised whenever a name is added (names are never taken away). A
+The version of this API: `3` today (API 3 added [menu tabs](#menu-tabs) and [storage](#storage)), raised whenever a name is added (names are never taken away). A
 script can use it to adapt to an older Tweaker. A script built with `twllink` also records the version
 it was written against in its header (`-- @api`), and a Tweaker older than that refuses to run it
 rather than let it fail on a missing name — see

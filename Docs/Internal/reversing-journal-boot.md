@@ -460,7 +460,7 @@ engine->vtable[+0x34]( g->vtable[+0x1c]() );   // DeleteChannelGroup( GetGroupIn
 
 ### 7.1 Слоты 17–19 по семействам, и что будет, если ошибиться
 
-Дампы сняты с `.rdata` соответствующих DLL (`uvrun vtdump --type "<имя>"`).
+Дампы сняты с `.rdata` соответствующих DLL (`cgrpy vtdump --type "<имя>"`).
 
 | Семейство | слот 17 (`+0x44`) | слот 18 (`+0x48`) | слот 19 (`+0x4c`) |
 |---|---|---|---|
@@ -616,25 +616,25 @@ engine->vtable[+0x34]( g->vtable[+0x1c]() );   // DeleteChannelGroup( GetGroupIn
 
 ```bash
 cd Tools/CgrPy
-./uvrun.bat build_proj                       # один раз, кэш графа
+./cgrpy build_proj                       # один раз, кэш графа
 
 # кадр и стартовая группа
-./uvrun.bat vtdump HighPoly.dll              # EngineControl @ 0x13660, EngineInterfaceExt @ 0x13260
-./uvrun.bat disasm HighPoly.dll 0x10b10      # EngineControl::EngineLoop
-./uvrun.bat disasm HighPoly.dll 0x9620       # GetStartChannel: mov eax,[ecx+0x38]
+./cgrpy vtdump HighPoly.dll              # EngineControl @ 0x13660, EngineInterfaceExt @ 0x13260
+./cgrpy disasm HighPoly.dll 0x10b10      # EngineControl::EngineLoop
+./cgrpy disasm HighPoly.dll 0x9620       # GetStartChannel: mov eax,[ecx+0x38]
 
 # передача управления
-./uvrun.bat chtypes SetNewStartChannel       # -> 3FF51E2F-....dll
-./uvrun.bat disasm "3FF51E2F-6D04-4297-BC69-079C555FF765.dll" 0x10f0
+./cgrpy chtypes SetNewStartChannel       # -> 3FF51E2F-....dll
+./cgrpy disasm "3FF51E2F-6D04-4297-BC69-079C555FF765.dll" 0x10f0
 
 # выгрузка группы
-./uvrun.bat chtypes "Remove Group"           # -> BAC7326D-....dll
-./uvrun.bat disasm "BAC7326D-6DDC-4ECF-B821-6A52C8287DC7.dll" 0x10e0
+./cgrpy chtypes "Remove Group"           # -> BAC7326D-....dll
+./cgrpy disasm "BAC7326D-6DDC-4ECF-B821-6A52C8287DC7.dll" 0x10e0
 
 # слоты семейств
-./uvrun.bat vtdump --type "Matrix"
-./uvrun.bat vtdump --type "Texture"
-./uvrun.bat vtdump --type "3D Object"
+./cgrpy vtdump --type "Matrix"
+./cgrpy vtdump --type "Texture"
+./cgrpy vtdump --type "3D Object"
 ```
 
 Стартовая группа из `Q3DStart.q3d` — zlib-поток со смещения 56, имя лежит открытым текстом:

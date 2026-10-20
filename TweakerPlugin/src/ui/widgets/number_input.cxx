@@ -39,6 +39,11 @@ void number_input::set_value(int value) noexcept
     m_value = clamped;
 }
 
+void number_input::set_enabled(bool enabled) noexcept
+{
+    m_enabled = enabled;
+}
+
 void number_input::clamp_value() noexcept
 {
     m_value = std::clamp(m_value, m_min, m_max);
@@ -65,6 +70,14 @@ void number_input::update()
 
     ImGui::SetNextItemWidth(m_width);
 
+    // Off is ImGui's own disabled scope, because the field and its steppers are ImGui's: it takes their input
+    // and dims them. At theme::disabled_alpha like every other control (R12) - and once only: inside a
+    // BeginDisabled() that is already open, ImGui does not dim again and the pushed alpha is never read.
+    if(!m_enabled) {
+        ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, theme::disabled_alpha);
+        ImGui::BeginDisabled();
+    }
+
     int edited = m_value;
     const bool stepped = ImGui::InputScalar("##value", ImGuiDataType_S32, &edited, &k_step, &k_step_fast, "%d");
 
@@ -72,6 +85,11 @@ void number_input::update()
     // click but only reports typed text once the field is left, which IsItemDeactivatedAfterEdit
     // catches. Reporting on every keystroke instead would put a wire message behind each digit.
     const bool committed = ImGui::IsItemDeactivatedAfterEdit();
+
+    if(!m_enabled) {
+        ImGui::EndDisabled();
+        ImGui::PopStyleVar();
+    }
 
     if(stepped || committed) {
         const int clamped = std::clamp(edited, m_min, m_max);

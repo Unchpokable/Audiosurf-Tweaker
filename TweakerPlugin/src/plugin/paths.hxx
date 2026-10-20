@@ -8,8 +8,9 @@
 //       Config\                     overlay.cfg, scripts.cfg
 //       SkyboxReplacer\             module.json, Skyboxes\, SkyConfigs\
 //       Scripts\                    *.lua
-//       Logs\
-//       DISABLE                     optional: the plugin stays inert when this file exists
+//       Logs\                       TweakerPlugin.log (boot_log), scripts-<started>.log, one per session (lua/lua_log)
+//       ScriptData\<script>\        a script's own files - tw.storage (lua/lua_storage); made on the first write
+//       DISABLE                    optional: the plugin stays inert when this file exists
 //
 // Anchored to the game's executable rather than to the working directory or to the DLL. The game
 // moves its working directory at runtime (Unicode_CurrentDirectory, GetOpenFileName without
@@ -38,6 +39,10 @@ void create_directories() noexcept;
 [[nodiscard]] const std::filesystem::path& sky_configs_dir() noexcept;
 [[nodiscard]] const std::filesystem::path& scripts_dir() noexcept;
 [[nodiscard]] const std::filesystem::path& logs_dir() noexcept;
+
+// stuff_root() / "ScriptData": one folder per script, named after its file, made by lua_storage when a script
+// first writes - not up front, a game without such scripts gets no folder.
+[[nodiscard]] const std::filesystem::path& script_data_dir() noexcept;
 
 // config_dir() / name.
 [[nodiscard]] std::filesystem::path config_file(std::wstring_view name);

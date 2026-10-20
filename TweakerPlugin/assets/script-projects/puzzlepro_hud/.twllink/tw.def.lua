@@ -1,5 +1,5 @@
 ---@meta
--- The Audiosurf Tweaker scripting API (tw.*), for Lua Language Server. API 1.
+-- The Audiosurf Tweaker scripting API (tw.*), for Lua Language Server. API 3.
 --
 -- Generated from Docs/scripting/api.json and Docs/scripting/api-reference.md; do not edit.
 -- In a project made by `twllink --new` this is already wired up (.luarc.json). Elsewhere, add the
@@ -24,6 +24,151 @@ function ArrayHandle:rows() end
 ---
 ---`array:set(index, value)` → boolean
 function ArrayHandle:set(index, value) end
+
+---@class tw.ButtonHandle
+local ButtonHandle = {}
+
+---Switches the control (or a whole group) on, or off with `false`: a switched-off control shows its
+---value and takes no input.
+---
+---`control:enable(on)` → control
+---@return tw.ButtonHandle
+function ButtonHandle:enable(on) end
+
+---Changes the label - a control's, a group's title, a paragraph's text.
+---
+---`control:label(text)` → control
+---@return tw.ButtonHandle
+function ButtonHandle:label(text) end
+
+---`fn()` on every click, in the same overlay frame. A registration, like `on_change`.
+---
+---`button:on_click(fn)` → button
+---@return tw.ButtonHandle
+function ButtonHandle:on_click(fn) end
+
+---Shows the control (or a whole group), or hides it with `false`: a hidden one takes no room.
+---
+---`control:show(on)` → control
+---@return tw.ButtonHandle
+function ButtonHandle:show(on) end
+
+---Changes the tooltip shown when the pointer rests on the row; `nil` or `""` for none.
+---
+---`control:tooltip(text)` → control
+---@return tw.ButtonHandle
+function ButtonHandle:tooltip(text) end
+
+---@class tw.ChoiceHandle
+local ChoiceHandle = {}
+
+---Switches the control (or a whole group) on, or off with `false`: a switched-off control shows its
+---value and takes no input.
+---
+---`control:enable(on)` → control
+---@return tw.ChoiceHandle
+function ChoiceHandle:enable(on) end
+
+---The selected option, as `{ text = "Right", index = 2 }`, indices from 1. One table per option, the
+---same table on every call — compare `.text` or `.index`, and do not change it.
+---
+---`choice:get()` → { text, index }
+function ChoiceHandle:get() end
+
+---Changes the label - a control's, a group's title, a paragraph's text.
+---
+---`control:label(text)` → control
+---@return tw.ChoiceHandle
+function ChoiceHandle:label(text) end
+
+---`fn(value, committed)` whenever the player changes the control — `value` as `:get()` returns it,
+---`committed` true once the change is final (always, except while a slider or a colour is still being
+---dragged). Runs in the same overlay frame, before `on_frame`, and only once the game has loaded;
+---several changes before it can run come as one, with the last value. A registration: body or
+---`tw.on_ready` only.
+---
+---`control:on_change(fn)` → control
+---@return tw.ChoiceHandle
+function ChoiceHandle:on_change(fn) end
+
+---Replaces the options. The selection keeps its number, clamped into the new count; option tables you
+---held from before are no longer the choice's.
+---
+---`choice:options(labels)` → choice
+---@return tw.ChoiceHandle
+function ChoiceHandle:options(labels) end
+
+---Selects an option by its text or its number. One that is not there leaves the choice as it was, with
+---a warning in the Scripts tab.
+---
+---`choice:set(option)` → choice
+---@return tw.ChoiceHandle
+function ChoiceHandle:set(option) end
+
+---Shows the control (or a whole group), or hides it with `false`: a hidden one takes no room.
+---
+---`control:show(on)` → control
+---@return tw.ChoiceHandle
+function ChoiceHandle:show(on) end
+
+---Changes the tooltip shown when the pointer rests on the row; `nil` or `""` for none.
+---
+---`control:tooltip(text)` → control
+---@return tw.ChoiceHandle
+function ChoiceHandle:tooltip(text) end
+
+---@class tw.ControlHandle
+local ControlHandle = {}
+
+---Switches the control (or a whole group) on, or off with `false`: a switched-off control shows its
+---value and takes no input.
+---
+---`control:enable(on)` → control
+---@return tw.ControlHandle
+function ControlHandle:enable(on) end
+
+---The control's current value: `true`/`false` for a toggle, a number for a slider or a number, a
+---packed colour for a colour. Cheap enough for every frame, and available before the game has loaded.
+---A handle that was refused, or whose script has been unloaded, answers with its initial value.
+---
+---`control:get()` → value
+function ControlHandle:get() end
+
+---Changes the label - a control's, a group's title, a paragraph's text.
+---
+---`control:label(text)` → control
+---@return tw.ControlHandle
+function ControlHandle:label(text) end
+
+---`fn(value, committed)` whenever the player changes the control — `value` as `:get()` returns it,
+---`committed` true once the change is final (always, except while a slider or a colour is still being
+---dragged). Runs in the same overlay frame, before `on_frame`, and only once the game has loaded;
+---several changes before it can run come as one, with the last value. A registration: body or
+---`tw.on_ready` only.
+---
+---`control:on_change(fn)` → control
+---@return tw.ControlHandle
+function ControlHandle:on_change(fn) end
+
+---Sets the value from your script. Clamped and rounded like the initial value; nothing happens when it
+---is the same; **never** calls `on_change`. Ignored while the player is dragging that control — the
+---player wins.
+---
+---`control:set(value)` → control
+---@return tw.ControlHandle
+function ControlHandle:set(value) end
+
+---Shows the control (or a whole group), or hides it with `false`: a hidden one takes no room.
+---
+---`control:show(on)` → control
+---@return tw.ControlHandle
+function ControlHandle:show(on) end
+
+---Changes the tooltip shown when the pointer rests on the row; `nil` or `""` for none.
+---
+---`control:tooltip(text)` → control
+---@return tw.ControlHandle
+function ControlHandle:tooltip(text) end
 
 ---@class tw.FloatHandle
 local FloatHandle = {}
@@ -58,6 +203,160 @@ function FloatHandle:set(value) end
 ---
 ---`handle:valid()` → boolean
 function FloatHandle:valid() end
+
+---@class tw.GroupHandle
+local GroupHandle = {}
+
+---A button labelled `opts.label`. It has no value; clicks go to
+---[`button:on_click`](#buttonon_clickfn--button).
+---
+---`parent:button(opts)` → button
+---@return tw.ButtonHandle
+function GroupHandle:button(opts) end
+
+---One of several options, as a strip of chips. `opts.options` — the options, a list of strings
+---(required). `opts.value` — the initial option, by its text or its number; default the first, and the
+---first, with a warning, for one that is not there.
+---
+---`parent:choice(opts)` → choice
+---@return tw.ChoiceHandle
+function GroupHandle:choice(opts) end
+
+---A colour, with a picker. Its value is packed the way [`tw.rgb`](#twrgbr-g-b-a--colour) returns
+---colours and every `tw.hud.*` call takes them. `opts.value` — default white.
+---
+---`parent:color(opts)` → control
+---@return tw.ControlHandle
+function GroupHandle:color(opts) end
+
+---Switches the control (or a whole group) on, or off with `false`: a switched-off control shows its
+---value and takes no input.
+---
+---`control:enable(on)` → control
+---@return tw.GroupHandle
+function GroupHandle:enable(on) end
+
+---A framed section across the page, titled by `opts.label` (or the bare string). Takes every
+---constructor a tab takes; groups nest two deep at most.
+---
+---`parent:group(opts)` → group
+---@return tw.GroupHandle
+function GroupHandle:group(opts) end
+
+---Changes the label - a control's, a group's title, a paragraph's text.
+---
+---`control:label(text)` → control
+---@return tw.GroupHandle
+function GroupHandle:label(text) end
+
+---A list of rows, one of which the player can select. `opts.items` — the rows: strings, or `{ text =
+---..., sub = ... }` for a row with a smaller second line. `opts.value` — the selected row, from 1;
+---none by default. `opts.height` — in pixels, 160 by default.
+---
+---`parent:list(opts)` → list
+---@return tw.ListHandle
+function GroupHandle:list(opts) end
+
+---A whole number in a range. `opts.min` (0), `opts.max` (100), `opts.value` (default `min`, rounded
+---and clamped).
+---
+---`parent:number(opts)` → control
+---@return tw.ControlHandle
+function GroupHandle:number(opts) end
+
+---A line across the page.
+---
+---`parent:separator()` → separator
+---@return tw.SeparatorHandle
+function GroupHandle:separator() end
+
+---Shows the control (or a whole group), or hides it with `false`: a hidden one takes no room.
+---
+---`control:show(on)` → control
+---@return tw.GroupHandle
+function GroupHandle:show(on) end
+
+---A number in a range, dragged. `opts.min` (0), `opts.max` (1), `opts.value` (default `min`, clamped
+---into the range). While it is being dragged, `on_change` hears the values with `committed = false`.
+---
+---`parent:slider(opts)` → control
+---@return tw.ControlHandle
+function GroupHandle:slider(opts) end
+
+---A paragraph of text, wrapped to the page, in the overlay's secondary text colour. `opts.text`, or
+---the text as a bare string.
+---
+---`parent:text(opts)` → paragraph
+---@return tw.ParagraphHandle
+function GroupHandle:text(opts) end
+
+---A switch; its value is `true` or `false`. `opts.value` — the initial value, default `false`.
+---
+---`parent:toggle(opts)` → control
+---@return tw.ControlHandle
+function GroupHandle:toggle(opts) end
+
+---Changes the tooltip shown when the pointer rests on the row; `nil` or `""` for none.
+---
+---`control:tooltip(text)` → control
+---@return tw.GroupHandle
+function GroupHandle:tooltip(text) end
+
+---@class tw.ListHandle
+local ListHandle = {}
+
+---Switches the control (or a whole group) on, or off with `false`: a switched-off control shows its
+---value and takes no input.
+---
+---`control:enable(on)` → control
+---@return tw.ListHandle
+function ListHandle:enable(on) end
+
+---The selected row's number, from 1, or `nil` when no row is selected.
+---
+---`list:get()` → number or nil
+function ListHandle:get() end
+
+---Replaces the rows - strings, or `{ text = ..., sub = ... }`. A selection past the new end is
+---dropped.
+---
+---`list:items(rows)` → list
+---@return tw.ListHandle
+function ListHandle:items(rows) end
+
+---Changes the label - a control's, a group's title, a paragraph's text.
+---
+---`control:label(text)` → control
+---@return tw.ListHandle
+function ListHandle:label(text) end
+
+---`fn(value, committed)` whenever the player changes the control — `value` as `:get()` returns it,
+---`committed` true once the change is final (always, except while a slider or a colour is still being
+---dragged). Runs in the same overlay frame, before `on_frame`, and only once the game has loaded;
+---several changes before it can run come as one, with the last value. A registration: body or
+---`tw.on_ready` only.
+---
+---`control:on_change(fn)` → control
+---@return tw.ListHandle
+function ListHandle:on_change(fn) end
+
+---Selects a row by its number, or none with `nil`.
+---
+---`list:set(row)` → list
+---@return tw.ListHandle
+function ListHandle:set(row) end
+
+---Shows the control (or a whole group), or hides it with `false`: a hidden one takes no room.
+---
+---`control:show(on)` → control
+---@return tw.ListHandle
+function ListHandle:show(on) end
+
+---Changes the tooltip shown when the pointer rests on the row; `nil` or `""` for none.
+---
+---`control:tooltip(text)` → control
+---@return tw.ListHandle
+function ListHandle:tooltip(text) end
 
 ---@class tw.MatrixHandle
 local MatrixHandle = {}
@@ -117,6 +416,134 @@ function MuteHandle:on() end
 ---
 ---`mute:set(bool)`
 function MuteHandle:set(on) end
+
+---@class tw.ParagraphHandle
+local ParagraphHandle = {}
+
+---Switches the control (or a whole group) on, or off with `false`: a switched-off control shows its
+---value and takes no input.
+---
+---`control:enable(on)` → control
+---@return tw.ParagraphHandle
+function ParagraphHandle:enable(on) end
+
+---Changes the label - a control's, a group's title, a paragraph's text.
+---
+---`control:label(text)` → control
+---@return tw.ParagraphHandle
+function ParagraphHandle:label(text) end
+
+---Replaces the paragraph's text. Setting the same text every frame costs a comparison.
+---
+---`paragraph:set(text)` → paragraph
+---@return tw.ParagraphHandle
+function ParagraphHandle:set(text) end
+
+---Shows the control (or a whole group), or hides it with `false`: a hidden one takes no room.
+---
+---`control:show(on)` → control
+---@return tw.ParagraphHandle
+function ParagraphHandle:show(on) end
+
+---Changes the tooltip shown when the pointer rests on the row; `nil` or `""` for none.
+---
+---`control:tooltip(text)` → control
+---@return tw.ParagraphHandle
+function ParagraphHandle:tooltip(text) end
+
+---@class tw.SeparatorHandle
+local SeparatorHandle = {}
+
+---Shows the control (or a whole group), or hides it with `false`: a hidden one takes no room.
+---
+---`control:show(on)` → control
+---@return tw.SeparatorHandle
+function SeparatorHandle:show(on) end
+
+---@class tw.TabHandle
+local TabHandle = {}
+
+---A button labelled `opts.label`. It has no value; clicks go to
+---[`button:on_click`](#buttonon_clickfn--button).
+---
+---`parent:button(opts)` → button
+---@return tw.ButtonHandle
+function TabHandle:button(opts) end
+
+---One of several options, as a strip of chips. `opts.options` — the options, a list of strings
+---(required). `opts.value` — the initial option, by its text or its number; default the first, and the
+---first, with a warning, for one that is not there.
+---
+---`parent:choice(opts)` → choice
+---@return tw.ChoiceHandle
+function TabHandle:choice(opts) end
+
+---A colour, with a picker. Its value is packed the way [`tw.rgb`](#twrgbr-g-b-a--colour) returns
+---colours and every `tw.hud.*` call takes them. `opts.value` — default white.
+---
+---`parent:color(opts)` → control
+---@return tw.ControlHandle
+function TabHandle:color(opts) end
+
+---A framed section across the page, titled by `opts.label` (or the bare string). Takes every
+---constructor a tab takes; groups nest two deep at most.
+---
+---`parent:group(opts)` → group
+---@return tw.GroupHandle
+function TabHandle:group(opts) end
+
+---Changes the tab's label, from the next frame. Clashes are worked out again.
+---
+---`tab:label(text)` → tab
+---@return tw.TabHandle
+function TabHandle:label(text) end
+
+---A list of rows, one of which the player can select. `opts.items` — the rows: strings, or `{ text =
+---..., sub = ... }` for a row with a smaller second line. `opts.value` — the selected row, from 1;
+---none by default. `opts.height` — in pixels, 160 by default.
+---
+---`parent:list(opts)` → list
+---@return tw.ListHandle
+function TabHandle:list(opts) end
+
+---A whole number in a range. `opts.min` (0), `opts.max` (100), `opts.value` (default `min`, rounded
+---and clamped).
+---
+---`parent:number(opts)` → control
+---@return tw.ControlHandle
+function TabHandle:number(opts) end
+
+---A line across the page.
+---
+---`parent:separator()` → separator
+---@return tw.SeparatorHandle
+function TabHandle:separator() end
+
+---A number in a range, dragged. `opts.min` (0), `opts.max` (1), `opts.value` (default `min`, clamped
+---into the range). While it is being dragged, `on_change` hears the values with `committed = false`.
+---
+---`parent:slider(opts)` → control
+---@return tw.ControlHandle
+function TabHandle:slider(opts) end
+
+---A paragraph of text, wrapped to the page, in the overlay's secondary text colour. `opts.text`, or
+---the text as a bare string.
+---
+---`parent:text(opts)` → paragraph
+---@return tw.ParagraphHandle
+function TabHandle:text(opts) end
+
+---A switch; its value is `true` or `false`. `opts.value` — the initial value, default `false`.
+---
+---`parent:toggle(opts)` → control
+---@return tw.ControlHandle
+function TabHandle:toggle(opts) end
+
+---Whether the tab was on screen this frame or the last. For deciding whether a status text is worth
+---building; reading values never needs it.
+---
+---`tab:visible()` → boolean
+function TabHandle:visible() end
 
 ---@class tw.TextHandle
 local TextHandle = {}
@@ -207,11 +634,11 @@ tw = {}
 ---`tw.alpha(colour, a)` → colour
 function tw.alpha(colour, a) end
 
----The version of this API: `1` today, raised whenever a name is added (names are never taken away). A
----script can use it to adapt to an older Tweaker. A script built with `twllink` also records the
----version it was written against in its header (`-- @api`), and a Tweaker older than that refuses to
----run it rather than let it fail on a missing name — see [Projects § Checks at build
----time](authoring.md#checks-at-build-time).
+---The version of this API: `3` today (API 3 added [menu tabs](#menu-tabs) and [storage](#storage)),
+---raised whenever a name is added (names are never taken away). A script can use it to adapt to an
+---older Tweaker. A script built with `twllink` also records the version it was written against in its
+---header (`-- @api`), and a Tweaker older than that refuses to run it rather than let it fail on a
+---missing name — see [Projects § Checks at build time](authoring.md#checks-at-build-time).
 ---
 ---`tw.api_version` → number
 ---@type number
@@ -284,10 +711,11 @@ function tw.ease_names() end
 ---`tw.engine_ready()` → boolean
 function tw.engine_ready() end
 
----Messages for the script's author, filed in the script's row in the Scripts tab — which, unlike the
----log, exists in a normal install. All three remember where they were said from (`myhud.lua:88`), and
----saying the same thing from the same place again only increases a counter next to it: calling one of
----these every frame is one line, not thousands.
+---Messages for the script's author, filed in the script's row in the Scripts tab and in the [script
+---log](getting-started.md#the-script-log) — which, unlike `tw.log`, exist in a normal install. All
+---three remember where they were said from (`myhud.lua:88`), and saying the same thing from the same
+---place again only increases a counter next to it: calling one of these every frame is one line, not
+---thousands.
 ---
 ---`tw.error(message)`
 function tw.error(msg) end
@@ -321,7 +749,9 @@ function tw.groups() end
 ---@class tw.hud
 tw.hud = {}
 
----Writes to the plugin log. **Stripped from release builds**, so it is a development tool only.
+---Writes to the plugin's debug log. **Stripped from release builds**, so it is a development tool only
+---— and it does not go to the [script log](getting-started.md#the-script-log) either. For a message
+---you need to see in a normal install, use `tw.warn`.
 ---
 ---`tw.log(message)`
 function tw.log(msg) end
@@ -396,10 +826,11 @@ function tw.on_tick(fn) end
 ---`tw.on_unload(fn)`
 function tw.on_unload(fn) end
 
----Messages for the script's author, filed in the script's row in the Scripts tab — which, unlike the
----log, exists in a normal install. All three remember where they were said from (`myhud.lua:88`), and
----saying the same thing from the same place again only increases a counter next to it: calling one of
----these every frame is one line, not thousands.
+---Messages for the script's author, filed in the script's row in the Scripts tab and in the [script
+---log](getting-started.md#the-script-log) — which, unlike `tw.log`, exist in a normal install. All
+---three remember where they were said from (`myhud.lua:88`), and saying the same thing from the same
+---place again only increases a counter next to it: calling one of these every frame is one line, not
+---thousands.
 ---
 ---`tw.pending(message)`
 function tw.pending(msg) end
@@ -420,6 +851,9 @@ function tw.rgb(r, g, b, a) end
 ---`tw.state()` → string
 function tw.state() end
 
+---@class tw.storage
+tw.storage = {}
+
 ---Create a handle for a numeric, text, vector or matrix channel. Cheap; never fails; does not touch
 ---the game. Resolution happens on first use and is retried until it succeeds.
 ---
@@ -438,6 +872,9 @@ function tw.theme(name) end
 ---`tw.theme_names()` → table
 function tw.theme_names() end
 
+---@class tw.ui
+tw.ui = {}
+
 ---Create a handle for a numeric, text, vector or matrix channel. Cheap; never fails; does not touch
 ---the game. Resolution happens on first use and is retried until it succeeds.
 ---
@@ -445,13 +882,22 @@ function tw.theme_names() end
 ---@return tw.VectorHandle
 function tw.vector_ch(group, name) end
 
----Messages for the script's author, filed in the script's row in the Scripts tab — which, unlike the
----log, exists in a normal install. All three remember where they were said from (`myhud.lua:88`), and
----saying the same thing from the same place again only increases a counter next to it: calling one of
----these every frame is one line, not thousands.
+---Messages for the script's author, filed in the script's row in the Scripts tab and in the [script
+---log](getting-started.md#the-script-log) — which, unlike `tw.log`, exist in a normal install. All
+---three remember where they were said from (`myhud.lua:88`), and saying the same thing from the same
+---place again only increases a counter next to it: calling one of these every frame is one line, not
+---thousands.
 ---
 ---`tw.warn(message)`
 function tw.warn(msg) end
+
+---Takes a box for this frame without drawing in it, as if something were drawn there. For a widget
+---that fades out, blinks, or is not drawn every frame: without it, the scripts below move into its
+---place on the frames it is not drawn and back out after. Call it every frame the box should stay
+---taken, from `on_frame` — it does nothing anywhere else.
+---
+---`tw.hud.claim(x0, y0, x1, y1)`
+function tw.hud.claim(x0, y0, x1, y1) end
 
 ---A table of corner masks for `tw.hud.rect`: `none`, `top_left`, `top_right`, `bottom_left`,
 ---`bottom_right`, `top`, `bottom`, `left`, `right`, `all`. They are plain bits, so they add:
@@ -510,6 +956,25 @@ function tw.hud.line(x0, y0, x1, y1, color, thickness) end
 ---`tw.hud.measure(text, size, font)` → width, height
 function tw.hud.measure(text, size, font) end
 
+---What is already on screen this frame, as a list of `{ x0, y0, x1, y1, by }`: first the overlay's
+---chrome (`by` is `"notefeed"`, `"pins"`, `"watermark"` or `"menu"`, only those on screen), then the
+---boxes of everything the scripts above this one drew or claimed (`by` is the script's file name).
+---Pieces of one script closer than a few pixels are merged into one box, so a block of text lines is
+---one box. Never this script's own. A new list on every call — call it once per frame.
+---
+---`tw.hud.occupied()` → list
+function tw.hud.occupied() end
+
+---The free spot nearest to `corner` for a `w` × `h` box, and takes it as if drawn. `corner` is
+---`"top_left"` (default), `"top_right"`, `"bottom_left"` or `"bottom_right"`; `margin` (default 8) is
+---kept from the screen edges and from everything taken. It stays clear of the overlay's chrome —
+---except the menu, which comes and goes — of what the scripts above drew, and of what this script
+---itself drew or placed earlier this frame, so two boxes placed at one corner stack. `nil` when
+---nothing fits. An unknown corner raises an error. Only from `on_frame`.
+---
+---`tw.hud.place(w, h, corner, margin)` → x0, y0 or nil
+function tw.hud.place(w, h, corner, margin) end
+
 ---`rounding` is the corner radius (default 0). `thickness` ≤ 0 (the default) fills; positive strokes
 ---an outline of that width. `corners` selects which corners the radius applies to and defaults to all
 ---of them; see [`tw.hud.corners`](#twhudcorners).
@@ -517,7 +982,10 @@ function tw.hud.measure(text, size, font) end
 ---`tw.hud.rect(x0, y0, x1, y1, colour, rounding, thickness, corners)`
 function tw.hud.rect(x0, y0, x1, y1, color, rounding, thickness, corners) end
 
----The viewport minus the overlay's always-on top band. Full width.
+---The viewport minus the overlay's always-on top band. Full width. Coarse: the band is as tall as the
+---notification column and spans the whole screen, so it is not for layout — position widgets with
+---`tw.hud.place`, or check a position of your own against `tw.hud.occupied` (below and [Drawing §
+---Coordinates](drawing.md#coordinates)).
 ---
 ---`tw.hud.safe()` → x0, y0, x1, y1
 function tw.hud.safe() end
@@ -538,3 +1006,52 @@ function tw.hud.text(x, y, text, color, size, font) end
 ---
 ---`tw.hud.widget(name)` → x0, y0, x1, y1 or nil
 function tw.hud.widget(name) end
+
+---Whether the file is there - on disk, or written and not yet saved.
+---
+---`tw.storage.exists(name)` → boolean
+function tw.storage.exists(name) end
+
+---The names of the script's files, sorted.
+---
+---`tw.storage.list()` → table of strings
+function tw.storage.list() end
+
+---The file as Lua values: objects become tables with string keys, arrays sequences from 1, `null` a
+---missing key. A file that is not JSON is `nil` and why.
+---
+---`tw.storage.read_json(name)` → value or nil, reason
+function tw.storage.read_json(name) end
+
+---The file's contents, byte for byte. The first read of a file on disk reads it; after that it comes
+---from memory.
+---
+---`tw.storage.read_text(name)` → string or nil, reason
+function tw.storage.read_text(name) end
+
+---Deletes the file.
+---
+---`tw.storage.remove(name)` → true or nil, reason
+function tw.storage.remove(name) end
+
+---Writes a table as indented JSON, keys sorted. Refuses, with the reason, what JSON cannot hold: NaN
+---and infinities, mixed or non-sequential keys, functions, a table inside itself, nesting deeper than
+---64.
+---
+---`tw.storage.write_json(name, value)` → true or nil, reason
+function tw.storage.write_json(name, value) end
+
+---Replaces the file's contents. Returns at once: the plugin writes it to disk within a tenth of a
+---second, through a temporary file. Up to 1 MiB a file, 64 files and 8 MiB a script.
+---
+---`tw.storage.write_text(name, text)` → true or nil, reason
+function tw.storage.write_text(name, text) end
+
+---A new tab in the menu, after the overlay's own and after the tabs of scripts that run before yours.
+---`opts` is `{ label = ... }`, or the label as a bare string; no label names the tab after your
+---script. A label that clashes with another tab's is shown as `<your script's name> - <label>`.
+---Declared outside the registration window, it returns an inert tab whose controls are inert too.
+---
+---`tw.ui.tab(opts)` → tab
+---@return tw.TabHandle
+function tw.ui.tab(opts) end

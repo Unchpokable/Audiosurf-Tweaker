@@ -56,11 +56,22 @@ void list_view::set_selected(int index) noexcept
     }
 }
 
+void list_view::set_enabled(bool enabled) noexcept
+{
+    m_enabled = enabled;
+}
+
 void list_view::update()
 {
     m_selection_changed = false;
 
     ImGui::PushID(m_id.c_str());
+
+    // Off, the rows take neither hover nor click, but the list still scrolls: what it holds stays readable.
+    const bool fade = kit::fade_disabled(m_enabled);
+    if(fade) {
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * theme::disabled_alpha);
+    }
 
     const ImVec2 size = kit::paint::resolve_size(m_size, 200.f, 200.f);
 
@@ -80,7 +91,7 @@ void list_view::update()
             const ImVec2 max { pos.x + ImGui::GetContentRegionAvail().x, pos.y + m_row_height };
 
             ImGui::PushID(index);
-            const kit::interaction pointer = kit::interact(ImRect { pos, max }, ImGui::GetID("##row"));
+            const kit::interaction pointer = kit::interact(ImRect { pos, max }, ImGui::GetID("##row"), kit::placement::flow, m_enabled);
             ImGui::PopID();
             if(!pointer.visible) {
                 continue;
@@ -109,6 +120,9 @@ void list_view::update()
     }
     kit::paint::scroll_body_end();
 
+    if(fade) {
+        ImGui::PopStyleVar();
+    }
     ImGui::PopID();
 }
 

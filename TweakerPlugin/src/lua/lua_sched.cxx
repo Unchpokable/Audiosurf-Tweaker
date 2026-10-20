@@ -9,8 +9,11 @@
 
 #include "lua/api/api_hooks.hxx"
 #include "lua/lua_diag.hxx"
+#include "lua/lua_log.hxx"
 #include "lua/lua_registry.hxx"
 #include "lua/lua_script.hxx"
+#include "lua/lua_storage.hxx"
+#include "lua/lua_tabs.hxx"
 #include "lua/lua_vm.hxx"
 
 #include "ui/plugins/static/pins.hxx"
@@ -43,6 +46,7 @@ enum dispatcher : int {
     d_call,
     d_state,
     d_graph,
+    d_ui,
     d_count,
 };
 
@@ -209,6 +213,21 @@ void dispatch_lifecycle() noexcept
 {
     if(const std::uint32_t revision = tw::engine::state::revision(); revision != g_seen_state_revision) [[unlikely]] {
         g_seen_state_revision = revision;
+
+        // Into the script log as well: busy and back to ready is every run loading, which is what lines a script's
+        // messages up with what the player was doing. The start group by its file name - the engine may hold a
+        // full path, and the path says nothing the reader needs.
+        std::string_view start = tw::engine::state::start_group();
+        if(const std::size_t slash = start.find_last_of("\\/"); slash != std::string_view::npos) {
+            start.remove_prefix(slash + 1);
+        }
+        tw::lua::log::writef(-1,
+            "engine",
+            {},
+            "{} (start group {}, {} groups loaded)",
+            tw::engine::state::current_name(),
+            start.empty() ? std::string_view { "?" } : start,
+            tw::engine::state::group_count());
         run_export(tw::lua::vm::fn::dispatch_state, &g_broken[d_state], "on_state", [](lua_State* lua) {
             lua_pushstring(lua, tw::engine::state::current_name());
             return 1;
@@ -281,6 +300,13 @@ void draw_frame() noexcept
     }
     else {
         tw::ui::plugins::statics::pins::set_status(tw::lua::registry::loaded_count() > 0 ? "Scripts waiting" : std::string_view {});
+    }
+
+    // What the user did on the scripts' tabs, before anybody draws: the menu ran earlier in this frame, so an
+    // on_frame already sees the reaction to a click. Held until `ready` like every other callback - the queue keeps
+    // one entry per control meanwhile (lua_tabs) - and no VM entry at all for an empty queue.
+    if(ready && tw::lua::tabs::has_events()) [[unlikely]] {
+        run_export(tw::lua::vm::fn::dispatch_ui, &g_broken[d_ui], "on_change", [](lua_State*) { return 0; });
     }
 
     run_export(tw::lua::vm::fn::dispatch_frame, &g_broken[d_frame], "on_frame", [ready](lua_State* lua) {
@@ -433,7 +459,8 @@ bool resume(int owner) noexcept
     tw::lua::reset_health(*script);
     script->health.errors = errors;
 
-    tw::lua::diag::report(owner, tw::lua::diag::level::info, "resume", "resumed from the Scripts tab");
+    // A note rather than a report: the tab shows the record once, but every Resume belongs in the script log.
+    tw::lua::diag::note(owner, "resume", "resumed from the Scripts tab");
     tw::lua::registry::changed();
     return true;
 }
@@ -450,6 +477,14 @@ void unload(int owner) noexcept
     });
 
     tw::lua::api::unsubscribe_owner(owner);
+
+    // Its tabs leave the menu and its control handles go inert now; the forms themselves are freed at the end of
+    // the overlay frame (lua_tabs.hxx) - this may be the middle of the menu's own frame.
+    tw::lua::tabs::drop_owner(owner);
+
+    // What it wrote to tw.storage goes to disk now, not within the writer's tenth of a second: a reload that takes the
+    // game down should not take the settings with it. And the next run reads its files afresh.
+    tw::lua::storage::drop_owner(owner);
 }
 
 int current_owner() noexcept

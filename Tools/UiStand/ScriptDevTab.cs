@@ -49,6 +49,14 @@ static class ScriptDevTab
             Directory.CreateDirectory(binaries);
             foreach (var file in Directory.GetFiles(Path.Combine(uiBin, "DevTools", "Binaries")))
                 File.Copy(file, Path.Combine(binaries, Path.GetFileName(file)));
+            // CgrPy's launchers only: what is checked is that an editor finds cgrpy on its PATH, not CgrPy itself.
+            var cgrpy = Path.Combine(devTools, "CgrPy");
+            Directory.CreateDirectory(cgrpy);
+            foreach (var launcher in new[] { "cgrpy.cmd", "cgrpy" })
+                File.Copy(Path.Combine(uiBin, "DevTools", "CgrPy", launcher), Path.Combine(cgrpy, launcher));
+            // The agent kit and the docs a project set up for agents gets a copy of (dev-bundle-roadmap.md §3.6).
+            CopyTree(Path.Combine(uiBin, "DevTools", "AgentKit"), Path.Combine(devTools, "AgentKit"));
+            CopyTree(Path.Combine(uiBin, "DevTools", "Docs"), Path.Combine(devTools, "Docs"));
 
             Directory.CreateDirectory(Path.Combine(engine, "channels"));
             Directory.CreateDirectory(Path.Combine(engine, "textures"));
@@ -127,7 +135,8 @@ static class ScriptDevTab
             TweakerUI.Core.ScriptsOverlayBridge.UseTransport(_ => false, () => false);
 
             CheckRebuildOnSave(vm, project);
-            CheckNeovimSeesTwllink(project, binaries);
+            CheckNeovimSeesTwllink(project, binaries, cgrpy);
+            CheckAgents(vm, project, devTools, Path.GetDirectoryName(engine)!, outDir);
 
             // A remembered project whose folder went away, and one with a broken manifest.
             var gone = Path.Combine(root, "gone_hud");
@@ -284,7 +293,7 @@ static class ScriptDevTab
     /// info is exactly what "Open in Neovim" builds; only the arguments are swapped for a headless run that asks
     /// Neovim's own PATH lookup (the environment :terminal and :! inherit) where twllink is, and reads AUDIOSURF_DIR.
     /// </summary>
-    static void CheckNeovimSeesTwllink(string project, string binaries)
+    static void CheckNeovimSeesTwllink(string project, string binaries, string cgrpy)
     {
         var nvim = TweakerCore.Scripting.ScriptEditors.Detect(TweakerCore.Scripting.EditorSearch.FromSystem()).FirstOrDefault(e => e.Id == "neovim");
         if (nvim == null)
@@ -293,11 +302,11 @@ static class ScriptDevTab
             return;
         }
 
-        var info = TweakerCore.Scripting.ScriptEditors.StartInfo(nvim, project, null, 0, 0, binaries, @"D:\Games\Audiosurf");
+        var info = TweakerCore.Scripting.ScriptEditors.StartInfo(nvim, project, null, 0, 0, new[] { binaries, cgrpy }, @"D:\Games\Audiosurf");
         info.ArgumentList.Clear();
         info.ArgumentList.Add("--headless");
         info.ArgumentList.Add("--clean");
-        info.ArgumentList.Add("+lua io.stdout:write(vim.fn.exepath('twllink') .. '|' .. (vim.env.AUDIOSURF_DIR or '') .. '|' .. vim.trim(vim.fn.system('twllink --version')))");
+        info.ArgumentList.Add("+lua io.stdout:write(vim.fn.exepath('twllink') .. '|' .. (vim.env.AUDIOSURF_DIR or '') .. '|' .. vim.trim(vim.fn.system('twllink --version')) .. '|' .. vim.fn.exepath('cgrpy'))");
         info.ArgumentList.Add("+qa!");
         info.RedirectStandardOutput = true;
         info.CreateNoWindow = true;
@@ -309,11 +318,112 @@ static class ScriptDevTab
         var output = process.StandardOutput.ReadToEnd();
         process.WaitForExit(20000);
         var parts = output.Split('|');
-        Check(parts.Length == 3 && parts[0].StartsWith(Path.Combine(binaries, "twllink"), StringComparison.OrdinalIgnoreCase),
+        Check(parts.Length == 4 && parts[0].StartsWith(Path.Combine(binaries, "twllink"), StringComparison.OrdinalIgnoreCase),
             "Neovim finds twllink in DevTools\\Binaries first: " + output);
-        Check(parts.Length == 3 && parts[1] == @"D:\Games\Audiosurf", "Neovim sees AUDIOSURF_DIR: " + output);
-        Check(parts.Length == 3 && parts[2].StartsWith("twllink "), "twllink runs from Neovim's shell (:!): " + output);
+        Check(parts.Length == 4 && parts[1] == @"D:\Games\Audiosurf", "Neovim sees AUDIOSURF_DIR: " + output);
+        Check(parts.Length == 4 && parts[2].StartsWith("twllink "), "twllink runs from Neovim's shell (:!): " + output);
+        Check(parts.Length == 4 && parts[3].StartsWith(Path.Combine(cgrpy, "cgrpy"), StringComparison.OrdinalIgnoreCase),
+            "Neovim finds cgrpy in DevTools\\CgrPy: " + output);
         Console.WriteLine("neovim: " + output.Replace("\r", "").Replace("\n", " / "));
+    }
+
+    /// <summary>
+    /// AI agents (dev-bundle-roadmap.md §3.6) on the real kit: a project that is not set up says so; the panel starts
+    /// from the remembered choice; setting up writes the files the choice asks for and local.json with this machine's
+    /// paths; a skill the user edits is reported and kept, and "Use the kit's version" puts the kit's back with theirs as
+    /// .old; the new-project form sets a project up and remembers that it was asked to.
+    /// </summary>
+    static void CheckAgents(ScriptDevViewModel vm, string project, string devTools, string gameRoot, string outDir)
+    {
+        bool Has(string relative) => File.Exists(Path.Combine(project, relative));
+
+        vm.Selected = vm.Projects.Single(p => p.Root == project);
+        Refresh(vm);
+        Check(vm.AgentKitAvailable && !vm.AgentsSetUp && vm.AgentStatus == "Not set up for AI coding agents." && vm.AgentSetupButtonText == "Set up for AI agents",
+            $"a project that is not set up says so: '{vm.AgentStatus}'");
+        ShootBoth(outDir, "scriptdev-agents-none", vm);
+
+        vm.OpenAgentPanelCommand.Execute(null);
+        Check(vm.IsAgentPanelOpen && vm.AgentClaude && vm.AgentCodex && vm.AgentCursor && !vm.AgentBinaries, "the panel starts from the remembered choice: all three agents, no binaries skill");
+        vm.AgentCursor = false;
+        ShootBoth(outDir, "scriptdev-agents-panel", vm);
+        vm.AgentClaude = vm.AgentCodex = false;
+        Check(!vm.ApplyAgentsCommand.CanExecute(null), "with no agent chosen there is nothing to set up for");
+        vm.AgentClaude = vm.AgentCodex = true;
+
+        Await(vm.ApplyAgentsCommand.ExecuteAsync(null));
+        Pump(TimeSpan.FromMilliseconds(200));
+        Check(!vm.IsAgentPanelOpen && vm.AgentsSetUp && vm.AgentStatus.StartsWith("Set up for Claude Code and Codex - up to date"),
+            $"set up, and the status says for whom: '{vm.AgentStatus}'");
+        Check(Has("AGENTS.md") && Has("CLAUDE.md") && Has(".agents/skills/audiosurf-grill/SKILL.md") && Has(".claude/skills/audiosurf-grill/SKILL.md")
+              && !Has(".agents/skills/audiosurf-binaries/SKILL.md") && Has(".tweaker/docs/scripting.md") && Has(".tweaker/manifest.json"),
+            "the files the choice asks for are there, and the optional skill is not");
+        var local = File.ReadAllText(Path.Combine(project, ".tweaker", "local.json"));
+        Check(local.Contains(gameRoot.Replace("\\", "\\\\")) && local.Contains(devTools.Replace("\\", "\\\\")), "local.json has this machine's game and DevTools:\n" + local);
+        Check(File.ReadAllText(Path.Combine(project, ".gitignore")).Contains(".tweaker/local.json"), "and is gitignored");
+        ShootBoth(outDir, "scriptdev-agents-set-up", vm);
+
+        var skill = Path.Combine(project, ".agents", "skills", "cgrpy", "SKILL.md");
+        File.AppendAllText(skill, "\nMy own note.\n");
+        Refresh(vm);
+        Check(vm.AgentHasEdits && vm.AgentDetail != null && vm.AgentDetail.Contains(".agents/skills/cgrpy/SKILL.md"), $"an edited skill is reported: '{vm.AgentDetail}'");
+        ShootBoth(outDir, "scriptdev-agents-edited", vm);
+
+        // "Use the kit's version" asks first, and a headless stand cannot answer a dialog: what the command runs after
+        // the yes is called directly.
+        Check(vm.ReplaceAgentEditsCommand.CanExecute(null), "with an edit, the kit's version can be asked for");
+        var replace = typeof(ScriptDevViewModel).GetMethod("ApplyAgentsAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        Await((Task)replace.Invoke(vm, new object[] { project, "Stand HUD", TweakerCore.Scripting.AgentSetup.ChoiceOf(project), true })!);
+        Check(!vm.AgentHasEdits && File.Exists(skill + ".old") && File.ReadAllText(skill + ".old").Contains("My own note.") && !File.ReadAllText(skill).Contains("My own note."),
+            "the kit's version replaces the edit, and the user's is kept as .old");
+
+        // The new-project form: off by default the first time, remembered once used.
+        vm.StartCreateCommand.Execute(null);
+        Check(!vm.NewSetUpAgents, "a first new project is not set up for agents unless asked");
+        vm.NewName = "Agent HUD";
+        vm.NewSetUpAgents = true;
+        ShootBoth(outDir, "scriptdev-new-agents", vm, height: 980);
+        Await(vm.CreateCommand.ExecuteAsync(null));
+        Pump(TimeSpan.FromMilliseconds(200));
+        var agentProject = vm.Selected!.Root;
+        Check(vm.Selected.Project.Id == "agent_hud" && File.Exists(Path.Combine(agentProject, "AGENTS.md")) && File.ReadAllText(Path.Combine(agentProject, "AGENTS.md")).StartsWith("# Agent HUD"),
+            "a project created with agents on is set up, under its name");
+        vm.StartCreateCommand.Execute(null);
+        Check(vm.NewSetUpAgents && vm.NewAgentClaude && vm.NewAgentCodex && !vm.NewAgentCursor, "the next new project starts from the last choice");
+        vm.CancelCreateCommand.Execute(null);
+
+        Check(vm.UvNotice == (vm.UvMessage != null), "the uv card shows exactly when there is something to say");
+        Console.WriteLine("uv: " + (vm.UvNotice ? vm.UvMessage : "found"));
+
+        // The card as a machine without uv sees it - this one may well have uv, so the state is set for the picture.
+        var (notice, message) = (vm.UvNotice, vm.UvMessage);
+        vm.UvNotice = true;
+        vm.UvMessage = "cgrpy - the tools the game was taken apart with - needs uv, and uv is not installed. "
+                       + "The CgrPy README says so in its very first section. Install it, then restart the Tweaker:";
+        ShootBoth(outDir, "scriptdev-uv-missing", vm);
+        (vm.UvNotice, vm.UvMessage) = (notice, message);
+    }
+
+    /// <summary>The agent status is read off the UI thread when the tab is shown; leaving and showing it again re-reads it.</summary>
+    static void Refresh(ScriptDevViewModel vm)
+    {
+        vm.SetActive(false);
+        vm.SetActive(true);
+        var clock = Stopwatch.StartNew();
+        Pump(TimeSpan.FromMilliseconds(100));
+        while (vm.AgentStatus == null && clock.Elapsed < TimeSpan.FromSeconds(10))
+            Pump(TimeSpan.FromMilliseconds(50));
+        Pump(TimeSpan.FromMilliseconds(300));
+    }
+
+    static void CopyTree(string from, string to)
+    {
+        foreach (var file in Directory.EnumerateFiles(from, "*", SearchOption.AllDirectories))
+        {
+            var target = Path.Combine(to, Path.GetRelativePath(from, file));
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target, true);
+        }
     }
 
     static void Pump(TimeSpan time)
@@ -339,12 +449,12 @@ static class ScriptDevTab
             throw task.Exception!;
     }
 
-    static void ShootBoth(string outDir, string name, ScriptDevViewModel vm)
+    static void ShootBoth(string outDir, string name, ScriptDevViewModel vm, int height = 665)
     {
         foreach (var theme in new[] { ThemeVariant.Light, ThemeVariant.Dark })
         {
             Application.Current!.RequestedThemeVariant = theme;
-            var w = new Window { Width = 938, Height = 665, Content = new TweakerUI.Views.ScriptDevView { DataContext = vm } };
+            var w = new Window { Width = 938, Height = height, Content = new TweakerUI.Views.ScriptDevView { DataContext = vm } };
             w.Show();
             for (var i = 0; i < 5; i++)
                 Dispatcher.UIThread.RunJobs();

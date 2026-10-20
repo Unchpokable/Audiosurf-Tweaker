@@ -83,8 +83,10 @@ itself, and a hook into one detaches and reattaches by itself. If you want to kn
 handlers do not run before it. What the layer is waiting for, while it waits, is shown at the top of
 the Scripts tab and readable as [`tw.state()`](api-reference.md#twstate--string).
 
-To see what is loaded right now, enable the **Group Inspector** script that ships with the Tweaker,
-or call `tw.groups()` yourself.
+To see what is loaded right now, call `tw.groups()` — for instance from a few lines that draw the list
+with `tw.hud.text`. Which groups exist at all, loaded or not, `cgrpy query find` answers from outside the
+game. The whole timeline — what loads when, what is destroyed and loaded again — is
+[Start-up and the life of groups](../internals/lifecycle.md).
 
 ### Group names are a little loose
 
@@ -154,9 +156,10 @@ from rather than where it is consumed.
 
 ### A value's meaning can depend on when you read it
 
-Some of the game's state is only assembled at the end of a run. `Stats: TrafficColorCounts` is
-written **once, in the final scoring pass** — during a run it is stale, and it never contains white
-blocks at all. A script that reads it mid-run gets a plausible wrong answer.
+Some of the game's state is only right at the end of a run. `Stats: TrafficColorCounts` is counted
+when the track is generated — **before** the whites and wilds are placed over coloured blocks — and
+corrected only in the final scoring pass. During a run it is too high on every colour and zero on
+white. A script that reads it mid-run gets a plausible wrong answer.
 
 When accuracy matters, find where the game gets the number from, not where it stores it.
 
@@ -167,13 +170,16 @@ You will not find most of this by guessing. The workflow that works:
 **1. Start from what the game shows you.** If you can see a number on screen, it exists in a channel,
 and it usually has an obvious name.
 
-**2. Read the reverse-engineering notes.** `Docs/Internal/reversing-journal-gameplay.md` maps out the
-gameplay-critical groups in detail — the whole of `StatCollector`, the scoring rules, the character
-and mode table, the puzzle grid. It is in Russian and it is working notes rather than polished
-documentation, but it is the map, and it names channels with their indices.
+**2. Read the map.** [Playing Audiosurf](../internals/playing-audiosurf.md) turns what you see and
+what players call it into groups and channels; the [gameplay map](../internals/gameplay-map.md) covers
+the gameplay-critical groups in detail — the whole of `StatCollector`, scoring, medals, the colours, the
+board and the chain — with indices and with the traps.
 
-**3. Use the Group Inspector.** When a group will not resolve, the answer is almost always "it is not
-loaded right now" or "it is called something else", and the list tells you which.
+**3. Ask the graph.** `cgrpy query find "<part of a name>"` searches every group at once,
+`cgrpy query dec <group> <handler>` shows what a handler does, and `cgrpy query writers <group>
+<channel>` shows where a value really comes from. When a group will not resolve in the game, the answer
+is almost always "it is not loaded right now" or "it is called something else": `tw.groups()` says
+which is loaded, `cgrpy query find` what it is called.
 
 **4. Watch, do not guess.** Hook a `Do_` handler with `tw.on_call` and have it call `tw.notify` when
 it fires. You will learn very quickly whether it means what you thought.
@@ -267,8 +273,11 @@ empty, not treat it as a hypothetical.
 ### `TrafficCommander` — the road
 
 `Do_CollectCar` fires whenever your car takes a block off the road — through the grid, through
-Pointman's buffer, or through an Eraser shatter. It is the single honest "I collected something"
-event. The colour is in channel index `900` (the name `TrafficType` is ambiguous; see the traps).
+Pointman's buffer, or through an Eraser shatter — **except a power-up block**, which goes to
+`Do_CollectQuestionBox` instead and leaves a "ghost" copy of another block behind. Hook both; to count
+blocks per colour, count each track row once (`TrafficID`) and the ghosts drop out — the
+[gameplay map](../internals/gameplay-map.md#collecting-a-block) has the details. The colour is in channel
+index `900` (the name `TrafficType` is ambiguous; see the traps).
 
 ### `MoneyFloaterCommander` — points on their way to the score
 

@@ -65,7 +65,8 @@ dotnet test TweakerLuaLinker.Tests/TweakerLuaLinker.Tests.csproj
 
 По порядку (он же в CLAUDE.md):
 
-1. в прологе (`TweakerPlugin/src/lua/lua_prelude.cxx`) — если имя **добавлено**, поднять `tw.api_version`;
+1. в прологе (`TweakerPlugin/src/lua/prelude/*.lua`, версия — в `core.lua`) — если имя **добавлено**, поднять
+   `tw.api_version`;
 2. `harness/lua/ljtest` с `TW_API_UPDATE=1` — переписывает `Docs/scripting/api.json`;
 3. дописать `Docs/scripting/api-reference.md`;
 4. `dotnet test TweakerLuaLinker.Tests` с `TWLLINK_UPDATE_DEFS=1` — переписывает `Docs/scripting/tw.def.lua`;

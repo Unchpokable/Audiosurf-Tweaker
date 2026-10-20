@@ -41,8 +41,10 @@ void tab_view::set_rounding(float rounding) noexcept
     m_rounding = rounding;
 }
 
-void tab_view::set_tabs(std::span<const std::string_view> labels)
+void tab_view::set_tabs(std::span<const std::string_view> labels, int selected)
 {
+    assert(!m_active && "tab_view::set_tabs() must be called outside begin()/end()");
+
     m_labels.clear();
     m_tab_states.clear();
     m_labels.reserve(labels.size());
@@ -59,6 +61,13 @@ void tab_view::set_tabs(std::span<const std::string_view> labels)
         return;
     }
 
+    if(selected >= 0 && selected < static_cast<int>(m_labels.size())) {
+        // Rebuilt under the user: the page they are on stays on, at full opacity, with nothing fading out.
+        m_selected_tab = selected;
+        m_previous_tab = -1;
+        m_content.snap(1.f);
+    }
+
     if(m_selected_tab < 0 || m_selected_tab >= static_cast<int>(m_labels.size())) {
         m_selected_tab = 0;
     }
@@ -71,6 +80,38 @@ void tab_view::set_tabs(std::span<const std::string_view> labels)
         const bool selected = static_cast<int>(i) == m_selected_tab;
         m_tab_states[i].select.snap(selected ? 1.f : 0.f);
     }
+}
+
+void tab_view::set_label(int index, std::string_view label)
+{
+    assert(!m_active && "tab_view::set_label() must be called outside begin()/end()");
+    if(index < 0 || index >= static_cast<int>(m_labels.size()) || m_labels[static_cast<std::size_t>(index)] == label) {
+        return;
+    }
+
+    m_labels[static_cast<std::size_t>(index)].assign(label);
+    m_tab_states[static_cast<std::size_t>(index)].fitted_for = -1.f;
+}
+
+void tab_view::set_tab_enabled(int index, bool enabled)
+{
+    if(index >= 0 && index < static_cast<int>(m_tab_states.size())) {
+        m_tab_states[static_cast<std::size_t>(index)].enabled = enabled;
+    }
+}
+
+void tab_view::set_tab_id(int index, std::string_view id)
+{
+    if(index >= 0 && index < static_cast<int>(m_tab_states.size())) {
+        // Hashed as ImGui hashes a string id, and never 0, which means "keyed on the index".
+        const ImGuiID hashed = ImHashStr(id.data(), id.size());
+        m_tab_states[static_cast<std::size_t>(index)].page_id = hashed != 0 ? hashed : 1;
+    }
+}
+
+float tab_view::nav_width() const noexcept
+{
+    return m_nav_width;
 }
 
 void tab_view::select_tab(int index)
@@ -199,6 +240,11 @@ void tab_view::begin()
             const float hover_t = st.hover.step();
             const float select_t = st.select.step();
 
+            // A tab whose page is switched off as a whole: dimmed, still clickable (set_tab_enabled).
+            if(!st.enabled) {
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * theme::disabled_alpha);
+            }
+
             if(select_t > 0.01f) {
                 ImVec4 bg = theme::accent_soft;
                 bg.w *= select_t;
@@ -225,6 +271,10 @@ void tab_view::begin()
             }
             else {
                 nav_draw->AddText(text_pos, kit::paint::to_u32(text_col), text);
+            }
+
+            if(!st.enabled) {
+                ImGui::PopStyleVar();
             }
 
             ImGui::PopID();
@@ -298,7 +348,10 @@ bool tab_view::begin_view(int tab_index)
         return false;
     }
 
-    ImGui::PushID(tab_index);
+    // Keyed on the tab's own id where it has one (set_tab_id), so a page keeps its scroll and its widgets'
+    // state when tabs before it come and go.
+    const ImGuiID page_id = m_tab_states[static_cast<std::size_t>(tab_index)].page_id;
+    ImGui::PushID(page_id != 0 ? static_cast<int>(page_id) : tab_index);
     ImGui::SetCursorPos(m_page_pos);
 
     // Isolated page: fixed size, no host scroll. Outgoing ignores input so the

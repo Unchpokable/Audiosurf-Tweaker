@@ -1,8 +1,8 @@
 """Disassemble a function, with calls resolved to names.
 
-    uvrun disasm <module> 0x1240              # stops at the first `ret`
-    uvrun disasm <module> 0x1240 --count 80
-    uvrun disasm --type "Array Vector" 0x1240
+    cgrpy disasm <module> 0x1240              # stops at the first `ret`
+    cgrpy disasm <module> 0x1240 --count 80
+    cgrpy disasm --type "Array Vector" 0x1240
 
 Plain capstone output for x86, plus the one thing that makes it readable here: `call [0x...]` through
 the import table is annotated with the imported symbol, and a direct `call` to an exported address is
@@ -15,6 +15,8 @@ argument is a `D3DXVECTOR3` by value (three consecutive dwords from `[esp+4]`, s
 `(self, edx, float, float, float)` thunk is byte-identical). The second question is the kind that
 cannot be settled by reasoning about the ABI: guess wrong and it is a stack imbalance, not a wrong
 number. Engine journal §2.2.2 and §2.2.3.
+
+Engine journal (working notes, in Russian): https://github.com/Unchpokable/Audiosurf-Tweaker/blob/HEAD/Docs/Internal/reversing-journal-engine.md
 """
 
 import sys

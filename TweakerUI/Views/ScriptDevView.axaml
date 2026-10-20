@@ -11,9 +11,20 @@
     <Border Background="{DynamicResource AppBackgroundBrush}">
         <Grid Margin="20" RowDefinitions="Auto,*">
 
-            <Border Grid.Row="0" Classes="Card Tinted" Margin="0,0,0,14" IsVisible="{Binding HasNotice}">
-                <TextBlock Classes="SMNotice" Text="{Binding Notice}"/>
-            </Border>
+            <StackPanel Grid.Row="0">
+                <Border Classes="Card Tinted" Margin="0,0,0,14" IsVisible="{Binding HasNotice}">
+                    <TextBlock Classes="SMNotice" Text="{Binding Notice}"/>
+                </Border>
+                <!-- uv is not shipped (dev-bundle-roadmap.md §2.2): say how to get it, and let the command be copied. -->
+                <Border Classes="Card Tinted" Margin="0,0,0,14" IsVisible="{Binding UvNotice}">
+                    <Grid ColumnDefinitions="*,14,320">
+                        <TextBlock Grid.Column="0" Classes="SMNotice" Text="{Binding UvMessage}" VerticalAlignment="Center"/>
+                        <TextBox Grid.Column="2" Classes="TextField" IsReadOnly="True" VerticalAlignment="Center"
+                                 Text="{Binding UvInstallCommand, Mode=OneWay}"
+                                 ToolTip.Tip="Run this in a terminal - Tweaker does not install anything itself"/>
+                    </Grid>
+                </Border>
+            </StackPanel>
 
             <Grid Grid.Row="1" ColumnDefinitions="300,14,*">
 
@@ -73,7 +84,7 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
                             <TextBlock Classes="SMHint" Margin="0,2,0,0" IsVisible="{Binding HasEditors}"
-                                       Text="Opened with twllink on its PATH, so the editor's terminal can run it."/>
+                                       Text="Opened with twllink and cgrpy on its PATH, so the editor's terminal can run them."/>
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -125,6 +136,44 @@
                                             </DataTemplate>
                                         </ListBox.ItemTemplate>
                                     </ListBox>
+
+                                    <!-- AI agents (dev-bundle-roadmap.md §3.6): offered here, remembered for the next project. -->
+                                    <TextBlock Classes="SMFieldLabel" Text="AI coding agents" Margin="2,12,0,4"/>
+                                    <Border Classes="ToggleRow" HorizontalAlignment="Left">
+                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <ToggleButton Classes="Switch" VerticalAlignment="Center" IsChecked="{Binding NewSetUpAgents, Mode=TwoWay}"/>
+                                            <TextBlock Classes="ToggleLabel" Text="Set up for AI agents" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <WrapPanel Orientation="Horizontal" IsVisible="{Binding NewSetUpAgents}" Margin="0,4,0,0">
+                                        <Border Classes="ToggleRow" Margin="0,0,10,6">
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <ToggleButton Classes="Switch" VerticalAlignment="Center" IsChecked="{Binding NewAgentClaude, Mode=TwoWay}"/>
+                                                <TextBlock Classes="ToggleLabel" Text="Claude Code" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Classes="ToggleRow" Margin="0,0,10,6">
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <ToggleButton Classes="Switch" VerticalAlignment="Center" IsChecked="{Binding NewAgentCodex, Mode=TwoWay}"/>
+                                                <TextBlock Classes="ToggleLabel" Text="Codex" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Classes="ToggleRow" Margin="0,0,10,6">
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <ToggleButton Classes="Switch" VerticalAlignment="Center" IsChecked="{Binding NewAgentCursor, Mode=TwoWay}"/>
+                                                <TextBlock Classes="ToggleLabel" Text="Cursor" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+                                        <Border Classes="ToggleRow" Margin="0,0,10,6"
+                                                ToolTip.Tip="A skill for questions only the game's native code answers - decompilers, vtables. Most scripts never need it.">
+                                            <StackPanel Orientation="Horizontal" Spacing="10">
+                                                <ToggleButton Classes="Switch" VerticalAlignment="Center" IsChecked="{Binding NewAgentBinaries, Mode=TwoWay}"/>
+                                                <TextBlock Classes="ToggleLabel" Text="Binaries skill" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </WrapPanel>
+                                    <TextBlock Classes="SMHint"
+                                               Text="Adds AGENTS.md, skills and a copy of the Tweaker's docs, so an agent knows the game, the API and the tools. Tweaker writes no agent or MCP settings."/>
 
                                     <TextBlock Classes="SMProblem" Text="{Binding CreateProblem}" IsVisible="{Binding CreateProblem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
                                     <TextBlock Classes="SMHint" Text="{Binding NewProjectFolderHint}" Margin="0,4,0,0"/>
@@ -231,6 +280,64 @@
                                             </StackPanel>
                                         </Border>
                                     </WrapPanel>
+
+                                    <!-- AI agents (dev-bundle-roadmap.md §3.6): where the project stands, and what can be done about it. -->
+                                    <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding AgentStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                                            <TextBlock Classes="SMSubtitle" Text="{Binding AgentStatus}" TextWrapping="Wrap"/>
+                                            <TextBlock Classes="SMWarning" Text="{Binding AgentDetail}" TextWrapping="Wrap"
+                                                       IsVisible="{Binding AgentDetail, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                                        </StackPanel>
+                                        <WrapPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" IsVisible="{Binding !IsAgentPanelOpen}">
+                                            <Button Classes="ActionButton" Content="Update" Margin="8,0,0,0" Command="{Binding UpdateAgentsCommand}"
+                                                    IsVisible="{Binding AgentUpdateAvailable}"
+                                                    ToolTip.Tip="Bring the skills and docs up to this Tweaker's kit - files you changed are left alone"/>
+                                            <Button Classes="ActionButton" Content="Use the kit's version" Margin="8,0,0,0" Command="{Binding ReplaceAgentEditsCommand}"
+                                                    IsVisible="{Binding AgentHasEdits}"
+                                                    ToolTip.Tip="Replace the agent files you changed with this Tweaker's - yours are kept as .old copies"/>
+                                            <Button Classes="ActionButton" Content="{Binding AgentSetupButtonText}" Margin="8,0,0,0" Command="{Binding OpenAgentPanelCommand}"
+                                                    ToolTip.Tip="Choose the AI coding agents this project is set up for"/>
+                                        </WrapPanel>
+                                    </Grid>
+
+                                    <StackPanel IsVisible="{Binding IsAgentPanelOpen}" Spacing="6">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Grid.Column="0" Classes="SMFieldLabel" Text="{Binding AgentPanelTitle}" VerticalAlignment="Center"/>
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                                                <Button Classes="ActionButton" Content="{Binding AgentApplyText}" Command="{Binding ApplyAgentsCommand}"/>
+                                                <Button Classes="ActionButton" Content="Cancel" Command="{Binding CancelAgentsCommand}"/>
+                                            </StackPanel>
+                                        </Grid>
+                                        <WrapPanel Orientation="Horizontal">
+                                            <Border Classes="ToggleRow" Margin="0,0,10,6">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <ToggleButton Classes="Switch" VerticalAlignment="Center" IsChecked="{Binding AgentClaude, Mode=TwoWay}"/>
+                                                    <TextBlock Classes="ToggleLabel" Text="Claude Code" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
+                                            <Border Classes="ToggleRow" Margin="0,0,10,6">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <ToggleButton Classes="Switch" VerticalAlignment="Center" IsChecked="{Binding AgentCodex, Mode=TwoWay}"/>
+                                                    <TextBlock Classes="ToggleLabel" Text="Codex" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
+                                            <Border Classes="ToggleRow" Margin="0,0,10,6">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <ToggleButton Classes="Switch" VerticalAlignment="Center" IsChecked="{Binding AgentCursor, Mode=TwoWay}"/>
+                                                    <TextBlock Classes="ToggleLabel" Text="Cursor" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
+                                            <Border Classes="ToggleRow" Margin="0,0,10,6"
+                                                    ToolTip.Tip="A skill for questions only the game's native code answers - decompilers, vtables. Most scripts never need it.">
+                                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                                    <ToggleButton Classes="Switch" VerticalAlignment="Center" IsChecked="{Binding AgentBinaries, Mode=TwoWay}"/>
+                                                    <TextBlock Classes="ToggleLabel" Text="Binaries skill" VerticalAlignment="Center"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </WrapPanel>
+                                        <TextBlock Classes="SMHint"
+                                                   Text="Writes AGENTS.md (your text in it stays yours), skills in .agents\skills, a copy of the docs in .tweaker\docs, and for Claude Code also CLAUDE.md and .claude\skills. Tweaker writes no agent or MCP settings."/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
 

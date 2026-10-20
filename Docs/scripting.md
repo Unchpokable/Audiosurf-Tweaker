@@ -30,6 +30,9 @@ When you are ready to write something of your own, the shortest way in is the **
 Audiosurf Tweaker: it creates a project, opens it in your editor, builds it and installs it into the
 game — see [Scripts in Audiosurf Tweaker](scripting/tweaker.md).
 
+This manual ships with Audiosurf Tweaker too: `DevTools\Docs\` next to `TweakerUI.exe` holds it, the
+[sky packages](skyboxes.md) manual and [How Audiosurf works inside](internals.md), for reading offline.
+
 ---
 
 ## The manual
@@ -44,7 +47,9 @@ Read these in order the first time. After that they stand alone.
 | **[Reading and writing the game](scripting/channels.md)** | Channel accessors, values, text, vectors, tables, and how to handle the fact that nothing is available immediately. |
 | **[Reacting and intercepting](scripting/hooks.md)** | Running code when the game does something, and stopping the game from doing it. |
 | **[Drawing](scripting/drawing.md)** | The HUD API: text, shapes, measurement, colours, and laying out against the overlay. |
-| **[Worked examples](scripting/examples.md)** | Three probes written to answer a question about the game, annotated. Not shipped with the plugin — copy one in when you want it. |
+| **[Menu tabs](scripting/menus.md)** | Your script's own tab in the overlay menu: switches, sliders, choices, colours, buttons, lists — and reading what the player set. |
+| **[Saving data](scripting/storage.md)** | A folder of your own for settings and data: text and JSON, kept between sessions. |
+| **[Worked examples](scripting/examples.md)** | Probes written to answer a question about the game, and one settings tab that survives a restart, annotated. Not shipped with the plugin — copy one in when you want it. |
 | **[Projects: scripts made of many files](scripting/authoring.md)** | When one file stops being enough: `twllink --new`, modules and `require`, an editor that knows the API, checks at build time, installing, and errors that point at your own files. |
 | **[API reference](scripting/api-reference.md)** | Every function, in one place. |
 | **[Limits, safety and performance](scripting/limits.md)** | What the environment deliberately cannot do, what it costs, and the rules that keep a script from ruining the game. |
@@ -69,8 +74,12 @@ reach the filesystem or arbitrary memory, and that is enough to make honest mist
 is not a security boundary. Running someone's script is trusting them, the same as running any other
 program they sent you.
 
-**Scripts are per-machine, not per-save.** Nothing a script does is uploaded, and nothing it does
-affects online leaderboards — the game reports its own score, not yours.
+**Scripts are per-machine, not per-save.** Nothing a script *says* is uploaded: what reaches the online
+leaderboards is the game's own score. A script that only reads the game and draws changes nothing there.
+A script that changes the game's **logic** — scoring, the chain, timers, what matches — changes the score
+the game itself then reports, and nothing in the Tweaker detects that or switches the game's online
+services off. What that means in practice, and where the line is, is in
+[Playing Audiosurf § Mods and the leaderboards](internals/playing-audiosurf.md#mods-and-the-leaderboards).
 
 ## Getting help
 
@@ -82,6 +91,10 @@ affects online leaderboards — the game reports its own score, not yours.
   starts. Its design notes ride along at the top.
 - If a script cannot find something, it says so in the notification feed. Read
   [Getting started § When something goes wrong](scripting/getting-started.md#when-something-goes-wrong).
-- The deep reverse-engineering notes live in `Docs/Internal/` — they are working notes rather than
-  documentation, in Russian, and much rougher than this manual. But if you are hunting for a piece of
-  the game nobody has written up yet, that is where the map is.
+- **[How Audiosurf works inside](internals.md)** is the map beyond this manual: the game from the
+  player's seat with every term tied to its channels, the `.cgr` format, start-up and the life of
+  groups, a long gameplay map with indices, and the native ABI.
+- **To find something nobody has written up yet**, use the tools it was all found with —
+  `DevTools\CgrPy` next to `TweakerUI.exe`, on your editor's `PATH` when the Tweaker opens it:
+  `cgrpy query find "Undo"`, `cgrpy query writers StatCollector Points`. See the
+  [CgrPy README](https://github.com/Unchpokable/Audiosurf-Tweaker/blob/HEAD/Tools/CgrPy/README.md).
