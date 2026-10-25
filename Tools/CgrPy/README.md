@@ -208,12 +208,20 @@ for every player — not the game's logic.
 ## `examples\`
 
 The normal way to use the graph is not "run a tool" but "write fifteen lines against `cgr.project` and
-`cgr.decomp`, get an answer, throw it away". These three show what that looks like, and run as they are:
+`cgr.decomp`, get an answer, throw it away". These show what that looks like, and run as they are:
 
 ```
 cgrpy examples\writers.py      who writes each run statistic (writes out\stat_writers.txt where you are)
 cgrpy examples\qchic.py        reading a chunk the parser does not keep (CHIC, the memoisation flag)
 cgrpy examples\genall.py       CSVs and pseudocode for a set of groups at once (into out\)
+```
+
+Two more read the DLLs instead of the graph, across every channel type at once:
+
+```
+cgrpy examples\family_slots.py   types whose get/set slots are their own code, and types whose family
+                                 by guid is not their family by inheritance (Texter_Unicode)
+cgrpy examples\vptr_compares.py  code that identifies an object by its vtable address (none in the game)
 ```
 
 They hardcode the groups they were written for: copy one and change that. In a script of your own,
