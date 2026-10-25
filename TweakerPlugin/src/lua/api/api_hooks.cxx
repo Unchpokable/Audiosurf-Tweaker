@@ -364,6 +364,11 @@ int waiting_count(int owner, std::vector<std::string>* groups) noexcept
     return waiting;
 }
 
+int hooked_channel_count() noexcept
+{
+    return tw::framework::channel_shim::active_count();
+}
+
 int shared_channel_count() noexcept
 {
     // Distinct channels more than one subscription is attached to. Surfaced in the Scripts tab

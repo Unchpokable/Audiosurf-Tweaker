@@ -77,6 +77,11 @@ void reorder_subscriptions() noexcept;
 // when it is not null. Cold: the Scripts tab asks, once per row per frame while it is open.
 [[nodiscard]] int waiting_count(int owner, std::vector<std::string>* groups) noexcept;
 
+// How many channels carry a vtable copy right now, whoever's. With every script switched off this is 0,
+// and anything else is a subscription that outlived its script - the script log prints it after each
+// unload for exactly that reason.
+[[nodiscard]] int hooked_channel_count() noexcept;
+
 // How many distinct channels currently carry more than one subscription - i.e. in how many places
 // two scripts are sharing an interception point.
 [[nodiscard]] int shared_channel_count() noexcept;

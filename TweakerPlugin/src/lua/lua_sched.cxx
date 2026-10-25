@@ -482,6 +482,15 @@ void unload(int owner) noexcept
 
     tw::lua::api::unsubscribe_owner(owner);
 
+    // What is left hooked once this script's subscriptions are gone - all of it other scripts'. Printed so that
+    // "every script off, channels still hooked" is something the player's own log shows.
+    tw::lua::log::writef(owner,
+        "hooks",
+        {},
+        "unloaded: {} channel(s) still hooked, {} subscription(s) in all",
+        tw::lua::api::hooked_channel_count(),
+        tw::lua::api::subscription_count(-1));
+
     // Its tabs leave the menu and its control handles go inert now; the forms themselves are freed at the end of
     // the overlay frame (lua_tabs.hxx) - this may be the middle of the menu's own frame.
     tw::lua::tabs::drop_owner(owner);
