@@ -22,6 +22,12 @@
 //
 // Everything here runs on the engine thread (reversing-journal-engine.md §4.1), so there is no
 // locking anywhere in this file.
+//
+// **Every call below is safe while the channel it touches is being dispatched** - from one of its own
+// subscribers, from code the original runs, or from Present, which the game calls from inside its graph
+// while every channel above it on the stack is mid-call. A subscriber that leaves stops being called at
+// once; one that joins starts with the next call; a channel that loses its last subscriber gets its own
+// vtable back at once, and its binding is freed when the last dispatch of it returns.
 namespace tw::framework::channel_shim
 {
 enum class phase {
@@ -86,8 +92,9 @@ void reorder(order_fn order_of) noexcept;
 // is what makes disabling a script genuinely free rather than merely quiet.
 void unsubscribe(A3d_Channel* channel, void* user) noexcept;
 
-// Drops every subscription whose `user` pointer is in the given set, wherever it is attached. Used
-// to unload one script without walking its subscriptions channel by channel from the outside.
+// Drops every subscription whose `user` pointer is in the given set, wherever it is attached - all of
+// them, including several of the set on one channel. Used to unload one script without walking its
+// subscriptions channel by channel from the outside.
 void unsubscribe_all_of(std::span<void* const> users) noexcept;
 
 // Puts a channel's original vptr back and frees the copy, dropping every subscriber on it. Safe on
@@ -117,4 +124,8 @@ void remove_all() noexcept;
 
 // How many subscribers are attached to one channel. Zero for an unhooked one.
 [[nodiscard]] int subscriber_count(A3d_Channel* channel) noexcept;
+
+// How many bindings are already off their channel but not freed yet, because a dispatch of them is still
+// on the stack. Zero whenever no hooked channel is mid-call. For the offline suite.
+[[nodiscard]] int retired_count() noexcept;
 } // namespace tw::framework::channel_shim
