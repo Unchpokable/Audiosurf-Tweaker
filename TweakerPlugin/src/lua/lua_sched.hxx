@@ -64,7 +64,8 @@ void post_tick_frame() noexcept;
 [[nodiscard]] bool enter(int owner, int kind) noexcept;
 void leave(int owner, int kind, const char* error) noexcept;
 
-// Whether a script's hooks are live - enabled and not suspended. Owner -1 always is. One indexed
+// Whether a script's hooks are live - enabled and not suspended. The layer's own owner (k_layer_owner)
+// always is; any other negative number never is. One indexed
 // load: this is asked on every call of every hooked channel.
 [[nodiscard]] bool runnable(int owner) noexcept;
 

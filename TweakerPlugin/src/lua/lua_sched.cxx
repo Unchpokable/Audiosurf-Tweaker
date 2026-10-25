@@ -438,7 +438,11 @@ void leave(int owner, int kind, const char* error) noexcept
 
 bool runnable(int owner) noexcept
 {
-    if(owner < 0) {
+    // The layer's own number and nothing else: "any negative" made every stray negative word count as a
+    // live owner, which is what turned a dangling subscription record into a mute of the game's handler
+    // (Docs/Internal/lua-audit-journal.md, A1 and A3). Other negatives fall through to find(), which
+    // refuses them.
+    if(owner == tw::lua::k_layer_owner) {
         return true;
     }
 

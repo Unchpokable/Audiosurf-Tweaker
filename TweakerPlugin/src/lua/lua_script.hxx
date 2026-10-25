@@ -29,6 +29,10 @@ enum class callback : int {
 
 inline constexpr int k_callback_count = 9;
 
+// The owner number that means "the scripting layer itself, not a script": diagnostics it files, hooks it
+// takes. Every other negative number is not an owner at all.
+inline constexpr int k_layer_owner = -1;
+
 [[nodiscard]] const char* callback_name(callback kind) noexcept;
 
 // What a script's row says it is doing. Derived, never stored: every input already lives somewhere
