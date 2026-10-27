@@ -322,6 +322,7 @@ namespace paint = tw::ui::kit::paint;
 | `add_text_ellipsis(draw, pos, max_x, col, text)` → обрезан ли | текст с многоточием | везде |
 | `fit_text(text, max_w)` → `std::string` | то же строкой — для текста, который рисуют иначе; **аллоцирует**, кэшировать по ширине | подписи `tab_view` |
 | `add_text_glow`, `add_rect_glow`, `add_circle_glow`; `glow_reach` | свечения копиями контура; вылет 6.75 px | акценты, бегунки, рамка попапа |
+| `add_gradient_polyline(draw, points, colors, n, thickness, flags)` → применён ли | ломаная ImGui, нарисованная белым и перекрашенная по точкам; знает раскладку вершин `AddPolyline` (AA: 2/3/4 на точку, без AA: 4 на сегмент), незнакомая — вся линия цветом первой точки и `false` | `tw.hud.gradient_polyline` |
 
 Рецепт с состоянием не заводится: крестик и уголок — пара «прямоугольник для `interact`» + «рисунок по `t`»,
 `channel` держит вызывающий. `paint` от `anim` не зависит.
@@ -916,7 +917,7 @@ build\x86-release\bin\tweaker_ui_smoke.exe --compare <до> <после> [--diff
   поменял их в виджете — поправь сцены в той же правке.
 
 **Сцены.** Стендовые — по виджету (`button`, `toggle`, `segmented`, `slider`, `list-view`, `tab-view`,
-`popup-menu`, `color-field`, …), рецепты (`paint-*`, `draw-helpers`, `glow-clip`), поведение
+`popup-menu`, `color-field`, …), рецепты (`paint-*`, `draw-helpers`, `gradient-polyline`, `glow-clip`), поведение
 (`slider-escape`, `tab-view-back`, `tab-view-overflow`, `list-view-refresh`, `disabled`, `popup-anchored`,
 `interact-covered`, `interact-fading-page`, `late-icon`). Форма — `form-controls`, `form-events`,
 `form-program-set`, `form-disabled`, `form-narrow`, `form-tooltip` (страница вкладки с формой, а под ней — журнал

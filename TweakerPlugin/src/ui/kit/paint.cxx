@@ -488,4 +488,60 @@ void add_circle_glow(ImDrawList* draw, const ImVec2& center, float radius, ImVec
         draw->AddCircle(center, radius + offset, col, 0, k_glow_thickness);
     }
 }
+
+bool add_gradient_polyline(
+    ImDrawList* draw, const ImVec2* points, const ImU32* colors, int count, float thickness, ImDrawFlags flags) noexcept
+{
+    if(draw == nullptr || points == nullptr || colors == nullptr || count < 2) {
+        return true;
+    }
+
+    const int start = draw->VtxBuffer.Size;
+    draw->AddPolyline(points, count, IM_COL32_WHITE, thickness, flags);
+    const int added = draw->VtxBuffer.Size - start;
+    if(added <= 0) {
+        return true;
+    }
+
+    // The stroke was drawn white, so a vertex's own colour is white at the alpha its anti-aliasing gave it
+    // (opaque in the middle, clear at the fringe): the point's colour with its alpha scaled by that.
+    ImDrawVert* vertices = draw->VtxBuffer.Data + start;
+    const auto tint = [](ImDrawVert& vertex, ImU32 color) {
+        const ImU32 coverage = (vertex.col >> IM_COL32_A_SHIFT) & 0xFF;
+        const ImU32 alpha = (((color >> IM_COL32_A_SHIFT) & 0xFF) * coverage + 127) / 255;
+        vertex.col = (color & ~IM_COL32_A_MASK) | (alpha << IM_COL32_A_SHIFT);
+    };
+
+    if((draw->Flags & ImDrawListFlags_AntiAliasedLines) != 0) {
+        const int per_point = added / count;
+        if(per_point * count == added && per_point >= 2 && per_point <= 4) {
+            for(int i = 0; i < count; ++i) {
+                for(int k = 0; k < per_point; ++k) {
+                    tint(vertices[i * per_point + k], colors[i]);
+                }
+            }
+            return true;
+        }
+    }
+    else {
+        const bool closed = (flags & ImDrawFlags_Closed) != 0;
+        const int segments = closed ? count : count - 1;
+        if(added == segments * 4) {
+            for(int s = 0; s < segments; ++s) {
+                const ImU32 from = colors[s];
+                const ImU32 to = colors[(s + 1) % count];
+                tint(vertices[s * 4 + 0], from);
+                tint(vertices[s * 4 + 1], to);
+                tint(vertices[s * 4 + 2], to);
+                tint(vertices[s * 4 + 3], from);
+            }
+            return true;
+        }
+    }
+
+    for(int i = 0; i < added; ++i) {
+        tint(vertices[i], colors[0]);
+    }
+    return false;
+}
 } // namespace tw::ui::kit::paint

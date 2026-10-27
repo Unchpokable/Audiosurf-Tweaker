@@ -382,6 +382,21 @@ internal joins square.
 
 `thickness` defaults to 1.
 
+### `tw.hud.polyline(xs, ys, colour, thickness, closed)`
+
+One line through every point (`xs[i]`, `ys[i]`) in order, as a single stroke with joined corners (API 4).
+`xs` and `ys` are arrays of numbers of the same length, at most 4096; fewer than two points draw nothing.
+`colour` defaults to opaque white, `thickness` to 1; `closed` joins the last point back to the first.
+
+Arrays of different lengths, a point that is not a number, or more than 4096 points raise an error.
+A point that is NaN or infinite draws nothing. See [Drawing § Lines through many points](drawing.md#lines-through-many-points).
+
+### `tw.hud.gradient_polyline(xs, ys, colours, thickness, closed)`
+
+`tw.hud.polyline` with a colour per point: `colours[i]` belongs to point `i`, and the colour blends
+between neighbouring points along each segment (API 4). `colours` is required and has as many entries
+as there are points. Same limits and errors as `tw.hud.polyline`.
+
 ### `tw.hud.glow_rect(x0, y0, x1, y1, colour, rounding, strength)`
 
 A soft glow around a rounded rectangle, in the overlay's own style. `strength` is `0..1` and defaults
@@ -774,7 +789,7 @@ not resolve".
 
 ### `tw.api_version` → number
 
-The version of this API: `3` today (API 3 added [menu tabs](#menu-tabs) and [storage](#storage)), raised whenever a name is added (names are never taken away). A
+The version of this API: `4` today (API 4 added [`tw.hud.polyline`](#twhudpolylinexs-ys-colour-thickness-closed) and [`tw.hud.gradient_polyline`](#twhudgradient_polylinexs-ys-colours-thickness-closed), API 3 [menu tabs](#menu-tabs) and [storage](#storage)), raised whenever a name is added (names are never taken away). A
 script can use it to adapt to an older Tweaker. A script built with `twllink` also records the version
 it was written against in its header (`-- @api`), and a Tweaker older than that refuses to run it
 rather than let it fail on a missing name — see

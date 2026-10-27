@@ -651,6 +651,84 @@ void draw_helpers_frame(scene_ctx& ctx)
 }
 
 // ---------------------------------------------------------------------------------------------
+// kit::paint::add_gradient_polyline through every path AddPolyline has: textured AA lines (integer
+// thickness), thick and thin AA lines without the texture, no AA at all; then a closed outline and a line
+// fading out by alpha. Each row prints whether the gradient was applied - "fallback" means AddPolyline
+// laid its vertices out in a way the recipe does not know, and the row is one colour.
+// ---------------------------------------------------------------------------------------------
+void gradient_polyline_frame(scene_ctx& ctx)
+{
+    begin_bench(ctx);
+    ImDrawList* draw = ImGui::GetWindowDrawList();
+    const ImVec2 o = ImGui::GetCursorScreenPos();
+    const ImU32 text = paint::to_u32(theme::text_primary);
+
+    constexpr int k_points = 7;
+    const std::array<ImU32, k_points> colours {
+        IM_COL32(230, 80, 80, 255),
+        IM_COL32(230, 200, 70, 255),
+        IM_COL32(90, 200, 90, 255),
+        IM_COL32(90, 200, 230, 255),
+        IM_COL32(90, 110, 230, 255),
+        IM_COL32(200, 100, 220, 255),
+        IM_COL32(230, 80, 80, 255),
+    };
+
+    struct row {
+        const char* label;
+        float thickness;
+        ImDrawListFlags clear;
+    };
+    const std::array<row, 4> rows { {
+        { "aa tex 2", 2.f, 0 },
+        { "aa thick 2.5", 2.5f, 0 },
+        { "aa thin 1", 1.f, ImDrawListFlags_AntiAliasedLinesUseTex },
+        { "no aa 2", 2.f, ImDrawListFlags_AntiAliasedLines },
+    } };
+
+    for(std::size_t r = 0; r < rows.size(); ++r) {
+        const float y = o.y + 10.f + static_cast<float>(r) * 30.f;
+        std::array<ImVec2, k_points> points {};
+        for(int i = 0; i < k_points; ++i) {
+            points[i] = ImVec2 { o.x + static_cast<float>(i) * 45.f, y + ((i % 2) == 0 ? 0.f : 16.f) };
+        }
+
+        const ImDrawListFlags saved = draw->Flags;
+        draw->Flags &= ~rows[r].clear;
+        const bool ok = paint::add_gradient_polyline(draw, points.data(), colours.data(), k_points, rows[r].thickness, 0);
+        draw->Flags = saved;
+
+        draw->AddText(ImVec2 { o.x + 290.f, y }, text, rows[r].label);
+        draw->AddText(ImVec2 { o.x + 380.f, y }, text, ok ? "ok" : "fallback");
+    }
+
+    // A closed square: the last segment blends back into the first point's colour.
+    const float sy = o.y + 140.f;
+    const std::array<ImVec2, 4> square { {
+        { o.x + 10.f, sy },
+        { o.x + 70.f, sy },
+        { o.x + 70.f, sy + 50.f },
+        { o.x + 10.f, sy + 50.f },
+    } };
+    const std::array<ImU32, 4> corners { colours[0], colours[2], colours[3], colours[5] };
+    const bool closed_ok = paint::add_gradient_polyline(draw, square.data(), corners.data(), 4, 3.f, ImDrawFlags_Closed);
+    draw->AddText(ImVec2 { o.x + 90.f, sy }, text, closed_ok ? "closed ok" : "closed fallback");
+
+    // One colour fading out along the line: alpha per point, the passed-stretch look of a progress line.
+    const float fy = o.y + 210.f;
+    std::array<ImVec2, k_points> fade_points {};
+    std::array<ImU32, k_points> fade {};
+    for(int i = 0; i < k_points; ++i) {
+        fade_points[i] = ImVec2 { o.x + static_cast<float>(i) * 45.f, fy };
+        fade[i] = IM_COL32(90, 200, 230, 255 - i * 40);
+    }
+    paint::add_gradient_polyline(draw, fade_points.data(), fade.data(), k_points, 3.f, 0);
+    end_bench();
+
+    still_script(ctx);
+}
+
+// ---------------------------------------------------------------------------------------------
 // Behaviour scenes for В5: the gestures and states the review found wrong, each run through frame by frame.
 // ---------------------------------------------------------------------------------------------
 
@@ -2039,6 +2117,7 @@ const scene k_scenes[] = {
     { "color-field", "opaque and half-transparent swatches; open the picker", ImVec2 { 480.f, 460.f }, nullptr, &color_field_frame },
     { "color-picker", "the full picker", ImVec2 { 480.f, 320.f }, nullptr, &color_picker_frame },
     { "draw-helpers", "ellipsis at three widths, text/rect/circle glow", k_bench_canvas, nullptr, &draw_helpers_frame },
+    { "gradient-polyline", "colour per point on every AddPolyline path, closed, fading", ImVec2 { 480.f, 280.f }, nullptr, &gradient_polyline_frame },
     { "slider-escape", "press jumps to the pointer, drag, Escape, release, label click", k_bench_canvas, nullptr, &slider_escape_frame },
     { "tab-view-back", "back to the page being left, mid-transition", k_bench_canvas, nullptr, &tab_view_back_frame },
     { "tab-view-overflow", "long labels and more tabs than fit; wheel over the column", k_bench_canvas, nullptr, &tab_view_overflow_frame },

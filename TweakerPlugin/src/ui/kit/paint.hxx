@@ -180,4 +180,16 @@ void add_rect_glow(ImDrawList* draw, const ImVec2& p_min, const ImVec2& p_max, f
 
 // The same around a circle.
 void add_circle_glow(ImDrawList* draw, const ImVec2& center, float radius, ImVec4 glow_col, float strength) noexcept;
+
+// A polyline with its own colour at every point, blended along each segment - a gradient that follows the
+// line rather than an axis. `flags` is 0 or ImDrawFlags_Closed, as for AddPolyline.
+//
+// It is ImGui's own stroke - joins, anti-aliasing and the textured-line fast path all included - drawn white
+// and then recoloured: every vertex AddPolyline added is multiplied by the colour of the point it belongs
+// to. That relies on how AddPolyline lays its vertices out, which is fixed for the vendored ImGui: with
+// anti-aliasing, a group of 2, 3 or 4 vertices per point, in point order; without, 4 per segment. A layout
+// it does not recognise (a newer ImGui) is not left white - the whole line takes the first point's colour,
+// and the snapshot stand's polyline scene shows the gradient gone. Returns whether the gradient was applied.
+bool add_gradient_polyline(
+    ImDrawList* draw, const ImVec2* points, const ImU32* colors, int count, float thickness, ImDrawFlags flags) noexcept;
 } // namespace tw::ui::kit::paint

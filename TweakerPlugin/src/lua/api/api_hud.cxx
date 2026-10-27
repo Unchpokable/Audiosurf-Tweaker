@@ -120,6 +120,23 @@ std::array<tw::lua::hud_space::entry, 256> g_occupied {};
     return (color >> IM_COL32_A_SHIFT) != 0;
 }
 
+// A polyline's points into the draw list's own path buffer - the one ImGui's Path* calls build their lines in.
+// It grows once and is reused, so a line drawn every frame allocates nothing after the first. Refuses a
+// point that is not a finite number: a NaN poisons the normals of both segments it touches, and what ImGui
+// then draws is not a line with a gap but triangles across the screen.
+[[nodiscard]] bool fill_path(ImDrawList* list, const float* xs, const float* ys, int count) noexcept
+{
+    list->PathClear();
+    for(int i = 0; i < count; ++i) {
+        if(!std::isfinite(xs[i]) || !std::isfinite(ys[i])) {
+            list->PathClear();
+            return false;
+        }
+        list->_Path.push_back(ImVec2(xs[i], ys[i]));
+    }
+    return true;
+}
+
 // Where one overlay widget is this frame - for tw_hud_widget_rect, and as chrome for lua_hud_space.
 bool widget_rect(int which, float& x0, float& y0, float& x1, float& y1) noexcept
 {
@@ -467,6 +484,44 @@ void tw_hud_line(float x0, float y0, float x1, float y1, unsigned int color, flo
 
     const space_probe probe { opaque(color) };
     ImGui::GetBackgroundDrawList()->AddLine(ImVec2(x0, y0), ImVec2(x1, y1), color, thickness <= 0.f ? 1.f : thickness);
+}
+
+void tw_hud_polyline(const float* xs, const float* ys, int count, unsigned int color, float thickness, int closed) noexcept
+{
+    if(xs == nullptr || ys == nullptr || count < 2 || count > tw::lua::api::hud_polyline_max_points || !inside_frame()) {
+        return;
+    }
+
+    ImDrawList* list = ImGui::GetBackgroundDrawList();
+    const space_probe probe { opaque(color) };
+    if(!fill_path(list, xs, ys, count)) {
+        return;
+    }
+    list->AddPolyline(list->_Path.Data, count, color, thickness <= 0.f ? 1.f : thickness, closed != 0 ? ImDrawFlags_Closed : 0);
+    list->PathClear();
+}
+
+void tw_hud_gradient_polyline(
+    const float* xs, const float* ys, const unsigned int* colors, int count, float thickness, int closed) noexcept
+{
+    if(xs == nullptr || ys == nullptr || colors == nullptr || count < 2 || count > tw::lua::api::hud_polyline_max_points
+        || !inside_frame()) {
+        return;
+    }
+
+    bool visible = false;
+    for(int i = 0; i < count && !visible; ++i) {
+        visible = opaque(colors[i]);
+    }
+
+    ImDrawList* list = ImGui::GetBackgroundDrawList();
+    const space_probe probe { visible };
+    if(!fill_path(list, xs, ys, count)) {
+        return;
+    }
+    tw::ui::kit::paint::add_gradient_polyline(
+        list, list->_Path.Data, colors, count, thickness <= 0.f ? 1.f : thickness, closed != 0 ? ImDrawFlags_Closed : 0);
+    list->PathClear();
 }
 
 int tw_hud_widget_rect(int which, float* out) noexcept

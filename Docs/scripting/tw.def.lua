@@ -1,5 +1,5 @@
 ---@meta
--- The Audiosurf Tweaker scripting API (tw.*), for Lua Language Server. API 3.
+-- The Audiosurf Tweaker scripting API (tw.*), for Lua Language Server. API 4.
 --
 -- Generated from Docs/scripting/api.json and Docs/scripting/api-reference.md; do not edit.
 -- In a project made by `twllink --new` this is already wired up (.luarc.json). Elsewhere, add the
@@ -634,11 +634,14 @@ tw = {}
 ---`tw.alpha(colour, a)` → colour
 function tw.alpha(colour, a) end
 
----The version of this API: `3` today (API 3 added [menu tabs](#menu-tabs) and [storage](#storage)),
----raised whenever a name is added (names are never taken away). A script can use it to adapt to an
----older Tweaker. A script built with `twllink` also records the version it was written against in its
----header (`-- @api`), and a Tweaker older than that refuses to run it rather than let it fail on a
----missing name — see [Projects § Checks at build time](authoring.md#checks-at-build-time).
+---The version of this API: `4` today (API 4 added
+---[`tw.hud.polyline`](#twhudpolylinexs-ys-colour-thickness-closed) and
+---[`tw.hud.gradient_polyline`](#twhudgradient_polylinexs-ys-colours-thickness-closed), API 3 [menu
+---tabs](#menu-tabs) and [storage](#storage)), raised whenever a name is added (names are never taken
+---away). A script can use it to adapt to an older Tweaker. A script built with `twllink` also records
+---the version it was written against in its header (`-- @api`), and a Tweaker older than that refuses
+---to run it rather than let it fail on a missing name — see [Projects § Checks at build
+---time](authoring.md#checks-at-build-time).
 ---
 ---`tw.api_version` → number
 ---@type number
@@ -930,6 +933,13 @@ function tw.hud.glow_rect(x0, y0, x1, y1, color, rounding, strength) end
 ---`tw.hud.glow_text(x, y, text, colour, glow, size, font, strength)`
 function tw.hud.glow_text(x, y, text, color, glow, size, font, strength) end
 
+---`tw.hud.polyline` with a colour per point: `colours[i]` belongs to point `i`, and the colour blends
+---between neighbouring points along each segment (API 4). `colours` is required and has as many
+---entries as there are points. Same limits and errors as `tw.hud.polyline`.
+---
+---`tw.hud.gradient_polyline(xs, ys, colours, thickness, closed)`
+function tw.hud.gradient_polyline(xs, ys, colours, thickness, closed) end
+
 ---A rectangle filled with a two-stop linear gradient: `from` at the left edge and `to` at the right,
 ---or top and bottom when `vertical` is true. Both colours carry their own alpha, so a backdrop that
 ---fades out to nothing is the same call as one colour fading into another.
@@ -974,6 +984,14 @@ function tw.hud.occupied() end
 ---
 ---`tw.hud.place(w, h, corner, margin)` → x0, y0 or nil
 function tw.hud.place(w, h, corner, margin) end
+
+---One line through every point (`xs[i]`, `ys[i]`) in order, as a single stroke with joined corners
+---(API 4). `xs` and `ys` are arrays of numbers of the same length, at most 4096; fewer than two points
+---draw nothing. `colour` defaults to opaque white, `thickness` to 1; `closed` joins the last point
+---back to the first.
+---
+---`tw.hud.polyline(xs, ys, colour, thickness, closed)`
+function tw.hud.polyline(xs, ys, colour, thickness, closed) end
 
 ---`rounding` is the corner radius (default 0). `thickness` ≤ 0 (the default) fills; positive strokes
 ---an outline of that width. `corners` selects which corners the radius applies to and defaults to all

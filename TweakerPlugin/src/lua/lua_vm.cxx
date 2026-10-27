@@ -124,6 +124,8 @@ const entry_point k_entry_points[] = {
     TW_LUA_ENTRY(tw_hud_rect_glow),
     TW_LUA_ENTRY(tw_hud_rect_gradient),
     TW_LUA_ENTRY(tw_hud_line),
+    TW_LUA_ENTRY(tw_hud_polyline),
+    TW_LUA_ENTRY(tw_hud_gradient_polyline),
     TW_LUA_ENTRY(tw_hud_icon),
     TW_LUA_ENTRY(tw_hud_metric),
     TW_LUA_ENTRY(tw_hud_widget_rect),

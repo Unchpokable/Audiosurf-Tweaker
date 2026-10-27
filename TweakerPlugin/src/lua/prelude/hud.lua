@@ -11,6 +11,7 @@ local C_hud_text, C_hud_text_sized, C_hud_text_font = C.tw_hud_text, C.tw_hud_te
 local C_hud_text_glow, C_hud_measure, C_hud_measure_fnt = C.tw_hud_text_glow, C.tw_hud_measure, C.tw_hud_measure_font
 local C_hud_rect, C_hud_rect_corner, C_hud_rect_glow = C.tw_hud_rect, C.tw_hud_rect_corners, C.tw_hud_rect_glow
 local C_hud_rect_grad, C_hud_line, C_hud_icon = C.tw_hud_rect_gradient, C.tw_hud_line, C.tw_hud_icon
+local C_hud_polyline, C_hud_grad_polyline = C.tw_hud_polyline, C.tw_hud_gradient_polyline
 local C_hud_metric, C_hud_widget_rect = C.tw_hud_metric, C.tw_hud_widget_rect
 local C_hud_occupied, C_hud_claim, C_hud_place, C_script_file = C.tw_hud_occupied, C.tw_hud_claim, C.tw_hud_place, C.tw_script_file
 local C_font_count, C_font_name = C.tw_font_count, C.tw_font_name
@@ -128,6 +129,78 @@ end
 
 function tw.hud.line(x0, y0, x1, y1, color, thickness)
     C_hud_line(x0, y0, x1, y1, color or 0xFFFFFFFF, thickness or 1)
+end
+
+-- Polylines. The points arrive as Lua arrays and cross into C as C arrays, through one set of buffers for
+-- the whole prelude that grows when a call needs more and is never shrunk - a HUD drawing the same line
+-- every frame allocates nothing after the first. The copy is a plain loop, which the JIT compiles.
+--
+-- The limit is api_hud.hxx's hud_polyline_max_points; C draws nothing past it, this says why.
+local POLY_MAX = 4096
+local poly_cap = 0
+local poly_x, poly_y, poly_c
+
+local function poly_reserve(n)
+    if n <= poly_cap then return end
+    poly_cap = math.max(n, poly_cap * 2, 64)
+    poly_x = ffi.new("float[?]", poly_cap)
+    poly_y = ffi.new("float[?]", poly_cap)
+    poly_c = ffi.new("unsigned int[?]", poly_cap)
+end
+
+-- Copies the points (and the colours, when given) into the buffers and returns how many. Errors name the
+-- caller's line: level 3 is the script, past this function and the tw.hud one that called it.
+local function poly_points(what, xs, ys, colours)
+    if type(xs) ~= "table" or type(ys) ~= "table" then
+        error(what .. ": xs and ys must be arrays of numbers", 3)
+    end
+    local n = #xs
+    if #ys ~= n then
+        error(string.format("%s: %d xs but %d ys", what, n, #ys), 3)
+    end
+    if colours ~= nil and #colours ~= n then
+        error(string.format("%s: %d points but %d colours", what, n, #colours), 3)
+    end
+    if n > POLY_MAX then
+        error(string.format("%s: %d points, at most %d", what, n, POLY_MAX), 3)
+    end
+
+    poly_reserve(n)
+    for i = 1, n do
+        local x, y = xs[i], ys[i]
+        if type(x) ~= "number" or type(y) ~= "number" then
+            error(string.format("%s: point %d is not two numbers", what, i), 3)
+        end
+        poly_x[i - 1], poly_y[i - 1] = x, y
+        if colours ~= nil then
+            local c = colours[i]
+            if type(c) ~= "number" then
+                error(string.format("%s: colour %d is not a number", what, i), 3)
+            end
+            poly_c[i - 1] = c
+        end
+    end
+    return n
+end
+
+-- A line through every point of xs/ys in order, with ImGui's own joins and anti-aliasing - one stroke,
+-- not segments laid end to end, so a thick line has no seams at its corners. `closed` joins the last
+-- point back to the first. Fewer than two points draw nothing.
+function tw.hud.polyline(xs, ys, colour, thickness, closed)
+    local n = poly_points("polyline", xs, ys, nil)
+    if n < 2 then return end
+    C_hud_polyline(poly_x, poly_y, n, colour or 0xFFFFFFFF, thickness or 1, closed and 1 or 0)
+end
+
+-- The same with a colour per point, blended along each segment: a gradient that follows the line.
+-- Colours carry their own alpha, so a stretch of the line can fade out.
+function tw.hud.gradient_polyline(xs, ys, colours, thickness, closed)
+    if type(colours) ~= "table" then
+        error("gradient_polyline: colours must be an array, one per point", 2)
+    end
+    local n = poly_points("gradient_polyline", xs, ys, colours)
+    if n < 2 then return end
+    C_hud_grad_polyline(poly_x, poly_y, poly_c, n, thickness or 1, closed and 1 or 0)
 end
 
 -- One of the plugin's packed SVG icons, in a square box of `size` pixels at (x, y).

@@ -78,7 +78,7 @@ tw.draw_frame_count = 0
 -- Docs/scripting/api.json, and twllink checks a project's `"api"` against that. Raise it when a name
 -- is added - names are never taken away (Docs/scripting/limits.md, "Versions and stability") - and
 -- lua_vm.cxx reads it from here, so this line is its only definition.
-tw.api_version = 3
+tw.api_version = 4
 
 function tw.log(msg) C_log(tostring(msg)) end
 

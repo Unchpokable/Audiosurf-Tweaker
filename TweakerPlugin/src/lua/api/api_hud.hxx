@@ -127,6 +127,19 @@ void tw_hud_text_glow(float x,
 // A line segment.
 void tw_hud_line(float x0, float y0, float x1, float y1, unsigned int color, float thickness) noexcept;
 
+// The most points one polyline takes. The prelude refuses more with an error naming the limit; this side
+// draws nothing past it, so a caller that got round the prelude cannot ask ImGui for a primitive whose
+// vertices outrun a 16-bit index buffer.
+inline constexpr int hud_polyline_max_points = 4096;
+
+// A polyline through `count` points given as two coordinate arrays, one colour throughout. `closed`
+// non-zero joins the last point back to the first.
+void tw_hud_polyline(const float* xs, const float* ys, int count, unsigned int color, float thickness, int closed) noexcept;
+
+// The same with a colour per point, blended along each segment (ui::kit::paint::add_gradient_polyline).
+void tw_hud_gradient_polyline(
+    const float* xs, const float* ys, const unsigned int* colors, int count, float thickness, int closed) noexcept;
+
 // Screen geometry a script needs to lay itself out, selected by index (see hud_metric below).
 //
 // One indexed getter rather than a struct return or out-parameters: returning small structs by value

@@ -243,6 +243,39 @@ Put the stops past the ends of the text, not at them: anything inside the fallof
 backdrop was supposed to be helping. There is no rounding — the primitive is a single quad with
 per-corner colours, and a gradient that wants a soft end gets it from the gradient.
 
+### Lines through many points
+
+```lua
+tw.hud.polyline(xs, ys, colour, thickness, closed)
+tw.hud.gradient_polyline(xs, ys, colours, thickness, closed)
+```
+
+A graph, a track profile, an outline: one line through every point, in order. `xs` and `ys` are arrays
+of the same length, at most 4096 points; `closed` joins the last point back to the first. API 4 — put
+`-- @api 4` in the header, or let `twllink` do it.
+
+Why not `tw.hud.line` in a loop: a polyline is **one stroke**. Thick segments laid end to end overlap
+at every corner, and where the line is translucent each overlap shows as a darker blot; a polyline
+joins its corners the way a pen would. It is also one call instead of hundreds.
+
+`gradient_polyline` takes a colour per point and blends between neighbours along each segment, so the
+colour follows the line rather than an axis — a profile coloured by what is on each stretch of it.
+Colours carry their own alpha, which makes "the part already passed is dimmer" one more array:
+
+```lua
+-- xs, ys: the shape, built once. colours: rebuilt when what it shows changes.
+for i = 1, #xs do
+    colours[i] = (i <= here) and tw.alpha(base[i], 0.35) or base[i]
+end
+tw.hud.gradient_polyline(xs, ys, colours, 2)
+```
+
+Build the arrays once and refill them, rather than making new tables every frame: the points are
+copied into buffers the plugin keeps, so the call itself allocates nothing, and the only garbage is
+whatever your script makes. A point that is not a number is an error on your line; a point that is NaN
+or infinite makes the plugin skip the whole line, because ImGui would draw it as triangles across
+the screen.
+
 ### Icons
 
 ```lua
@@ -253,8 +286,8 @@ One of the icons packed into the plugin, in a square box, tinted. `name` is a ba
 `icons/<name>.svg` inside the plugin and nothing else. They are monochrome by design — the colour is
 yours.
 
-A script cannot supply images of its own. There is no circle and no polygon either. If you need one,
-say so — the surface is small because it grew from what scripts actually asked for.
+A script cannot supply images of its own. There is no circle and no filled polygon either. If you need
+one, say so — the surface is small because it grew from what scripts actually asked for.
 
 ## Colours
 
