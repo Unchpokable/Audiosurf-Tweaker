@@ -39,6 +39,14 @@ foreach(ABS_PATH IN LISTS TWEAKER_ASSET_FILES)
         continue()
     endif()
 
+    # Scripts are loose files the game reads from Scripts\, never resources, and a script project is an
+    # author's working folder: it collects whatever they drop in it - sketches, the manuals Script Dev
+    # copies into .tweaker/docs, images and all. None of it belongs in the DLL, and a file name rc.exe
+    # cannot open (Cyrillic, for one) fails the whole build.
+    if(REL_PATH MATCHES "^(scripts|script-projects)/")
+        continue()
+    endif()
+
     get_filename_component(EXT "${ABS_PATH}" EXT)
     string(TOLOWER "${EXT}" EXT_LOWER)
     # Use TW_* type names — bare FONT/TEXT collide with RC language keywords.
