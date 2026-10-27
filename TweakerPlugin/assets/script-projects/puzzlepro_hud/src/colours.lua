@@ -57,6 +57,14 @@ local WHITE = 0xFFFFFFFF
 local AHEAD = 0xFF70D890
 local BEHIND = 0xFF4848E0
 
+-- The Match feats, light to deep in the order they are earned, so a bigger match reads as a stronger
+-- blue rather than as a different thing. Blue because none of the three is about a block colour, and
+-- the block blue is the one the palette cannot be relied on to keep (Pro folds green into it, Mono
+-- replaces it outright) - these are literal for the same reason the medals are.
+local MATCH7 = 0xFFE6CDA0
+local MATCH11 = 0xFFF0C36E
+local MATCH21 = 0xFFFFB432
+
 -- In tier order, which is also the order of the three marker dots under the medal rail.
 local MEDALS = { BRONZE, SILVER, GOLD }
 -- Built once: these are roll() keys, looked up every frame, and building them by concatenation in
@@ -104,6 +112,9 @@ return {
     WHITE = WHITE,
     AHEAD = AHEAD,
     BEHIND = BEHIND,
+    MATCH7 = MATCH7,
+    MATCH11 = MATCH11,
+    MATCH21 = MATCH21,
     MEDALS = MEDALS,
     DOT_KEYS = DOT_KEYS,
     mix = mix,

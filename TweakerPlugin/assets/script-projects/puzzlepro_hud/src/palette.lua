@@ -90,6 +90,11 @@ local function palette_channels(source)
     return normal_palette()
 end
 
+-- The road colour of a Mono run, as last read. Kept apart from COLOURS because it is not a block colour of
+-- its own: it is what ids 2 and 3 turn into, and the Stealth feat is drawn in it. nil outside Ninja and
+-- Freeride, where the game does not use it.
+local mono_now = nil
+
 -- The palette is a player setting, so it is re-read periodically - but not every frame, because six
 -- vector evaluations to answer a question that changes when someone opens the options screen is six
 -- too many.
@@ -109,6 +114,7 @@ local function refresh_palette()
             mono = tw.rgb(r, g, b)
         end
     end
+    mono_now = mono
 
     for i, c in ipairs(COLOURS) do
         local channel = (c.id == 7) and stone() or channels[i]
@@ -125,4 +131,7 @@ end
 
 return {
     refresh = refresh_palette,
+    mono = function()
+        return mono_now
+    end,
 }

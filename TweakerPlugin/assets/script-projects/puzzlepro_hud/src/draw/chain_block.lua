@@ -3,14 +3,42 @@
 local colours = require("colours")
 local chain = require("chain")
 local roll = require("roll")
+local palette = require("palette")
 local FEAT_ICON = require("scoring").FEAT_ICON
 
-local WHITE = colours.WHITE
+local WHITE, COLOUR_BY_ID, YELLOW, RED = colours.WHITE, colours.COLOUR_BY_ID, colours.YELLOW, colours.RED
 local CHAIN_MAX, CHAIN_FIRST = chain.MAX, chain.FIRST
 local chain_bonus, drop_timer, chain_colour = chain.bonus, chain.drop_timer, chain.colour
 
+-- What colour a feat is drawn in. Every feat in the row is one the player already holds - the row lists
+-- what earned_bonus() found, plus Clean Finish while the board is clear - so the colour says "this is
+-- yours" and grey said nothing.
+--
+-- The two colour feats take the block colour they are about from the live palette, so a player who has
+-- recoloured red sees Seeing Red in their red. Stealth is the Mono feat and takes the Mono road colour.
+-- The rest are literals in colours.lua; Clean Finish shares AHEAD with the gap to the personal best,
+-- because both mean "you are on the good side of it". Mono Special is worth nothing and is drawn as
+-- plain text. Raw colours: the caller fades them once.
+local FEAT_COLOUR = {
+    ["Clean Finish"] = colours.AHEAD,
+    ["Match7"] = colours.MATCH7,
+    ["Match11"] = colours.MATCH11,
+    ["Match21"] = colours.MATCH21,
+}
+
+local function feat_colour(feat)
+    if feat == "Seeing Red" then
+        return COLOUR_BY_ID[RED].colour
+    elseif feat == "Butter Ninja" then
+        return COLOUR_BY_ID[YELLOW].colour
+    elseif feat == "Stealth" then
+        return palette.mono()
+    end
+    return FEAT_COLOUR[feat]
+end
+
 return function(L)
-    local fade, DIM = L.fade, L.DIM
+    local fade, TEXT = L.fade, L.TEXT
     local base, screen_w, label_size, chain_size, bottom = L.base, L.screen_w, L.label_size, L.chain_size, L.bottom
     local tx, table_w, rx = L.tx, L.table_w, L.rx
     local feats, grid_empty = L.feats, L.grid_empty
@@ -104,12 +132,16 @@ return function(L)
         -- it takes an unplayably narrow window and a full hand of feats to get there at all.
         local fx = block_cx - feats_w * 0.5
         for _, feat in ipairs(feats) do
+            -- TEXT, already faded, for a feat with no colour of its own - Mono Special, or Stealth before
+            -- the palette has been read.
+            local raw = feat_colour(feat)
+            local c = raw and tw.fade(raw, fade) or TEXT
             local icon = FEAT_ICON[feat]
             if icon then
-                tw.hud.icon(icon, fx, feats_y + (label_size - icon_size) * 0.5, icon_size, DIM)
+                tw.hud.icon(icon, fx, feats_y + (label_size - icon_size) * 0.5, icon_size, c)
             end
             fx = fx + icon_size + icon_gap
-            tw.hud.text(fx, feats_y, feat, DIM, label_size)
+            tw.hud.text(fx, feats_y, feat, c, label_size)
             fx = fx + tw.hud.measure(feat, label_size) + feat_gap
         end
 
