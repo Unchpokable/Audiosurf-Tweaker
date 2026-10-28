@@ -2,11 +2,18 @@
 -- The minimap's colours: what each stretch of the track is mostly made of (DESIGN.md §11)
 -- ---------------------------------------------------------------------------------------------
 --
--- The track is cut into stops of `batch` rings. A stop's colour is its blocks' colours, weighted by how
--- many there are, with the weights raised to a power first - sharpened - so the colour that is most
--- common on the stretch takes the stop. A plain average would lie: red and blue blocks average to purple,
--- and purple is a block colour of its own. Neighbouring stops are blended over `softness`, and the line
--- between stops is a gradient, so the map changes colour where the track does, smoothly.
+-- The track is cut into stops of `batch` rings. A stop's colour is its blocks' colours, each weighted by
+-- how many blocks there are times what a block of that colour is worth, with the weights raised to a
+-- power first - sharpened - so the colour that dominates the stretch takes the stop. The line between
+-- stops is a gradient, so the map changes colour where the track does, smoothly.
+--
+-- Both of those are there because the first version got the colours visibly wrong. Counted block for
+-- block, purple wins almost everywhere: it is the commonest block on any track, the quiet one. And mixed
+-- with a soft power over a wide window, a stop became an average of four colours, which in RGB is a
+-- colour nobody put on the track - yellow and red with a little blue in them come out light green. So
+-- the default weights are the game's own block values (StatCollector ChannelSwitch #128: 1, 2, 3, 5, 8,
+-- purple to red - a red block is worth eight purple ones), the power is steep, and the neighbours that
+-- are blended in are at most two either side. The weights are the player's to change.
 --
 -- White and wild blocks colour nothing. A stop with no coloured blocks takes the colour of its nearest
 -- neighbours instead of going grey; a track with one colour only - Mono, Ninja, Freeride, songs tagged
@@ -25,9 +32,11 @@ local totals = scan.totals
 local FINE, COLOURED = scan.FINE, scan.COLOURED
 
 -- `batch` is in rings and a multiple of FINE (scan.lua keeps counts per FINE rings); ~96 rings is about
--- two seconds of song. `softness` 0..1: 0 a hard edge between stops and the leader taking all, 1 a
--- broad blend.
-local settings = { batch = 96, softness = 0.5 }
+-- two seconds of song. `softness` 0..1: 0 the leader taking all and no blending with the neighbours, 1
+-- a broader blend. `value` is what one block of each colour, purple to red, weighs. `revision` moves
+-- with every change, so the weights know to rebuild.
+local DEFAULT_VALUE = { 1, 2, 3, 5, 8 }
+local settings = { batch = 96, softness = 0.5, value = { 1, 2, 3, 5, 8 }, revision = 0 }
 
 -- Normalised weight of bucket b at vertex i: weights[(i - 1) * COLOURED + b + 1]. `covered[i]` false
 -- when no stop anywhere near vertex i has a coloured block.
@@ -37,7 +46,7 @@ local covered = {}
 local solid = nil
 local any_colour = false
 
-local built = { scan = -1, track = -1, batch = -1, softness = -1 }
+local built = { scan = -1, track = -1, settings = -1 }
 
 -- The finished colours, one per vertex, and what they were made from.
 local out = {}
@@ -52,7 +61,8 @@ local function rebuild_weights()
     batch = per * FINE
     local stops = math.max(1, math.ceil(rings / batch))
 
-    -- Raw counts per stop, and per bucket over the whole track.
+    -- Weighted counts per stop, and plain counts per bucket over the whole track.
+    local value = settings.value
     local raw = {}
     local whole = { 0, 0, 0, 0, 0 }
     for j = 0, stops - 1 do
@@ -61,7 +71,7 @@ local function rebuild_weights()
                 local v = fine[f * COLOURED + b + 1]
                 if v then
                     local k = j * COLOURED + b + 1
-                    raw[k] = (raw[k] or 0) + v
+                    raw[k] = (raw[k] or 0) + v * value[b + 1]
                     whole[b + 1] = whole[b + 1] + v
                 end
             end
@@ -87,8 +97,8 @@ local function rebuild_weights()
     -- Smoothed over 2R+1 stops with a triangular kernel, then sharpened and normalised. A stop with
     -- nothing in reach is left out (has[j] nil) and filled from its neighbours below.
     local softness = settings.softness
-    local reach = math.floor(softness * 3 + 0.5)
-    local power = 4 - 3 * softness
+    local reach = math.floor(softness * 2 + 0.5)
+    local power = 8 - 6 * softness
     local stop_w = {}
     local has = {}
     local acc = { 0, 0, 0, 0, 0 }
@@ -212,11 +222,9 @@ local function update(neutral)
         return nil
     end
 
-    if built.scan ~= totals.revision or built.track ~= track.revision or built.batch ~= settings.batch
-        or built.softness ~= settings.softness then
+    if built.scan ~= totals.revision or built.track ~= track.revision or built.settings ~= settings.revision then
         rebuild_weights()
-        built.scan, built.track = totals.revision, track.revision
-        built.batch, built.softness = settings.batch, settings.softness
+        built.scan, built.track, built.settings = totals.revision, track.revision, settings.revision
         fresh = false
     end
 
@@ -238,14 +246,22 @@ local function update(neutral)
     return out
 end
 
--- For the settings tab: rings per colour stop (rounded to a multiple of 16) and softness 0..1.
-local function configure(batch, softness)
+-- For the settings tab: rings per colour stop (rounded to a multiple of 16), softness 0..1, and the
+-- weight of one block of each colour, purple to red (nil keeps the current ones).
+local function configure(batch, softness, value)
     settings.batch = math.max(FINE, math.floor(batch / FINE + 0.5) * FINE)
     settings.softness = math.min(math.max(softness, 0), 1)
+    if value ~= nil then
+        for b = 1, COLOURED do
+            settings.value[b] = math.max(0, value[b] or DEFAULT_VALUE[b])
+        end
+    end
+    settings.revision = settings.revision + 1
 end
 
 return {
     update = update,
     configure = configure,
     settings = settings,
+    DEFAULT_VALUE = DEFAULT_VALUE,
 }

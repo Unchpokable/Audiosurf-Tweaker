@@ -387,12 +387,20 @@ than a few hundred points anyway, and the game itself only keeps 512 columns.
 
 ### The colour
 
-The map is cut into stops of `batch` rings (about two seconds). A stop's colour is its blocks' colours
-weighted by how many of each there are, with every weight raised to a power first, so that the most
-common colour on the stretch takes the stop. A plain average would lie: red and blue blocks average to
-purple, and purple is a block colour of its own. Neighbouring stops are blended with a small triangular
-kernel, and the line between stops is a gradient (tw.hud.gradient_polyline), so the map changes colour
-where the track does, smoothly. Both knobs - stop size and softness - are the player's.
+The map is cut into stops of `batch` rings (about two seconds). A stop's colour is its blocks' colours,
+each weighted by how many there are times what one block of that colour is worth, with every weight
+raised to a steep power first, so that the colour that dominates the stretch takes the stop. The line
+between stops is a gradient (tw.hud.gradient_polyline), so the map changes colour where the track does,
+smoothly. Stop size, softness and the five weights are the player's.
+
+The first version counted blocks one for one, softened with a gentle power over a window of five stops,
+and the map came out wrong in a way that was obvious on the first track. Purple is the commonest block on
+any track - it is the quiet one - so it outvoted everything; and a stop averaged over four colours is, in
+RGB, a colour nobody put on the track: yellow and red with a little blue in them came out light green. So
+the default weights are the game's own block values, StatCollector ChannelSwitch #128 (`cgrpy query switch
+StatCollector 128`): 1, 2, 3, 5, 8 from purple to red - a red block is worth eight purple ones, and a
+stretch of them should look like it. The power runs from 8 (hard) to 2 (soft), and at most two stops either
+side are blended in.
 
 White and wild blocks colour nothing. A stop without a coloured block takes its neighbours' colour
 instead of going grey. A track that carries one colour only is that colour end to end - which covers
