@@ -14,13 +14,16 @@ local MAX_COLUMNS = 6
 -- read at a glance, and it keeps the panel from reaching down over the track.
 local MAP_ASPECT = 0.26
 
+-- Whether the time left is printed under the map. The settings tab writes it.
+local settings = { time_left = true }
+
 -- "2:31". Whole seconds, rounded up, so it reaches 0:00 as the song ends and not a second before.
 local function clock(seconds)
     local s = math.ceil(seconds)
     return string.format("%d:%02d", math.floor(s / 60), s % 60)
 end
 
-return function(L)
+local function draw(L)
     local fade, base, margin, label_size, DIM = L.fade, L.base, L.margin, L.label_size, L.DIM
 
     local pad = math.max(8, base * 0.6)
@@ -59,9 +62,14 @@ return function(L)
 
     local map_y = y0 + pad + table_h + map_gap
     local left = draw_minimap(L, ix, map_y, inner_w, map_h)
-    if left ~= nil then
+    if left ~= nil and settings.time_left then
         local text = clock(left)
         local text_w = tw.hud.measure(text, label_size)
         tw.hud.text(ix + inner_w - text_w, map_y + map_h, text, DIM, label_size)
     end
 end
+
+return {
+    draw = draw,
+    settings = settings,
+}

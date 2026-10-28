@@ -3,7 +3,7 @@
 -- @version     1.7.0
 -- @description HUD Replacer for real puzzle players. Real-time all-color statistics tracker, chain multiplier and chain drop timer read straight out of the game, live skill rating calculation and projected final score against your personal best. Get GUD, Get PuzzlePRO HUD
 -- @api         4
--- @bundle      twllink 1.1, 24 modules
+-- @bundle      twllink 1.1, 25 modules
 
 local __twl_modules, __twl_cache, __twl_loading = {}, {}, {}
 
@@ -14,7 +14,7 @@ A run tracker that replaces several pieces of the game's own HUD rather than sit
 them. Everything it draws is measured, themed and positioned against the viewport; nothing is
 hardcoded except padding.
 
-The interesting parts are documented where they happen. Thirteen things are worth reading first,
+The interesting parts are documented where they happen. Fourteen things are worth reading first,
 because they are the reasons this is not the obvious script.
 
 ## 1. WHAT IT MEASURES - by track ROW, not by collection EVENT
@@ -471,6 +471,23 @@ from its top.
 The chain block is centred on the viewport and its room is the nearer of the two sides mirrored (§4,
 draw/chain_block.lua). The badge's right edge is the left side now; before the badge it was the colour
 table, which has moved up into the stats panel with the minimap.
+
+## 14. THE SETTINGS ARE THE PLAYER'S, AND THE FILE IS NOT TRUSTED
+
+The tab in the overlay menu (src/settings.lua) holds what is a matter of taste rather than of fact: how
+long a stretch of track gets one colour on the minimap, how softly the colours blend, how much each block
+colour counts, whether the time left is shown, and what a title too long for its badge does. Everything
+the HUD measures stays out of it - there is no setting that could make a number on screen disagree with
+the game.
+
+The values live in ScriptData\puzzlepro_hud\settings.json, read once when the script loads and written
+when the player finishes a change - a slider when it is let go, so dragging one previews live on the map
+without writing the file every frame. Every field of the file is checked on the way in and falls back to
+its default on its own: a file from an older version, or one edited by hand, costs the player at most
+that one setting, never the HUD.
+
+The colour weights default to the game's block values (§11), and a button puts them back: those are the
+one set of numbers that has a reason behind it rather than a preference.
 ]=]
 
 local function require(name)
@@ -2368,13 +2385,16 @@ local MAX_COLUMNS = 6
 -- read at a glance, and it keeps the panel from reaching down over the track.
 local MAP_ASPECT = 0.26
 
+-- Whether the time left is printed under the map. The settings tab writes it.
+local settings = { time_left = true }
+
 -- "2:31". Whole seconds, rounded up, so it reaches 0:00 as the song ends and not a second before.
 local function clock(seconds)
     local s = math.ceil(seconds)
     return string.format("%d:%02d", math.floor(s / 60), s % 60)
 end
 
-return function(L)
+local function draw(L)
     local fade, base, margin, label_size, DIM = L.fade, L.base, L.margin, L.label_size, L.DIM
 
     local pad = math.max(8, base * 0.6)
@@ -2413,12 +2433,17 @@ return function(L)
 
     local map_y = y0 + pad + table_h + map_gap
     local left = draw_minimap(L, ix, map_y, inner_w, map_h)
-    if left ~= nil then
+    if left ~= nil and settings.time_left then
         local text = clock(left)
         local text_w = tw.hud.measure(text, label_size)
         tw.hud.text(ix + inner_w - text_w, map_y + map_h, text, DIM, label_size)
     end
 end
+
+return {
+    draw = draw,
+    settings = settings,
+}
 end
 
 __twl_modules["draw.medal_rail"] = function(require, ...)
@@ -3403,6 +3428,171 @@ return {
 }
 end
 
+__twl_modules["settings"] = function(require, ...)
+-- ---------------------------------------------------------------------------------------------
+-- The settings tab (DESIGN.md §14)
+-- ---------------------------------------------------------------------------------------------
+--
+-- PuzzlePRO HUD's own tab in the overlay menu, and the file it is kept in:
+-- engine\TweakerStuff\ScriptData\puzzlepro_hud\settings.json. The tab draws itself; this declares it,
+-- reads the file once at load, hands every value to the module that uses it, and writes the file when
+-- the player finishes a change.
+--
+-- Labels are English, like the rest of the HUD.
+
+local map_colours = require("map_colours")
+local song_badge = require("draw.song_badge")
+local stats_panel = require("draw.stats_panel")
+
+local FILE = "settings.json"
+
+-- What a missing or broken file falls back to, field by field. The weights are the game's block values
+-- (DESIGN.md §11), the rest what the HUD looked like before it had settings.
+local DEFAULTS = {
+    batch = 96,
+    softness = 0.5,
+    weights = { 1, 2, 3, 5, 8 },
+    time_left = true,
+    overflow = "Scroll",
+    pause = 6,
+}
+
+local COLOUR_NAMES = { "Purple", "Blue", "Green", "Yellow", "Red" }
+
+-- A value from the file if it is of the right kind, the default if it is not. A settings file written by
+-- an older version, or edited by hand, must never stop the HUD from loading.
+local function number_or(v, default)
+    if type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge then
+        return v
+    end
+    return default
+end
+
+local stored = tw.storage.read_json(FILE)
+if type(stored) ~= "table" then
+    stored = {}
+end
+
+local cfg = {
+    batch = number_or(stored.batch, DEFAULTS.batch),
+    softness = number_or(stored.softness, DEFAULTS.softness),
+    weights = {},
+    time_left = stored.time_left ~= false,
+    overflow = (stored.overflow == "Ellipsis") and "Ellipsis" or "Scroll",
+    pause = number_or(stored.pause, DEFAULTS.pause),
+}
+local stored_weights = type(stored.weights) == "table" and stored.weights or {}
+for i = 1, #COLOUR_NAMES do
+    cfg.weights[i] = number_or(stored_weights[i], DEFAULTS.weights[i])
+end
+
+-- ---- the tab ------------------------------------------------------------------------------------
+
+local tab = tw.ui.tab{ label = "PuzzlePRO HUD" }
+
+local map = tab:group("Minimap")
+local batch = map:number{
+    label = "Rings per colour stop",
+    min = 16,
+    max = 512,
+    value = cfg.batch,
+    tooltip = "How long a stretch of track gets one colour. About 48 rings is a second of song; "
+        .. "rounded to a multiple of 16.",
+}
+local softness = map:slider{
+    label = "Colour softness",
+    min = 0,
+    max = 1,
+    value = cfg.softness,
+    tooltip = "0: each stretch takes its leading colour outright. 1: colours blend with their neighbours.",
+}
+local time_left = map:toggle{ label = "Time left under the map", value = cfg.time_left }
+
+local weights_group = tab:group("Minimap colour weights")
+weights_group:text("How much one block of each colour counts towards the colour of its stretch. "
+    .. "The defaults are what the game pays for a block: a red one is worth eight purple ones.")
+local weights = {}
+for i, name in ipairs(COLOUR_NAMES) do
+    weights[i] = weights_group:slider{ label = name, min = 0, max = 10, value = cfg.weights[i] }
+end
+local reset_weights = weights_group:button{ label = "Reset to the game's values" }
+
+local song = tab:group("Song")
+local overflow = song:choice{
+    label = "A title too long to fit",
+    options = { "Scroll", "Ellipsis" },
+    value = cfg.overflow,
+}
+local pause = song:slider{
+    label = "Seconds before it scrolls",
+    min = 2,
+    max = 30,
+    value = cfg.pause,
+    enabled = cfg.overflow == "Scroll",
+}
+
+-- ---- applying and saving ------------------------------------------------------------------------
+
+-- Every value straight from its control into the module that uses it. Cheap enough to run on every
+-- change, drags included, so a slider previews on the map while it moves.
+local function apply()
+    local w = {}
+    for i = 1, #weights do
+        w[i] = weights[i]:get()
+    end
+    map_colours.configure(batch:get(), softness:get(), w)
+    stats_panel.settings.time_left = time_left:get()
+    song_badge.settings.overflow = (overflow:get().text == "Ellipsis") and "ellipsis" or "scroll"
+    song_badge.settings.pause = pause:get()
+    pause:enable(overflow:get().text == "Scroll")
+end
+
+local function save()
+    local w = {}
+    for i = 1, #weights do
+        w[i] = weights[i]:get()
+    end
+    local ok, why = tw.storage.write_json(FILE, {
+        batch = batch:get(),
+        softness = softness:get(),
+        weights = w,
+        time_left = time_left:get(),
+        overflow = overflow:get().text,
+        pause = pause:get(),
+    })
+    if not ok then
+        tw.warn("settings were not saved: " .. tostring(why))
+    end
+end
+
+local function changed(_, committed)
+    apply()
+    if committed then
+        save()
+    end
+end
+
+for _, control in ipairs({ batch, softness, time_left, overflow, pause }) do
+    control:on_change(changed)
+end
+for _, control in ipairs(weights) do
+    control:on_change(changed)
+end
+
+-- set() does not raise on_change, so the button applies and saves itself.
+reset_weights:on_click(function()
+    for i = 1, #weights do
+        weights[i]:set(DEFAULTS.weights[i])
+    end
+    apply()
+    save()
+end)
+
+apply()
+
+return {}
+end
+
 __twl_modules["main"] = function(require, ...)
 -- PuzzlePRO HUD - entry point.
 --
@@ -3427,11 +3617,13 @@ local song = require("song")
 local feed = require("feed")
 local scoring = require("scoring")
 
-local draw_stats_panel = require("draw.stats_panel")
+local stats_panel = require("draw.stats_panel")
 local draw_rating = require("draw.rating")
 local draw_score_strip = require("draw.score_strip")
 local chain_block = require("draw.chain_block")
 local song_badge = require("draw.song_badge")
+-- Required for what it does on load: the overlay tab is declared and the saved settings are applied.
+require("settings")
 
 local colours = require("colours")
 local BRONZE, SILVER, GOLD = colours.BRONZE, colours.SILVER, colours.GOLD
@@ -3583,7 +3775,7 @@ tw.on_frame(function()
     L.band_y0 = bottom - chain_block.band_height(L)
 
     -- ---- the colour table and the minimap, top-left (draw/stats_panel.lua) -----------------
-    draw_stats_panel(L)
+    stats_panel.draw(L)
 
     -- ---- what the run is currently worth ----------------------------------------------------
     --

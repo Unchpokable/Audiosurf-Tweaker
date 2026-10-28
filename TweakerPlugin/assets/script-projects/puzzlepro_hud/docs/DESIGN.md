@@ -4,7 +4,7 @@ A run tracker that replaces several pieces of the game's own HUD rather than sit
 them. Everything it draws is measured, themed and positioned against the viewport; nothing is
 hardcoded except padding.
 
-The interesting parts are documented where they happen. Thirteen things are worth reading first,
+The interesting parts are documented where they happen. Fourteen things are worth reading first,
 because they are the reasons this is not the obvious script.
 
 ## 1. WHAT IT MEASURES - by track ROW, not by collection EVENT
@@ -461,3 +461,20 @@ from its top.
 The chain block is centred on the viewport and its room is the nearer of the two sides mirrored (§4,
 draw/chain_block.lua). The badge's right edge is the left side now; before the badge it was the colour
 table, which has moved up into the stats panel with the minimap.
+
+## 14. THE SETTINGS ARE THE PLAYER'S, AND THE FILE IS NOT TRUSTED
+
+The tab in the overlay menu (src/settings.lua) holds what is a matter of taste rather than of fact: how
+long a stretch of track gets one colour on the minimap, how softly the colours blend, how much each block
+colour counts, whether the time left is shown, and what a title too long for its badge does. Everything
+the HUD measures stays out of it - there is no setting that could make a number on screen disagree with
+the game.
+
+The values live in ScriptData\puzzlepro_hud\settings.json, read once when the script loads and written
+when the player finishes a change - a slider when it is let go, so dragging one previews live on the map
+without writing the file every frame. Every field of the file is checked on the way in and falls back to
+its default on its own: a file from an older version, or one edited by hand, costs the player at most
+that one setting, never the HUD.
+
+The colour weights default to the game's block values (§11), and a button puts them back: those are the
+one set of numbers that has a reason behind it rather than a preference.

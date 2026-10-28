@@ -21,11 +21,13 @@ local song = require("song")
 local feed = require("feed")
 local scoring = require("scoring")
 
-local draw_stats_panel = require("draw.stats_panel")
+local stats_panel = require("draw.stats_panel")
 local draw_rating = require("draw.rating")
 local draw_score_strip = require("draw.score_strip")
 local chain_block = require("draw.chain_block")
 local song_badge = require("draw.song_badge")
+-- Required for what it does on load: the overlay tab is declared and the saved settings are applied.
+require("settings")
 
 local colours = require("colours")
 local BRONZE, SILVER, GOLD = colours.BRONZE, colours.SILVER, colours.GOLD
@@ -177,7 +179,7 @@ tw.on_frame(function()
     L.band_y0 = bottom - chain_block.band_height(L)
 
     -- ---- the colour table and the minimap, top-left (draw/stats_panel.lua) -----------------
-    draw_stats_panel(L)
+    stats_panel.draw(L)
 
     -- ---- what the run is currently worth ----------------------------------------------------
     --
