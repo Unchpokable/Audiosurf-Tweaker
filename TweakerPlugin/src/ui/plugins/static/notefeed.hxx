@@ -16,16 +16,18 @@ void update() noexcept;
 // (e.g. "icons/skin.svg", or overlay_state::tweak_icon_key(id)) - empty means text-only.
 void push(std::string_view text, std::string_view icon_resource_key = {});
 
-// The screen rectangle toasts may occupy, in pixels: the feed's column, a fixed number of single-line
-// toasts deep at the current font size. Reported whether or not anything is currently showing, and
-// deliberately so - a consumer laying itself out around the feed must not shift every time a toast
-// appears and expires.
+// The box around the toasts drawn by the last update(), in screen pixels - fading ones included, and
+// following the stack as it moves. False when there are none, which is most of the time.
 //
-// A few rows rather than the full column height: reserving the whole side of the screen made every
-// consumer that respects this shove itself sideways for space that is almost never used.
-//
-// Exists for the scripting layer (tw.hud.safe in src/lua), which draws into the same background
-// list but earlier in the frame, and therefore ends up underneath. Rather than let a script guess,
-// or reorder the overlay's own chrome behind user content, it gets told where not to draw.
+// What the scripting layer reports as the feed (tw.hud.widget, occupied, place), the way pins and the
+// watermark report themselves as they are. It used to report reserved_rect() instead, so that a script
+// laid out around the feed would not move when a toast came and went - and the price was every script
+// keeping clear of a corner that is empty almost always. Scripts draw after the overlay's own widgets
+// (ui_main.cxx), so this is final for the frame by the time a script asks.
+[[nodiscard]] bool last_rect(float& x0, float& y0, float& x1, float& y1) noexcept;
+
+// Where toasts may go, whether or not any are showing: the feed's column, a fixed number of single-line
+// toasts deep at the current font size. Only for tw.hud.safe(), the coarse "somewhere uncluttered"
+// answer, which is a stable band by definition.
 void reserved_rect(float& x0, float& y0, float& x1, float& y1) noexcept;
 } // namespace tw::ui::plugins::statics::notefeed

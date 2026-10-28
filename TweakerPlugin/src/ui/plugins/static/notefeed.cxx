@@ -87,6 +87,12 @@ struct entry {
 std::vector<entry> g_entries;
 double g_clock_ms = 0.0;
 
+// The box around every toast the last update() drew, for last_rect(). Recorded while drawing, because a
+// toast's height depends on wrapped text and its position on the stack's motion - recomputing either
+// would mean running the layout twice.
+float g_rect[4] { 0.f, 0.f, 0.f, 0.f };
+bool g_rect_valid = false;
+
 void measure(entry& e, ImFont* font, float font_size, float wrap_width)
 {
     if(e.measured_font == font && e.measured_size == font_size) {
@@ -182,6 +188,7 @@ void update() noexcept
 
     std::erase_if(g_entries, [](const entry& e) { return g_clock_ms - e.spawn_time_ms >= k_lifetime_ms; });
 
+    g_rect_valid = false;
     if(g_entries.empty()) {
         return;
     }
@@ -241,6 +248,20 @@ void update() noexcept
         const ImVec2 p_min { origin_x, top };
         const ImVec2 p_max { origin_x + box_w, top + box_h };
 
+        if(!g_rect_valid) {
+            g_rect[0] = p_min.x;
+            g_rect[1] = p_min.y;
+            g_rect[2] = p_max.x;
+            g_rect[3] = p_max.y;
+            g_rect_valid = true;
+        }
+        else {
+            g_rect[0] = std::min(g_rect[0], p_min.x);
+            g_rect[1] = std::min(g_rect[1], p_min.y);
+            g_rect[2] = std::max(g_rect[2], p_max.x);
+            g_rect[3] = std::max(g_rect[3], p_max.y);
+        }
+
         const ImVec4 bg { theme::surface.x, theme::surface.y, theme::surface.z, theme::surface.w * 0.92f * alpha };
         const ImVec4 border { theme::border.x, theme::border.y, theme::border.z, theme::border.w * alpha };
         draw->AddRectFilled(p_min, p_max, paint::to_u32(bg), k_rounding);
@@ -265,6 +286,20 @@ void update() noexcept
     }
 }
 
+bool last_rect(float& x0, float& y0, float& x1, float& y1) noexcept
+{
+    if(!g_rect_valid) {
+        return false;
+    }
+
+    x0 = g_rect[0];
+    y0 = g_rect[1];
+    x1 = g_rect[2];
+    y1 = g_rect[3];
+
+    return true;
+}
+
 void reserved_rect(float& x0, float& y0, float& x1, float& y1) noexcept
 {
     const ImVec2 viewport = ImGui::GetIO().DisplaySize;
@@ -273,16 +308,10 @@ void reserved_rect(float& x0, float& y0, float& x1, float& y1) noexcept
     x0 = right ? viewport.x - k_margin - k_width : k_margin;
     x1 = x0 + k_width;
 
-    // A fixed strip, not the live stack height and not the whole column.
-    //
-    // Not the live height, because a consumer that reflowed every time a toast expired would be
-    // worse than one that stays clear of a stable strip. Not the whole column either, which is what
-    // this used to be: reserving full height turned every layout that respects it into "everything
-    // shifts sideways", and a HUD trying to sit in the bottom corner ended up nowhere near it.
-    //
-    // Counted in single-line toasts of the current font, so the strip follows the font scale but not
-    // what is on screen. A toast that wraps, or one past k_max_reserved_rows, does draw below the strip
-    // and can overlap whatever is there; that is the deliberate trade.
+    // A fixed strip, not the whole column: reserving full height turned every layout that respects it
+    // into "everything shifts sideways", and a HUD trying to sit in the bottom corner ended up nowhere
+    // near it. Counted in single-line toasts of the current font, so the strip follows the font scale but
+    // not what is on screen.
     const float row_h = ImGui::GetTextLineHeight() * (1.f + k_pad_ratio);
     y0 = k_margin;
     y1 = k_margin + k_max_reserved_rows * row_h + (k_max_reserved_rows - 1.f) * k_row_gap;

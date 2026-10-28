@@ -142,10 +142,8 @@ bool widget_rect(int which, float& x0, float& y0, float& x1, float& y1) noexcept
 {
     switch(which) {
     case tw::lua::api::hud_widget_notefeed:
-        // Always reported, even with no toasts alive: the strip is a reservation, not a measurement
-        // (see notefeed::reserved_rect).
-        tw::ui::plugins::statics::notefeed::reserved_rect(x0, y0, x1, y1);
-        return true;
+        // The toasts as they are this frame, nothing when there are none (see notefeed::last_rect).
+        return tw::ui::plugins::statics::notefeed::last_rect(x0, y0, x1, y1);
     case tw::lua::api::hud_widget_pins:
         return tw::ui::plugins::statics::pins::last_rect(x0, y0, x1, y1);
     case tw::lua::api::hud_widget_watermark:

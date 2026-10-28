@@ -77,10 +77,17 @@ local x0, y0, x1, y1 = tw.hud.widget("notefeed")
 ```
 
 Valid names: `"notefeed"`, `"pins"`, `"watermark"`, `"menu"`. Returns `nil` when that widget is not
-on screen — no pins are showing, the menu is closed. An unknown name is an error, so a typo is loud.
+on screen — no toast is up, no pins are showing, the menu is closed. An unknown name is an error, so a
+typo is loud.
 
 These are **this frame's** rectangles. Scripts draw after the overlay has laid itself out, so you can
 sit flush against the toast column, or beside an open menu and follow it while it is dragged.
+
+The notification feed is the one that moves on its own: its rectangle is the toasts showing right now,
+and it grows, slides and vanishes with them. A widget that steps aside for it should glide rather than
+jump — ease its position towards where it wants to be instead of setting it — or ignore the feed and
+accept that it will draw over a toast now and then. `occupied()` and `place()` below see the feed the
+same way.
 
 Note the direction of the relationship: scripts draw **last**, so script output goes *on top of*
 overlay chrome. The geometry is for lining yourself up, not for the overlay's benefit. Staying tidy

@@ -451,6 +451,10 @@ notification column and spans the whole screen, so it is not for layout — posi
 Exact rectangle of one overlay widget this frame. `name` is `"notefeed"`, `"pins"`, `"watermark"` or
 `"menu"`. `nil` when that widget is not on screen. An unknown name raises an error.
 
+`"notefeed"` is the toasts actually showing, as they slide and fade — `nil` when there are none, which is
+most of the time. It grows and shrinks as toasts come and go; see
+[Drawing § Exact widget geometry](drawing.md#exact-widget-geometry).
+
 The next three share the screen with other scripts (API 2). Every `tw.hud.*` drawing call is measured
 and recorded against the script that made it — nothing to declare. A script sees what the scripts
 **above** it in the run order drew this frame; the ones below have not drawn yet, and make room for it.
