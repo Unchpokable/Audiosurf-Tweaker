@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
+  <!-- The Tweaker's logo, the T built of six blocks (textures/TweakerIcon-1.png), in white so it takes the
+       colour it is drawn in like every other icon. The blocks fade a little from the bar down the stem, the
+       way the coloured logo shades from blue to violet. -->
+  <g fill="#ffffff">
+    <rect x="0.5" y="2.5" width="7" height="4" rx="1.2" />
+    <rect x="8.5" y="2.5" width="7" height="4" rx="1.2" />
+    <rect x="16.5" y="2.5" width="7" height="4" rx="1.2" />
+    <rect x="8.5" y="7.5" width="7" height="4" rx="1.2" fill-opacity="0.9" />
+    <rect x="8.5" y="12.5" width="7" height="4" rx="1.2" fill-opacity="0.8" />
+    <rect x="8.5" y="17.5" width="7" height="4" rx="1.2" fill-opacity="0.7" />
+  </g>
+</svg>
