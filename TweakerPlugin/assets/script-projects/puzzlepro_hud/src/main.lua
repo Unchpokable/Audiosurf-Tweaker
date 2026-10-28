@@ -16,6 +16,7 @@ local palette = require("palette")
 require("mutes")
 local scan = require("scan")
 require("tally")
+local track = require("track")
 local feed = require("feed")
 local scoring = require("scoring")
 
@@ -71,6 +72,7 @@ tw.on_frame(function()
     -- Before the visibility gate: the track is generated and dressed while the loading screen is
     -- still up, so the walk has to be allowed to run before the run starts.
     step_scan()
+    track.step()
     -- Same reason, different failure: a number in flight when the player hits pause must keep
     -- ageing, or it comes back on screen and replays a match that finished a minute ago.
     step_floaters()
@@ -79,6 +81,9 @@ tw.on_frame(function()
     -- events that would have armed the scan are long past.
     if not totals.ready and not totals.running and tw.frame % 60 == 0 then
         begin_scan()
+    end
+    if not track.ready and not track.running and tw.frame % 60 == 0 then
+        track.begin()
     end
 
     local target = in_run() and 1 or 0

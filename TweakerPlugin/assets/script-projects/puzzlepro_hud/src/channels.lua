@@ -105,6 +105,22 @@ local launch_colour = tw.float_ch("MoneyFloaterCommander", "inLaunchColor")
 -- enough to match a landing to the queue entry that is waiting for it - no table reads needed.
 local particle_at = tw.float_ch("MoneyFloaterCommander", "Index_Particles")
 
+-- The track's shape and where the player is on it, for the minimap (DESIGN.md §11). The game's own
+-- minimap reads exactly these (XX_gui::Do_RenderTrackSideView #4808); every name is unique in its group.
+--
+-- Rings: Pos is the track's spine, one ring per row, and its y is the height the side view plots. The
+-- rows of the track (TrafficPattern.y) are numbers on this same axis, so blocks and profile need no
+-- conversion between them. Rings: SongTime is seconds from the start of the song.
+local num_rings = tw.float_ch("Highway", "NumRings")
+local lowest_ring = tw.float_ch("Highway", "LowestRingYpos")
+local highest_ring = tw.float_ch("Highway", "HighestRingYpos")
+local ring_pos = tw.array_vec("Highway", "Rings: Pos", "RingIndex")
+local ring_time = tw.array("Highway", "Rings: SongTime", "RingIndex")
+-- A whole ring number and the fraction of the way to the next one: the two together let the dot glide
+-- instead of stepping ring by ring.
+local player_ring = tw.float_ch("Player", "OffsetCurrentRing")
+local player_ring_frac = tw.float_ch("Player", "OffsetCurrentRingInterpolation")
+
 return {
     startup_state = startup_state,
     gameplay_state = gameplay_state,
@@ -144,4 +160,11 @@ return {
     launch_money = launch_money,
     launch_colour = launch_colour,
     particle_at = particle_at,
+    num_rings = num_rings,
+    lowest_ring = lowest_ring,
+    highest_ring = highest_ring,
+    ring_pos = ring_pos,
+    ring_time = ring_time,
+    player_ring = player_ring,
+    player_ring_frac = player_ring_frac,
 }

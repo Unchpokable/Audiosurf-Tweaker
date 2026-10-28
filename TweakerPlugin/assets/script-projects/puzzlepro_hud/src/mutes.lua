@@ -15,6 +15,9 @@ local muted = {
     -- autopilot trigger, and cutting here also leaves XX_gui::PB being written. DESIGN.md §3.
     best_popup = tw.mute("XX_gui", 5412),
     coop_scores = tw.mute("XX_gui", 3707),
+    -- The side view of the track and its dot, replaced by the stats panel's minimap (DESIGN.md §11). It
+    -- writes Highway::RingIndex on the way, but that is a scratch cursor every reader sets for itself.
+    minimap = tw.mute("XX_gui", "Do_OverheadMap"),
 }
 
 return muted

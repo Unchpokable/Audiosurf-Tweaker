@@ -2,8 +2,8 @@
 -- @author      Audiosurf Tweaker
 -- @version     1.7.0
 -- @description HUD Replacer for real puzzle players. Real-time all-color statistics tracker, chain multiplier and chain drop timer read straight out of the game, live skill rating calculation and projected final score against your personal best. Get GUD, Get PuzzlePRO HUD
--- @api         1
--- @bundle      twllink 1.1, 18 modules
+-- @api         4
+-- @bundle      twllink 1.1, 21 modules
 
 local __twl_modules, __twl_cache, __twl_loading = {}, {}, {}
 
@@ -14,7 +14,7 @@ A run tracker that replaces several pieces of the game's own HUD rather than sit
 them. Everything it draws is measured, themed and positioned against the viewport; nothing is
 hardcoded except padding.
 
-The interesting parts are documented where they happen. Ten things are worth reading first,
+The interesting parts are documented where they happen. Eleven things are worth reading first,
 because they are the reasons this is not the obvious script.
 
 ## 1. WHAT IT MEASURES - by track ROW, not by collection EVENT
@@ -106,6 +106,7 @@ by watching a number - see the hooks in src/tally.lua.
     XX_gui::Do_ShowScore               (#2351)  the top frame, the score, the "+N" floaters
     XX_gui::If                         (#5412)  the "Best Score" popup
     XX_gui::Do_CooperativeModeSeparateScores (#3707)  the two Double Vision scores
+    XX_gui::Do_OverheadMap             (#4147)  the minimap
 
 Every one is a pure render branch, and in each case the choice of node is the entire safety
 argument:
@@ -126,6 +127,9 @@ argument:
     XX_gui::PB (#731) - the game's own `Online? ? MAX(PB_FromServer, PersonalBestScore) :
     PersonalBestScore` - fresh for us to read.
   * #3707 - two CloneScoreText objects under a gate on SpecialPurpose::useClone?, nothing else.
+  * #4147 - the side view and its dot. It does write one value on the way, Highway::RingIndex :=
+    Player::OffsetCurrentRing - but RingIndex is a scratch cursor that each of the seven groups
+    reading Highway sets for itself first, so nothing reads what the minimap left there.
 
 And one node that looks exactly like the others and must NEVER be muted:
 
@@ -358,6 +362,62 @@ projected total: every match would move the total by half again what its number 
 The one thing that does not come from a floater is a change in B itself: earning Match21 or
 clearing the board steps the headline with nothing flying in. That is a real event rather than an
 error, and the bracketed figure swapping sides is what explains it on screen.
+
+## 11. THE MINIMAP IS THE GAME'S OWN, REDRAWN - AND COLOURED BY WHAT IS ON THE TRACK
+
+The game's minimap is the track seen from the side. XX_gui::Do_OverheadMap (#4147) ->
+Do_RenderTrackSideView (#4808) bakes a 512x256 texture once per track from
+Routemap_TrackPixels (a pixel is lit where the profile passes through its column), and puts a dot at
+
+    x = OffsetCurrentRing / NumRings
+    y = (y(Highway::Rings: Pos[ring]) - LowestRingYpos) / (HighestRingYpos - LowestRingYpos)
+
+So the profile is the height of every ring of Highway's spine against its number, and that is what
+src/track.lua samples - the same channels, read directly:
+
+    Highway::NumRings, Rings: Pos (y), LowestRingYpos / HighestRingYpos, Rings: SongTime
+    Player::OffsetCurrentRing + OffsetCurrentRingInterpolation
+
+Three things a probe run settled before any of it was drawn:
+
+  * **The rings exist at the first run-start hook.** NumRings, Rings: Pos and Rings: SongTime are
+    filled by Do_ResetStats already, so the profile is walked on the same three events as the colour
+    totals (§2) and never waits on a number.
+  * **The blocks are on the same axis.** TrafficPattern.y is a ring number: Do_BirthCar sets
+    TrafficCommander::RingToDieAt := y (#713), the ring at which the block reaches the player. In real
+    runs every y was a whole number inside [0, NumRings). So the walk §2 already makes over the track
+    files each block under the stretch it is on without a single extra read - which is what makes a
+    coloured map cheap.
+  * **Rings: SongTime is seconds** from the start of the song: 271.16 at the last ring of a 4:31 song.
+    "Time left" is the last ring's time minus the player's.
+
+256 samples, not every ring. A track is 8 to 13 thousand rings - about fifty to the second - and its
+height is a running sum of slopes, so it is smooth; a line a few hundred pixels long cannot show more
+than a few hundred points anyway, and the game itself only keeps 512 columns.
+
+### The colour
+
+The map is cut into stops of `batch` rings (about two seconds). A stop's colour is its blocks' colours
+weighted by how many of each there are, with every weight raised to a power first, so that the most
+common colour on the stretch takes the stop. A plain average would lie: red and blue blocks average to
+purple, and purple is a block colour of its own. Neighbouring stops are blended with a small triangular
+kernel, and the line between stops is a gradient (tw.hud.gradient_polyline), so the map changes colour
+where the track does, smoothly. Both knobs - stop size and softness - are the player's.
+
+White and wild blocks colour nothing. A stop without a coloured block takes its neighbours' colour
+instead of going grey. A track that carries one colour only is that colour end to end - which covers
+Mono, every Ninja, Freeride and the songs whose tags force them, without a table of modes: it is the
+track, not the character, that says so, exactly as the table's columns are chosen (§2).
+
+The scan keeps its counts per 16 rings, finer than any stop, so moving the stop size regroups counts
+instead of walking the track again.
+
+### The line
+
+Two lines split at the player, the stretch already ridden at a third of its strength. That is the song
+progress bar back: XX_gui::Timer2 (#3970) has been muted since the chain bar was (§3), and until the map
+nothing showed how far through the song the player was. The split point is computed, not snapped to the
+nearest sample, so the bright part starts under the dot.
 ]]
 
 local function require(name)
@@ -607,6 +667,22 @@ local launch_colour = tw.float_ch("MoneyFloaterCommander", "inLaunchColor")
 -- enough to match a landing to the queue entry that is waiting for it - no table reads needed.
 local particle_at = tw.float_ch("MoneyFloaterCommander", "Index_Particles")
 
+-- The track's shape and where the player is on it, for the minimap (DESIGN.md §11). The game's own
+-- minimap reads exactly these (XX_gui::Do_RenderTrackSideView #4808); every name is unique in its group.
+--
+-- Rings: Pos is the track's spine, one ring per row, and its y is the height the side view plots. The
+-- rows of the track (TrafficPattern.y) are numbers on this same axis, so blocks and profile need no
+-- conversion between them. Rings: SongTime is seconds from the start of the song.
+local num_rings = tw.float_ch("Highway", "NumRings")
+local lowest_ring = tw.float_ch("Highway", "LowestRingYpos")
+local highest_ring = tw.float_ch("Highway", "HighestRingYpos")
+local ring_pos = tw.array_vec("Highway", "Rings: Pos", "RingIndex")
+local ring_time = tw.array("Highway", "Rings: SongTime", "RingIndex")
+-- A whole ring number and the fraction of the way to the next one: the two together let the dot glide
+-- instead of stepping ring by ring.
+local player_ring = tw.float_ch("Player", "OffsetCurrentRing")
+local player_ring_frac = tw.float_ch("Player", "OffsetCurrentRingInterpolation")
+
 return {
     startup_state = startup_state,
     gameplay_state = gameplay_state,
@@ -646,6 +722,13 @@ return {
     launch_money = launch_money,
     launch_colour = launch_colour,
     particle_at = particle_at,
+    num_rings = num_rings,
+    lowest_ring = lowest_ring,
+    highest_ring = highest_ring,
+    ring_pos = ring_pos,
+    ring_time = ring_time,
+    player_ring = player_ring,
+    player_ring_frac = player_ring_frac,
 }
 end
 
@@ -807,6 +890,9 @@ local muted = {
     -- autopilot trigger, and cutting here also leaves XX_gui::PB being written. DESIGN.md §3.
     best_popup = tw.mute("XX_gui", 5412),
     coop_scores = tw.mute("XX_gui", 3707),
+    -- The side view of the track and its dot, replaced by the stats panel's minimap (DESIGN.md §11). It
+    -- writes Highway::RingIndex on the way, but that is a scratch cursor every reader sets for itself.
+    minimap = tw.mute("XX_gui", "Do_OverheadMap"),
 }
 
 return muted
@@ -832,6 +918,16 @@ local COLOURS, BUCKET = colours.COLOURS, colours.BUCKET
 local car_count, traffic_pattern = ch.car_count, ch.traffic_pattern
 
 local ROWS_PER_FRAME = 128
+
+-- The minimap's colour comes from where on the track each block is (DESIGN.md §11), so the walk also files
+-- every coloured block under the stretch of track it is on: FINE rings per stretch, ~a third of a second.
+-- That is finer than any colour stop the minimap draws - its setting is a multiple of this - so changing
+-- the setting re-groups these counts instead of walking the track again.
+--
+-- Flat: stretch s, bucket b (0..4, the five block colours) is fine[s * COLOURED + b + 1], nil meaning 0.
+-- White and wild (bucket 7) are not kept: they colour nothing on the map.
+local FINE = 16
+local COLOURED = 5
 
 -- Which colour columns the table shows. Derived from the track rather than from a table of modes,
 -- because the game recolours the track per character and league before the run and the pattern is
@@ -863,7 +959,20 @@ local function visible_columns(counts)
     return out
 end
 
-local totals = { ready = false, by_row = {}, running = false, at = 0, rows = 0, partial = {}, columns = COLOURS }
+-- `revision` moves every time a walk finishes, so whatever is built from the result (the minimap's colours)
+-- can tell a new track from the one it already has.
+local totals = {
+    ready = false,
+    by_row = {},
+    running = false,
+    at = 0,
+    rows = 0,
+    partial = {},
+    columns = COLOURS,
+    fine = {},
+    fine_partial = {},
+    revision = 0,
+}
 
 local function begin_scan()
     totals.running = true
@@ -873,6 +982,7 @@ local function begin_scan()
     for _, c in ipairs(COLOURS) do
         totals.partial[c.id] = 0
     end
+    totals.fine_partial = {}
 end
 
 local function step_scan()
@@ -919,6 +1029,11 @@ local function step_scan()
             local bucket = BUCKET[math.floor(id)]
             if bucket then
                 totals.partial[bucket] = totals.partial[bucket] + 1
+                if bucket < COLOURED then
+                    local slot = math.floor((ring or 0) / FINE) * COLOURED + bucket + 1
+                    local fine = totals.fine_partial
+                    fine[slot] = (fine[slot] or 0) + 1
+                end
             end
         end
 
@@ -929,6 +1044,8 @@ local function step_scan()
     if totals.at >= totals.rows then
         totals.running = false
         totals.by_row = totals.partial
+        totals.fine = totals.fine_partial
+        totals.revision = totals.revision + 1
         -- Settled once per scan, not per frame: the column set is layout, and layout that is
         -- recomputed while the player is looking at it is layout that moves.
         totals.columns = visible_columns(totals.partial)
@@ -940,6 +1057,8 @@ return {
     totals = totals,
     begin = begin_scan,
     step = step_scan,
+    FINE = FINE,
+    COLOURED = COLOURED,
 }
 end
 
@@ -1085,6 +1204,143 @@ return {
     taken = taken,
     by_route = by_route,
 }
+end
+
+__twl_modules["track"] = function(require, ...)
+-- ---------------------------------------------------------------------------------------------
+-- The track's profile, for the minimap (DESIGN.md §11)
+-- ---------------------------------------------------------------------------------------------
+--
+-- The game's minimap is the track seen from the side: the height of every ring of Highway's spine against
+-- its number. This samples the same thing at POINTS rings spread evenly along the track, which is all a
+-- line a few hundred pixels long can show - the game itself bakes it into 512 columns. The track is
+-- several thousand rings long, and its height is a running sum of slopes, so it is smooth enough that
+-- every ring would add nothing but cost.
+--
+-- Spread over frames like scan.lua's walk, for the same reason, and run on the same events: the rings
+-- are already there at the first of them (Do_ResetStats), because the rows of the track refer to them.
+
+local ch = require("channels")
+
+local num_rings, lowest_ring, highest_ring = ch.num_rings, ch.lowest_ring, ch.highest_ring
+local ring_pos, ring_time = ch.ring_pos, ch.ring_time
+
+local POINTS = 256
+local PER_FRAME = 128
+
+-- `height[i]` is 0 at the lowest ring of the track and 1 at the highest; `time[i]` is seconds into the
+-- song. Point i is ring ring_of(i). `revision` moves with every finished walk.
+local track = {
+    ready = false,
+    running = false,
+    revision = 0,
+    points = POINTS,
+    rings = 0,
+    height = {},
+    time = {},
+}
+
+local walk = { at = 0, rings = 0, low = 0, span = 0, height = {}, time = {} }
+
+local function ring_of(i, rings)
+    return math.floor((i - 1) * (rings - 1) / (POINTS - 1))
+end
+
+local function begin()
+    track.running = true
+    walk.at = 0
+    walk.rings = 0
+    walk.height = {}
+    walk.time = {}
+end
+
+local function step()
+    if not track.running then
+        return
+    end
+
+    -- Asked before the track exists, or before Highway has loaded: try again next frame.
+    if walk.rings == 0 then
+        local rings = num_rings:get()
+        local low, high = lowest_ring:get(), highest_ring:get()
+        if rings == nil or rings < 2 or low == nil or high == nil or high <= low then
+            return
+        end
+        walk.rings = math.floor(rings)
+        walk.low = low
+        walk.span = high - low
+    end
+
+    local budget = PER_FRAME
+    while walk.at < POINTS and budget > 0 do
+        local i = walk.at + 1
+        local ring = ring_of(i, walk.rings)
+        local _, y = ring_pos:get(ring)
+        if y == nil then
+            return
+        end
+        walk.height[i] = math.min(math.max((y - walk.low) / walk.span, 0), 1)
+        walk.time[i] = ring_time:get(ring) or 0
+        walk.at = i
+        budget = budget - 1
+    end
+
+    if walk.at >= POINTS then
+        track.running = false
+        track.rings = walk.rings
+        track.height = walk.height
+        track.time = walk.time
+        track.ready = true
+        track.revision = track.revision + 1
+    end
+end
+
+-- Where a ring (fractional) is in the sample, as a fractional point index from 1 to POINTS.
+local function point_at(ring)
+    local rings = track.rings
+    if rings < 2 then
+        return 1
+    end
+    local p = 1 + ring * (POINTS - 1) / (rings - 1)
+    return math.min(math.max(p, 1), POINTS)
+end
+
+-- A sampled series read at a fractional point index, linearly between the two samples either side.
+local function sample(series, p)
+    local i = math.floor(p)
+    if i >= POINTS then
+        return series[POINTS]
+    end
+    local t = p - i
+    return series[i] + (series[i + 1] - series[i]) * t
+end
+
+-- Seconds of song left from a ring to the end. Interpolated from the samples rather than read off the
+-- ring: a sample is ~50 rings apart, about a second, and time along the track is close to linear across
+-- one - the error is far under the second this is printed to. One array read a frame avoided.
+local function time_left(ring)
+    if not track.ready then
+        return nil
+    end
+    return math.max(0, track.time[POINTS] - sample(track.time, point_at(ring)))
+end
+
+local function run_started()
+    begin()
+end
+
+tw.on_call("StatCollector", "Do_ResetStats", "after", run_started)
+tw.on_call("StatCollector", "Do_ReseteWhiteWildBlocks", "after", run_started)
+tw.on_call("StatCollector", "Do_ResetSimpleStats", "after", run_started)
+
+track.begin = begin
+track.step = step
+track.ring_of = ring_of
+track.point_at = point_at
+track.sample = sample
+track.time_left = time_left
+
+return track
 end
 
 __twl_modules["feed"] = function(require, ...)
@@ -1597,6 +1853,367 @@ return {
 }
 end
 
+__twl_modules["map_colours"] = function(require, ...)
+-- ---------------------------------------------------------------------------------------------
+-- The minimap's colours: what each stretch of the track is mostly made of (DESIGN.md §11)
+-- ---------------------------------------------------------------------------------------------
+--
+-- The track is cut into stops of `batch` rings. A stop's colour is its blocks' colours, weighted by how
+-- many there are, with the weights raised to a power first - sharpened - so the colour that is most
+-- common on the stretch takes the stop. A plain average would lie: red and blue blocks average to purple,
+-- and purple is a block colour of its own. Neighbouring stops are blended over `softness`, and the line
+-- between stops is a gradient, so the map changes colour where the track does, smoothly.
+--
+-- White and wild blocks colour nothing. A stop with no coloured blocks takes the colour of its nearest
+-- neighbours instead of going grey; a track with one colour only - Mono, Ninja, Freeride, songs tagged
+-- to play that way - is that colour from end to end, which is the colour the table draws it in.
+--
+-- The work is split by how often its inputs change. Weights per vertex of the line: when the track is
+-- scanned or a setting moves. Colours: when the palette or the theme does, which this checks every call -
+-- five numbers compared - and which is a weighted sum per vertex when it happens.
+
+local colours = require("colours")
+local scan = require("scan")
+local track = require("track")
+
+local COLOUR_BY_ID = colours.COLOUR_BY_ID
+local totals = scan.totals
+local FINE, COLOURED = scan.FINE, scan.COLOURED
+
+-- `batch` is in rings and a multiple of FINE (scan.lua keeps counts per FINE rings); ~96 rings is about
+-- two seconds of song. `softness` 0..1: 0 a hard edge between stops and the leader taking all, 1 a
+-- broad blend.
+local settings = { batch = 96, softness = 0.5 }
+
+-- Normalised weight of bucket b at vertex i: weights[(i - 1) * COLOURED + b + 1]. `covered[i]` false
+-- when no stop anywhere near vertex i has a coloured block.
+local weights = {}
+local covered = {}
+-- The one bucket the track carries, when it carries only one.
+local solid = nil
+local any_colour = false
+
+local built = { scan = -1, track = -1, batch = -1, softness = -1 }
+
+-- The finished colours, one per vertex, and what they were made from.
+local out = {}
+local made_from = { -1, -1, -1, -1, -1, -1 }
+local fresh = false
+
+local function rebuild_weights()
+    local rings = track.rings
+    local fine = totals.fine
+    local batch = settings.batch
+    local per = math.max(1, math.floor(batch / FINE + 0.5))
+    batch = per * FINE
+    local stops = math.max(1, math.ceil(rings / batch))
+
+    -- Raw counts per stop, and per bucket over the whole track.
+    local raw = {}
+    local whole = { 0, 0, 0, 0, 0 }
+    for j = 0, stops - 1 do
+        for f = j * per, (j + 1) * per - 1 do
+            for b = 0, COLOURED - 1 do
+                local v = fine[f * COLOURED + b + 1]
+                if v then
+                    local k = j * COLOURED + b + 1
+                    raw[k] = (raw[k] or 0) + v
+                    whole[b + 1] = whole[b + 1] + v
+                end
+            end
+        end
+    end
+
+    solid = nil
+    local carried = 0
+    for b = 0, COLOURED - 1 do
+        if whole[b + 1] > 0 then
+            carried = carried + 1
+            solid = b
+        end
+    end
+    any_colour = carried > 0
+    if carried ~= 1 then
+        solid = nil
+    end
+    if solid ~= nil or not any_colour then
+        return
+    end
+
+    -- Smoothed over 2R+1 stops with a triangular kernel, then sharpened and normalised. A stop with
+    -- nothing in reach is left out (has[j] nil) and filled from its neighbours below.
+    local softness = settings.softness
+    local reach = math.floor(softness * 3 + 0.5)
+    local power = 4 - 3 * softness
+    local stop_w = {}
+    local has = {}
+    local acc = { 0, 0, 0, 0, 0 }
+    for j = 0, stops - 1 do
+        for b = 1, COLOURED do
+            acc[b] = 0
+        end
+        for d = -reach, reach do
+            local s = j + d
+            if s >= 0 and s < stops then
+                local k = reach + 1 - math.abs(d)
+                for b = 0, COLOURED - 1 do
+                    local v = raw[s * COLOURED + b + 1]
+                    if v then
+                        acc[b + 1] = acc[b + 1] + k * v
+                    end
+                end
+            end
+        end
+        local sum = 0
+        for b = 1, COLOURED do
+            if acc[b] > 0 then
+                acc[b] = acc[b] ^ power
+                sum = sum + acc[b]
+            end
+        end
+        if sum > 0 then
+            has[j] = true
+            for b = 1, COLOURED do
+                stop_w[j * COLOURED + b] = acc[b] / sum
+            end
+        end
+    end
+
+    -- The nearest stop with colour at or before / at or after each stop.
+    local before, after = {}, {}
+    local last = nil
+    for j = 0, stops - 1 do
+        if has[j] then
+            last = j
+        end
+        before[j] = last
+    end
+    last = nil
+    for j = stops - 1, 0, -1 do
+        if has[j] then
+            last = j
+        end
+        after[j] = last
+    end
+
+    -- Each vertex sits between the two stops whose centres are either side of its ring; its weights are
+    -- theirs, mixed by how close it is to each. Mixing the weights and then the colours is the same as
+    -- mixing the colours, because both steps are linear.
+    for i = 1, track.points do
+        local u = track.ring_of(i, rings) / batch - 0.5
+        local j0 = math.min(math.max(math.floor(u), 0), stops - 1)
+        local j1 = math.min(j0 + 1, stops - 1)
+        local a = before[j0] or after[j0]
+        local b = after[j1] or before[j1]
+        local base = (i - 1) * COLOURED
+        if a == nil then
+            covered[i] = false
+        else
+            covered[i] = true
+            local t = 0
+            if b ~= nil and b ~= a then
+                t = math.min(math.max((u - a) / (b - a), 0), 1)
+            else
+                b = a
+            end
+            for k = 1, COLOURED do
+                local wa = stop_w[a * COLOURED + k]
+                local wb = stop_w[b * COLOURED + k]
+                weights[base + k] = wa + (wb - wa) * t
+            end
+        end
+    end
+end
+
+local function channels(c)
+    return c % 256, math.floor(c / 256) % 256, math.floor(c / 65536) % 256
+end
+
+local function rebuild_colours(neutral)
+    local n = track.points
+    if solid ~= nil or not any_colour then
+        local c = solid ~= nil and COLOUR_BY_ID[solid].colour or neutral
+        for i = 1, n do
+            out[i] = c
+        end
+        return
+    end
+
+    local cr, cg, cb = {}, {}, {}
+    for b = 0, COLOURED - 1 do
+        cr[b + 1], cg[b + 1], cb[b + 1] = channels(COLOUR_BY_ID[b].colour)
+    end
+    for i = 1, n do
+        if covered[i] then
+            local base = (i - 1) * COLOURED
+            local r, g, bl = 0, 0, 0
+            for k = 1, COLOURED do
+                local w = weights[base + k]
+                r = r + w * cr[k]
+                g = g + w * cg[k]
+                bl = bl + w * cb[k]
+            end
+            out[i] = math.floor(r + 0.5) + math.floor(g + 0.5) * 256 + math.floor(bl + 0.5) * 65536 + 0xFF000000
+        else
+            out[i] = neutral
+        end
+    end
+end
+
+-- The colour of every vertex of the minimap's line, raw (not faded), as one table that is refilled in
+-- place - or nil until both the track's profile and its blocks have been walked. `neutral` is what a
+-- vertex with no coloured block anywhere near it gets.
+local function update(neutral)
+    if not track.ready or not totals.ready or track.rings < 2 then
+        return nil
+    end
+
+    if built.scan ~= totals.revision or built.track ~= track.revision or built.batch ~= settings.batch
+        or built.softness ~= settings.softness then
+        rebuild_weights()
+        built.scan, built.track = totals.revision, track.revision
+        built.batch, built.softness = settings.batch, settings.softness
+        fresh = false
+    end
+
+    local changed = not fresh or made_from[6] ~= neutral
+    for b = 0, COLOURED - 1 do
+        if made_from[b + 1] ~= COLOUR_BY_ID[b].colour then
+            changed = true
+        end
+    end
+    if changed then
+        rebuild_colours(neutral)
+        for b = 0, COLOURED - 1 do
+            made_from[b + 1] = COLOUR_BY_ID[b].colour
+        end
+        made_from[6] = neutral
+        fresh = true
+    end
+
+    return out
+end
+
+-- For the settings tab: rings per colour stop (rounded to a multiple of 16) and softness 0..1.
+local function configure(batch, softness)
+    settings.batch = math.max(FINE, math.floor(batch / FINE + 0.5) * FINE)
+    settings.softness = math.min(math.max(softness, 0), 1)
+end
+
+return {
+    update = update,
+    configure = configure,
+    settings = settings,
+}
+end
+
+__twl_modules["draw.minimap"] = function(require, ...)
+-- The minimap: the track from the side, coloured by what each stretch of it is made of, the part already
+-- ridden dimmed, and a dot where the player is (DESIGN.md §11). It replaces the game's own minimap and
+-- its song progress bar, both of which are muted.
+
+local colours = require("colours")
+local ch = require("channels")
+local track = require("track")
+local map_colours = require("map_colours")
+
+local mix = colours.mix
+local player_ring, player_ring_frac = ch.player_ring, ch.player_ring_frac
+local POINTS = track.points
+
+-- How much of its colour the stretch already ridden keeps. Enough to still show the shape behind you,
+-- little enough that "where am I" is answered by where the bright part starts.
+local PASSED = 0.35
+
+-- The line's vertices for the box it was last laid out in. Rebuilt when the box or the track changes,
+-- which is rarely: the panel moves only to make room for a toast.
+local vx, vy = {}, {}
+local laid = { x = nil, y = nil, w = nil, h = nil, inset = nil, revision = -1 }
+
+-- The two lines drawn every frame, refilled in place. tw.hud.gradient_polyline reads their length, so
+-- whatever is past the end of this frame's line is cleared.
+local passed_x, passed_y, passed_c = {}, {}, {}
+local ahead_x, ahead_y, ahead_c = {}, {}, {}
+local passed_n, ahead_n = 0, 0
+
+local function layout(x, y, w, h, inset)
+    if laid.revision == track.revision and laid.x == x and laid.y == y and laid.w == w and laid.h == h and laid.inset == inset then
+        return
+    end
+    local height = track.height
+    for i = 1, POINTS do
+        vx[i] = x + (i - 1) * w / (POINTS - 1)
+        vy[i] = y + inset + (1 - height[i]) * (h - inset * 2)
+    end
+    laid.x, laid.y, laid.w, laid.h, laid.inset, laid.revision = x, y, w, h, inset, track.revision
+end
+
+local function trim(xs, ys, cs, n, was)
+    for i = n + 1, was do
+        xs[i], ys[i], cs[i] = nil, nil, nil
+    end
+    return n
+end
+
+-- Draws the map into the box and returns the seconds of song left, or nil when there is nothing to draw
+-- yet - the track still being walked, or no run.
+return function(L, x, y, w, h)
+    if not track.ready then
+        return nil
+    end
+    local line = map_colours.update(tw.theme("text_muted"))
+    if line == nil then
+        return nil
+    end
+
+    local fade, base = L.fade, L.base
+    -- Whole pixels, so ImGui can draw it with its textured lines: crisper than a fractional width.
+    local thickness = math.max(2, math.floor(base * 0.14 + 0.5))
+    local dot = thickness * 2
+    layout(x, y, w, h, dot + 1)
+
+    -- Where the player is, as a fractional vertex index. Before the run has started the ring is the
+    -- start; a channel that cannot be read leaves the dot at the start rather than hiding the map.
+    local ring = player_ring:get()
+    local at = ring and (ring + (player_ring_frac:get() or 0)) or 0
+    local p = track.point_at(at)
+    local k = math.min(math.floor(p), POINTS - 1)
+    local t = p - k
+
+    local sx = vx[k] + (vx[k + 1] - vx[k]) * t
+    local sy = vy[k] + (vy[k + 1] - vy[k]) * t
+    local sc = mix(line[k], line[k + 1], t)
+
+    -- Behind: every vertex up to k, then the exact point under the dot, so the bright part starts at the
+    -- dot rather than at the nearest vertex.
+    local dim = fade * PASSED
+    for i = 1, k do
+        passed_x[i], passed_y[i], passed_c[i] = vx[i], vy[i], tw.fade(line[i], dim)
+    end
+    passed_x[k + 1], passed_y[k + 1], passed_c[k + 1] = sx, sy, tw.fade(sc, dim)
+    passed_n = trim(passed_x, passed_y, passed_c, k + 1, passed_n)
+
+    -- Ahead: from the dot to the end.
+    ahead_x[1], ahead_y[1], ahead_c[1] = sx, sy, tw.fade(sc, fade)
+    local n = 1
+    for i = k + 1, POINTS do
+        n = n + 1
+        ahead_x[n], ahead_y[n], ahead_c[n] = vx[i], vy[i], tw.fade(line[i], fade)
+    end
+    ahead_n = trim(ahead_x, ahead_y, ahead_c, n, ahead_n)
+
+    tw.hud.gradient_polyline(passed_x, passed_y, passed_c, thickness)
+    tw.hud.gradient_polyline(ahead_x, ahead_y, ahead_c, thickness)
+
+    -- The dot in the colour of the line under it, glowing, so it reads as the head of the bright part.
+    local c = tw.fade(sc, fade)
+    tw.hud.rect(sx - dot, sy - dot, sx + dot, sy + dot, c, dot)
+    tw.hud.glow_rect(sx - dot, sy - dot, sx + dot, sy + dot, c, dot, 0.8 * fade)
+
+    return track.time_left(at)
+end
+end
+
 __twl_modules["draw.stats_panel"] = function(require, ...)
 -- The stats panel, top-left: the colour table, and under it the minimap. One panel rather than two widgets
 -- because both are about the track as a whole - what it carries and where you are on it - and the
@@ -1604,20 +2221,34 @@ __twl_modules["draw.stats_panel"] = function(require, ...)
 
 local roll = require("roll")
 local colour_table = require("draw.colour_table")
+local draw_minimap = require("draw.minimap")
 
 -- The widest the table gets: purple, blue, green, yellow, red and white. The panel is always this wide,
 -- whatever the mode, so it does not change size between a Casual run and a Mono one.
 local MAX_COLUMNS = 6
 
+-- The map's height as a share of its width. The game's own is 2:1; a profile this flat is still easy to
+-- read at a glance, and it keeps the panel from reaching down over the track.
+local MAP_ASPECT = 0.26
+
+-- "2:31". Whole seconds, rounded up, so it reaches 0:00 as the song ends and not a second before.
+local function clock(seconds)
+    local s = math.ceil(seconds)
+    return string.format("%d:%02d", math.floor(s / 60), s % 60)
+end
+
 return function(L)
-    local fade, base, margin = L.fade, L.base, L.margin
+    local fade, base, margin, label_size, DIM = L.fade, L.base, L.margin, L.label_size, L.DIM
 
     local pad = math.max(8, base * 0.6)
     local inner_w = L.cell_w * MAX_COLUMNS
     local table_h = colour_table.height(L)
+    local map_gap = pad
+    local map_h = math.floor(inner_w * MAP_ASPECT + 0.5)
+    local _, clock_h = tw.hud.measure("0:00", label_size)
 
     local w = inner_w + pad * 2
-    local h = table_h + pad * 2
+    local h = table_h + map_gap + map_h + clock_h + pad * 2
     local x0 = L.sx0 + margin
 
     -- Measured from the top of the VIEWPORT, as the score strip is, not from the safe area: the safe area's
@@ -1636,10 +2267,20 @@ return function(L)
 
     -- The same backdrop as the score strip, and for the same reason: white numbers on a bright sky are
     -- not numbers. A panel rather than a band with falloff, because this sits in a corner and has edges.
+    -- Its height is fixed, map or no map, so it does not grow when a track finishes loading.
     local back = tw.fade(tw.alpha(tw.theme("surface"), 0.72), fade)
     tw.hud.rect(x0, y0, x0 + w, y0 + h, back, 6)
 
-    colour_table.draw(L, x0 + pad, y0 + pad, inner_w)
+    local ix = x0 + pad
+    colour_table.draw(L, ix, y0 + pad, inner_w)
+
+    local map_y = y0 + pad + table_h + map_gap
+    local left = draw_minimap(L, ix, map_y, inner_w, map_h)
+    if left ~= nil then
+        local text = clock(left)
+        local text_w = tw.hud.measure(text, label_size)
+        tw.hud.text(ix + inner_w - text_w, map_y + map_h, text, DIM, label_size)
+    end
 end
 end
 
@@ -2399,6 +3040,7 @@ local palette = require("palette")
 require("mutes")
 local scan = require("scan")
 require("tally")
+local track = require("track")
 local feed = require("feed")
 local scoring = require("scoring")
 
@@ -2454,6 +3096,7 @@ tw.on_frame(function()
     -- Before the visibility gate: the track is generated and dressed while the loading screen is
     -- still up, so the walk has to be allowed to run before the run starts.
     step_scan()
+    track.step()
     -- Same reason, different failure: a number in flight when the player hits pause must keep
     -- ageing, or it comes back on screen and replays a match that finished a minute ago.
     step_floaters()
@@ -2462,6 +3105,9 @@ tw.on_frame(function()
     -- events that would have armed the scan are long past.
     if not totals.ready and not totals.running and tw.frame % 60 == 0 then
         begin_scan()
+    end
+    if not track.ready and not track.running and tw.frame % 60 == 0 then
+        track.begin()
     end
 
     local target = in_run() and 1 or 0

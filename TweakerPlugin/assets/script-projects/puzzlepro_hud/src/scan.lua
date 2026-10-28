@@ -18,6 +18,16 @@ local car_count, traffic_pattern = ch.car_count, ch.traffic_pattern
 
 local ROWS_PER_FRAME = 128
 
+-- The minimap's colour comes from where on the track each block is (DESIGN.md §11), so the walk also files
+-- every coloured block under the stretch of track it is on: FINE rings per stretch, ~a third of a second.
+-- That is finer than any colour stop the minimap draws - its setting is a multiple of this - so changing
+-- the setting re-groups these counts instead of walking the track again.
+--
+-- Flat: stretch s, bucket b (0..4, the five block colours) is fine[s * COLOURED + b + 1], nil meaning 0.
+-- White and wild (bucket 7) are not kept: they colour nothing on the map.
+local FINE = 16
+local COLOURED = 5
+
 -- Which colour columns the table shows. Derived from the track rather than from a table of modes,
 -- because the game recolours the track per character and league before the run and the pattern is
 -- the result - StatCollector::Do_CharacterAndLeagueTrafficMods (#904), called from Do_ResetStats:
@@ -48,7 +58,20 @@ local function visible_columns(counts)
     return out
 end
 
-local totals = { ready = false, by_row = {}, running = false, at = 0, rows = 0, partial = {}, columns = COLOURS }
+-- `revision` moves every time a walk finishes, so whatever is built from the result (the minimap's colours)
+-- can tell a new track from the one it already has.
+local totals = {
+    ready = false,
+    by_row = {},
+    running = false,
+    at = 0,
+    rows = 0,
+    partial = {},
+    columns = COLOURS,
+    fine = {},
+    fine_partial = {},
+    revision = 0,
+}
 
 local function begin_scan()
     totals.running = true
@@ -58,6 +81,7 @@ local function begin_scan()
     for _, c in ipairs(COLOURS) do
         totals.partial[c.id] = 0
     end
+    totals.fine_partial = {}
 end
 
 local function step_scan()
@@ -104,6 +128,11 @@ local function step_scan()
             local bucket = BUCKET[math.floor(id)]
             if bucket then
                 totals.partial[bucket] = totals.partial[bucket] + 1
+                if bucket < COLOURED then
+                    local slot = math.floor((ring or 0) / FINE) * COLOURED + bucket + 1
+                    local fine = totals.fine_partial
+                    fine[slot] = (fine[slot] or 0) + 1
+                end
             end
         end
 
@@ -114,6 +143,8 @@ local function step_scan()
     if totals.at >= totals.rows then
         totals.running = false
         totals.by_row = totals.partial
+        totals.fine = totals.fine_partial
+        totals.revision = totals.revision + 1
         -- Settled once per scan, not per frame: the column set is layout, and layout that is
         -- recomputed while the player is looking at it is layout that moves.
         totals.columns = visible_columns(totals.partial)
@@ -125,4 +156,6 @@ return {
     totals = totals,
     begin = begin_scan,
     step = step_scan,
+    FINE = FINE,
+    COLOURED = COLOURED,
 }

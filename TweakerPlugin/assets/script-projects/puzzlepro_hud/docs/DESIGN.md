@@ -4,7 +4,7 @@ A run tracker that replaces several pieces of the game's own HUD rather than sit
 them. Everything it draws is measured, themed and positioned against the viewport; nothing is
 hardcoded except padding.
 
-The interesting parts are documented where they happen. Ten things are worth reading first,
+The interesting parts are documented where they happen. Eleven things are worth reading first,
 because they are the reasons this is not the obvious script.
 
 ## 1. WHAT IT MEASURES - by track ROW, not by collection EVENT
@@ -96,6 +96,7 @@ by watching a number - see the hooks in src/tally.lua.
     XX_gui::Do_ShowScore               (#2351)  the top frame, the score, the "+N" floaters
     XX_gui::If                         (#5412)  the "Best Score" popup
     XX_gui::Do_CooperativeModeSeparateScores (#3707)  the two Double Vision scores
+    XX_gui::Do_OverheadMap             (#4147)  the minimap
 
 Every one is a pure render branch, and in each case the choice of node is the entire safety
 argument:
@@ -116,6 +117,9 @@ argument:
     XX_gui::PB (#731) - the game's own `Online? ? MAX(PB_FromServer, PersonalBestScore) :
     PersonalBestScore` - fresh for us to read.
   * #3707 - two CloneScoreText objects under a gate on SpecialPurpose::useClone?, nothing else.
+  * #4147 - the side view and its dot. It does write one value on the way, Highway::RingIndex :=
+    Player::OffsetCurrentRing - but RingIndex is a scratch cursor that each of the seven groups
+    reading Highway sets for itself first, so nothing reads what the minimap left there.
 
 And one node that looks exactly like the others and must NEVER be muted:
 
@@ -348,3 +352,59 @@ projected total: every match would move the total by half again what its number 
 The one thing that does not come from a floater is a change in B itself: earning Match21 or
 clearing the board steps the headline with nothing flying in. That is a real event rather than an
 error, and the bracketed figure swapping sides is what explains it on screen.
+
+## 11. THE MINIMAP IS THE GAME'S OWN, REDRAWN - AND COLOURED BY WHAT IS ON THE TRACK
+
+The game's minimap is the track seen from the side. XX_gui::Do_OverheadMap (#4147) ->
+Do_RenderTrackSideView (#4808) bakes a 512x256 texture once per track from
+Routemap_TrackPixels (a pixel is lit where the profile passes through its column), and puts a dot at
+
+    x = OffsetCurrentRing / NumRings
+    y = (y(Highway::Rings: Pos[ring]) - LowestRingYpos) / (HighestRingYpos - LowestRingYpos)
+
+So the profile is the height of every ring of Highway's spine against its number, and that is what
+src/track.lua samples - the same channels, read directly:
+
+    Highway::NumRings, Rings: Pos (y), LowestRingYpos / HighestRingYpos, Rings: SongTime
+    Player::OffsetCurrentRing + OffsetCurrentRingInterpolation
+
+Three things a probe run settled before any of it was drawn:
+
+  * **The rings exist at the first run-start hook.** NumRings, Rings: Pos and Rings: SongTime are
+    filled by Do_ResetStats already, so the profile is walked on the same three events as the colour
+    totals (§2) and never waits on a number.
+  * **The blocks are on the same axis.** TrafficPattern.y is a ring number: Do_BirthCar sets
+    TrafficCommander::RingToDieAt := y (#713), the ring at which the block reaches the player. In real
+    runs every y was a whole number inside [0, NumRings). So the walk §2 already makes over the track
+    files each block under the stretch it is on without a single extra read - which is what makes a
+    coloured map cheap.
+  * **Rings: SongTime is seconds** from the start of the song: 271.16 at the last ring of a 4:31 song.
+    "Time left" is the last ring's time minus the player's.
+
+256 samples, not every ring. A track is 8 to 13 thousand rings - about fifty to the second - and its
+height is a running sum of slopes, so it is smooth; a line a few hundred pixels long cannot show more
+than a few hundred points anyway, and the game itself only keeps 512 columns.
+
+### The colour
+
+The map is cut into stops of `batch` rings (about two seconds). A stop's colour is its blocks' colours
+weighted by how many of each there are, with every weight raised to a power first, so that the most
+common colour on the stretch takes the stop. A plain average would lie: red and blue blocks average to
+purple, and purple is a block colour of its own. Neighbouring stops are blended with a small triangular
+kernel, and the line between stops is a gradient (tw.hud.gradient_polyline), so the map changes colour
+where the track does, smoothly. Both knobs - stop size and softness - are the player's.
+
+White and wild blocks colour nothing. A stop without a coloured block takes its neighbours' colour
+instead of going grey. A track that carries one colour only is that colour end to end - which covers
+Mono, every Ninja, Freeride and the songs whose tags force them, without a table of modes: it is the
+track, not the character, that says so, exactly as the table's columns are chosen (§2).
+
+The scan keeps its counts per 16 rings, finer than any stop, so moving the stop size regroups counts
+instead of walking the track again.
+
+### The line
+
+Two lines split at the player, the stretch already ridden at a third of its strength. That is the song
+progress bar back: XX_gui::Timer2 (#3970) has been muted since the chain bar was (§3), and until the map
+nothing showed how far through the song the player was. The split point is computed, not snapped to the
+nearest sample, so the bright part starts under the dot.
