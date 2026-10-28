@@ -1,5 +1,5 @@
 # twllink 1
-# bundle fnv1a64 2e8192653b897bfb
+# bundle fnv1a64 2115892eb9910b81
 1	-	0
 379	colours.lua	1
 500	-	0
@@ -22,16 +22,18 @@
 1494	draw/text.lua	1
 1524	-	0
 1527	draw/colour_table.lua	1
-1592	-	0
-1595	draw/medal_rail.lua	1
-1679	-	0
-1682	draw/rating.lua	1
-1751	-	0
-1754	draw/score_strip.lua	1
-1953	-	0
-1956	chain.lua	1
-2095	-	0
-2098	draw/chain_block.lua	1
-2306	-	0
-2309	main.lua	1
-2540	-	0
+1598	-	0
+1601	draw/stats_panel.lua	1
+1644	-	0
+1647	draw/medal_rail.lua	1
+1731	-	0
+1734	draw/rating.lua	1
+1805	-	0
+1808	draw/score_strip.lua	1
+2007	-	0
+2010	chain.lua	1
+2149	-	0
+2152	draw/chain_block.lua	1
+2381	-	0
+2384	main.lua	1
+2624	-	0

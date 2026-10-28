@@ -3,7 +3,7 @@
 -- @version     1.7.0
 -- @description HUD Replacer for real puzzle players. Real-time all-color statistics tracker, chain multiplier and chain drop timer read straight out of the game, live skill rating calculation and projected final score against your personal best. Get GUD, Get PuzzlePRO HUD
 -- @api         1
--- @bundle      twllink 1.1, 17 modules
+-- @bundle      twllink 1.1, 18 modules
 
 local __twl_modules, __twl_cache, __twl_loading = {}, {}, {}
 
@@ -1524,8 +1524,9 @@ return {
 end
 
 __twl_modules["draw.colour_table"] = function(require, ...)
--- The colour table, bottom-left: a swatch per colour the track carries, the track's total of it, and
--- how much of it has been taken so far.
+-- The colour table: a swatch per colour the track carries, the track's total of it, and how much of it
+-- has been taken so far. Drawn into a box it is given - where that box sits is the stats panel's
+-- business (draw/stats_panel.lua).
 
 local scan = require("scan")
 local tally = require("tally")
@@ -1534,28 +1535,32 @@ local centered = require("draw.text").centered
 
 local totals, taken = scan.totals, tally.taken
 
-return function(L)
+-- How tall the table is. Fixed by the sizes alone, so the panel around it can be laid out before
+-- anything in it is drawn.
+local function height(L)
+    return L.swatch + L.row_gap + L.row_h * 2
+end
+
+-- `width` is shared out evenly between the columns, however many the track has. The panel keeps one
+-- width for every mode, so a Mono track's two colours sit in wide cells rather than the table - and the
+-- minimap under it - shrinking to a third of the panel.
+local function draw(L, x, y, width)
     local fade, RULE, TEXT, DIM, FAINT = L.fade, L.RULE, L.TEXT, L.DIM, L.FAINT
-    local value_size, swatch, row_gap, row_h, cell_w = L.value_size, L.swatch, L.row_gap, L.row_h, L.cell_w
-    local sx0, margin, bottom = L.sx0, L.margin, L.bottom
+    local value_size, swatch, row_gap, row_h = L.value_size, L.swatch, L.row_gap, L.row_h
 
     -- Only the colours this track actually carries (see visible_columns in scan.lua): a Casual run has three,
     -- Pro four, Mono two, and a column of dashes for a colour that cannot appear is noise.
     local columns = totals.columns
-    local table_w = cell_w * #columns
-    local table_h = swatch + row_gap + row_h * 2
-    local tx = sx0 + margin
-    local swatch_y = bottom - table_h
+    local cell_w = width / #columns
+    local swatch_y = y
     local totals_y = swatch_y + swatch + row_gap
     local taken_y = totals_y + row_h
 
-    tw.hud.line(tx, totals_y - 2, tx + table_w, totals_y - 2, RULE, 1)
-    tw.hud.line(tx, taken_y - 2, tx + table_w, taken_y - 2, RULE, 1)
-
-    local got_total, all_total = 0, 0
+    tw.hud.line(x, totals_y - 2, x + width, totals_y - 2, RULE, 1)
+    tw.hud.line(x, taken_y - 2, x + width, taken_y - 2, RULE, 1)
 
     for i, c in ipairs(columns) do
-        local cx = tx + cell_w * (i - 1)
+        local cx = x + cell_w * (i - 1)
         local total = totals.ready and totals.by_row[c.id] or nil
         local got = taken[c.id] or 0
 
@@ -1563,9 +1568,9 @@ return function(L)
 
         -- A small square with a soft halo rather than a bar filling the cell: at a glance the row
         -- reads as six markers over six numbers, not as a stacked chart.
-        local sx0 = cx + (cell_w - swatch) * 0.5
-        tw.hud.rect(sx0, swatch_y, sx0 + swatch, swatch_y + swatch, colour, 3)
-        tw.hud.glow_rect(sx0, swatch_y, sx0 + swatch, swatch_y + swatch, colour, 3, 0.55 * fade)
+        local sx = cx + (cell_w - swatch) * 0.5
+        tw.hud.rect(sx, swatch_y, sx + swatch, swatch_y + swatch, colour, 3)
+        tw.hud.glow_rect(sx, swatch_y, sx + swatch, swatch_y + swatch, colour, 3, 0.55 * fade)
 
         -- Both numbers roll to their new value rather than snapping to it. The rolled figure is for
         -- display only - every decision below (is there a total at all, is the colour finished) is
@@ -1579,15 +1584,62 @@ return function(L)
             centered(cx, cell_w, taken_y + 3, total == nil and "--" or tostring(shown_taken), total == nil and FAINT or DIM,
                 value_size, "semibold")
         else
-            got_total = got_total + got
-            all_total = all_total + total
             centered(cx, cell_w, totals_y + 3, tostring(shown_total), DIM, value_size, "semibold")
             -- A colour finished off the road reads as that colour rather than as plain text.
             centered(cx, cell_w, taken_y + 3, tostring(shown_taken), got >= total and colour or TEXT, value_size, "semibold")
         end
     end
+end
 
-    L.tx, L.table_w, L.got_total, L.all_total = tx, table_w, got_total, all_total
+return {
+    height = height,
+    draw = draw,
+}
+end
+
+__twl_modules["draw.stats_panel"] = function(require, ...)
+-- The stats panel, top-left: the colour table, and under it the minimap. One panel rather than two widgets
+-- because both are about the track as a whole - what it carries and where you are on it - and the
+-- corner is where the game kept its own minimap.
+
+local roll = require("roll")
+local colour_table = require("draw.colour_table")
+
+-- The widest the table gets: purple, blue, green, yellow, red and white. The panel is always this wide,
+-- whatever the mode, so it does not change size between a Casual run and a Mono one.
+local MAX_COLUMNS = 6
+
+return function(L)
+    local fade, base, margin = L.fade, L.base, L.margin
+
+    local pad = math.max(8, base * 0.6)
+    local inner_w = L.cell_w * MAX_COLUMNS
+    local table_h = colour_table.height(L)
+
+    local w = inner_w + pad * 2
+    local h = table_h + pad * 2
+    local x0 = L.sx0 + margin
+
+    -- Measured from the top of the VIEWPORT, as the score strip is, not from the safe area: the safe area's
+    -- top band is as tall as the whole notification column, and honouring it would park the panel a good
+    -- way down the screen for the sake of a feed that is empty most of the time.
+    --
+    -- When the feed does have something in it and its box crosses the panel's, the panel moves down under
+    -- it - rolled, so a toast arriving slides the panel rather than throwing it, and the panel comes back
+    -- the same way when the toast goes.
+    local top = margin
+    local nx0, ny0, nx1, ny1 = tw.hud.widget("notefeed")
+    if nx0 ~= nil and ny1 > ny0 and nx0 < x0 + w and nx1 > x0 and ny0 < top + h then
+        top = ny1 + 8
+    end
+    local y0 = roll("stats_panel_y", top, 0.3)
+
+    -- The same backdrop as the score strip, and for the same reason: white numbers on a bright sky are
+    -- not numbers. A panel rather than a band with falloff, because this sits in a corner and has edges.
+    local back = tw.fade(tw.alpha(tw.theme("surface"), 0.72), fade)
+    tw.hud.rect(x0, y0, x0 + w, y0 + h, back, 6)
+
+    colour_table.draw(L, x0 + pad, y0 + pad, inner_w)
 end
 end
 
@@ -1691,22 +1743,24 @@ return function(L)
     local fade, TEXT, DIM, FAINT, WARN, TRACK, MEDAL_STOPS = L.fade, L.TEXT, L.DIM, L.FAINT, L.WARN, L.TRACK, L.MEDAL_STOPS
     local base, label_size, rating_size = L.base, L.label_size, L.rating_size
     local rail_h, medal_dot, medal_gap, medal_h = L.rail_h, L.medal_dot, L.medal_gap, L.medal_h
-    local sx1, margin, bottom = L.sx1, L.margin, L.bottom
+    local sx1, margin, band_y0, band_y1 = L.sx1, L.margin, L.band_y0, L.band_y1
     local gold, mult, grid_empty, now_points, alt_points = L.gold, L.mult, L.grid_empty, L.now_points, L.alt_points
 
     local right_w = math.max(190, base * 14)
     local right_h = rating_size + 8 + medal_h
     local rx1 = sx1 - margin
+    -- Centred in the bottom band the chain block and the song badge share (main.lua), so the three read
+    -- as one row rather than as three blocks each sitting on the bottom edge at its own height.
+    local ry = (band_y0 + band_y1 - right_h) * 0.5
 
     -- Pins float mid-height on one side and are the one piece of overlay chrome the safe area
     -- cannot express, so they are asked about separately.
     local px0, py0, px1, py1 = tw.hud.widget("pins")
-    if px0 and px0 < rx1 and px1 > rx1 - right_w and py1 > bottom - right_h and py0 < bottom then
+    if px0 and px0 < rx1 and px1 > rx1 - right_w and py1 > ry and py0 < ry + right_h then
         rx1 = px0 - 12
     end
 
     local rx = rx1 - right_w
-    local ry = bottom - right_h
 
     local function rating(p)
         if gold == nil or gold <= 0 then
@@ -2134,17 +2188,32 @@ local function feat_colour(feat)
     return FEAT_COLOUR[feat]
 end
 
-return function(L)
+-- The rows' sizes and spacing, here because the bottom band is cut to them (band_height below).
+local TIMER_SCALE = 0.62
+local ROW_GAP = 4
+local FEATS_GAP = 8
+
+-- How tall the block is at its fullest - multiplier, timer, feats - from the font sizes alone. main.lua
+-- makes this the height of the band the song badge and the rating share with it, and it has to be the
+-- fullest height rather than this frame's: the timer row comes and goes with the chain, and a band that
+-- followed it would move the badge and the rating every time.
+local function band_height(L)
+    local _, chain_h = tw.hud.measure("x0.0", L.chain_size, "semibold")
+    local _, timer_h = tw.hud.measure("0.00", L.chain_size * TIMER_SCALE, "semibold")
+    return chain_h + ROW_GAP + timer_h + FEATS_GAP + L.label_size
+end
+
+local function draw(L)
     local fade, TEXT = L.fade, L.TEXT
-    local base, screen_w, label_size, chain_size, bottom = L.base, L.screen_w, L.label_size, L.chain_size, L.bottom
-    local tx, table_w, rx = L.tx, L.table_w, L.rx
+    local base, screen_w, label_size, chain_size = L.base, L.screen_w, L.label_size, L.chain_size
+    local band_y0, band_y1, left_r, rx = L.band_y0, L.band_y1, L.left_r, L.rx
     local feats, grid_empty = L.feats, L.grid_empty
 
     -- ---- the chain, its drop timer and the feats, bottom-centre ------------------------------
     --
     -- Three rows on one centre, so they read as a column rather than as three things that happen to
     -- be near each other: the multiplier, the countdown to the pass that will judge it, and the
-    -- feats. They share a centre and one rule - stay out of the colour table and the rating block -
+    -- feats. They share a centre and one rule - stay out of the song badge and the rating block -
     -- and nothing else. Their widths are independent on purpose.
     --
     -- The chain rails used to be sized from the feat row, which was a mistake worth recording: a
@@ -2169,13 +2238,13 @@ return function(L)
 
     -- Centred on the VIEWPORT, and kept clear of the two side blocks. Those are two different
     -- things and it used to do only the second: centring on the middle of the leftover strip put
-    -- the block off-centre by half the difference between the table's width and the rating block's,
+    -- the block off-centre by half the difference between the left block's width and the rating block's,
     -- which is visible, because the eye reads "centred" against the screen and not against whatever
     -- space happened to be left over.
     --
     -- The room it gets is the NEARER of the two sides, mirrored - taking each side's own distance
     -- would let the block grow lopsided about the centre it is supposed to be on.
-    local free_l = tx + table_w + 24
+    local free_l = left_r + 24
     local free_r = rx - 24
     local block_cx = screen_w * 0.5
     local avail = 2 * math.min(block_cx - free_l, free_r - block_cx)
@@ -2192,7 +2261,7 @@ return function(L)
         timer_text, timer_frac = drop_timer()
     end
 
-    local timer_size = chain_size * 0.62
+    local timer_size = chain_size * TIMER_SCALE
     local rail_gap = base * 0.7
     local chain_w, chain_h = 0, 0
     local timer_w, timer_h = 0, 0
@@ -2221,7 +2290,7 @@ return function(L)
     -- Negative when the viewport centre has been squeezed past one of the side blocks, which is a
     -- window too narrow for a centre column at all.
     if avail > 0 then
-        local feats_y = bottom - label_size
+        local feats_y = band_y1 - label_size
         -- Centred in the strip and nothing more. Unlike the rails the feats have no length to give
         -- back - the row is as wide as its own words - so the only lever is where it starts, and
         -- pinning that to the left edge would not save the row, it would just decide that the
@@ -2274,9 +2343,10 @@ return function(L)
                 tw.hud.glow_rect(inner_r, y0, inner_r + width, y1, c, radius, weight)
             end
 
-            local rows_h = chain_h + (timer_text ~= nil and timer_h + 4 or 0)
-            local chain_y = feats_y - rows_h - 8
-            local timer_y = chain_y + chain_h + 4
+            -- From the top of the band down, so the multiplier stays put whether or not the timer row
+            -- is there under it.
+            local chain_y = band_y0
+            local timer_y = chain_y + chain_h + ROW_GAP
 
             rails(chain_y + chain_h * 0.5, rail_w, rail_h, strength)
             -- The number stays white at every chain length: the rails carry the colour, and two
@@ -2303,6 +2373,11 @@ return function(L)
         end
     end
 end
+
+return {
+    draw = draw,
+    band_height = band_height,
+}
 end
 
 __twl_modules["main"] = function(require, ...)
@@ -2327,10 +2402,10 @@ require("tally")
 local feed = require("feed")
 local scoring = require("scoring")
 
-local draw_colour_table = require("draw.colour_table")
+local draw_stats_panel = require("draw.stats_panel")
 local draw_rating = require("draw.rating")
 local draw_score_strip = require("draw.score_strip")
-local draw_chain_block = require("draw.chain_block")
+local chain_block = require("draw.chain_block")
 
 local colours = require("colours")
 local BRONZE, SILVER, GOLD = colours.BRONZE, colours.SILVER, colours.GOLD
@@ -2455,8 +2530,8 @@ tw.on_frame(function()
     local medal_gap = math.max(3, base * 0.22)
     local medal_h = rail_h + medal_gap + medal_dot
 
-    -- The top of the safe area is deliberately not taken: the one widget that lives up there is
-    -- measured from the viewport instead, and everything else here hangs off the bottom.
+    -- The top of the safe area is deliberately not taken: the two widgets that live up there are
+    -- measured from the viewport instead (DESIGN.md §9), and everything else hangs off the bottom.
     local sx0, _, sx1, sy1 = tw.hud.safe()
     local margin = 16
     local bottom = sy1 - margin
@@ -2470,8 +2545,17 @@ tw.on_frame(function()
     L.rail_h, L.medal_dot, L.medal_gap, L.medal_h = rail_h, medal_dot, medal_gap, medal_h
     L.sx0, L.sx1, L.sy1, L.margin, L.bottom = sx0, sx1, sy1, margin, bottom
 
-    -- ---- the colour table, bottom-left (draw/colour_table.lua) ------------------------------
-    draw_colour_table(L)
+    -- The bottom band: one strip that the song badge, the chain block and the rating all sit in, so
+    -- the three read as a row. As tall as the chain block at its fullest (draw/chain_block.lua says why).
+    L.band_y1 = bottom
+    L.band_y0 = bottom - chain_block.band_height(L)
+
+    -- What is to the left of the chain block in the band - its right edge. Nothing yet: the colour
+    -- table that used to be there is in the stats panel now.
+    L.left_r = sx0 + margin
+
+    -- ---- the colour table and the minimap, top-left (draw/stats_panel.lua) -----------------
+    draw_stats_panel(L)
 
     -- ---- what the run is currently worth ----------------------------------------------------
     --
@@ -2515,7 +2599,7 @@ tw.on_frame(function()
     draw_score_strip(L)
 
     -- ---- the chain, its drop timer and the feats, bottom-centre (draw/chain_block.lua) -------
-    draw_chain_block(L)
+    chain_block.draw(L)
 
     -- The footer below was switched off before the script was split into modules; kept as it was.
     -- Its names now live in L (league_name aside, which is `select(2, league())`) and in tally.

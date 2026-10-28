@@ -37,17 +37,32 @@ local function feat_colour(feat)
     return FEAT_COLOUR[feat]
 end
 
-return function(L)
+-- The rows' sizes and spacing, here because the bottom band is cut to them (band_height below).
+local TIMER_SCALE = 0.62
+local ROW_GAP = 4
+local FEATS_GAP = 8
+
+-- How tall the block is at its fullest - multiplier, timer, feats - from the font sizes alone. main.lua
+-- makes this the height of the band the song badge and the rating share with it, and it has to be the
+-- fullest height rather than this frame's: the timer row comes and goes with the chain, and a band that
+-- followed it would move the badge and the rating every time.
+local function band_height(L)
+    local _, chain_h = tw.hud.measure("x0.0", L.chain_size, "semibold")
+    local _, timer_h = tw.hud.measure("0.00", L.chain_size * TIMER_SCALE, "semibold")
+    return chain_h + ROW_GAP + timer_h + FEATS_GAP + L.label_size
+end
+
+local function draw(L)
     local fade, TEXT = L.fade, L.TEXT
-    local base, screen_w, label_size, chain_size, bottom = L.base, L.screen_w, L.label_size, L.chain_size, L.bottom
-    local tx, table_w, rx = L.tx, L.table_w, L.rx
+    local base, screen_w, label_size, chain_size = L.base, L.screen_w, L.label_size, L.chain_size
+    local band_y0, band_y1, left_r, rx = L.band_y0, L.band_y1, L.left_r, L.rx
     local feats, grid_empty = L.feats, L.grid_empty
 
     -- ---- the chain, its drop timer and the feats, bottom-centre ------------------------------
     --
     -- Three rows on one centre, so they read as a column rather than as three things that happen to
     -- be near each other: the multiplier, the countdown to the pass that will judge it, and the
-    -- feats. They share a centre and one rule - stay out of the colour table and the rating block -
+    -- feats. They share a centre and one rule - stay out of the song badge and the rating block -
     -- and nothing else. Their widths are independent on purpose.
     --
     -- The chain rails used to be sized from the feat row, which was a mistake worth recording: a
@@ -72,13 +87,13 @@ return function(L)
 
     -- Centred on the VIEWPORT, and kept clear of the two side blocks. Those are two different
     -- things and it used to do only the second: centring on the middle of the leftover strip put
-    -- the block off-centre by half the difference between the table's width and the rating block's,
+    -- the block off-centre by half the difference between the left block's width and the rating block's,
     -- which is visible, because the eye reads "centred" against the screen and not against whatever
     -- space happened to be left over.
     --
     -- The room it gets is the NEARER of the two sides, mirrored - taking each side's own distance
     -- would let the block grow lopsided about the centre it is supposed to be on.
-    local free_l = tx + table_w + 24
+    local free_l = left_r + 24
     local free_r = rx - 24
     local block_cx = screen_w * 0.5
     local avail = 2 * math.min(block_cx - free_l, free_r - block_cx)
@@ -95,7 +110,7 @@ return function(L)
         timer_text, timer_frac = drop_timer()
     end
 
-    local timer_size = chain_size * 0.62
+    local timer_size = chain_size * TIMER_SCALE
     local rail_gap = base * 0.7
     local chain_w, chain_h = 0, 0
     local timer_w, timer_h = 0, 0
@@ -124,7 +139,7 @@ return function(L)
     -- Negative when the viewport centre has been squeezed past one of the side blocks, which is a
     -- window too narrow for a centre column at all.
     if avail > 0 then
-        local feats_y = bottom - label_size
+        local feats_y = band_y1 - label_size
         -- Centred in the strip and nothing more. Unlike the rails the feats have no length to give
         -- back - the row is as wide as its own words - so the only lever is where it starts, and
         -- pinning that to the left edge would not save the row, it would just decide that the
@@ -177,9 +192,10 @@ return function(L)
                 tw.hud.glow_rect(inner_r, y0, inner_r + width, y1, c, radius, weight)
             end
 
-            local rows_h = chain_h + (timer_text ~= nil and timer_h + 4 or 0)
-            local chain_y = feats_y - rows_h - 8
-            local timer_y = chain_y + chain_h + 4
+            -- From the top of the band down, so the multiplier stays put whether or not the timer row
+            -- is there under it.
+            local chain_y = band_y0
+            local timer_y = chain_y + chain_h + ROW_GAP
 
             rails(chain_y + chain_h * 0.5, rail_w, rail_h, strength)
             -- The number stays white at every chain length: the rails carry the colour, and two
@@ -206,3 +222,8 @@ return function(L)
         end
     end
 end
+
+return {
+    draw = draw,
+    band_height = band_height,
+}

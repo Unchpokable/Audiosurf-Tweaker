@@ -19,10 +19,10 @@ require("tally")
 local feed = require("feed")
 local scoring = require("scoring")
 
-local draw_colour_table = require("draw.colour_table")
+local draw_stats_panel = require("draw.stats_panel")
 local draw_rating = require("draw.rating")
 local draw_score_strip = require("draw.score_strip")
-local draw_chain_block = require("draw.chain_block")
+local chain_block = require("draw.chain_block")
 
 local colours = require("colours")
 local BRONZE, SILVER, GOLD = colours.BRONZE, colours.SILVER, colours.GOLD
@@ -147,8 +147,8 @@ tw.on_frame(function()
     local medal_gap = math.max(3, base * 0.22)
     local medal_h = rail_h + medal_gap + medal_dot
 
-    -- The top of the safe area is deliberately not taken: the one widget that lives up there is
-    -- measured from the viewport instead, and everything else here hangs off the bottom.
+    -- The top of the safe area is deliberately not taken: the two widgets that live up there are
+    -- measured from the viewport instead (DESIGN.md §9), and everything else hangs off the bottom.
     local sx0, _, sx1, sy1 = tw.hud.safe()
     local margin = 16
     local bottom = sy1 - margin
@@ -162,8 +162,17 @@ tw.on_frame(function()
     L.rail_h, L.medal_dot, L.medal_gap, L.medal_h = rail_h, medal_dot, medal_gap, medal_h
     L.sx0, L.sx1, L.sy1, L.margin, L.bottom = sx0, sx1, sy1, margin, bottom
 
-    -- ---- the colour table, bottom-left (draw/colour_table.lua) ------------------------------
-    draw_colour_table(L)
+    -- The bottom band: one strip that the song badge, the chain block and the rating all sit in, so
+    -- the three read as a row. As tall as the chain block at its fullest (draw/chain_block.lua says why).
+    L.band_y1 = bottom
+    L.band_y0 = bottom - chain_block.band_height(L)
+
+    -- What is to the left of the chain block in the band - its right edge. Nothing yet: the colour
+    -- table that used to be there is in the stats panel now.
+    L.left_r = sx0 + margin
+
+    -- ---- the colour table and the minimap, top-left (draw/stats_panel.lua) -----------------
+    draw_stats_panel(L)
 
     -- ---- what the run is currently worth ----------------------------------------------------
     --
@@ -207,7 +216,7 @@ tw.on_frame(function()
     draw_score_strip(L)
 
     -- ---- the chain, its drop timer and the feats, bottom-centre (draw/chain_block.lua) -------
-    draw_chain_block(L)
+    chain_block.draw(L)
 
     -- The footer below was switched off before the script was split into modules; kept as it was.
     -- Its names now live in L (league_name aside, which is `select(2, league())`) and in tally.

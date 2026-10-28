@@ -10,22 +10,24 @@ return function(L)
     local fade, TEXT, DIM, FAINT, WARN, TRACK, MEDAL_STOPS = L.fade, L.TEXT, L.DIM, L.FAINT, L.WARN, L.TRACK, L.MEDAL_STOPS
     local base, label_size, rating_size = L.base, L.label_size, L.rating_size
     local rail_h, medal_dot, medal_gap, medal_h = L.rail_h, L.medal_dot, L.medal_gap, L.medal_h
-    local sx1, margin, bottom = L.sx1, L.margin, L.bottom
+    local sx1, margin, band_y0, band_y1 = L.sx1, L.margin, L.band_y0, L.band_y1
     local gold, mult, grid_empty, now_points, alt_points = L.gold, L.mult, L.grid_empty, L.now_points, L.alt_points
 
     local right_w = math.max(190, base * 14)
     local right_h = rating_size + 8 + medal_h
     local rx1 = sx1 - margin
+    -- Centred in the bottom band the chain block and the song badge share (main.lua), so the three read
+    -- as one row rather than as three blocks each sitting on the bottom edge at its own height.
+    local ry = (band_y0 + band_y1 - right_h) * 0.5
 
     -- Pins float mid-height on one side and are the one piece of overlay chrome the safe area
     -- cannot express, so they are asked about separately.
     local px0, py0, px1, py1 = tw.hud.widget("pins")
-    if px0 and px0 < rx1 and px1 > rx1 - right_w and py1 > bottom - right_h and py0 < bottom then
+    if px0 and px0 < rx1 and px1 > rx1 - right_w and py1 > ry and py0 < ry + right_h then
         rx1 = px0 - 12
     end
 
     local rx = rx1 - right_w
-    local ry = bottom - right_h
 
     local function rating(p)
         if gold == nil or gold <= 0 then
