@@ -121,6 +121,12 @@ local ring_time = tw.array("Highway", "Rings: SongTime", "RingIndex")
 local player_ring = tw.float_ch("Player", "OffsetCurrentRing")
 local player_ring_frac = tw.float_ch("Player", "OffsetCurrentRingInterpolation")
 
+-- What is playing (DESIGN.md §12): the two text channels the game's own song title draws, through
+-- StartGroup::Texter_Unicode. Wide in the game for anything that came off a CD or a tagged file; the
+-- handle hands them over as UTF-8.
+local song_title = tw.string_ch("StartGroup", "CurrentSongTitle")
+local song_artist = tw.string_ch("StartGroup", "CurrentSongArtist")
+
 return {
     startup_state = startup_state,
     gameplay_state = gameplay_state,
@@ -167,4 +173,6 @@ return {
     ring_time = ring_time,
     player_ring = player_ring,
     player_ring_frac = player_ring_frac,
+    song_title = song_title,
+    song_artist = song_artist,
 }

@@ -3,18 +3,18 @@
 -- @version     1.7.0
 -- @description HUD Replacer for real puzzle players. Real-time all-color statistics tracker, chain multiplier and chain drop timer read straight out of the game, live skill rating calculation and projected final score against your personal best. Get GUD, Get PuzzlePRO HUD
 -- @api         4
--- @bundle      twllink 1.1, 21 modules
+-- @bundle      twllink 1.1, 24 modules
 
 local __twl_modules, __twl_cache, __twl_loading = {}, {}, {}
 
---[[ docs/DESIGN.md
+--[=[ docs/DESIGN.md
 # PuzzlePRO HUD - design notes
 
 A run tracker that replaces several pieces of the game's own HUD rather than sitting next to
 them. Everything it draws is measured, themed and positioned against the viewport; nothing is
 hardcoded except padding.
 
-The interesting parts are documented where they happen. Eleven things are worth reading first,
+The interesting parts are documented where they happen. Thirteen things are worth reading first,
 because they are the reasons this is not the obvious script.
 
 ## 1. WHAT IT MEASURES - by track ROW, not by collection EVENT
@@ -426,7 +426,52 @@ Two lines split at the player, the stretch already ridden at a third of its stre
 progress bar back: XX_gui::Timer2 (#3970) has been muted since the chain bar was (§3), and until the map
 nothing showed how far through the song the player was. The split point is computed, not snapped to the
 nearest sample, so the bright part starts under the dot.
-]]
+
+## 12. THE SONG BADGE SHOWS THE NAME, NOT THE STRING
+
+The game's title is StartGroup::CurrentSongTitle and ::CurrentSongArtist, drawn through
+StartGroup::Texter_Unicode by Do_ShowSongName (#2955, muted, §3). The handle hands them over as UTF-8:
+the channel says whether it holds a wide string, and a title that came off a CD or out of a tagged file
+does. Whether every character of it then has a glyph is the overlay's font's business - Latin, Cyrillic
+and Greek do, CJK does not yet.
+
+The string is not the name, in two ways:
+
+  * **Tags are part of the title.** Authors put rules in a file's title - "[as-monoonly]" makes the game
+    play it as Mono - and the game appends its own when it loads the song: XX_StartHere #6835...
+    `CurrentSongTitle := Unicode_Merge(CurrentSongTitle, " [as-steep]")`, the same for [as-portal]. A
+    real title arrived as "Drive my Life [as-steep] [as-prows1] [as-monoonly] [as-allgrey]". They are cut
+    (`%s*%[as%-[^%]]*%]`): they are rules rather than the name, and what they do to the run is on screen
+    already - the colour table's columns, the feats.
+  * **"Unknown Artist" is not an artist.** It is what VisMusic writes (#252) when a file has no tag. The
+    badge drops the artist line rather than print the absence of one.
+
+Both strings are read on the run-start events and twice a second while the HUD is up - they change once
+a song, and every read makes a new Lua string.
+
+The badge is as wide as its text, up to the point where the chain block would reach with the chain at its
+maximum (chain_block.max_half_width). The other way round - letting the title push the chain - would
+shorten the one bar on screen the player reads by its length, by an amount that depends on the song. A
+title that does not fit scrolls: it rests at its start, slides along to show the rest and comes round to
+the start without a jump, a second copy following the first. It is drawn glyph by glyph with each glyph
+faded towards the edges, because a soft edge needs a per-glyph alpha in any case and a clip rectangle
+would only give a hard one; the glyphs and their offsets are measured once per title, so a scrolling
+frame allocates nothing. The ellipsis is the other choice, for whoever finds movement at the edge of the
+screen distracting.
+
+## 13. THE BOTTOM IS ONE BAND
+
+The song badge, the chain block and the rating sit in one strip across the bottom, and its height is the
+chain block's at its fullest - the multiplier, the drop timer and the feats - computed from the font sizes
+rather than from what the chain block shows this frame. That distinction is the whole point: the timer row
+comes and goes with the chain, and a band that followed it would move the badge and the rating every time
+a chain started or dropped. The badge fills the band; the rating is centred in it; the chain block hangs
+from its top.
+
+The chain block is centred on the viewport and its room is the nearer of the two sides mirrored (§4,
+draw/chain_block.lua). The badge's right edge is the left side now; before the badge it was the colour
+table, which has moved up into the stats panel with the minimap.
+]=]
 
 local function require(name)
     local hit = __twl_cache[name]
@@ -691,6 +736,12 @@ local ring_time = tw.array("Highway", "Rings: SongTime", "RingIndex")
 local player_ring = tw.float_ch("Player", "OffsetCurrentRing")
 local player_ring_frac = tw.float_ch("Player", "OffsetCurrentRingInterpolation")
 
+-- What is playing (DESIGN.md §12): the two text channels the game's own song title draws, through
+-- StartGroup::Texter_Unicode. Wide in the game for anything that came off a CD or a tagged file; the
+-- handle hands them over as UTF-8.
+local song_title = tw.string_ch("StartGroup", "CurrentSongTitle")
+local song_artist = tw.string_ch("StartGroup", "CurrentSongArtist")
+
 return {
     startup_state = startup_state,
     gameplay_state = gameplay_state,
@@ -737,6 +788,8 @@ return {
     ring_time = ring_time,
     player_ring = player_ring,
     player_ring_frac = player_ring_frac,
+    song_title = song_title,
+    song_artist = song_artist,
 }
 end
 
@@ -1349,6 +1402,66 @@ track.sample = sample
 track.time_left = time_left
 
 return track
+end
+
+__twl_modules["song"] = function(require, ...)
+-- ---------------------------------------------------------------------------------------------
+-- What is playing (DESIGN.md §12)
+-- ---------------------------------------------------------------------------------------------
+--
+-- The title and artist the song badge shows, cleaned of what the game and the player's files put in
+-- them that is not part of the name. Read when a run starts and, while the HUD is up, twice a second
+-- (main.lua): the strings change once per song, and a read converts a wide string to a new Lua string
+-- every time.
+
+local ch = require("channels")
+
+local song_title, song_artist = ch.song_title, ch.song_artist
+
+-- `revision` moves whenever either string changes, so whatever is measured from them is measured again.
+local song = { title = nil, artist = nil, revision = 0 }
+
+-- Tags are part of CurrentSongTitle, not a field of their own. Some come from the file - authors put
+-- "[as-monoonly]" in a title to make the game play it as Mono - and some the game appends itself when it
+-- loads the song: XX_StartHere #6835... writes `CurrentSongTitle := Unicode_Merge(CurrentSongTitle,
+-- " [as-steep]")`, and the same for [as-portal]. A real title arrives as
+-- "Drive my Life [as-steep] [as-prows1] [as-monoonly] [as-allgrey]". They are rules, not the name, and
+-- what they do to the run is on screen already - the colour table, the feats.
+local function clean_title(text)
+    text = text:gsub("%s*%[as%-[^%]]*%]", "")
+    return (text:gsub("^%s+", ""):gsub("%s+$", ""))
+end
+
+-- What VisMusic writes when a file has no artist tag (#252) - not a name, and printing it would be
+-- printing the absence of one.
+local NO_ARTIST = { ["Unknown Artist"] = true }
+
+local function refresh()
+    local title = song_title:get()
+    if title == nil then
+        return
+    end
+    title = clean_title(title)
+    local artist = song_artist:get() or ""
+    artist = (artist:gsub("^%s+", ""):gsub("%s+$", ""))
+    if NO_ARTIST[artist] then
+        artist = ""
+    end
+
+    if title ~= song.title or artist ~= song.artist then
+        song.title, song.artist = title, artist
+        song.revision = song.revision + 1
+    end
+end
+
+-- A new song is loaded by the time the run-start events fire, so the badge has the right name from the
+-- first frame of the run rather than from the next periodic read.
+tw.on_call("StatCollector", "Do_ResetStats", "after", refresh)
+tw.on_call("StatCollector", "Do_ResetSimpleStats", "after", refresh)
+
+song.refresh = refresh
+
+return song
 end
 
 __twl_modules["feed"] = function(require, ...)
@@ -2857,6 +2970,10 @@ end
 local TIMER_SCALE = 0.62
 local ROW_GAP = 4
 local FEATS_GAP = 8
+-- Between the number and the rails either side of it, in base text heights.
+local RAIL_GAP = 0.7
+-- A rail is a sixteenth of the viewport per point of bonus (see draw below).
+local RAIL_PER_BONUS = 1 / 16
 
 -- How tall the block is at its fullest - multiplier, timer, feats - from the font sizes alone. main.lua
 -- makes this the height of the band the song badge and the rating share with it, and it has to be the
@@ -2866,6 +2983,15 @@ local function band_height(L)
     local _, chain_h = tw.hud.measure("x0.0", L.chain_size, "semibold")
     local _, timer_h = tw.hud.measure("0.00", L.chain_size * TIMER_SCALE, "semibold")
     return chain_h + ROW_GAP + timer_h + FEATS_GAP + L.label_size
+end
+
+-- Half the width the block takes with the chain at its maximum: the widest number, the gap either side
+-- of it and a full rail. What sits beside the block in the band (the song badge) stops this far from the
+-- viewport's centre, so a long song title never shortens the bar the player reads by its length.
+local function max_half_width(L)
+    local chain_w = tw.hud.measure(string.format("x%.1f", 1 + CHAIN_MAX), L.chain_size, "semibold")
+    local timer_w = tw.hud.measure("0.00", L.chain_size * TIMER_SCALE, "semibold")
+    return math.max(chain_w, timer_w) * 0.5 + L.base * RAIL_GAP + L.screen_w * RAIL_PER_BONUS * CHAIN_MAX
 end
 
 local function draw(L)
@@ -2927,7 +3053,7 @@ local function draw(L)
     end
 
     local timer_size = chain_size * TIMER_SCALE
-    local rail_gap = base * 0.7
+    local rail_gap = base * RAIL_GAP
     local chain_w, chain_h = 0, 0
     local timer_w, timer_h = 0, 0
     if chain_text ~= nil then
@@ -2948,7 +3074,7 @@ local function draw(L)
     --
     -- Only the clamp knows about anything else on screen: whatever is left of the free strip once
     -- the number in the middle has had its space, halved between the two rails.
-    local rail_base = screen_w / 16
+    local rail_base = screen_w * RAIL_PER_BONUS
     local rail_room = (avail - gap_w - rail_gap * 2) * 0.5
     local rail_w = math.min(rail_base * (gain or 0), rail_room)
 
@@ -3042,6 +3168,238 @@ end
 return {
     draw = draw,
     band_height = band_height,
+    max_half_width = max_half_width,
+}
+end
+
+__twl_modules["draw.fitted_text"] = function(require, ...)
+-- One line of text in a box narrower than it may be (DESIGN.md §12): drawn as it is when it fits, and when
+-- it does not, either cut with an ellipsis or scrolled - it rests at its start, slides along to show the
+-- rest, and comes round to the start again without a jump, because a second copy follows the first.
+--
+-- The scrolling is done glyph by glyph rather than with a clip rectangle, and that is not a workaround:
+-- the edges are soft - a glyph fades out as it nears the edge of the box - and a clip gives a hard edge
+-- that cuts letters in half. Fading needs each glyph drawn on its own anyway. The text is split and
+-- measured once, when it or its size changes: the glyph strings and their offsets are kept, so a frame
+-- of scrolling allocates nothing.
+--
+-- Offsets come from measuring prefixes of the text, not from adding up single glyphs, so they are
+-- where the text engine would put each glyph in the whole string.
+
+local fitted = {}
+
+-- How fast the text scrolls, in its own heights per second, and the space between the end of the text
+-- and the copy that follows it, in the same unit.
+local SPEED = 2.5
+local GAP = 3
+-- How far from the edge of the box a glyph starts to fade, in text heights.
+local FADE = 1.0
+
+local ELLIPSIS = "\226\128\166" -- U+2026, which the overlay's faces carry
+
+-- A line's state. One per line the caller draws, kept across frames.
+function fitted.new()
+    return { text = nil, size = nil, font = nil, glyphs = {}, at = {}, width = 0, height = 0, clock = 0, cut = nil, cut_for = nil }
+end
+
+local function prepare(line, text, size, font)
+    if line.text == text and line.size == size and line.font == font then
+        return
+    end
+    line.text, line.size, line.font = text, size, font
+    line.clock = 0
+    line.cut, line.cut_for = nil, nil
+
+    local glyphs, at = {}, {}
+    -- A UTF-8 sequence: one lead byte (ASCII, or 0xC2-0xF4) and its continuation bytes. LuaJIT has no
+    -- utf8 library, and this is all of it that is needed.
+    for g in text:gmatch("[%z\1-\127\194-\244][\128-\191]*") do
+        glyphs[#glyphs + 1] = g
+    end
+    local prefix = ""
+    for i, g in ipairs(glyphs) do
+        at[i] = tw.hud.measure(prefix, size, font)
+        prefix = prefix .. g
+    end
+    line.glyphs, line.at = glyphs, at
+    line.width, line.height = tw.hud.measure(text, size, font)
+    -- The end of the last glyph is the whole width.
+    at[#glyphs + 1] = line.width
+end
+
+-- The longest start of the text that fits in `max_w` with an ellipsis after it.
+local function cut(line, max_w)
+    if line.cut_for == max_w then
+        return line.cut
+    end
+    local room = max_w - tw.hud.measure(ELLIPSIS, line.size, line.font)
+    local n = 0
+    while n < #line.glyphs and line.at[n + 2] <= room do
+        n = n + 1
+    end
+    line.cut = table.concat(line.glyphs, "", 1, n):gsub("%s+$", "") .. ELLIPSIS
+    line.cut_for = max_w
+    return line.cut
+end
+
+-- The width the line takes, which is never more than `max_w`. Measuring is drawing's first step, so a
+-- caller sizing a box around the line calls measure() first and draw() after.
+function fitted.measure(line, text, size, font, max_w)
+    prepare(line, text, size, font)
+    return math.min(line.width, max_w), line.height
+end
+
+-- `mode` is "scroll" or "ellipsis"; `pause` the seconds a scrolling line rests at its start.
+function fitted.draw(line, x, y, max_w, colour, mode, pause)
+    if line.width <= max_w then
+        tw.hud.text(x, y, line.text, colour, line.size, line.font)
+        return
+    end
+
+    if mode == "ellipsis" then
+        tw.hud.text(x, y, cut(line, max_w), colour, line.size, line.font)
+        return
+    end
+
+    local size = line.size
+    local gap = size * GAP
+    local loop = line.width + gap
+    local speed = size * SPEED
+    line.clock = line.clock + tw.dt()
+    local offset = math.max(0, line.clock - pause) * speed
+    if offset >= loop then
+        line.clock, offset = 0, 0
+    end
+
+    -- The right edge fades by a glyph's far side, so nothing is ever drawn past it. The left edge fades
+    -- by a glyph's centre - a glyph on its way out may hang half over the edge, invisible by then - and
+    -- only comes in as the text starts to move: at rest the line starts where a line starts, and a first
+    -- letter faded into the box would look like a rendering fault, while switching the fade on at once
+    -- would make that letter vanish on the first frame of scrolling.
+    local fade = size * FADE
+    local left_in = math.min(1, offset / fade)
+    local x1 = x + max_w
+    local glyphs, at = line.glyphs, line.at
+    for copy = 0, 1 do
+        local base = x + copy * loop - offset
+        for i = 1, #glyphs do
+            local gx0 = base + at[i]
+            local gx1 = base + at[i + 1]
+            if gx1 > x and gx0 < x1 then
+                local right = math.min(1, (x1 - gx1) / fade)
+                local left = math.min(math.max(((gx0 + gx1) * 0.5 - x) / fade, 0), 1)
+                local a = math.min(right, 1 - left_in * (1 - left))
+                if a > 0.01 then
+                    tw.hud.text(gx0, y, glyphs[i], tw.fade(colour, a), size, line.font)
+                end
+            end
+        end
+    end
+end
+
+return fitted
+end
+
+__twl_modules["draw.song_badge"] = function(require, ...)
+-- The song badge, bottom-left in the band it shares with the chain and the rating (DESIGN.md §12): the
+-- Tweaker's logo in a ring, the title over a hairline, the artist under it. It replaces the game's own
+-- song title (muted, DESIGN.md §3).
+
+local song = require("song")
+local fitted = require("draw.fitted_text")
+local chain_block = require("draw.chain_block")
+
+-- One state per line, kept across frames: the glyphs a scrolling title is drawn from, and its clock.
+local title_line = fitted.new()
+local artist_line = fitted.new()
+
+-- What a title too long for its room does - "scroll" or "ellipsis" - and how many seconds a scrolling
+-- one rests at its start. The settings tab writes these.
+local settings = { overflow = "scroll", pause = 6 }
+
+local function draw(L)
+    L.left_r = L.sx0 + L.margin
+
+    local title = song.title
+    if title == nil or title == "" then
+        return
+    end
+
+    local fade, base, margin = L.fade, L.base, L.margin
+    local TEXT, DIM, FAINT = L.TEXT, L.DIM, L.FAINT
+    local band_y0, band_y1 = L.band_y0, L.band_y1
+    local band_h = band_y1 - band_y0
+
+    local title_size = base * 1.2
+    local artist_size = L.label_size
+    local pad = math.max(10, base * 0.7)
+    local rule_gap = math.max(2, base * 0.2)
+
+    -- Natural sizes first: the box is sized to the text, and only cut down to the room there is.
+    local artist = song.artist
+    local has_artist = artist ~= nil and artist ~= ""
+    local _, title_h = fitted.measure(title_line, title, title_size, "semibold", math.huge)
+    local artist_w, artist_h = 0, 0
+    if has_artist then
+        artist_w, artist_h = fitted.measure(artist_line, artist, artist_size, nil, math.huge)
+    end
+    local block_h = title_h + rule_gap + 1 + (has_artist and rule_gap + artist_h or 0)
+    local logo_d = math.min(block_h, band_h - pad)
+
+    -- The box is as tall as the band - the chain block at its fullest - so the three blocks along the
+    -- bottom read as one row (DESIGN.md §13).
+    local x0 = L.sx0 + margin
+    local text_dx = pad + logo_d + pad * 0.8
+
+    -- As wide as its text, up to where the chain block would reach with the chain at its maximum: a long
+    -- title is cut or scrolled rather than allowed to shorten the bar the player reads by its length.
+    local max_r = L.screen_w * 0.5 - chain_block.max_half_width(L) - 24
+    local natural_w = math.max(title_line.width, artist_w)
+
+    -- Pins can float on the left at the bottom; the badge moves out from under them, as the rating does
+    -- on the right.
+    local px0, py0, px1, py1 = tw.hud.widget("pins")
+    if px0 and px0 < x0 + text_dx + natural_w + pad and px1 > x0 and py1 > band_y0 and py0 < band_y1 then
+        x0 = px1 + 12
+    end
+
+    local text_x = x0 + text_dx
+    local room = max_r - pad - text_x
+    -- Too narrow a window for a badge at all: better none than a ring with three letters beside it.
+    if room < base * 4 then
+        return
+    end
+    local text_w = math.min(natural_w, room)
+    local x1 = text_x + text_w + pad
+
+    local back = tw.fade(tw.alpha(tw.theme("surface"), 0.72), fade)
+    tw.hud.rect(x0, band_y0, x1, band_y1, back, 6)
+
+    -- The logo in a ring. The ring is drawn here rather than being part of the icon, so the icon stays
+    -- the plain logo every other use of it wants.
+    local cy = (band_y0 + band_y1) * 0.5
+    local cx = x0 + pad + logo_d * 0.5
+    local r = logo_d * 0.5
+    tw.hud.rect(cx - r, cy - r, cx + r, cy + r, FAINT, r, 1.5)
+    local icon = logo_d * 0.55
+    tw.hud.icon("tweaker_logo", cx - icon * 0.5, cy - icon * 0.5, icon, TEXT)
+
+    local ty = cy - block_h * 0.5
+    fitted.draw(title_line, text_x, ty, text_w, TEXT, settings.overflow, settings.pause)
+
+    local uy = ty + title_h + rule_gap
+    tw.hud.line(text_x, uy, text_x + math.min(title_line.width, text_w), uy, FAINT, 1)
+
+    if has_artist then
+        fitted.draw(artist_line, text_x, uy + 1 + rule_gap, text_w, DIM, settings.overflow, settings.pause)
+    end
+
+    L.left_r = x1
+end
+
+return {
+    draw = draw,
+    settings = settings,
 }
 end
 
@@ -3065,6 +3423,7 @@ require("mutes")
 local scan = require("scan")
 require("tally")
 local track = require("track")
+local song = require("song")
 local feed = require("feed")
 local scoring = require("scoring")
 
@@ -3072,6 +3431,7 @@ local draw_stats_panel = require("draw.stats_panel")
 local draw_rating = require("draw.rating")
 local draw_score_strip = require("draw.score_strip")
 local chain_block = require("draw.chain_block")
+local song_badge = require("draw.song_badge")
 
 local colours = require("colours")
 local BRONZE, SILVER, GOLD = colours.BRONZE, colours.SILVER, colours.GOLD
@@ -3150,6 +3510,7 @@ tw.on_frame(function()
 
     if tw.frame % 30 == 0 then
         refresh_palette()
+        song.refresh()
     end
 
     -- Eased so the widget arrives and leaves with some weight instead of ramping linearly.
@@ -3216,13 +3577,10 @@ tw.on_frame(function()
     L.sx0, L.sx1, L.sy1, L.margin, L.bottom = sx0, sx1, sy1, margin, bottom
 
     -- The bottom band: one strip that the song badge, the chain block and the rating all sit in, so
-    -- the three read as a row. As tall as the chain block at its fullest (draw/chain_block.lua says why).
+    -- the three read as a row (DESIGN.md §13). As tall as the chain block at its fullest
+    -- (draw/chain_block.lua says why).
     L.band_y1 = bottom
     L.band_y0 = bottom - chain_block.band_height(L)
-
-    -- What is to the left of the chain block in the band - its right edge. Nothing yet: the colour
-    -- table that used to be there is in the stats panel now.
-    L.left_r = sx0 + margin
 
     -- ---- the colour table and the minimap, top-left (draw/stats_panel.lua) -----------------
     draw_stats_panel(L)
@@ -3261,6 +3619,11 @@ tw.on_frame(function()
 
     L.gold, L.mult, L.feats, L.grid_empty = gold, mult, feats, grid_empty
     L.now_points, L.alt_points = now_points, alt_points
+
+    -- ---- the song, bottom-left (draw/song_badge.lua) ----------------------------------------
+    -- Before the chain block: it leaves its right edge in L.left_r, which is where the chain block's
+    -- room on the left ends.
+    song_badge.draw(L)
 
     -- ---- skill rating and the medal bar, bottom-right (draw/rating.lua) ----------------------
     draw_rating(L)

@@ -17,6 +17,7 @@ require("mutes")
 local scan = require("scan")
 require("tally")
 local track = require("track")
+local song = require("song")
 local feed = require("feed")
 local scoring = require("scoring")
 
@@ -24,6 +25,7 @@ local draw_stats_panel = require("draw.stats_panel")
 local draw_rating = require("draw.rating")
 local draw_score_strip = require("draw.score_strip")
 local chain_block = require("draw.chain_block")
+local song_badge = require("draw.song_badge")
 
 local colours = require("colours")
 local BRONZE, SILVER, GOLD = colours.BRONZE, colours.SILVER, colours.GOLD
@@ -102,6 +104,7 @@ tw.on_frame(function()
 
     if tw.frame % 30 == 0 then
         refresh_palette()
+        song.refresh()
     end
 
     -- Eased so the widget arrives and leaves with some weight instead of ramping linearly.
@@ -168,13 +171,10 @@ tw.on_frame(function()
     L.sx0, L.sx1, L.sy1, L.margin, L.bottom = sx0, sx1, sy1, margin, bottom
 
     -- The bottom band: one strip that the song badge, the chain block and the rating all sit in, so
-    -- the three read as a row. As tall as the chain block at its fullest (draw/chain_block.lua says why).
+    -- the three read as a row (DESIGN.md §13). As tall as the chain block at its fullest
+    -- (draw/chain_block.lua says why).
     L.band_y1 = bottom
     L.band_y0 = bottom - chain_block.band_height(L)
-
-    -- What is to the left of the chain block in the band - its right edge. Nothing yet: the colour
-    -- table that used to be there is in the stats panel now.
-    L.left_r = sx0 + margin
 
     -- ---- the colour table and the minimap, top-left (draw/stats_panel.lua) -----------------
     draw_stats_panel(L)
@@ -213,6 +213,11 @@ tw.on_frame(function()
 
     L.gold, L.mult, L.feats, L.grid_empty = gold, mult, feats, grid_empty
     L.now_points, L.alt_points = now_points, alt_points
+
+    -- ---- the song, bottom-left (draw/song_badge.lua) ----------------------------------------
+    -- Before the chain block: it leaves its right edge in L.left_r, which is where the chain block's
+    -- room on the left ends.
+    song_badge.draw(L)
 
     -- ---- skill rating and the medal bar, bottom-right (draw/rating.lua) ----------------------
     draw_rating(L)

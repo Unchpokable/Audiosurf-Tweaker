@@ -4,7 +4,7 @@ A run tracker that replaces several pieces of the game's own HUD rather than sit
 them. Everything it draws is measured, themed and positioned against the viewport; nothing is
 hardcoded except padding.
 
-The interesting parts are documented where they happen. Eleven things are worth reading first,
+The interesting parts are documented where they happen. Thirteen things are worth reading first,
 because they are the reasons this is not the obvious script.
 
 ## 1. WHAT IT MEASURES - by track ROW, not by collection EVENT
@@ -416,3 +416,48 @@ Two lines split at the player, the stretch already ridden at a third of its stre
 progress bar back: XX_gui::Timer2 (#3970) has been muted since the chain bar was (§3), and until the map
 nothing showed how far through the song the player was. The split point is computed, not snapped to the
 nearest sample, so the bright part starts under the dot.
+
+## 12. THE SONG BADGE SHOWS THE NAME, NOT THE STRING
+
+The game's title is StartGroup::CurrentSongTitle and ::CurrentSongArtist, drawn through
+StartGroup::Texter_Unicode by Do_ShowSongName (#2955, muted, §3). The handle hands them over as UTF-8:
+the channel says whether it holds a wide string, and a title that came off a CD or out of a tagged file
+does. Whether every character of it then has a glyph is the overlay's font's business - Latin, Cyrillic
+and Greek do, CJK does not yet.
+
+The string is not the name, in two ways:
+
+  * **Tags are part of the title.** Authors put rules in a file's title - "[as-monoonly]" makes the game
+    play it as Mono - and the game appends its own when it loads the song: XX_StartHere #6835...
+    `CurrentSongTitle := Unicode_Merge(CurrentSongTitle, " [as-steep]")`, the same for [as-portal]. A
+    real title arrived as "Drive my Life [as-steep] [as-prows1] [as-monoonly] [as-allgrey]". They are cut
+    (`%s*%[as%-[^%]]*%]`): they are rules rather than the name, and what they do to the run is on screen
+    already - the colour table's columns, the feats.
+  * **"Unknown Artist" is not an artist.** It is what VisMusic writes (#252) when a file has no tag. The
+    badge drops the artist line rather than print the absence of one.
+
+Both strings are read on the run-start events and twice a second while the HUD is up - they change once
+a song, and every read makes a new Lua string.
+
+The badge is as wide as its text, up to the point where the chain block would reach with the chain at its
+maximum (chain_block.max_half_width). The other way round - letting the title push the chain - would
+shorten the one bar on screen the player reads by its length, by an amount that depends on the song. A
+title that does not fit scrolls: it rests at its start, slides along to show the rest and comes round to
+the start without a jump, a second copy following the first. It is drawn glyph by glyph with each glyph
+faded towards the edges, because a soft edge needs a per-glyph alpha in any case and a clip rectangle
+would only give a hard one; the glyphs and their offsets are measured once per title, so a scrolling
+frame allocates nothing. The ellipsis is the other choice, for whoever finds movement at the edge of the
+screen distracting.
+
+## 13. THE BOTTOM IS ONE BAND
+
+The song badge, the chain block and the rating sit in one strip across the bottom, and its height is the
+chain block's at its fullest - the multiplier, the drop timer and the feats - computed from the font sizes
+rather than from what the chain block shows this frame. That distinction is the whole point: the timer row
+comes and goes with the chain, and a band that followed it would move the badge and the rating every time
+a chain started or dropped. The badge fills the band; the rating is centred in it; the chain block hangs
+from its top.
+
+The chain block is centred on the viewport and its room is the nearer of the two sides mirrored (§4,
+draw/chain_block.lua). The badge's right edge is the left side now; before the badge it was the colour
+table, which has moved up into the stats panel with the minimap.

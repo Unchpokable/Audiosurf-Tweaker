@@ -41,6 +41,10 @@ end
 local TIMER_SCALE = 0.62
 local ROW_GAP = 4
 local FEATS_GAP = 8
+-- Between the number and the rails either side of it, in base text heights.
+local RAIL_GAP = 0.7
+-- A rail is a sixteenth of the viewport per point of bonus (see draw below).
+local RAIL_PER_BONUS = 1 / 16
 
 -- How tall the block is at its fullest - multiplier, timer, feats - from the font sizes alone. main.lua
 -- makes this the height of the band the song badge and the rating share with it, and it has to be the
@@ -50,6 +54,15 @@ local function band_height(L)
     local _, chain_h = tw.hud.measure("x0.0", L.chain_size, "semibold")
     local _, timer_h = tw.hud.measure("0.00", L.chain_size * TIMER_SCALE, "semibold")
     return chain_h + ROW_GAP + timer_h + FEATS_GAP + L.label_size
+end
+
+-- Half the width the block takes with the chain at its maximum: the widest number, the gap either side
+-- of it and a full rail. What sits beside the block in the band (the song badge) stops this far from the
+-- viewport's centre, so a long song title never shortens the bar the player reads by its length.
+local function max_half_width(L)
+    local chain_w = tw.hud.measure(string.format("x%.1f", 1 + CHAIN_MAX), L.chain_size, "semibold")
+    local timer_w = tw.hud.measure("0.00", L.chain_size * TIMER_SCALE, "semibold")
+    return math.max(chain_w, timer_w) * 0.5 + L.base * RAIL_GAP + L.screen_w * RAIL_PER_BONUS * CHAIN_MAX
 end
 
 local function draw(L)
@@ -111,7 +124,7 @@ local function draw(L)
     end
 
     local timer_size = chain_size * TIMER_SCALE
-    local rail_gap = base * 0.7
+    local rail_gap = base * RAIL_GAP
     local chain_w, chain_h = 0, 0
     local timer_w, timer_h = 0, 0
     if chain_text ~= nil then
@@ -132,7 +145,7 @@ local function draw(L)
     --
     -- Only the clamp knows about anything else on screen: whatever is left of the free strip once
     -- the number in the middle has had its space, halved between the two rails.
-    local rail_base = screen_w / 16
+    local rail_base = screen_w * RAIL_PER_BONUS
     local rail_room = (avail - gap_w - rail_gap * 2) * 0.5
     local rail_w = math.min(rail_base * (gain or 0), rail_room)
 
@@ -226,4 +239,5 @@ end
 return {
     draw = draw,
     band_height = band_height,
+    max_half_width = max_half_width,
 }
