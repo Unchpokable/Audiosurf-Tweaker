@@ -350,13 +350,22 @@ script must not assume where they are — `tw.hud.occupied` and `tw.hud.place` s
 A script can also **take the game's HUD over**: switch elements of it off and draw its own in their place.
 `puzzlepro_hud`, shipped with the Tweaker, does exactly that:
 
-![PuzzlePRO HUD: the game's score, medals and chain bar replaced by the script's own](../images/internals/run-puzzlepro-hud.jpg)
+![PuzzlePRO HUD on Pointman, uphill: the game's score, minimap, song title and chain bar replaced by the script's own](../images/internals/AS_Pointman_uphill_PPHUD.jpg)
 
-Its score at the top carries the per-colour "+N", the personal best and the gap to it; the bottom left counts
-blocks per colour; the bottom centre is its own chain bar with the multiplier (`x3.2`) and the time left before the
-chain is judged, with the bonuses still in reach (**Clean Finish**, **Match21**); the bottom right is the skill
-rating the game computes and never shows. It is the reference case of a script **competing with the game for the
-screen**.
+![PuzzlePRO HUD on Double Vision Elite, downhill: the score split by car, a Match11 still in reach](../images/internals/AS_DVE_Downhill_PPHUD.jpg)
+
+- **Top left**, one panel in place of the game's minimap: per colour, how many blocks the track carries and how
+  many of them are taken; under it, the track's profile coloured by the blocks that dominate each stretch of it,
+  with the car's place, the part already driven dimmed and, optionally, the time left in the song.
+- **Top centre**: the score the run is heading for, with the per-colour "+N" on its way into it, the same score
+  with or without Clean Finish in brackets, the personal best and the gap to it; on Double Vision, each car's share
+  (`L`, `R`).
+- **Bottom**, one band: the song and its artist on the left; in the centre its own chain bar with the multiplier
+  (`x3.7`), the time left before the chain is judged and the bonuses still in reach, each in its own colour
+  (**Match11** above); on the right the skill rating the game computes and never shows.
+
+Its tab in the overlay's menu sets how the minimap is coloured, whether the time left is shown, and what a title
+too long for its badge does. It is the reference case of a script **competing with the game for the screen**.
 
 ## Other modes, and what nobody plays
 
@@ -416,7 +425,7 @@ Anything else is usually clear from context. If it is not, **ask what the player
 
 - **Visual mods** — by far the most common: textures, sky, effects.
 - **Live statistics** for seasoned Puzzle players — what `puzzlepro_hud` does: per-colour counts, the projected
-  final score, Skill Rating, how long until the chain is judged.
+  final score, Skill Rating, how long until the chain is judged, a minimap that shows which colours lie ahead.
 - **Fixes** for the game's own bugs and crashes — not the Quest3D engine's, but the ones in how the game's graph
   was wired.
 - A **replay mod** has come up on Discord. It is **not possible today**: a script can record a run into its own
