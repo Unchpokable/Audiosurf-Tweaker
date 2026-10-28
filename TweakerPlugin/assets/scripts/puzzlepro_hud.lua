@@ -1,7 +1,7 @@
 -- @name        PuzzlePRO HUD
 -- @author      Audiosurf Tweaker
--- @version     1.7.0
--- @description HUD Replacer for real puzzle players. Real-time all-color statistics tracker, chain multiplier and chain drop timer read straight out of the game, live skill rating calculation and projected final score against your personal best. Get GUD, Get PuzzlePRO HUD
+-- @version     1.8.0
+-- @description HUD Replacer for real puzzle players. Real-time all-color statistics tracker, chain multiplier and chain drop timer read straight out of the game, live skill rating calculation and projected final score against your personal best. A minimap that shows which colours lie ahead, and the song you are riding. Get GUD, Get PuzzlePRO HUD
 -- @api         4
 -- @bundle      twllink 1.1, 25 modules
 
