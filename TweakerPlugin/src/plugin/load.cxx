@@ -11,6 +11,7 @@
 #include "framework/d3d9_hooks.hxx"
 #include "framework/dinput8_hooks.hxx"
 #include "framework/loader_watch.hxx"
+#include "framework/present_channel.hxx"
 #include "framework/ready.hxx"
 #include "framework/texture_hook.hxx"
 
@@ -44,6 +45,9 @@ constexpr std::wstring_view k_d3d9_module = L"d3d9.dll";
 
 // Quest3D's Texture channel, Aco_DX8_Texture - see framework/texture_hook.cxx.
 constexpr std::wstring_view k_texture_channel_module = L"BC052C38-2D5D-4F0C-A0CA-654D0AFC584A.dll";
+
+// Quest3D's Present channel, Aco_DX8_PresentChannel - see framework/present_channel.hxx.
+constexpr std::wstring_view k_present_channel_module = L"5A4A4C8D-81A4-4A1E-828D-53C15D3B8E3C.dll";
 
 // Past this, stage 2 writes down what it is still waiting for. Nothing times out: an offline plugin has
 // nowhere to be, and a game sitting in a long load is not a failure.
@@ -118,9 +122,28 @@ void on_texture_channel_unloaded(HMODULE module)
     TW_BOOT_LOG("module: Texture channel UNLOADED at {} despite the pin - anomaly", static_cast<void*>(module));
 }
 
-constexpr std::array<tw::framework::loader_watch::watch, 2> k_watches { {
+void on_present_channel_loaded(HMODULE module)
+{
+    if(!tw::framework::loader_watch::pin(module)) {
+        TW_BOOT_LOG("module: Present channel loaded at {} but cannot be pinned (error {}) - not hooked, waiting for the next load",
+            static_cast<void*>(module),
+            ::GetLastError());
+        return;
+    }
+
+    TW_BOOT_LOG("module: Present channel loaded at {}, pinned", static_cast<void*>(module));
+    tw::framework::present_channel::install_from_loader(module);
+}
+
+void on_present_channel_unloaded(HMODULE module)
+{
+    TW_BOOT_LOG("module: Present channel UNLOADED at {} despite the pin - anomaly", static_cast<void*>(module));
+}
+
+constexpr std::array<tw::framework::loader_watch::watch, 3> k_watches { {
     { k_d3d9_module, &on_d3d9_loaded, &on_d3d9_unloaded },
     { k_texture_channel_module, &on_texture_channel_loaded, &on_texture_channel_unloaded },
+    { k_present_channel_module, &on_present_channel_loaded, &on_present_channel_unloaded },
 } };
 
 // --- stage 2 ----------------------------------------------------------------------------------------------
@@ -129,6 +152,20 @@ constexpr std::array<tw::framework::loader_watch::watch, 2> k_watches { {
 // thread, inside bind_device: initialisation, where SetEvent and the lifecycle log are allowed (§4.5).
 void on_device_bound(IDirect3DDevice9* device, HWND hwnd)
 {
+    // The Present channel's hook, if neither the loader notification nor the late install got it in. Without
+    // it the overlay still draws, from d3d9 Present, but screen capture misses it. In the early load a channel
+    // that is not mapped yet is the ordinary case - its loader notification will hook it.
+    if(!tw::framework::present_channel::is_installed()) {
+        if(::GetModuleHandleW(k_present_channel_module.data()) != nullptr) {
+            if(!tw::framework::present_channel::install()) {
+                TW_BOOT_LOG("present: Present channel mapped but not hooked at device bind - the overlay draws from d3d9 Present");
+            }
+        }
+        else if(g_startup == startup::late) {
+            TW_BOOT_LOG("present: Present channel not mapped at device bind - the overlay draws from d3d9 Present, retried on the next bind");
+        }
+    }
+
     if(g_device_bound.exchange(true, std::memory_order_relaxed)) {
         return;
     }
@@ -223,6 +260,9 @@ void install_late_hooks()
     // channel DLLs on demand, so an injection early enough can beat the Texture channel into the
     // process. By the time there is a D3D9 device, it is certainly mapped.
     tw::framework::texture::install_texture_hook();
+
+    // Same story as the texture hook, and the same retry - on_device_bound.
+    tw::framework::present_channel::install();
 
     tw::framework::d3d9::install_d3d9_hooks();
     tw::framework::dinput::install_hooks();
@@ -394,6 +434,10 @@ void on_process_attach(HMODULE module) noexcept
         // is left to the skybox's retry on the first device bind.
         if(::GetModuleHandleW(k_texture_channel_module.data()) != nullptr) {
             TW_BOOT_LOG("stage 0: the Texture channel is already mapped - its hook waits for the first device bind");
+        }
+
+        if(::GetModuleHandleW(k_present_channel_module.data()) != nullptr) {
+            TW_BOOT_LOG("stage 0: the Present channel is already mapped - its hook waits for the first device bind");
         }
     }
 

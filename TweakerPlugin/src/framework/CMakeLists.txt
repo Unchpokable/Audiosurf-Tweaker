@@ -6,6 +6,7 @@ target_sources(TweakerPlugin PRIVATE
     dinput8_hooks.cxx
     imgui_backend.cxx
     loader_watch.cxx
+    present_channel.cxx
     ready.cxx
     texture_hook.cxx
     wndproc_hub.cxx

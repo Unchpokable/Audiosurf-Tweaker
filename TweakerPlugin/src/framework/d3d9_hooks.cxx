@@ -3,6 +3,7 @@
 #include "framework/d3d9_hooks.hxx"
 #include "framework/d3d9_state.hxx"
 #include "framework/detour_transaction.hxx"
+#include "framework/present_channel.hxx"
 #include "framework/ready.hxx"
 #include "framework/wndproc_hub.hxx"
 
@@ -71,15 +72,30 @@ bool g_in_draw_intercept = false;
 // mirror would be left describing a binding the game never made.
 bool g_in_overlay_pass = false;
 
-// True from the first Present observed on the bound device onwards.
+// True from the first frame end observed on the bound device onwards - the game's Present channel or a
+// Present, whichever comes first.
 //
-// The overlay is drawn from Present, and everything below assumes Present is reached. If it is not -
-// a swap-chain path neither hook covers, a present routine the runtime resolves somewhere else - the
-// overlay would silently vanish instead of merely flickering, which is the worse failure by a wide
-// margin. So hk_end_scene keeps the old draw as a fallback and this latch disarms it the moment a
-// real Present proves the primary path works. Costs one bool test per EndScene, and at most one
-// duplicated overlay pass on the very first frame after a device binds.
+// The overlay is drawn at the end of a frame, and everything below assumes one is seen. If it is not -
+// no Present channel, a swap-chain path neither hook covers, a present routine the runtime resolves
+// somewhere else - the overlay would silently vanish instead of merely flickering, which is the worse
+// failure by a wide margin. So hk_end_scene keeps the old per-EndScene draw as a fallback and this latch
+// disarms it the moment a frame end proves a primary path works. Costs one bool test per EndScene, and
+// at most one duplicated overlay pass on the very first frame after a device binds.
 bool g_present_seen = false;
+
+// Set for the duration of the game's Present channel (framework/present_channel.hxx), which closes the
+// frame's last scene and presents it. The overlay is drawn inside that scene, at the channel's EndScene,
+// and the Present that follows is then not ours to draw on - see draw_overlay_frame.
+bool g_in_present_channel = false;
+
+// Whether the current Present channel call has had its overlay pass. The channel ends one scene per
+// call; the latch is what keeps a second EndScene, if a future build of the channel ever issued one,
+// from compositing the frame twice.
+bool g_channel_drew = false;
+
+// For the lifecycle log only: which path the overlay has been drawn from so far this device.
+bool g_logged_channel_path = false;
+bool g_logged_present_path = false;
 
 // Set around the original Present. The D3D9 runtime is free to implement
 // IDirect3DDevice9::Present in terms of the swap chain's, and both are detoured here - without this
@@ -199,8 +215,10 @@ void bind_device(LPDIRECT3DDEVICE9 device)
     g_bound_windowed.store(windowed, std::memory_order_relaxed);
     g_stage_texture.fill(nullptr);
     // A different device is a fresh question about how this one presents: re-arm the EndScene
-    // fallback until a Present on *this* device proves the primary path.
+    // fallback until a frame end on *this* device proves a primary path.
     g_present_seen = false;
+    g_logged_channel_path = false;
+    g_logged_present_path = false;
     tw::plugin::quest3d::g_game_handle = params.hFocusWindow;
 
     TW_LOG_INFO("d3d9: bind_device device={} hwnd={} windowed={}",
@@ -353,10 +371,29 @@ long __stdcall hk_reset(LPDIRECT3DDEVICE9 p_device, D3DPRESENT_PARAMETERS* p_pre
     return result;
 }
 
-// The overlay's entire submission for one presented frame, from Present.
+// Whose scene the overlay pass goes into.
+enum class overlay_scene : std::uint8_t {
+    // The game's own last scene of the frame, still open: the pass runs from the EndScene that closes it.
+    game,
+    // None is open (we are at Present): the pass opens and closes one of its own.
+    own,
+};
+
+// The overlay's entire submission for one presented frame.
 //
-// It used to run from hk_end_scene, and that was wrong in a way only semi-transparent pixels could
-// show. EndScene is NOT a frame boundary in this game - measured, and written down twice
+// Where it runs from, in order of preference:
+//
+//  1. the game's Present channel, at the EndScene it closes the frame with (hk_end_scene while
+//     g_in_present_channel). This is game code, the last thing before the game presents, and no
+//     program that hooks d3d9 to capture or decorate frames runs earlier than it - see
+//     framework/present_channel.hxx for the Steam screenshot bug that forced the move;
+//  2. Present, when a frame reaches it outside the channel (the channel could not be hooked, or some
+//     path presents without it). Correct once per frame, but anything hooked into d3d9 ahead of us -
+//     Steam always is, it patches the start of hk_present itself - sees the frame without the overlay;
+//  3. every EndScene that renders to the back buffer, only until either of the above is seen once.
+//
+// The per-EndScene draw used to be the only one, and it was wrong in a way only semi-transparent pixels
+// could show. EndScene is NOT a frame boundary in this game - measured, and written down twice
 // (Docs/Internal/skybox-geometry.md and skybox-replacer-roadmap.md, "EndScene fires more than once
 // per shown frame"; the sky probe's frame tick was the first thing it broke). More than one of those
 // EndScenes renders to the back buffer, so the whole ImGui frame was composited over itself N times,
@@ -369,10 +406,11 @@ long __stdcall hk_reset(LPDIRECT3DDEVICE9 p_device, D3DPRESENT_PARAMETERS* p_pre
 // come and go with the gameplay and read the back buffer back in between our composites, which turns
 // "slightly too opaque" into flicker that tracks the music.
 //
-// Present is the only point that is genuinely once per shown frame, and it is also strictly after
-// everything the game draws - including the HUD and the screen-space pass that a "first EndScene of
-// the frame" latch would have put the overlay underneath.
-void draw_overlay_frame(LPDIRECT3DDEVICE9 device)
+// Present is genuinely once per shown frame, and strictly after everything the game draws - including
+// the HUD and the screen-space pass that a "first EndScene of the frame" latch would have put the overlay
+// underneath. The Present channel's EndScene is the same moment seen from the game's side: the channel
+// presents right after it, and is called once per frame.
+void draw_overlay_frame(LPDIRECT3DDEVICE9 device, overlay_scene scene)
 {
     if(device != g_bound_device || g_ui_draw == nullptr) {
         return;
@@ -400,14 +438,28 @@ void draw_overlay_frame(LPDIRECT3DDEVICE9 device)
         back_buffer->Release();
     }
 
-    // D3D9 rejects every draw call outside a scene, and Present must not be called inside one - so
-    // the overlay opens and closes a scene of its own rather than borrowing the game's.
     g_in_overlay_pass = true;
-    if(SUCCEEDED(device->BeginScene())) {
+    if(scene == overlay_scene::game) {
+        g_ui_draw(device);
+    }
+    // D3D9 rejects every draw call outside a scene, and Present must not be called inside one - so at
+    // Present the overlay opens and closes a scene of its own.
+    else if(SUCCEEDED(device->BeginScene())) {
         g_ui_draw(device);
         device->EndScene();
     }
     g_in_overlay_pass = false;
+}
+
+void on_present_channel_enter()
+{
+    g_in_present_channel = true;
+    g_channel_drew = false;
+}
+
+void on_present_channel_leave()
+{
+    g_in_present_channel = false;
 }
 
 long __stdcall hk_end_scene(LPDIRECT3DDEVICE9 p_device)
@@ -424,7 +476,22 @@ long __stdcall hk_end_scene(LPDIRECT3DDEVICE9 p_device)
         bind_device(p_device);
     }
 
-    // Fallback only, disarmed by the first Present - see g_present_seen. While it is armed this is
+    // The game's Present channel closing the frame: the primary place the overlay is drawn. Once per
+    // channel call, into the scene this EndScene is about to close.
+    if(g_in_present_channel && !g_channel_drew && p_device == g_bound_device) {
+        g_channel_drew = true;
+        g_present_seen = true;
+
+        if(!g_logged_channel_path) [[unlikely]] {
+            g_logged_channel_path = true;
+            TW_LOG_INFO("d3d9: overlay drawn from the game's Present channel - ahead of every d3d9 hook, screen capture included");
+        }
+
+        draw_overlay_frame(p_device, overlay_scene::game);
+        return o_end_scene(p_device);
+    }
+
+    // Fallback only, disarmed by the first frame end - see g_present_seen. While it is armed this is
     // the old behaviour verbatim, drawing inside the game's scene because there already is one.
     if(!g_present_seen && p_device == g_bound_device && p_device->TestCooperativeLevel() == D3D_OK) {
         if(g_ui_draw != nullptr && is_rendering_to_back_buffer(p_device)) {
@@ -446,12 +513,20 @@ void on_present(LPDIRECT3DDEVICE9 p_device)
         return;
     }
 
-    if(!g_present_seen) [[unlikely]] {
-        g_present_seen = true;
-        TW_LOG_INFO("d3d9: first Present on the bound device - overlay now draws once per frame from Present");
+    g_present_seen = true;
+
+    // The Present channel's own Present: the overlay is already in the frame, drawn at its EndScene (or
+    // deliberately not, when the device was not ready for it). Drawing again here would composite it twice.
+    if(g_in_present_channel) {
+        return;
     }
 
-    draw_overlay_frame(p_device);
+    if(!g_logged_present_path) [[unlikely]] {
+        g_logged_present_path = true;
+        TW_LOG_INFO("d3d9: overlay drawn from Present, outside the game's Present channel - screen capture may miss it");
+    }
+
+    draw_overlay_frame(p_device, overlay_scene::own);
 }
 
 long __stdcall hk_present(LPDIRECT3DDEVICE9 p_device, const RECT* source, const RECT* dest, HWND dest_window, const RGNDATA* dirty)
@@ -852,6 +927,7 @@ void initialize() noexcept
     // thread's first bind runs wndproc::install and hub_wndproc starts iterating the subscriber vectors,
     // and a subscribe() landing after that pushes into a std::vector another thread is walking.
     tw::framework::wndproc::subscribe(WM_ACTIVATEAPP, &handle_activate_app);
+    tw::framework::present_channel::subscribe(&on_present_channel_enter, &on_present_channel_leave);
 }
 
 bool install_d3d9_hooks()
