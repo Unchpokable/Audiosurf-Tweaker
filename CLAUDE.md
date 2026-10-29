@@ -155,14 +155,18 @@ Bash; пара, правится вместе), зависимости став�
   `manifest.json` + PNG), цветовые пресеты, `FolderChecker` (дрейф папки текстур), кэш превью,
   `PluginInstall/` (установка плагина в игру) и `Scripting/` — модель модуля скриптов
   (`script-manager.md` §4): шапки и `scripts.cfg` читаются **ровно как в плагине**, каталог
-  `Scripts\` игры, проекты `twllink` и клиент его CLI, редакторы (`ScriptEditors`: поиск установленных,
-  запуск с `DevTools\Binaries` и `DevTools\CgrPy` в `PATH` и `AUDIOSURF_DIR` — пользовательский `PATH` не трогается),
+  `Scripts\` игры, проекты `twllink` и клиент его CLI,
   `ScriptOrder` (порядок выполнения как в плагине: строки `order=`, затем по имени), `AgentKit`/`AgentSetup`
   (обвязка проекта для AI-агентов из `DevTools\AgentKit`: таблица решений по манифесту хешей, как у установки
   плагина; `AGENTS.md` и `CLAUDE.md` — пользователя, наш только блок между маркерами; `Tools/AgentKit/README.md`),
   `Uv` (есть ли `uv` для CgrPy) и
   `ScriptWire` — грамматика `SCRIPT_*` хоста (С5b; состояние и ожидание подтверждений —
-  `TweakerUI/Core/ScriptsOverlayBridge`, транспорт — `OverlayHelper`).
+  `TweakerUI/Core/ScriptsOverlayBridge`, транспорт — `OverlayHelper`). Общее для вкладок разработчика (Script Dev,
+  Skyboxes) — `DevProjects/`: редакторы (`Editors`: поиск установленных и запуск с `EditorEnvironment` — Script Dev
+  кладёт `DevTools\Binaries` и `DevTools\CgrPy` в `PATH` и `AUDIOSURF_DIR`, пользовательский `PATH` не трогается),
+  `ProjectFolders` (недавние + папка Sources), `JsonTextEdit` (правка значений в JSON пользователя без
+  переформатирования); в TweakerUI к ним — карточка `EditorPickerViewModel`/`EditorPickerView` и `Core/ProjectWatcher`
+  («… on save»).
 - **`AudiosurfInterface`** — управляемый клиент протокола игры: `GameProtocol`, `GameConfigState`
   (LIFO-оверрайды `asconfig`), `GameReportListener`, `AudiosurfHandle` (публичный фасад с
   событиями подключения) и `Bridge/` — тонкий pipe-клиент `asbridge.exe`.

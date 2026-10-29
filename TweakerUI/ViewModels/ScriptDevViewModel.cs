@@ -1,13 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using TweakerCore.DevProjects;
 using TweakerCore.Scripting;
 using TweakerUI.Core;
 using TweakerUI.Models;
@@ -39,18 +38,41 @@ namespace TweakerUI.ViewModels
         private readonly ScriptProjects _projects;
         private readonly Twllink _twllink;
         private readonly HashSet<string> _collisionConfirmed = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        private FileSystemWatcher _watcher;
+        private readonly ProjectWatcher _watcher;
         private bool _active;
-        private bool _building;
-        private bool _rebuildPending;
-
-        /// <summary>Bumped by every change and by stopping; a delayed rebuild that finds it moved on does nothing.</summary>
-        private int _rebuildGeneration;
 
         public ScriptDevViewModel()
         {
             _projects = new ScriptProjects(DevTools.Sources, DevTools.RecentProjectsFile);
             _twllink = DevTools.Twllink;
+            _watcher = new ProjectWatcher("Script Dev", IgnoredFolders, RebuildSettle, AutoBuildAsync);
+
+            Editor = new EditorPickerViewModel("Script Dev",
+                () => EditorEnvironmentFor(PluginService.GameRootDirectory),
+                "Opened with twllink and cgrpy on its PATH, so the editor's terminal can run them.",
+                "twllink");
+            Editor.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(EditorPickerViewModel.SelectedEditor))
+                    OpenInEditorCommand.NotifyCanExecuteChanged();
+            };
+        }
+
+        /// <summary>The Editor card (EditorPickerView), shared with the Skyboxes tab.</summary>
+        public EditorPickerViewModel Editor { get; }
+
+        /// <summary>
+        /// What an editor opened from this tab gets (script-manager.md §8.3): twllink and cgrpy at the front of its
+        /// PATH and AUDIOSURF_DIR at the game, so a terminal inside it runs "twllink --install" or "cgrpy query ..." as
+        /// it is. Public for the UI stand, which starts Neovim with exactly this.
+        /// </summary>
+        public static EditorEnvironment EditorEnvironmentFor(string gameRoot)
+        {
+            return new EditorEnvironment
+            {
+                PathFront = DevTools.ToolFolders,
+                Variables = new Dictionary<string, string> { ["AUDIOSURF_DIR"] = gameRoot }
+            };
         }
 
         public ObservableCollection<ScriptProjectRowViewModel> Projects { get; } = new ObservableCollection<ScriptProjectRowViewModel>();
@@ -133,7 +155,7 @@ namespace TweakerUI.ViewModels
                 UpdateNotice();
                 OnPropertyChanged(nameof(CanInstall));
                 OnPropertyChanged(nameof(InstallHint));
-                _ = DetectEditorsAsync();
+                _ = Editor.DetectAsync();
                 _ = DetectUvAsync();
                 _ = RefreshAgentsAsync();
             }
@@ -141,10 +163,8 @@ namespace TweakerUI.ViewModels
 
         public void Dispose()
         {
-            StopWatching();
-            foreach (var process in _launched.Values)
-                process.Dispose();
-            _launched.Clear();
+            _watcher.Dispose();
+            Editor.Dispose();
         }
 
         // --- the list -------------------------------------------------------------------------------------
@@ -478,15 +498,11 @@ namespace TweakerUI.ViewModels
             if (!confirmed)
                 return;
 
-            StopWatching();
-            try
+            _watcher.Stop();
+            var error = await ShellActions.RecycleFolderAsync(row.Root);
+            if (error != null)
             {
-                await Task.Run(() => Microsoft.VisualBasic.FileIO.FileSystem.DeleteDirectory(
-                    row.Root, Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs, Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin));
-            }
-            catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException || exception is OperationCanceledException)
-            {
-                ApplicationNotificationManager.Manager.ShowError("Script Dev", $"Could not delete {row.Root}: {exception.Message}");
+                ApplicationNotificationManager.Manager.ShowError("Script Dev", $"Could not delete {row.Root}: {error}");
                 Watch();
                 return;
             }
@@ -530,19 +546,7 @@ namespace TweakerUI.ViewModels
         private bool CanForget() => Selected != null && Selected.IsRemembered;
 
         [RelayCommand(CanExecute = nameof(CanOpenProjectFolder))]
-        private void OpenProjectFolder()
-        {
-            try
-            {
-                using (Process.Start(new ProcessStartInfo(Selected.Root) { UseShellExecute = true }))
-                {
-                }
-            }
-            catch (Exception exception) when (exception is System.ComponentModel.Win32Exception || exception is InvalidOperationException)
-            {
-                Logger.Log("Script Dev", "cannot open " + Selected.Root + ": " + exception.Message);
-            }
-        }
+        private void OpenProjectFolder() => ShellActions.OpenFolder("Script Dev", Selected.Root);
 
         private bool CanOpenProjectFolder() => Selected != null && !Selected.IsMissing;
 
@@ -579,7 +583,7 @@ namespace TweakerUI.ViewModels
                 return;
             }
 
-            _building = true;
+            _watcher.WorkStarted();
             Busy = true;
             row.ShowBuilding(install);
             try
@@ -600,15 +604,9 @@ namespace TweakerUI.ViewModels
             }
             finally
             {
-                _building = false;
                 Busy = false;
-            }
-
-            // Changes that arrived during the build are the build after it.
-            if (_rebuildPending)
-            {
-                _rebuildPending = false;
-                RestartRebuild();
+                // Changes that arrived during the build are the build after it.
+                _watcher.WorkFinished();
             }
         }
 
@@ -636,59 +634,10 @@ namespace TweakerUI.ViewModels
 
         // --- editors (С4b) ---------------------------------------------------------------------------------
 
-        /// <summary>The editor this session started, per editor - its window still being up means it has our PATH.</summary>
-        private readonly Dictionary<string, Process> _launched = new Dictionary<string, Process>();
-
-        /// <summary>Editors the user was already warned about this session and chose to open anyway.</summary>
-        private readonly HashSet<string> _warnedRunning = new HashSet<string>();
-
-        private bool _restoringEditor;
-
-        public ObservableCollection<ScriptEditor> Editors { get; } = new ObservableCollection<ScriptEditor>();
-
-        [ObservableProperty]
-        [NotifyCanExecuteChangedFor(nameof(OpenInEditorCommand))]
-        [NotifyPropertyChangedFor(nameof(OpenInEditorText))]
-        private ScriptEditor selectedEditor;
-
-        [ObservableProperty]
-        private bool hasEditors;
-
-        public string OpenInEditorText => SelectedEditor == null ? "Open in editor" : "Open in " + SelectedEditor.Name;
-
-        /// <summary>Looked for every time the tab is shown: an editor installed while Tweaker runs shows up without a restart.</summary>
-        private async Task DetectEditorsAsync()
-        {
-            var found = await Task.Run(() => ScriptEditors.Detect(EditorSearch.FromSystem()));
-
-            _restoringEditor = true;
-            try
-            {
-                var keep = SelectedEditor?.Id ?? SettingsProvider.ScriptEditor;
-                Editors.Clear();
-                foreach (var editor in found)
-                    Editors.Add(editor);
-                HasEditors = Editors.Count > 0;
-                SelectedEditor = Editors.FirstOrDefault(e => e.Id == keep) ?? Editors.FirstOrDefault();
-            }
-            finally
-            {
-                _restoringEditor = false;
-            }
-        }
-
-        partial void OnSelectedEditorChanged(ScriptEditor value)
-        {
-            if (_restoringEditor || value == null || value.Id == SettingsProvider.ScriptEditor)
-                return;
-            SettingsProvider.ScriptEditor = value.Id;
-            ConfigurationManager.RewriteSettings();
-        }
-
         [RelayCommand(CanExecute = nameof(CanOpenInEditor))]
         private Task OpenInEditor() => OpenAsync(Selected, null, 0, 0);
 
-        private bool CanOpenInEditor() => SelectedEditor != null && Selected != null && !Selected.IsMissing;
+        private bool CanOpenInEditor() => Editor.SelectedEditor != null && Selected != null && !Selected.IsMissing;
 
         /// <summary>A diagnostic, double-clicked: its file at its line, in the chosen editor.</summary>
         [RelayCommand]
@@ -700,142 +649,21 @@ namespace TweakerUI.ViewModels
             return OpenAsync(Selected, file, diagnostic.Diagnostic.Line, diagnostic.Diagnostic.Column);
         }
 
-        private async Task OpenAsync(ScriptProjectRowViewModel row, string file, int line, int column)
+        private Task OpenAsync(ScriptProjectRowViewModel row, string file, int line, int column)
         {
-            var editor = SelectedEditor;
-            if (editor == null || row == null || row.IsMissing)
-            {
-                if (editor == null)
-                    ApplicationNotificationManager.Manager.ShowInformation("Script Dev",
-                        "No editor to open it in. Install Visual Studio Code, Cursor, Sublime Text, Notepad++, Vim or Neovim, then come back to this tab.");
-                return;
-            }
-
-            if (!await ConfirmRunningEditorAsync(editor))
-                return;
-
-            var info = ScriptEditors.StartInfo(editor, row.Root, file, line, column, DevTools.ToolFolders, PluginService.GameRootDirectory);
-            var error = ScriptEditors.Launch(info, out var process);
-            if (error != null)
-            {
-                ApplicationNotificationManager.Manager.ShowError("Script Dev", $"Could not start {editor.Name}: {error}");
-                return;
-            }
-
-            // Kept only while it is the editor's main process. A launch that handed its arguments to a running
-            // instance exits within moments, and that instance is not ours.
-            if (_launched.TryGetValue(editor.Id, out var previous) && !IsAlive(previous))
-            {
-                previous.Dispose();
-                _launched.Remove(editor.Id);
-            }
-            if (!_launched.ContainsKey(editor.Id))
-                _launched[editor.Id] = process;
-            else
-                process.Dispose();
-        }
-
-        /// <summary>
-        /// The owner's warning (§8.3): an editor that keeps one process will hand the project to the instance
-        /// that is already running, and that instance's terminal has no twllink in PATH. Not asked when the running
-        /// instance is the one this session started, and not asked twice for the same editor in a session.
-        /// </summary>
-        private async Task<bool> ConfirmRunningEditorAsync(ScriptEditor editor)
-        {
-            if (!editor.TerminalMissesPathWhenRunning || _warnedRunning.Contains(editor.Id))
-                return true;
-            if (_launched.TryGetValue(editor.Id, out var ours) && IsAlive(ours))
-                return true;
-            if (!await Task.Run(editor.IsRunning))
-                return true;
-
-            var choice = await ApplicationNotificationManager.Manager.AskForChoice($"{editor.Name} is already running",
-                $"{editor.Name} is already running, so it keeps the PATH it was started with - twllink may not be available "
-                + $"from its terminal. If you need twllink there, close {editor.Name} and open the project from here.",
-                "Open anyway", "Cancel");
-            if (choice != 0)
-                return false;
-            _warnedRunning.Add(editor.Id);
-            return true;
-        }
-
-        private static bool IsAlive(Process process)
-        {
-            try
-            {
-                return !process.HasExited;
-            }
-            catch (InvalidOperationException)
-            {
-                return false;
-            }
+            if (row == null || row.IsMissing)
+                return Task.CompletedTask;
+            return Editor.OpenAsync(row.Root, file, line, column);
         }
 
         // --- rebuild on save --------------------------------------------------------------------------------
 
         private void Watch()
         {
-            StopWatching();
+            _watcher.Stop();
             var row = Selected;
-            if (!RebuildOnSave || row == null || row.IsMissing || !Directory.Exists(row.Root))
-                return;
-
-            try
-            {
-                var root = row.Root;
-                _watcher = new FileSystemWatcher(root)
-                {
-                    IncludeSubdirectories = true,
-                    NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite | NotifyFilters.Size
-                };
-                void OnChange(string path)
-                {
-                    if (!Ignored(root, path))
-                        Dispatcher.UIThread.Post(RestartRebuild);
-                }
-                // "Changed" on a folder is its metadata - reading the files in it is enough to raise one. What changed
-                // inside arrives as events of its own. (twllink's own --watch learned this the hard way.)
-                _watcher.Changed += (_, e) =>
-                {
-                    if (!Directory.Exists(e.FullPath))
-                        OnChange(e.FullPath);
-                };
-                _watcher.Created += (_, e) => OnChange(e.FullPath);
-                _watcher.Deleted += (_, e) => OnChange(e.FullPath);
-                _watcher.Renamed += (_, e) => OnChange(e.FullPath);
-                _watcher.EnableRaisingEvents = true;
-            }
-            catch (Exception exception) when (exception is IOException || exception is ArgumentException || exception is UnauthorizedAccessException)
-            {
-                Logger.Log("Script Dev", "cannot watch " + row.Root + ": " + exception.Message);
-                StopWatching();
-            }
-        }
-
-        private static bool Ignored(string root, string path)
-        {
-            var relative = Path.GetRelativePath(root, path);
-            var first = relative.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)[0];
-            return IgnoredFolders.Contains(first, StringComparer.OrdinalIgnoreCase);
-        }
-
-        private void RestartRebuild()
-        {
-            if (_building)
-            {
-                _rebuildPending = true;
-                return;
-            }
-
-            // A delay per change, and only the newest one builds: the settle window without a timer to restart.
-            // (Not a DispatcherTimer: it needs the platform's clock, which the headless UiStand does not run -
-            // and a plain delay posting back works the same in both.)
-            var generation = ++_rebuildGeneration;
-            _ = Task.Delay(RebuildSettle).ContinueWith(_ => Dispatcher.UIThread.Post(() =>
-            {
-                if (generation == _rebuildGeneration)
-                    _ = AutoBuildAsync();
-            }), TaskScheduler.Default);
+            if (RebuildOnSave && row != null && !row.IsMissing)
+                _watcher.Start(row.Root);
         }
 
         private async Task AutoBuildAsync()
@@ -856,14 +684,6 @@ namespace TweakerUI.ViewModels
             return file == null
                    || _collisionConfirmed.Contains(row.Root)
                    || !GameScripts.IsShipped(PluginService.EngineDirectory, PluginService.PayloadDirectory, file);
-        }
-
-        private void StopWatching()
-        {
-            _rebuildGeneration++;
-            _rebuildPending = false;
-            _watcher?.Dispose();
-            _watcher = null;
         }
 
         private static string Normalize(string path) => Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));

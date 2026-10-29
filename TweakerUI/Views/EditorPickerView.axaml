@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:TweakerUI.ViewModels"
+             xmlns:devprojects="clr-namespace:TweakerCore.DevProjects;assembly=TweakerCore"
+             x:Class="TweakerUI.Views.EditorPickerView"
+             x:DataType="vm:EditorPickerViewModel">
+
+    <!-- The Editor card's content, shared by the developer tabs (script-manager.md §6, sky-manager-roadmap.md §4.1):
+    the installed editors Tweaker found; the choice is remembered, one for both tabs. The tab puts it in its own
+    card and sets its DataContext to the tab's EditorPickerViewModel. -->
+    <StackPanel>
+        <TextBlock Text="Editor" Classes="CardTitle" Margin="0,0,0,10"/>
+        <TextBlock Classes="Hint" IsVisible="{Binding !HasEditors}"
+                   Text="No supported editor found. Tweaker looks for Visual Studio Code, Cursor, Sublime Text, Notepad++, Vim and Neovim."/>
+        <ListBox Classes="RowList" IsVisible="{Binding HasEditors}"
+                 ItemsSource="{Binding Editors}" SelectedItem="{Binding SelectedEditor, Mode=TwoWay}">
+            <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="devprojects:ProjectEditor">
+                    <StackPanel Classes="ChoiceRow" ToolTip.Tip="{Binding ExecutablePath}">
+                        <TextBlock Classes="RowTitle" Text="{Binding Name}"/>
+                        <TextBlock Classes="RowPath" Text="{Binding ExecutablePath}"/>
+                    </StackPanel>
+                </DataTemplate>
+            </ListBox.ItemTemplate>
+        </ListBox>
+        <TextBlock Classes="Hint" Margin="0,2,0,0" IsVisible="{Binding ShowHint}" Text="{Binding Hint}"/>
+    </StackPanel>
+</UserControl>

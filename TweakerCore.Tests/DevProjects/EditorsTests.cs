@@ -1,17 +1,18 @@
-namespace TweakerCore.Tests.Scripting
+namespace TweakerCore.Tests.DevProjects
 {
     using System;
+    using System.Collections.Generic;
     using System.IO;
     using System.Linq;
     using NUnit.Framework;
-    using TweakerCore.Scripting;
+    using TweakerCore.DevProjects;
 
     /// <summary>
     /// Finding editors in fake install folders, and the command lines and environment they are started with.
     /// Nothing is launched: what an editor does with its arguments is the editor's, and the owner checks that live.
     /// </summary>
     [TestFixture]
-    public class ScriptEditorsTests
+    public class EditorsTests
     {
         private string _root;
         private EditorSearch _search;
@@ -52,7 +53,7 @@ namespace TweakerCore.Tests.Scripting
             Touch("Local", "Programs", "Microsoft VS Code", "Code.exe");
             Touch("Program Files (x86)", "Notepad++", "notepad++.exe");
 
-            var found = ScriptEditors.Detect(_search);
+            var found = Editors.Detect(_search);
 
             Assert.That(found.Select(e => e.Id), Is.EqualTo(new[] { "vscode", "notepadpp", "neovim" }));
             Assert.That(found[0].ExecutablePath, Does.EndWith(Path.Combine("Microsoft VS Code", "Code.exe")));
@@ -65,7 +66,7 @@ namespace TweakerCore.Tests.Scripting
             Touch("Elsewhere", "cursor", "resources", "app", "bin", "cursor.cmd");
             _search = new EditorSearch { PathVariable = "C:\\nothing;" + Path.Combine(_root, "Elsewhere", "cursor", "resources", "app", "bin") };
 
-            var editor = ScriptEditors.Detect(_search).Single();
+            var editor = Editors.Detect(_search).Single();
 
             Assert.That(editor.Id, Is.EqualTo("cursor"));
             Assert.That(editor.ExecutablePath, Is.EqualTo(Path.GetFullPath(cursor)));
@@ -77,7 +78,7 @@ namespace TweakerCore.Tests.Scripting
             Touch("Stray", "bin", "code.cmd");
             _search = new EditorSearch { PathVariable = Path.Combine(_root, "Stray", "bin") };
 
-            Assert.That(ScriptEditors.Detect(_search), Is.Empty);
+            Assert.That(Editors.Detect(_search), Is.Empty);
         }
 
         [Test]
@@ -88,7 +89,7 @@ namespace TweakerCore.Tests.Scripting
             var real = Touch("Tools", "vim", "vim.exe");
             _search = new EditorSearch { PathVariable = Path.Combine(_root, "Git", "usr", "bin") + ";" + Path.Combine(_root, "Tools", "vim") };
 
-            Assert.That(ScriptEditors.Detect(_search).Single().ExecutablePath, Is.EqualTo(Path.GetFullPath(real)));
+            Assert.That(Editors.Detect(_search).Single().ExecutablePath, Is.EqualTo(Path.GetFullPath(real)));
         }
 
         [Test]
@@ -97,17 +98,17 @@ namespace TweakerCore.Tests.Scripting
             Touch("Program Files", "Vim", "vim90", "vim.exe");
             var newest = Touch("Program Files", "Vim", "vim91", "vim.exe");
 
-            Assert.That(ScriptEditors.Detect(_search).Single().ExecutablePath, Is.EqualTo(Path.GetFullPath(newest)));
+            Assert.That(Editors.Detect(_search).Single().ExecutablePath, Is.EqualTo(Path.GetFullPath(newest)));
         }
 
         [Test]
         public void TheEditorGetsTheToolFoldersFirstOnPathAndTheGameFolder()
         {
             Touch("Local", "Programs", "Microsoft VS Code", "Code.exe");
-            var editor = ScriptEditors.Detect(_search).Single();
+            var editor = Editors.Detect(_search).Single();
 
             var tools = new[] { @"C:\Tweaker\DevTools\Binaries", @"C:\Tweaker\DevTools\CgrPy" };
-            var info = ScriptEditors.StartInfo(editor, @"C:\p\my_hud", null, 0, 0, tools, @"D:\Games\Audiosurf");
+            var info = Editors.StartInfo(editor, @"C:\p\my_hud", null, 0, 0, ScriptDevLike(tools, @"D:\Games\Audiosurf"));
 
             Assert.That(info.Environment["PATH"],
                 Does.StartWith(@"C:\Tweaker\DevTools\Binaries" + Path.PathSeparator + @"C:\Tweaker\DevTools\CgrPy" + Path.PathSeparator),
@@ -122,12 +123,29 @@ namespace TweakerCore.Tests.Scripting
         public void WithoutAGameFolderAudiosurfDirIsLeftAlone()
         {
             Touch("Local", "Programs", "Microsoft VS Code", "Code.exe");
-            var editor = ScriptEditors.Detect(_search).Single();
+            var editor = Editors.Detect(_search).Single();
             var inherited = Environment.GetEnvironmentVariable("AUDIOSURF_DIR");
 
-            var info = ScriptEditors.StartInfo(editor, @"C:\p", null, 0, 0, new[] { @"C:\bin" }, null);
+            var info = Editors.StartInfo(editor, @"C:\p", null, 0, 0, ScriptDevLike(new[] { @"C:\bin" }, null));
 
             Assert.That(info.Environment.TryGetValue("AUDIOSURF_DIR", out var value) ? value : null, Is.EqualTo(inherited));
+        }
+
+        [Test]
+        public void AnEmptyEnvironmentLeavesTheEditorWithTweakersOwn()
+        {
+            Touch("Local", "Programs", "Microsoft VS Code", "Code.exe");
+            var editor = Editors.Detect(_search).Single();
+            var inheritedPath = Environment.GetEnvironmentVariable("PATH");
+            var inheritedGame = Environment.GetEnvironmentVariable("AUDIOSURF_DIR");
+
+            var info = Editors.StartInfo(editor, @"C:\p", null, 0, 0, EditorEnvironment.None);
+
+            Assert.That(EditorEnvironment.None.IsEmpty, Is.True);
+            Assert.That(info.Environment["PATH"], Is.EqualTo(inheritedPath), "the Skyboxes tab adds nothing to PATH");
+            Assert.That(info.Environment.TryGetValue("AUDIOSURF_DIR", out var game) ? game : null, Is.EqualTo(inheritedGame));
+            Assert.That(ScriptDevLike(new[] { @"C:\bin" }, null).IsEmpty, Is.False);
+            Assert.That(ScriptDevLike(new string[0], null).IsEmpty, Is.True, "no folders and a null variable add nothing");
         }
 
         [TestCase("vscode", new[] { @"C:\p", "-g", @"C:\p\src\draw\rail.lua:12:5" })]
@@ -138,9 +156,9 @@ namespace TweakerCore.Tests.Scripting
         public void OpensAFileOfTheProjectAtItsLine(string id, string[] expected)
         {
             TouchAll();
-            var editor = ScriptEditors.Detect(_search).Single(e => e.Id == id);
+            var editor = Editors.Detect(_search).Single(e => e.Id == id);
 
-            var info = ScriptEditors.StartInfo(editor, @"C:\p", "src/draw/rail.lua", 12, 5, new[] { @"C:\bin" }, null);
+            var info = Editors.StartInfo(editor, @"C:\p", "src/draw/rail.lua", 12, 5, ScriptDevLike(new[] { @"C:\bin" }, null));
 
             Assert.That(info.ArgumentList, Is.EqualTo(expected));
             Assert.That(info.WorkingDirectory, Is.EqualTo(@"C:\p"));
@@ -150,9 +168,9 @@ namespace TweakerCore.Tests.Scripting
         public void AnUnknownPositionOpensAtTheTop()
         {
             TouchAll();
-            var editor = ScriptEditors.Detect(_search).Single(e => e.Id == "vscode");
+            var editor = Editors.Detect(_search).Single(e => e.Id == "vscode");
 
-            var info = ScriptEditors.StartInfo(editor, @"C:\p", "twproject.json", 0, 0, new[] { @"C:\bin" }, null);
+            var info = Editors.StartInfo(editor, @"C:\p", "twproject.json", 0, 0, ScriptDevLike(new[] { @"C:\bin" }, null));
 
             Assert.That(info.ArgumentList.Last(), Is.EqualTo(@"C:\p\twproject.json:1:1"));
         }
@@ -162,10 +180,20 @@ namespace TweakerCore.Tests.Scripting
         [TestCase("sublime", false)]
         [TestCase("notepadpp", false)]
         [TestCase("neovim", false)]
-        public void OnlyASingleProcessEditorWithATerminalWarnsWhenRunning(string id, bool warns)
+        public void OnlyASingleProcessEditorWithATerminalCanMissTheEnvironment(string id, bool warns)
         {
             TouchAll();
-            Assert.That(ScriptEditors.Detect(_search).Single(e => e.Id == id).TerminalMissesPathWhenRunning, Is.EqualTo(warns));
+            Assert.That(Editors.Detect(_search).Single(e => e.Id == id).KeepsOneProcessWithTerminal, Is.EqualTo(warns));
+        }
+
+        /// <summary>What the Script Dev tab hands an editor: its tool folders first on PATH, and the game folder.</summary>
+        private static EditorEnvironment ScriptDevLike(string[] toolFolders, string gameFolder)
+        {
+            return new EditorEnvironment
+            {
+                PathFront = toolFolders,
+                Variables = new Dictionary<string, string> { ["AUDIOSURF_DIR"] = gameFolder }
+            };
         }
 
         private void TouchAll()

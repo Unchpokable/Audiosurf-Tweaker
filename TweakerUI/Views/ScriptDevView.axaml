@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="clr-namespace:TweakerUI.ViewModels"
              xmlns:models="clr-namespace:TweakerUI.Models"
-             xmlns:scripting="clr-namespace:TweakerCore.Scripting;assembly=TweakerCore"
+             xmlns:views="clr-namespace:TweakerUI.Views"
              x:Class="TweakerUI.Views.ScriptDevView"
              x:DataType="vm:ScriptDevViewModel">
 
@@ -66,26 +66,9 @@
                         </Grid>
                     </Border>
 
-                    <!-- Editor: the installed ones Tweaker found; the choice is remembered. -->
+                    <!-- Editor: the shared card (EditorPickerView); the choice is remembered, one for both developer tabs. -->
                     <Border Grid.Row="2" Classes="Card Roomy">
-                        <StackPanel>
-                            <TextBlock Text="Editor" Classes="CardTitle" Margin="0,0,0,10"/>
-                            <TextBlock Classes="Hint" IsVisible="{Binding !HasEditors}"
-                                       Text="No supported editor found. Tweaker looks for Visual Studio Code, Cursor, Sublime Text, Notepad++, Vim and Neovim."/>
-                            <ListBox Classes="RowList" IsVisible="{Binding HasEditors}"
-                                     ItemsSource="{Binding Editors}" SelectedItem="{Binding SelectedEditor, Mode=TwoWay}">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate x:DataType="scripting:ScriptEditor">
-                                        <StackPanel Classes="ChoiceRow" ToolTip.Tip="{Binding ExecutablePath}">
-                                            <TextBlock Classes="RowTitle" Text="{Binding Name}"/>
-                                            <TextBlock Classes="RowPath" Text="{Binding ExecutablePath}"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                            <TextBlock Classes="Hint" Margin="0,2,0,0" IsVisible="{Binding HasEditors}"
-                                       Text="Opened with twllink and cgrpy on its PATH, so the editor's terminal can run them."/>
-                        </StackPanel>
+                        <views:EditorPickerView DataContext="{Binding Editor}"/>
                     </Border>
                 </Grid>
 
@@ -263,7 +246,7 @@
                                                 ToolTip.Tip="Build into the project's build folder"/>
                                         <Button Classes="ActionButton" Content="Build and install" Margin="0,0,8,0" Command="{Binding InstallCommand}"
                                                 ToolTip.Tip="{Binding InstallHint}"/>
-                                        <Button Classes="ActionButton" Margin="0,0,8,0" Content="{Binding OpenInEditorText}" Command="{Binding OpenInEditorCommand}"
+                                        <Button Classes="ActionButton" Margin="0,0,8,0" Content="{Binding Editor.OpenInEditorText}" Command="{Binding OpenInEditorCommand}"
                                                 ToolTip.Tip="Open the project folder in the editor chosen on the left"/>
                                     </WrapPanel>
                                     <WrapPanel Orientation="Horizontal">

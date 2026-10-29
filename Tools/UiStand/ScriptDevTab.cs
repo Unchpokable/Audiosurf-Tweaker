@@ -295,14 +295,15 @@ static class ScriptDevTab
     /// </summary>
     static void CheckNeovimSeesTwllink(string project, string binaries, string cgrpy)
     {
-        var nvim = TweakerCore.Scripting.ScriptEditors.Detect(TweakerCore.Scripting.EditorSearch.FromSystem()).FirstOrDefault(e => e.Id == "neovim");
+        var nvim = TweakerCore.DevProjects.Editors.Detect(TweakerCore.DevProjects.EditorSearch.FromSystem()).FirstOrDefault(e => e.Id == "neovim");
         if (nvim == null)
         {
             Console.WriteLine("note: Neovim is not installed - its PATH check is skipped");
             return;
         }
 
-        var info = TweakerCore.Scripting.ScriptEditors.StartInfo(nvim, project, null, 0, 0, new[] { binaries, cgrpy }, @"D:\Games\Audiosurf");
+        // The tab's own environment: its DevTools\ is the one next to UiStand.exe, where binaries and cgrpy were put.
+        var info = TweakerCore.DevProjects.Editors.StartInfo(nvim, project, null, 0, 0, ScriptDevViewModel.EditorEnvironmentFor(@"D:\Games\Audiosurf"));
         info.ArgumentList.Clear();
         info.ArgumentList.Add("--headless");
         info.ArgumentList.Add("--clean");

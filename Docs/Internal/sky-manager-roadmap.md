@@ -1,7 +1,7 @@
 # Вкладка Skyboxes в TweakerUI — план
 
-**Статус (29.10.2026): план согласован** — решения владельца по вопросам в §9, окружение для HLSL перенесено из
-«продолжения» в план (§5.5). Кода нет; следующая — фаза Н0.
+**Статус (29.10.2026): Н0 сделана** (итог — §11, «Н0 — итог»), ждёт проверки владельцем; следующая — Н1. План
+согласован — решения владельца по вопросам в §9, окружение для HLSL перенесено из «продолжения» в план (§5.5).
 
 Хостовая сторона Skybox Replacer: проекты пакетов `.sky` рядом с TweakerUI, создание по шаблону, открытие в
 редакторе, упаковка в zip и установка в игру одной кнопкой, плюс минимальная связь с плагином — включён ли
@@ -565,6 +565,50 @@ Junction дал бы горячую перезагрузку по каждому
 | **Проверка на игре** | владелец: связь, включение/выбор из TweakerUI и обратно из оверлея, выбор без игры и старт игры с ним, Install and use, Install on save с открытым и закрытым меню, удаление активного, конфликт с папкой; в VS Code с HLSL Tools — `#include` и `g_music*` резолвятся | — |
 
 Только на игре и руками: IPC целиком, вкладка оверлея, окна редакторов, модальные диалоги, системный выбор папки.
+
+### Н0 — итог (29.10.2026)
+
+Сделано по §4, поведение Script Dev не менялось.
+
+| Что | Где |
+|---|---|
+| редакторы + `EditorEnvironment` (что добавить процессу редактора; `None` — ничего) | `TweakerCore/DevProjects/Editors.cs` (был `Scripting/ScriptEditors.cs`, `ScriptEditor` → `ProjectEditor`, `TerminalMissesPathWhenRunning` → `KeepsOneProcessWithTerminal`) |
+| недавние + папка Sources | `TweakerCore/DevProjects/ProjectFolders.cs`; `ScriptProjects` — обёртка с прежним API |
+| правка JSON без переформатирования, любые значения (строка, число, bool, объект) | `TweakerCore/DevProjects/JsonTextEdit.cs`; `ProjectManifest.Edit` через неё |
+| карточка Editor | `TweakerUI/ViewModels/EditorPickerViewModel.cs`, `Views/EditorPickerView.axaml`; окружение Script Dev — `ScriptDevViewModel.EditorEnvironmentFor` |
+| «… on save» | `TweakerUI/Core/ProjectWatcher.cs` (`Start`/`Stop`, `WorkStarted`/`WorkFinished`) |
+| «открыть папку», «в Корзину» | `TweakerUI/Core/ShellActions.cs` |
+
+**Отступления от плана:**
+
+- **Стили Script Dev переехали в `SharedStyles`** — отдельным механическим коммитом до кода. План говорил только
+  «всё общее — из `SharedStyles`» (§7); на деле вкладке неба нужен почти весь словарь Script Dev — строки проекта и
+  редактора, подписи и подсказки формы, строка итога, диагностика, и общей карточке Editor тоже. Классы без префикса:
+  `ProjectRow`, `ChoiceRow`, `RowTitle`, `RowSubtitle`, `RowDescription`, `RowPath`, `Problem`, `FieldLabel`, `Hint`,
+  `FieldSuffix`, `Warning`, `Notice`, `ToolIcon`, `OutcomeLine` (`.Succeeded`/`.Failed`), `DiagnosticRow`, `Severity`,
+  `DiagnosticPlace`, `DiagnosticCode`, `DiagnosticMessage`. В `ScriptsStyles` осталось только своё вкладке Scripts
+  (строка скрипта, ручка, бейджи, живое состояние) — бейджи и строку вкладка неба, вероятно, заберёт в Н4.
+- **Карточка подключается явно**, `<views:EditorPickerView DataContext="{Binding Editor}"/>`, а не через
+  `ContentControl` и `ViewLocator`: стенд не регистрирует `ViewLocator` глобально, и снимки показали бы имя типа.
+- Выбор редактора общий: каждая карточка при поиске редакторов сначала читает настройку — другая вкладка могла её
+  поменять (§4.1).
+
+**Проверено:** `TweakerCore.Tests` — 193 из 193 (перенесённые тесты редакторов плюс пустое окружение; новые
+`JsonTextEditTests` — число, bool, объект целиком рядом с комментариями, добавление поля, не-объект). `UiStand`:
+`shoot`, `scripts`, `scriptdev` до и после каждого шага — стили: 86 + 10 снимков совпали попиксельно, отличия
+Script Dev — только время сборки и случайная временная папка стенда в пути; после переноса кода — то же плюс вьюшка
+Script Dev **без** вьюмодели в `shoot` (все привязки не разрешены, подсказка карточки теперь из привязки — карточка
+короче; в настоящих состояниях не встречается). Neovim из `scriptdev` по-прежнему видит `twllink`, `cgrpy` и
+`AUDIOSURF_DIR`. `tabs` — живых `ScriptDevView` после сборки мусора 0.
+
+**Найдено по ходу, не тронуто:** `UiStand scripts` красный **до** Н0 — три проверки «потеря связи запирает
+переключатели». Стенд ставит `GameRunning = true`, а `Refresh` перед этим перепроверяет настоящий процесс игры
+(`UpdateGameRunning` → `GameProcessService.IsRunning`) и сбрасывает флаг, раз Audiosurf не запущена. Ошибка стенда,
+не вкладки; чинить — подменяемой проверкой процесса или повторной установкой флага в стенде.
+
+**Что проверить владельцу:** Script Dev в живом Tweaker — список проектов, создание, сборка, установка, Rebuild on
+save, Open in <редактор> (и предупреждение про уже запущенный VS Code/Cursor), двойной клик по диагностике, удаление
+проекта в Корзину; вид вкладок Scripts и Script Dev в обеих темах — не должен отличаться ничем.
 
 ## 12. Риски
 

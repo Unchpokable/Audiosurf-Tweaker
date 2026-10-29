@@ -5,15 +5,15 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
-namespace TweakerCore.Scripting
+namespace TweakerCore.DevProjects
 {
     /// <summary>
-    /// An editor the Script Dev tab can open a project in (Docs/Internal/script-manager.md §8.3):
-    /// where it is installed and how to ask it for a folder, or a file at a line.
+    /// An editor the developer tabs - Script Dev and Skyboxes - can open a project in (Docs/Internal/script-manager.md
+    /// §8.3): where it is installed and how to ask it for a folder, or a file at a line.
     /// </summary>
-    public sealed class ScriptEditor
+    public sealed class ProjectEditor
     {
-        internal ScriptEditor(EditorDefinition definition, string executablePath)
+        internal ProjectEditor(EditorDefinition definition, string executablePath)
         {
             Definition = definition;
             ExecutablePath = executablePath;
@@ -36,10 +36,12 @@ namespace TweakerCore.Scripting
 
         /// <summary>
         /// Keeps one process for all its windows, so a second launch hands its arguments to the first and exits -
-        /// and the first, started long ago by somebody else, has an environment without twllink in PATH. Only
-        /// editors with a terminal inside care: without one, PATH reaches nothing the user types into.
+        /// and the first, started long ago by somebody else, has an environment without what an
+        /// <see cref="EditorEnvironment"/> would have added (twllink in PATH). Only editors with a terminal inside
+        /// count: without one, the environment reaches nothing the user types into. Whether that matters is the
+        /// caller's to say - it does only when the environment is not empty.
         /// </summary>
-        public bool TerminalMissesPathWhenRunning => Definition.ProcessName != null && Definition.HasTerminal;
+        public bool KeepsOneProcessWithTerminal => Definition.ProcessName != null && Definition.HasTerminal;
 
         /// <summary>Whether an instance of this editor is running right now.</summary>
         public bool IsRunning()
@@ -100,17 +102,36 @@ namespace TweakerCore.Scripting
     }
 
     /// <summary>
-    /// The editors the Script Dev tab knows (script-manager.md §8.3, decided 28.09.2026): VS Code, Cursor, Sublime Text,
+    /// What a launched editor gets on top of Tweaker's own environment: folders put at the front of PATH, in order, and
+    /// variables set. The user's own PATH is never touched - only the editor's process gets these.
+    /// </summary>
+    public sealed class EditorEnvironment
+    {
+        /// <summary>Nothing added: the editor inherits Tweaker's environment as it is (the Skyboxes tab's case).</summary>
+        public static readonly EditorEnvironment None = new EditorEnvironment();
+
+        public IReadOnlyList<string> PathFront { get; init; } = Array.Empty<string>();
+
+        /// <summary>A null value leaves the variable as Tweaker has it.</summary>
+        public IReadOnlyDictionary<string, string> Variables { get; init; } = new Dictionary<string, string>();
+
+        public bool IsEmpty =>
+            !PathFront.Any(folder => !string.IsNullOrEmpty(folder)) && !Variables.Any(variable => variable.Value != null);
+    }
+
+    /// <summary>
+    /// The editors the developer tabs know (script-manager.md §8.3, decided 28.09.2026): VS Code, Cursor, Sublime Text,
     /// Notepad++, Vim and Neovim. Found in their default install locations and through the shims they put on PATH;
     /// adding one is one more definition below.
     ///
-    /// Launching is where the developer tools get into the user's hands: the editor starts with DevTools\Binaries
-    /// (twllink) and DevTools\CgrPy (cgrpy) at the front of PATH and AUDIOSURF_DIR pointing at the game, so a
-    /// terminal inside it runs "twllink --install" or "cgrpy query ..." as it is.
-    /// The user's own PATH is never touched (the owner's decision: writing a rarely used tool into it is not ours
-    /// to do, and an editor that is already running would not see it anyway).
+    /// Launching is where the developer tools get into the user's hands: Script Dev starts the editor with
+    /// DevTools\Binaries (twllink) and DevTools\CgrPy (cgrpy) at the front of PATH and AUDIOSURF_DIR pointing at the
+    /// game, so a terminal inside it runs "twllink --install" or "cgrpy query ..." as it is. The Skyboxes tab adds
+    /// nothing - a sky needs no tools (sky-manager-roadmap.md §8.6). Either way it is an <see cref="EditorEnvironment"/>
+    /// for the editor's process alone: the user's own PATH is never touched (the owner's decision: writing a rarely
+    /// used tool into it is not ours to do, and an editor that is already running would not see it anyway).
     /// </summary>
-    public static class ScriptEditors
+    public static class Editors
     {
         private static IReadOnlyList<string> Args(params string[] arguments) => arguments;
 
@@ -193,9 +214,9 @@ namespace TweakerCore.Scripting
         };
 
         /// <summary>The installed editors, in the order above; each found once however many ways lead to it.</summary>
-        public static IReadOnlyList<ScriptEditor> Detect(EditorSearch search)
+        public static IReadOnlyList<ProjectEditor> Detect(EditorSearch search)
         {
-            var result = new List<ScriptEditor>();
+            var result = new List<ProjectEditor>();
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var pathFolders = (search.PathVariable ?? "").Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
@@ -213,7 +234,7 @@ namespace TweakerCore.Scripting
                 }
 
                 if (found != null && seen.Add(Path.GetFullPath(found)))
-                    result.Add(new ScriptEditor(definition, Path.GetFullPath(found)));
+                    result.Add(new ProjectEditor(definition, Path.GetFullPath(found)));
             }
             return result;
         }
@@ -222,17 +243,15 @@ namespace TweakerCore.Scripting
         /// How to start <paramref name="editor"/> on a project, or on one of its files at a line
         /// (<paramref name="file"/> relative to the project, '/' separators, as twllink reports it; null for the
         /// project alone). <paramref name="line"/>/<paramref name="column"/> of 0 mean "unknown" and open at the top.
-        /// <paramref name="toolFolders"/> go to the front of PATH in their order - DevTools\Binaries (twllink) and
-        /// DevTools\CgrPy (cgrpy) from the Script Dev tab.
+        /// <paramref name="environment"/> is what the editor's process gets on top of Tweaker's own.
         /// </summary>
         public static ProcessStartInfo StartInfo(
-            ScriptEditor editor,
+            ProjectEditor editor,
             string project,
             string file,
             int line,
             int column,
-            IReadOnlyList<string> toolFolders,
-            string gameFolder)
+            EditorEnvironment environment)
         {
             var info = new ProcessStartInfo(editor.ExecutablePath)
             {
@@ -258,11 +277,18 @@ namespace TweakerCore.Scripting
             foreach (var argument in arguments)
                 info.ArgumentList.Add(argument);
 
-            var path = info.Environment.TryGetValue("PATH", out var existing) ? existing : "";
-            var front = string.Join(Path.PathSeparator, toolFolders.Where(folder => !string.IsNullOrEmpty(folder)));
-            info.Environment["PATH"] = string.IsNullOrEmpty(path) ? front : front + Path.PathSeparator + path;
-            if (gameFolder != null)
-                info.Environment["AUDIOSURF_DIR"] = gameFolder;
+            environment ??= EditorEnvironment.None;
+            var front = string.Join(Path.PathSeparator, environment.PathFront.Where(folder => !string.IsNullOrEmpty(folder)));
+            if (front.Length > 0)
+            {
+                var path = info.Environment.TryGetValue("PATH", out var existing) ? existing : "";
+                info.Environment["PATH"] = string.IsNullOrEmpty(path) ? front : front + Path.PathSeparator + path;
+            }
+            foreach (var variable in environment.Variables)
+            {
+                if (variable.Value != null)
+                    info.Environment[variable.Key] = variable.Value;
+            }
             return info;
         }
 
