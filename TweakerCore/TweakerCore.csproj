@@ -10,4 +10,11 @@
     <InternalsVisibleTo Include="TweakerCore.Tests" />
   </ItemGroup>
 
+  <!-- Sky projects (Skyboxes/SkyTemplates, SkyEditorSupport). The templates are TweakerCore's own; the shader headers
+       are the plugin's, taken straight from its sources so the copy an editor sees is the one built into the DLL. -->
+  <ItemGroup>
+    <EmbeddedResource Include="Skyboxes\Templates\**\*" LogicalName="SkyTemplates/%(RecursiveDir)%(Filename)%(Extension)" />
+    <EmbeddedResource Include="..\TweakerPlugin\assets\shaders\*.hlsli" LogicalName="SkyHeaders/%(Filename)%(Extension)" />
+  </ItemGroup>
+
 </Project>

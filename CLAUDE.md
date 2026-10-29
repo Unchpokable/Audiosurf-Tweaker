@@ -166,7 +166,11 @@ Bash; пара, правится вместе), зависимости став�
   кладёт `DevTools\Binaries` и `DevTools\CgrPy` в `PATH` и `AUDIOSURF_DIR`, пользовательский `PATH` не трогается),
   `ProjectFolders` (недавние + папка Sources), `JsonTextEdit` (правка значений в JSON пользователя без
   переформатирования); в TweakerUI к ним — карточка `EditorPickerViewModel`/`EditorPickerView` и `Core/ProjectWatcher`
-  («… on save»).
+  («… on save»). `Skyboxes/` — модель вкладки Skyboxes (`sky-manager-roadmap.md` §5): проекты неба (папка с
+  `Config.json` = пакет в форме каталога), имя пакета = имя файла `<name>.sky`, шаблоны (`Skyboxes/Templates/`, вшиты
+  ресурсами), копия `.hlsli` плагина для редактора (вшита прямо из `TweakerPlugin/assets/shaders`), `SkyPackager`
+  (проверка ссылок манифеста, zip, атомарная установка), `GameSkies` (папка `Skyboxes\` игры по правилам каталога
+  плагина), `SkyModuleConfig` (`module.json` без игры — только `enabled` и `sky`).
 - **`AudiosurfInterface`** — управляемый клиент протокола игры: `GameProtocol`, `GameConfigState`
   (LIFO-оверрайды `asconfig`), `GameReportListener`, `AudiosurfHandle` (публичный фасад с
   событиями подключения) и `Bridge/` — тонкий pipe-клиент `asbridge.exe`.

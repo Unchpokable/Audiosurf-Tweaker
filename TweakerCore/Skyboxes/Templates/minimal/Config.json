@@ -1,0 +1,13 @@
+{
+  "format": 1,
+  "name": "Sky",
+  "author": "",
+  "version": 1,
+  "layers": [
+    {
+      "id": "sky",
+      "kind": "fullsky",
+      "shader": "shaders/sky.hlsl"
+    }
+  ]
+}

@@ -1,0 +1,65 @@
+// A sky package's manifest. The whole format: https://github.com/Unchpokable/Audiosurf-Tweaker/blob/HEAD/Docs/skyboxes/manifest.md
+// Comments and trailing commas are allowed. Install from Tweaker's Skyboxes tab - or switch on "Install on save" -
+// and the running game rebuilds the sky from what you saved.
+{
+  "format": 1,
+
+  // The name is also the file this sky is installed as ("<name>.sky") and the key the player's settings are
+  // saved under - renaming makes it a new sky.
+  "name": "Sky",
+  "author": "",
+
+  // Not a release number: bump it only when you change what an existing knob means. It is part of the key the
+  // player's settings are saved under, so bumping it resets everything they tuned.
+  "version": 1,
+
+  // What the sky is lit by. Layers bind to these rather than declaring their own, so every layer agrees on where
+  // the sun is. Each field is a knob in the game's parameter panel.
+  "shared": {
+    "lights": [
+      {
+        "id": "sun",
+        "bearing":   { "label": "Sun bearing (deg)",   "default": 30.0, "min": -180, "max": 180 },
+        "elevation": { "label": "Sun elevation (deg)", "default": 22.0, "min": -20,  "max": 85 },
+        "color":     { "label": "Sun colour",          "default": [1.0, 0.94, 0.82] },
+        "intensity": { "label": "Sun strength",        "default": 1.0,  "min": 0,    "max": 3 }
+      }
+    ]
+  },
+
+  "layers": [
+    {
+      "id": "sky",
+      "kind": "fullsky",
+      "shader": "shaders/sky.hlsl",
+
+      // A shared value into a variable of the shader. "direction" and "radiance" are worked out from the light:
+      // a unit vector, and colour x strength.
+      "bind": {
+        "g_light.xyz": "lights.sun.direction",
+        "g_light_color.xyz": "lights.sun.radiance"
+      },
+
+      // The knobs of this layer. Three defaults make a colour picker, one makes a slider. A knob only works if the
+      // shader really reads its variable - the compiler drops one it does not.
+      "params": [
+        {
+          "group": "Colours",
+          "params": [
+            { "var": "g_zenith",  "label": "Zenith",  "default": [0.10, 0.28, 0.62] },
+            { "var": "g_horizon", "label": "Horizon", "default": [0.78, 0.80, 0.78] },
+            { "var": "g_ground",  "label": "Ground",  "default": [0.10, 0.11, 0.13] }
+          ]
+        },
+        {
+          "group": "Sun",
+          "params": [
+            { "var": "g_sun.x", "label": "Disc radius (deg)", "default": 1.2,  "min": 0.1, "max": 8 },
+            { "var": "g_sun.y", "label": "Glow tightness",    "default": 64.0, "min": 2,   "max": 1000 },
+            { "var": "g_sun.z", "label": "Glow strength",     "default": 0.6,  "min": 0,   "max": 2 }
+          ]
+        }
+      ]
+    }
+  ]
+}
