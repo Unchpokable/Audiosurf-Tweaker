@@ -222,4 +222,147 @@
         <Setter Property="BorderBrush" Value="{DynamicResource AccentPrimaryBrush}"/>
     </Style>
 
+    <!-- ============================================================================
+    The developer tabs' vocabulary - Script Dev and Skyboxes (Docs/Internal/sky-manager-roadmap.md §4): a
+    project list, the editor card, a form with labelled fields, the result of the last build or install and
+    the list of what it found. Once the Script Dev tab's own (SM...), here since a second tab is built from them.
+    ============================================================================ -->
+
+    <!-- The stroke icon inside a card's IconButton. -->
+    <Style Selector="Path.ToolIcon">
+        <Setter Property="Stroke" Value="{DynamicResource AccentPrimaryBrush}"/>
+        <Setter Property="StrokeThickness" Value="2"/>
+        <Setter Property="StrokeLineCap" Value="Round"/>
+        <Setter Property="StrokeJoin" Value="Round"/>
+        <Setter Property="Fill" Value="Transparent"/>
+        <Setter Property="Stretch" Value="Uniform"/>
+        <Setter Property="Width" Value="16"/>
+        <Setter Property="Height" Value="16"/>
+    </Style>
+
+    <!-- The text of a tinted card above a tab: something to know before using it. -->
+    <Style Selector="TextBlock.Notice">
+        <Setter Property="FontSize" Value="13.5"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
+    <!-- Rows of a RowList: a project (ProjectRow), or one of a few choices - an editor, a template (ChoiceRow). -->
+    <Style Selector="StackPanel.ProjectRow">
+        <Setter Property="Margin" Value="12,9"/>
+    </Style>
+    <Style Selector="StackPanel.ChoiceRow">
+        <Setter Property="Margin" Value="12,7"/>
+    </Style>
+    <Style Selector="TextBlock.RowTitle">
+        <Setter Property="FontSize" Value="14.5"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+    </Style>
+    <Style Selector="TextBlock.RowSubtitle">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="Margin" Value="0,2,0,0"/>
+    </Style>
+    <Style Selector="TextBlock.RowDescription">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="Margin" Value="0,6,0,0"/>
+    </Style>
+    <Style Selector="TextBlock.RowPath">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
+        <Setter Property="TextTrimming" Value="PathSegmentEllipsis"/>
+        <Setter Property="Margin" Value="0,2,0,0"/>
+    </Style>
+    <Style Selector="TextBlock.Problem">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="#FFB0413C"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="Margin" Value="0,3,0,0"/>
+    </Style>
+
+    <!-- Red on the accent selection is unreadable in the dark theme; on a selected row the text goes plain and
+    stays at full strength. -->
+    <Style Selector="ListBox.RowList ListBoxItem:selected TextBlock.Problem">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+    </Style>
+    <!-- Same for the faint path under a selected editor: faint on the accent wash is not there at all. -->
+    <Style Selector="ListBox.RowList ListBoxItem:selected TextBlock.RowPath">
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+    </Style>
+
+    <!-- A form: a label over each field, a hint under it, a suffix after a file-name field. -->
+    <Style Selector="TextBlock.FieldLabel">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSubtleBrush}"/>
+        <Setter Property="Margin" Value="2,0,0,4"/>
+    </Style>
+    <Style Selector="TextBlock.Hint">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+    <!-- ".lua" or ".sky" after a name field that is a file name: showing the extension says so without a word. -->
+    <Style Selector="TextBlock.FieldSuffix">
+        <Setter Property="FontSize" Value="13.5"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+        <Setter Property="Margin" Value="8,0,2,0"/>
+    </Style>
+    <!-- A consequence to know before saving, not an error. -->
+    <Style Selector="TextBlock.Warning">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="#FFD39A2C"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+        <Setter Property="Margin" Value="0,2,0,0"/>
+    </Style>
+
+    <!-- The result of the last build or install, coloured by how it went. -->
+    <Style Selector="TextBlock.OutcomeLine">
+        <Setter Property="FontSize" Value="14"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.OutcomeLine.Succeeded">
+        <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.OutcomeLine.Failed">
+        <Setter Property="Foreground" Value="#FFB0413C"/>
+    </Style>
+
+    <!-- One thing a build or a check found: a severity mark, where, the code, what. Double-click opens the place. -->
+    <Style Selector="Border.DiagnosticRow">
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Background" Value="{DynamicResource SurfaceRowBrush}"/>
+        <Setter Property="CornerRadius" Value="6"/>
+        <Setter Property="Padding" Value="10,6"/>
+        <Setter Property="Margin" Value="0,0,0,4"/>
+    </Style>
+    <Style Selector="Ellipse.Severity">
+        <Setter Property="Width" Value="8"/>
+        <Setter Property="Height" Value="8"/>
+        <Setter Property="Fill" Value="#FFD39A2C"/>
+        <Setter Property="VerticalAlignment" Value="Center"/>
+    </Style>
+    <Style Selector="Ellipse.Severity.Error">
+        <Setter Property="Fill" Value="#FFB0413C"/>
+    </Style>
+    <Style Selector="TextBlock.DiagnosticPlace">
+        <Setter Property="FontFamily" Value="Consolas, Cascadia Mono, monospace"/>
+        <Setter Property="FontSize" Value="12.5"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.DiagnosticCode">
+        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+    </Style>
+    <Style Selector="TextBlock.DiagnosticMessage">
+        <Setter Property="FontSize" Value="13"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
+        <Setter Property="TextWrapping" Value="Wrap"/>
+    </Style>
+
 </Styles>

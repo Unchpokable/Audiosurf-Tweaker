@@ -3,10 +3,11 @@
         xmlns:core="using:TweakerUI.Core">
 
     <!-- ============================================================================
-    Scripts tab (Docs/Internal/script-manager.md §5). "SM" - script manager; the Script Dev tab
-    (С4) shares this file. Cards, the card title, the switch, the empty-state text and the icon buttons
-    are the shared ones from SharedStyles.axaml; what follows is only this tab's own: the script row and
-    its origin badges.
+    Scripts tab (Docs/Internal/script-manager.md §5). "SM" - script manager. Cards, the card title, the
+    switch, the empty-state text and the icon buttons are the shared ones from SharedStyles.axaml, and so is
+    everything the Script Dev tab is built from (the developer tabs' section there - project rows, forms,
+    build results, diagnostics). What follows is only this tab's own: the script row, its drag handle, its
+    origin badges and what the running game says about it.
     ============================================================================ -->
 
     <Styles.Resources>
@@ -16,26 +17,9 @@
         <StreamGeometry x:Key="IconGrip">M2 2h.01 M7 2h.01 M2 7h.01 M7 7h.01 M2 12h.01 M7 12h.01</StreamGeometry>
     </Styles.Resources>
 
-    <Style Selector="Path.SMIcon">
-        <Setter Property="Stroke" Value="{DynamicResource AccentPrimaryBrush}"/>
-        <Setter Property="StrokeThickness" Value="2"/>
-        <Setter Property="StrokeLineCap" Value="Round"/>
-        <Setter Property="StrokeJoin" Value="Round"/>
-        <Setter Property="Fill" Value="Transparent"/>
-        <Setter Property="Stretch" Value="Uniform"/>
-        <Setter Property="Width" Value="16"/>
-        <Setter Property="Height" Value="16"/>
-    </Style>
-
     <Style Selector="TextBlock.SMSummary">
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
-    </Style>
-
-    <Style Selector="TextBlock.SMNotice">
-        <Setter Property="FontSize" Value="13.5"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
-        <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
 
     <!-- One script. The same surface as a skin row, without the hover wash: a row is not clickable as a
@@ -86,17 +70,6 @@
         <Setter Property="FontWeight" Value="SemiBold"/>
         <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
         <Setter Property="VerticalAlignment" Value="Center"/>
-    </Style>
-    <Style Selector="TextBlock.SMSubtitle">
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
-        <Setter Property="Margin" Value="0,2,0,0"/>
-    </Style>
-    <Style Selector="TextBlock.SMDescription">
-        <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
-        <Setter Property="TextWrapping" Value="Wrap"/>
-        <Setter Property="Margin" Value="0,6,0,0"/>
     </Style>
     <Style Selector="TextBlock.SMBackups">
         <Setter Property="FontSize" Value="12"/>
@@ -153,116 +126,6 @@
     </Style>
     <Style Selector="Border.SMBadge.Missing > TextBlock">
         <Setter Property="Foreground" Value="#FFB0413C"/>
-    </Style>
-
-    <!-- ============================================================================
-    Script Dev (С4). The project list is the shared RowList; its row content, the build status and the
-    diagnostics below are this tab's.
-    ============================================================================ -->
-
-    <Style Selector="StackPanel.SMProjectRow">
-        <Setter Property="Margin" Value="12,9"/>
-    </Style>
-    <Style Selector="StackPanel.SMEditorRow">
-        <Setter Property="Margin" Value="12,7"/>
-    </Style>
-    <Style Selector="TextBlock.SMProjectTitle">
-        <Setter Property="FontSize" Value="14.5"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
-    </Style>
-    <Style Selector="TextBlock.SMPath">
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
-        <Setter Property="TextTrimming" Value="PathSegmentEllipsis"/>
-        <Setter Property="Margin" Value="0,2,0,0"/>
-    </Style>
-    <Style Selector="TextBlock.SMProblem">
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Foreground" Value="#FFB0413C"/>
-        <Setter Property="TextWrapping" Value="Wrap"/>
-        <Setter Property="Margin" Value="0,3,0,0"/>
-    </Style>
-
-    <!-- Red on the accent selection is unreadable in the dark theme; on a selected row the text goes plain and
-    stays at full strength. -->
-    <Style Selector="ListBox.RowList ListBoxItem:selected TextBlock.SMProblem">
-        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-    </Style>
-    <!-- Same for the faint path under a selected editor: faint on the accent wash is not there at all. -->
-    <Style Selector="ListBox.RowList ListBoxItem:selected TextBlock.SMPath">
-        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
-    </Style>
-
-    <Style Selector="TextBlock.SMFieldLabel">
-        <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextSubtleBrush}"/>
-        <Setter Property="Margin" Value="2,0,0,4"/>
-    </Style>
-    <Style Selector="TextBlock.SMHint">
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextFaintBrush}"/>
-        <Setter Property="TextWrapping" Value="Wrap"/>
-    </Style>
-    <!-- ".lua" after the id field: the id is the file name, and showing the extension says so without a word. -->
-    <Style Selector="TextBlock.SMFileSuffix">
-        <Setter Property="FontSize" Value="13.5"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
-        <Setter Property="VerticalAlignment" Value="Center"/>
-        <Setter Property="Margin" Value="8,0,2,0"/>
-    </Style>
-    <!-- A consequence to know before saving, not an error. -->
-    <Style Selector="TextBlock.SMWarning">
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Foreground" Value="#FFD39A2C"/>
-        <Setter Property="TextWrapping" Value="Wrap"/>
-        <Setter Property="Margin" Value="0,2,0,0"/>
-    </Style>
-
-    <!-- Build status line: the result of the last build, coloured by how it went. -->
-    <Style Selector="TextBlock.SMBuildStatus">
-        <Setter Property="FontSize" Value="14"/>
-        <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
-    </Style>
-    <Style Selector="TextBlock.SMBuildStatus.Succeeded">
-        <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}"/>
-    </Style>
-    <Style Selector="TextBlock.SMBuildStatus.Failed">
-        <Setter Property="Foreground" Value="#FFB0413C"/>
-    </Style>
-
-    <!-- One diagnostic: a severity mark, where, the code, what. Double-click opens the place in the editor. -->
-    <Style Selector="Border.SMDiagnostic">
-        <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Background" Value="{DynamicResource SurfaceRowBrush}"/>
-        <Setter Property="CornerRadius" Value="6"/>
-        <Setter Property="Padding" Value="10,6"/>
-        <Setter Property="Margin" Value="0,0,0,4"/>
-    </Style>
-    <Style Selector="Ellipse.SMSeverity">
-        <Setter Property="Width" Value="8"/>
-        <Setter Property="Height" Value="8"/>
-        <Setter Property="Fill" Value="#FFD39A2C"/>
-        <Setter Property="VerticalAlignment" Value="Center"/>
-    </Style>
-    <Style Selector="Ellipse.SMSeverity.Error">
-        <Setter Property="Fill" Value="#FFB0413C"/>
-    </Style>
-    <Style Selector="TextBlock.SMLocation">
-        <Setter Property="FontFamily" Value="Consolas, Cascadia Mono, monospace"/>
-        <Setter Property="FontSize" Value="12.5"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}"/>
-    </Style>
-    <Style Selector="TextBlock.SMCode">
-        <Setter Property="FontSize" Value="12"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
-    </Style>
-    <Style Selector="TextBlock.SMMessage">
-        <Setter Property="FontSize" Value="13"/>
-        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}"/>
-        <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
 
 </Styles>
