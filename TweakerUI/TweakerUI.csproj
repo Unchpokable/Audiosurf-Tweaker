@@ -102,7 +102,7 @@
 
 	    Docs\ ships as the public documentation, layout kept so its relative links work (dev-bundle-roadmap.md
 	    §2.11): everything but Internal\ (the Russian working notes - linked from the public pages by GitHub
-	    URL, not shipped) and readme\ (screenshots for the repository's README).
+	    URL, not shipped), AgentWorkflow\ (repository agent configuration), and readme\ (README screenshots).
 
 	    AgentKit\ is the one folder of the dev DevTools\ that is replaced rather than added to: nothing in it is the
 	    user's, and a skill file left over from an older kit would be handed to the next project set up from it.
@@ -117,7 +117,7 @@
 			<DevToolsCgrPy Include="$(CgrPySourceDir)\**\*"
 			               Exclude="$(CgrPySourceDir)\.cache\**;$(CgrPySourceDir)\.venv\**;$(CgrPySourceDir)\out\**;$(CgrPySourceDir)\**\__pycache__\**;$(CgrPySourceDir)\uv.lock" />
 			<DevToolsDocs Include="$(PublicDocsSourceDir)\**\*"
-			              Exclude="$(PublicDocsSourceDir)\Internal\**;$(PublicDocsSourceDir)\readme\**" />
+			              Exclude="$(PublicDocsSourceDir)\Internal\**;$(PublicDocsSourceDir)\AgentWorkflow\**;$(PublicDocsSourceDir)\readme\**" />
 			<DevToolsAgentKit Include="$(AgentKitSourceDir)\**\*" />
 		</ItemGroup>
 		<RemoveDir Directories="$(OutDir)DevToolsPayload" />

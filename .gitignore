@@ -383,6 +383,7 @@ Audiosurf_Steam/
 
 # Development scrap and temporary files
 Temp/
+Docs/AgentWorkflow/local-environment.local.md
 # Tools/CgrPy: everything generated. proj.pkl is a ~200 MB parse cache derived entirely from the
 # player's own Audiosurf install - rebuildable in under a minute by rdy2use/build_proj.py, and not
 # ours to redistribute. out/ holds generated analysis artifacts.

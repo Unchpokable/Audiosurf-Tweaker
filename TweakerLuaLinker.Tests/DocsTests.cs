@@ -135,12 +135,12 @@ namespace TweakerLuaLinker.Tests
     {
         public static string Root => LuaRunner.RepositoryRoot() ?? throw new InconclusiveException("repository not found");
 
-        /// <summary>Everything under Docs/ that ships: all of it but Internal/ and readme/ (CopyDevTools).</summary>
+        /// <summary>Everything under Docs/ that ships: exclude Internal/, AgentWorkflow/ and readme/ (CopyDevTools).</summary>
         public static IEnumerable<string> Public()
         {
             var docs = Path.Combine(Root, "Docs");
             return Directory.EnumerateFiles(docs, "*.md", SearchOption.AllDirectories)
-                .Where(f => Path.GetRelativePath(docs, f).Split(Path.DirectorySeparatorChar)[0] is not ("Internal" or "readme"))
+                .Where(f => Path.GetRelativePath(docs, f).Split(Path.DirectorySeparatorChar)[0] is not ("Internal" or "AgentWorkflow" or "readme"))
                 .OrderBy(f => f, StringComparer.Ordinal);
         }
 
