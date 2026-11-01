@@ -51,6 +51,7 @@ struct sampler {
 //
 // `program` must outlive the cache entry, which every entry in sky_program's table does.
 [[nodiscard]] pair ensure(IDirect3DDevice9* device, const sky_program& program) noexcept;
+[[nodiscard]] bool failed(const sky_program& program) noexcept;
 
 // The textures `program`'s layer declares, loaded against `device` on first use, in the order the
 // manifest listed them.

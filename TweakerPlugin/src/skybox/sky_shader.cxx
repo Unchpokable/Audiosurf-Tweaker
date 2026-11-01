@@ -24,6 +24,7 @@ struct cache_slot {
     // and loading a volume is a far heavier thing to do than creating a shader from bytecode already
     // in memory.
     bool textures_resolved {};
+    bool textures_failed {};
     std::vector<tw::skybox::texture::loaded> owned;
     std::vector<tw::skybox::shader::sampler> samplers;
 };
@@ -101,6 +102,7 @@ void resolve_textures(IDirect3DDevice9* device, const tw::skybox::sky_program& p
     for(const tw::skybox::package::texture_ref& declared : layer->textures) {
         std::vector<std::byte> bytes;
         if(!manifest->files.read(declared.path, bytes)) {
+            slot.textures_failed = true;
             TW_LOG_ERROR("sky_shader: '{}': could not read texture '{}' from the package", program.id, declared.path);
             continue;
         }
@@ -109,6 +111,7 @@ void resolve_textures(IDirect3DDevice9* device, const tw::skybox::sky_program& p
         std::string error;
 
         if(!tw::skybox::texture::create_from_dds(device, bytes, one, error)) {
+            slot.textures_failed = true;
             TW_LOG_ERROR("sky_shader: '{}': texture '{}': {}", program.id, declared.path, error);
             continue;
         }
@@ -272,6 +275,12 @@ void invalidate(const sky_program& program) noexcept
     // there matching nothing.
     release_slot(*slot);
     slot->program = &program;
+}
+
+bool failed(const sky_program& program) noexcept
+{
+    const cache_slot* slot = find_slot(program);
+    return slot != nullptr && (slot->failed || slot->textures_failed);
 }
 
 void release_device_resources() noexcept

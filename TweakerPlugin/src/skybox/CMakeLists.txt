@@ -17,6 +17,8 @@ target_sources(TweakerPlugin PRIVATE
     sky_timer.cxx
     sky_paths.cxx
     sky_program.cxx
+    sky_reload.cxx
+    sky_remote.cxx
     sky_settings.cxx
     sky_shared.cxx
     sky_shader.cxx

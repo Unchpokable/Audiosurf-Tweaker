@@ -73,4 +73,16 @@ std::string percent_decode(std::string_view text)
 
     return out;
 }
+
+std::string_view first_line(std::string_view text, std::size_t limit) noexcept
+{
+    text = text.substr(0, text.find_first_of("\r\n"));
+    if(text.size() <= limit) {
+        return text;
+    }
+    while(limit > 0 && (static_cast<unsigned char>(text[limit]) & 0xC0) == 0x80) {
+        --limit;
+    }
+    return text.substr(0, limit);
+}
 } // namespace tw::ui::wire

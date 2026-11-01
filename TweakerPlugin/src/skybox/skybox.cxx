@@ -15,6 +15,7 @@
 #include "skybox/sky_paths.hxx"
 #include "skybox/sky_probe.hxx"
 #include "skybox/sky_program.hxx"
+#include "skybox/sky_reload.hxx"
 #include "skybox/sky_renderer.hxx"
 #include "skybox/sky_settings.hxx"
 #include "skybox/sky_shader.hxx"
@@ -96,6 +97,29 @@ bool g_logged_no_channels = false;
 // Rate limit for the hot-reload stat. Render thread only.
 std::chrono::steady_clock::time_point g_last_reload_poll {};
 
+std::string g_selection_error;
+bool g_selection_missing = false;
+
+bool g_sky_drawn = false;
+
+bool g_force_program_poll = false;
+bool g_reload_active = false;
+
+unsigned int g_revision = 0;
+
+tw::skybox::load_state g_reported_state = tw::skybox::load_state::waiting;
+std::string g_reported_error;
+
+void observe_load_state()
+{
+    const auto state = tw::skybox::current_load_status();
+    if(state.state != g_reported_state || state.message != g_reported_error) {
+        g_reported_state = state.state;
+        g_reported_error.assign(state.message);
+        ++g_revision;
+    }
+}
+
 void rebuild_orientation()
 {
     namespace math = tw::skybox::math;
@@ -148,13 +172,25 @@ void refresh_all_layers()
 // All of them, in manifest order, sharing one `loaded_sky`: the shared block lives there, so this is
 // what makes "every layer of this sky agrees about its lights" true by construction rather than by
 // wiring.
-tw::skybox::sky_program* load_package_from(const std::filesystem::path& root)
+tw::skybox::sky_program* adopt_package(std::shared_ptr<const tw::skybox::package::manifest> manifest)
 {
-    auto manifest = std::make_shared<tw::skybox::package::manifest>(tw::skybox::package::load(root));
-
     if(!manifest->usable()) {
-        // Every reason is already in the manifest's own diagnostics, and those reach the overlay.
-        TW_LOG_WARNING("skybox: '{}' has no usable layers", root.string());
+        g_selection_error = "Package has no usable layers";
+        if(!manifest->diagnostics.empty()) {
+            g_selection_error.clear();
+            for(const auto& line : manifest->diagnostics) {
+                if(!g_selection_error.empty()) {
+                    g_selection_error += '\n';
+                }
+                g_selection_error += line;
+            }
+        }
+        return nullptr;
+    }
+    if(std::ranges::none_of(manifest->layers, [](const auto& layer) {
+           return layer.enabled && layer.kind == tw::skybox::package::layer_kind::fullsky;
+       })) {
+        g_selection_error = "Package has no enabled fullsky layer";
         return nullptr;
     }
 
@@ -163,13 +199,14 @@ tw::skybox::sky_program* load_package_from(const std::filesystem::path& root)
     // The stem, so `Foo.sky` the folder and `Foo.sky` the archive keep the same settings file. Which
     // form a sky is in is packaging, not identity, and somebody who zips the folder they have been
     // tuning should not lose the tuning.
-    sky->stem = tw::plugin::paths::to_utf8(root.stem());
+    sky->stem = tw::plugin::paths::to_utf8(manifest->root.stem());
 
     // Before any layer is loaded: a layer's bindings are resolved against this, and the layer that
     // lists the shared knobs in the panel reads them straight out of it.
     sky->values.adopt(manifest);
 
     g_layers.clear();
+    tw::skybox::sprites::set_layer(nullptr);
 
     tw::skybox::sky_program* primary = nullptr;
 
@@ -180,10 +217,17 @@ tw::skybox::sky_program* load_package_from(const std::filesystem::path& root)
 
         tw::skybox::sky_program* program = tw::skybox::load_package_layer(sky, layer.id);
         if(program == nullptr) {
+            if(!g_selection_error.empty()) {
+                g_selection_error += '\n';
+            }
+            g_selection_error += "Could not load layer '" + layer.id + "' (check its shader files)";
             continue;
         }
 
         g_layers.push_back(program);
+        if(!program->from_file()) {
+            tw::skybox::shader::invalidate(*program);
+        }
 
         // The first fullsky layer is what the draw path means by "the program"; the rest are extra
         // passes over the top of it.
@@ -195,8 +239,11 @@ tw::skybox::sky_program* load_package_from(const std::filesystem::path& root)
     }
 
     if(primary == nullptr) {
-        TW_LOG_WARNING("skybox: '{}' declares no usable fullsky layer", root.string());
+        if(g_selection_error.empty()) {
+            g_selection_error = "Package has no usable fullsky layer";
+        }
         g_layers.clear();
+        tw::skybox::sprites::set_layer(nullptr);
     }
 
     return primary;
@@ -225,6 +272,11 @@ void apply_selection()
     // lit by are exactly the artefact this is meant to prevent.
     g_layers.clear();
     tw::skybox::sprites::set_layer(nullptr);
+    tw::skybox::reload::clear();
+    g_force_program_poll = false;
+    g_reload_active = false;
+    g_selection_error.clear();
+    g_selection_missing = false;
 
     tw::skybox::sky_program* program = nullptr;
 
@@ -243,11 +295,13 @@ void apply_selection()
         }
 
         case tw::skybox::entry_kind::package: {
-            // A folder holding Config.json, or the zip of one - package::load opens either.
             const std::filesystem::path path = tw::skybox::skybox_path(selected.id);
-            std::error_code ec;
-            if(!path.empty() && std::filesystem::exists(path, ec)) {
-                program = load_package_from(path);
+            if(!path.empty()) {
+                tw::skybox::reload::select(path);
+            }
+            else {
+                g_selection_error = "Invalid package name";
+                g_selection_missing = true;
             }
             break;
         }
@@ -257,7 +311,8 @@ void apply_selection()
             break;
     }
 
-    if(program == nullptr && selection_is_program(selected.kind)) {
+    if(program == nullptr && selection_is_program(selected.kind) && selected.kind != tw::skybox::entry_kind::package) {
+        g_selection_error = "Selected sky could not be loaded";
         TW_LOG_WARNING("skybox: {} '{}' could not be loaded - falling back to the default cube map",
             tw::skybox::config::kind_key(selected.kind),
             selected.id);
@@ -271,6 +326,8 @@ void apply_selection()
     }
 
     g_program.store(program, std::memory_order_relaxed);
+
+    g_reload_active = program != nullptr && program->compiling();
 }
 
 bool is_sky_channel_name(const char* name) noexcept
@@ -310,6 +367,7 @@ int find_slot(Aco_DX8_Texture* channel) noexcept
 
 void clear_all_textures() noexcept
 {
+    g_sky_drawn = false;
     for(auto& slot : g_sky_textures) {
         slot.store(nullptr, std::memory_order_relaxed);
     }
@@ -563,6 +621,11 @@ bool intercept_draw(IDirect3DDevice9* device, IDirect3DBaseTexture9* stage0_text
         return false;
     }
 
+    if(!g_sky_drawn) {
+        g_sky_drawn = true;
+        ++g_revision;
+    }
+
     // Counts this draw and, once per device, describes the frame it lands in. See sky_probe: the
     // count is the fact that decides what a second geometry pass can afford, because the renderer
     // below redraws the whole sky on every one of them.
@@ -731,14 +794,39 @@ bool is_enabled() noexcept
 
 void set_enabled(bool value) noexcept
 {
+    if(value == config::enabled()) {
+        return;
+    }
     // Writes module.json itself.
     config::set_enabled(value);
     g_enabled.store(value, std::memory_order_relaxed);
+    ++g_revision;
 }
 
 reload_outcome poll_reload(bool watch) noexcept
 {
-    // Before the early-out below: a sky with no file-backed layer still has geometry to build, and
+    struct observation {
+        ~observation()
+        {
+            observe_load_state();
+        }
+    } observe;
+
+    bool started = false;
+
+    if(auto loaded = tw::skybox::reload::poll(watch); loaded.has_value()) {
+        g_reload_active = true;
+        g_selection_error.clear();
+        g_selection_missing = loaded->missing;
+
+        if(sky_program* program = adopt_package(std::move(loaded->sky)); program != nullptr) {
+            g_program.store(program, std::memory_order_relaxed);
+            request_reload();
+            started = true;
+        }
+    }
+
+    // A sky with no file-backed layer still has geometry to build, and
     // this is the one call per frame that happens on the render thread outside any interception.
     sprites::prepare(g_device);
 
@@ -746,18 +834,16 @@ reload_outcome poll_reload(bool watch) noexcept
     // while it was building. Free when there are none, which is almost always.
     tw::plugin::bg_work::poll();
 
-    if(g_layers.empty()) {
-        return reload_outcome::none;
-    }
-
     // Half a second between stats. Often enough that saving the file and alt-tabbing back feels
     // immediate, rare enough that a filesystem call is not part of every frame - and, with `watch`,
     // not part of any frame at all while nobody is looking.
     constexpr auto k_interval = std::chrono::milliseconds { 500 };
 
-    bool stat_now = false;
+    bool stat_now = std::exchange(g_force_program_poll, false);
+
     if(watch) {
         const auto now = std::chrono::steady_clock::now();
+
         if(now - g_last_reload_poll >= k_interval) {
             g_last_reload_poll = now;
             stat_now = true;
@@ -767,8 +853,6 @@ reload_outcome poll_reload(bool watch) noexcept
     // Every layer, not just the one that paints the cube. A sky can now compile several shaders -
     // its own and its clouds' - and a layer whose compile is never collected is a layer that stays
     // on its previous bytecode forever while reporting itself busy.
-    reload_outcome outcome = reload_outcome::none;
-
     for(sky_program* layer : g_layers) {
         if(!layer->from_file()) {
             continue;
@@ -784,19 +868,16 @@ reload_outcome poll_reload(bool watch) noexcept
                 // lists - so the sky's shared values have just been re-read from the settings file,
                 // and every other layer's bindings have to be evaluated again against them.
                 refresh_all_layers();
-                outcome = reload_outcome::reloaded;
+                g_reload_active = true;
                 break;
 
             case program_event::compile_failed:
-                // Reported over a "started" from another layer but not over a "reloaded": a failure
-                // is the one thing whose author needs to hear about it now.
-                outcome = reload_outcome::failed;
+                g_reload_active = true;
                 break;
 
             case program_event::compile_started:
-                if(outcome == reload_outcome::none) {
-                    outcome = reload_outcome::started;
-                }
+                g_reload_active = true;
+                started = true;
                 break;
 
             default:
@@ -804,7 +885,25 @@ reload_outcome poll_reload(bool watch) noexcept
         }
     }
 
-    return outcome;
+    // A sky reload is one operation, even when its layers finish on different frames. Installing a
+    // layer still invalidates its resources immediately; the notification waits for the whole sky.
+    if(!g_reload_active) {
+        return reload_outcome::none;
+    }
+
+    if(std::ranges::any_of(g_layers, [](const sky_program* layer) {
+           return layer->compiling();
+       })) {
+        return started ? reload_outcome::started : reload_outcome::none;
+    }
+
+    g_reload_active = false;
+
+    const bool failed = !g_selection_error.empty() || std::ranges::any_of(g_layers, [](const sky_program* layer) {
+        return layer->failed() || !layer->usable();
+    });
+
+    return failed ? reload_outcome::failed : reload_outcome::reloaded;
 }
 
 status current_status() noexcept
@@ -825,6 +924,54 @@ status current_status() noexcept
         .shader_quality = g_shader_quality.load(std::memory_order_relaxed),
         .draw_microseconds = timer::average_microseconds(),
     };
+}
+
+load_status current_load_status() noexcept
+{
+    if(!is_enabled()) {
+        return { load_state::off, {} };
+    }
+    if(g_selection_missing || (catalog_ready() && selected_catalog_index() < 0)) {
+        return { load_state::missing, {} };
+    }
+    if(tw::skybox::reload::loading()) {
+        return { load_state::compiling, {} };
+    }
+    if(!g_selection_error.empty()) {
+        return { load_state::failed, g_selection_error };
+    }
+    for(const auto* layer : g_layers) {
+        if(layer->compiling()) {
+            return { load_state::compiling, {} };
+        }
+    }
+    for(const auto* layer : g_layers) {
+        if(layer->failed() || !layer->usable()) {
+            return { load_state::failed,
+                layer->diagnostics.empty() ? std::string_view { "Layer has no usable shader" } : std::string_view { layer->diagnostics } };
+        }
+        if(shader::failed(*layer)) {
+            return { load_state::failed, "The device could not create a layer's shaders or textures" };
+        }
+    }
+    if(sprites::enabled() && !sprites::generator_error().empty()) {
+        return { load_state::failed, sprites::generator_error() };
+    }
+    if(sprites::enabled() && !sprites::ready()) {
+        return { load_state::failed, "The device could not create the sprite layer's resources" };
+    }
+    if(g_cubemap_failed) {
+        return { load_state::failed, "Selected image could not be loaded as a cube map" };
+    }
+    if(!g_sky_drawn || (g_program.load(std::memory_order_relaxed) == nullptr && g_cubemap == nullptr)) {
+        return { load_state::waiting, {} };
+    }
+    return { load_state::ready, {} };
+}
+
+unsigned int revision() noexcept
+{
+    return g_revision;
 }
 
 void set_shader_quality(int percent) noexcept
@@ -905,7 +1052,20 @@ void reset_sky_params()
 
 void select(entry_kind kind, std::string_view id)
 {
+    const auto& previous = config::sky();
+    if(previous.kind == kind && same_entry(kind, previous.id, id)) {
+        if(kind == entry_kind::package) {
+            tw::skybox::reload::request();
+            return;
+        }
+        if(kind == entry_kind::shader_file && g_program.load(std::memory_order_relaxed) != nullptr && g_selection_error.empty()) {
+            // The normal compile poll performs the actual invalidation, even with the menu shut.
+            g_force_program_poll = true;
+            return;
+        }
+    }
     config::select(kind, id);
+    ++g_revision;
 
     // The mirror the draw path reads follows the config: picking an image has to stop a shader that
     // was painting over it, and picking a shader has to start one.

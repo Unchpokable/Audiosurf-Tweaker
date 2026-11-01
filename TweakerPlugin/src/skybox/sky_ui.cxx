@@ -9,6 +9,7 @@
 #include "skybox/sky_panel.hxx"
 #include "skybox/sky_probe.hxx"
 #include "skybox/sky_program.hxx"
+#include "skybox/sky_remote.hxx"
 #include "skybox/sky_sprites.hxx"
 #include "skybox/sky_timer.hxx"
 #include "skybox/skybox.hxx"
@@ -56,6 +57,7 @@ bool g_widgets_ready = false;
 // every frame the tab happens to be open.
 unsigned int g_rows_generation = 0;
 bool g_rows_built = false;
+unsigned int g_state_revision = 0;
 
 // The tab has to scan at least once before it can show anything, and doing it on the first draw
 // rather than at initialize() keeps a directory walk off the plugin's startup path.
@@ -267,6 +269,23 @@ void draw_status_line(const tw::skybox::status& status)
         return;
     }
 
+    const auto selection = tw::skybox::current_load_status();
+    if(selection.state == tw::skybox::load_state::missing) {
+        ImGui::TextUnformatted("Selected sky is missing. Choose another sky or restore its files.");
+        return;
+    }
+    if(selection.state == tw::skybox::load_state::failed) {
+        ImGui::PushStyleColor(ImGuiCol_Text, tw::ui::theme::text_error);
+        ImGui::TextWrapped("%.*s", static_cast<int>(selection.message.size()), selection.message.data());
+        ImGui::PopStyleColor();
+        draw_timing(status);
+        return;
+    }
+    if(selection.state == tw::skybox::load_state::compiling && !status.program_compiling) {
+        ImGui::TextUnformatted("Loading sky...");
+        return;
+    }
+
     if(status.program != nullptr) {
         // Deliberately ahead of every cube map state below: with a program running none of it
         // applies, because no image is loaded at any point.
@@ -326,12 +345,20 @@ void draw_tab()
     }
 
     if(!g_scanned) {
-        tw::skybox::refresh_catalog();
+        if(!tw::skybox::catalog_ready()) {
+            tw::skybox::refresh_catalog();
+        }
         g_scanned = true;
     }
 
     if(!g_rows_built || g_rows_generation != tw::skybox::catalog_generation()) {
         rebuild_rows();
+    }
+
+    if(g_state_revision != tw::skybox::revision()) {
+        g_enabled_toggle.set_checked(tw::skybox::is_enabled());
+        g_list.set_selected(tw::skybox::selected_catalog_index());
+        g_state_revision = tw::skybox::revision();
     }
 
     const tw::skybox::status status = tw::skybox::current_status();
@@ -444,6 +471,7 @@ void initialize() noexcept
 
 void update() noexcept
 {
+    tw::skybox::remote::pump();
     // Hot reload. The notification is the whole point of doing this from the UI layer: a shader that
     // silently recompiled looks exactly like one that did not, and the loop this is meant to support
     // is "save the file, alt-tab, look".

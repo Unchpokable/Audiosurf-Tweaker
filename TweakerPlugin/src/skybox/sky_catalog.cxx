@@ -22,6 +22,7 @@ constexpr std::string_view k_packed_prefix = "skyboxes/";
 
 std::vector<tw::skybox::catalog_entry> g_entries;
 unsigned int g_generation = 0;
+bool g_ready = false;
 
 bool equals_ignore_case(std::string_view a, std::string_view b) noexcept
 {
@@ -130,7 +131,7 @@ void add_program_entries()
         // Only the built-ins. A program compiled from a file is listed by the directory scan below,
         // from the file itself - otherwise a shader that has been picked once would appear twice,
         // and one that has never been picked would not appear at all.
-        if(program->from_file()) {
+        if(program->from_file() || program->from_package()) {
             continue;
         }
 
@@ -257,6 +258,7 @@ namespace tw::skybox
 {
 void refresh_catalog()
 {
+    g_ready = true;
     std::vector<catalog_entry> previous;
     previous.swap(g_entries);
 
@@ -303,20 +305,32 @@ unsigned int catalog_generation() noexcept
 int selected_catalog_index() noexcept
 {
     const config::selection& selected = config::sky();
+    return catalog_index(selected.kind, selected.id);
+}
 
+bool catalog_ready() noexcept
+{
+    return g_ready;
+}
+
+bool same_entry(entry_kind kind, std::string_view a, std::string_view b) noexcept
+{
+    const bool on_disk = kind != entry_kind::program && kind != entry_kind::packed;
+    return on_disk ? equals_ignore_case(a, b) : a == b;
+}
+
+int catalog_index(entry_kind kind, std::string_view id) noexcept
+{
     // The config stores exactly what the catalog lists - a kind and an id - so this is a lookup. Disk
     // ids are names in a case-insensitive file system, and a hand-edited "odc_voltex.sky" means the same
     // folder as the one the scan spelled; built-in ids and resource keys are compared as written.
-    const bool on_disk = selected.kind == entry_kind::package || selected.kind == entry_kind::shader_file
-                         || selected.kind == entry_kind::file || selected.kind == entry_kind::face_dir;
-
     for(std::size_t i = 0; i < g_entries.size(); ++i) {
         const catalog_entry& entry = g_entries[i];
-        if(entry.kind != selected.kind) {
+        if(entry.kind != kind) {
             continue;
         }
 
-        if(on_disk ? equals_ignore_case(entry.id, selected.id) : entry.id == selected.id) {
+        if(same_entry(kind, entry.id, id)) {
             return static_cast<int>(i);
         }
     }

@@ -648,7 +648,7 @@ void collect_watched(tw::skybox::package::manifest& out)
             }
 
             std::filesystem::path referenced = out.files.locate(name);
-            if(!referenced.empty() && std::filesystem::is_regular_file(referenced)) {
+            if(!referenced.empty()) {
                 out.watched.push_back(std::move(referenced));
             }
         }
@@ -657,14 +657,16 @@ void collect_watched(tw::skybox::package::manifest& out)
             continue;
         }
 
-        // A `sprites` layer names the stem of a .vs/.ps pair, and a `fullsky` layer names a file.
-        // Both are covered by trying the plain path first and the two suffixes after, which also
-        // means a package that ships only one half of a pair still watches the half it has.
+        // Keep missing dependencies too: restoring one must wake a failed package, even when
+        // its parent directory is not the package root.
         for(const std::string_view suffix : { std::string_view {}, std::string_view { ".vs.hlsl" }, std::string_view { ".ps.hlsl" } }) {
+            if((layer.kind == tw::skybox::package::layer_kind::sprites) == suffix.empty()) {
+                continue;
+            }
             // Through the package file system, so a manifest naming "../../somebody_elses.hlsl" watches
             // nothing rather than reaching outside the package - the same rule the reads obey.
             std::filesystem::path candidate = out.files.locate(layer.shader + std::string(suffix));
-            if(!candidate.empty() && std::filesystem::is_regular_file(candidate)) {
+            if(!candidate.empty()) {
                 out.watched.push_back(std::move(candidate));
             }
         }
@@ -759,11 +761,9 @@ manifest read_manifest(manifest out)
     out.version = as_int(yyjson_obj_get(json_root, "version"), 0);
 
     if(out.format > k_supported_format) {
-        // Read it anyway. A newer format is far more likely to have added keys - which are ignored
-        // harmlessly - than to have changed the meaning of one, and refusing outright would turn a
-        // cosmetic version bump into a sky that does not load.
         out.diagnostics.emplace_back("format " + std::to_string(out.format) + " is newer than this build understands ("
-            + std::to_string(k_supported_format) + ") - reading it anyway, some of it may be ignored");
+                                     + std::to_string(k_supported_format) + ") - update Tweaker to load this sky");
+        return out;
     }
 
     if(yyjson_val* shared = yyjson_obj_get(json_root, "shared"); shared != nullptr && yyjson_is_obj(shared)) {

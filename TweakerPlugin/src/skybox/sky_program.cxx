@@ -351,6 +351,10 @@ std::string path_id(const std::filesystem::path& path)
 bool apply_compile(tw::skybox::sky_program& program, tw::skybox::compile::result&& compiled)
 {
     program.diagnostics = std::move(compiled.diagnostics);
+    program.pixel_failed = !compiled.ok();
+    if(!program.vertex_diagnostics.empty()) {
+        program.diagnostics = program.vertex_diagnostics + "\n" + program.diagnostics;
+    }
 
     if(!compiled.ok()) {
         TW_LOG_ERROR("sky_program: '{}' did not compile: {}", program.id, program.diagnostics);
@@ -431,21 +435,18 @@ tw::plugin::bg_work::task<tw::skybox::compile::result> start_compile(tw::skybox:
     const tw::skybox::package::manifest* manifest
         = program.sky != nullptr && program.sky->sky != nullptr ? program.sky->sky.get() : nullptr;
 
-    std::string source;
-
-    if(manifest == nullptr || !manifest->files.read_text(name, source)) {
-        // Reported through the same channel a compile failure is, rather than by returning an empty
-        // handle: a program with nothing pending and no bytecode looks like one nobody started, and
-        // the overlay would show a layer that is silently absent instead of one that said why.
-        return tw::plugin::bg_work::run<compile::result>([name] {
+    const auto files = manifest != nullptr ? manifest->files : tw::skybox::package::file_system {};
+    return tw::plugin::bg_work::run<compile::result>([files, name, target] {
+        std::string source;
+        if(!files.read_text(name, source)) {
             compile::result out;
             out.diagnostics = "could not read " + name + " from its package";
-
             return out;
-        });
-    }
-
-    return compile::shader_source_async(std::move(source), name, package_includes(manifest->files, name), target);
+        }
+        auto out = compile::shader(source, name, package_includes(files, name), target);
+        out.source = std::move(source);
+        return out;
+    });
 }
 } // namespace
 
@@ -654,8 +655,14 @@ sky_program* load_package_layer(const std::shared_ptr<shared::loaded_sky>& sky, 
     program->vertex_source_path = vertex_source;
     program->source_name = source_name;
     program->vertex_source_name = vertex_source_name;
+    program->pending.abandon();
+    program->pending_vertex.abandon();
+    program->vertex_failed = false;
+    program->vertex_diagnostics.clear();
 
     if(builtin_shader) {
+        program->pixel_failed = false;
+        program->diagnostics.clear();
         program->owned_bytecode.clear();
         program->owned_vertex_bytecode.clear();
         program->pixel_bytecode = packed_bytecode(sprites::k_builtin_pixel_key);
@@ -688,28 +695,35 @@ program_event poll_program(sky_program& program, bool watch)
         return program_event::none;
     }
 
-    // The vertex half first, and only reported when it fails.
-    //
-    // Both halves are collected before either is announced because they are one program: a layer
-    // whose vertex stage landed and whose pixel stage has not is a layer that must not draw yet, and
-    // "compiled" said twice would have the overlay claim a reload that is half done.
+    // A pair replaces a pair. Keep both previous stages if either new compile fails; installing one
+    // half early could combine a new vertex layout with an old pixel shader, or the other way round.
     if(program.pending_vertex.valid()) {
-        std::optional<compile::result> collected = program.pending_vertex.take();
-        if(!collected.has_value()) {
+        if(!program.pending_vertex.ready() || !program.pending.ready()) {
             return program_event::none;
         }
 
-        // take() empties the handle, which is also how compiling() stops being true.
-        compile::result finished = std::move(*collected);
+        compile::result vertex = std::move(*program.pending_vertex.take());
+        compile::result pixel = std::move(*program.pending.take());
 
-        if(!finished.ok()) {
-            program.diagnostics = std::move(finished.diagnostics);
-            TW_LOG_ERROR("sky_program: '{}' vertex stage did not compile: {}", program.id, program.diagnostics);
+        program.vertex_failed = !vertex.ok();
+        program.pixel_failed = !pixel.ok();
+        program.vertex_diagnostics = std::move(vertex.diagnostics);
+
+        if(program.failed()) {
+            program.diagnostics = std::move(pixel.diagnostics);
+
+            if(!program.vertex_diagnostics.empty()) {
+                program.diagnostics = program.vertex_diagnostics + "\n" + program.diagnostics;
+            }
+
+            TW_LOG_ERROR("sky_program: '{}' shader pair did not compile: {}", program.id, program.diagnostics);
             return program_event::compile_failed;
         }
 
-        program.owned_vertex_bytecode = std::move(finished.bytecode);
+        program.owned_vertex_bytecode = std::move(vertex.bytecode);
         program.vertex_code = program.owned_vertex_bytecode;
+
+        return apply_compile(program, std::move(pixel)) ? program_event::compiled : program_event::compile_failed;
     }
 
     if(program.pending.valid()) {
@@ -725,10 +739,9 @@ program_event poll_program(sky_program& program, bool watch)
         return program_event::none;
     }
 
-    // Nothing to stat. A layer of an archived package is edited by rewriting the archive, and that
-    // is watched a level up - sky_package::newest_write_time has the archive file in its list, and a
-    // change there reloads the whole sky rather than one shader of it.
-    if(program.source_path.empty()) {
+    // Package reloads belong to skybox::reload: all layers adopt one manifest together, and the
+    // watch and SKY_SELECT must not each schedule a compile for the same source revision.
+    if(program.from_package() || program.source_path.empty()) {
         return program_event::none;
     }
 

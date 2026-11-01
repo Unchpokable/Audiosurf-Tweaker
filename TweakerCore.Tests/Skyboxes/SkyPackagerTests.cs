@@ -122,15 +122,30 @@ namespace TweakerCore.Tests.Skyboxes
         }
 
         [Test]
-        public void ANewerFormatAndTwinLayerIdsAreWarningsOnly()
+        public void ANewerFormatIsRefusedAndTheInstalledPackageIsUntouched()
         {
+            using var game = new ScratchGame();
+            var first = SkyPackager.Install(_project, game.Engine);
+            var before = File.ReadAllBytes(first.Path);
             Manifest("{ \"format\": 2, \"name\": \"My Sky\", \"layers\": ["
+                     + "{ \"id\": \"sky\", \"kind\": \"fullsky\", \"shader\": \"shaders/sky.hlsl\" } ] }");
+
+            var result = SkyPackager.Install(_project, game.Engine);
+            Assert.That(result.Outcome, Is.EqualTo(SkyInstallOutcome.Problems));
+            Assert.That(result.Problems.Any(p => p.IsError && p.Message.Contains("format")), Is.True);
+            Assert.That(File.ReadAllBytes(first.Path), Is.EqualTo(before));
+        }
+
+        [Test]
+        public void TwinLayerIdsAreWarningsOnly()
+        {
+            Manifest("{ \"format\": 1, \"name\": \"My Sky\", \"layers\": ["
                      + "{ \"id\": \"sky\", \"kind\": \"fullsky\", \"shader\": \"shaders/sky.hlsl\" },"
                      + "{ \"id\": \"sky\", \"kind\": \"fullsky\", \"shader\": \"shaders/sky.hlsl\" } ] }");
 
             var problems = SkyPackager.Check(_project);
             Assert.That(problems.All(p => !p.IsError), Is.True);
-            Assert.That(problems.Count, Is.EqualTo(2));
+            Assert.That(problems.Count, Is.EqualTo(1));
         }
 
         [Test]

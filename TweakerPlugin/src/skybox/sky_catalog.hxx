@@ -52,6 +52,9 @@ void refresh_catalog();
 // Bumped by every refresh_catalog() that changed anything, so a list widget can rebuild its rows
 // only when there is something new rather than on every frame.
 [[nodiscard]] unsigned int catalog_generation() noexcept;
+[[nodiscard]] bool catalog_ready() noexcept;
+[[nodiscard]] bool same_entry(entry_kind kind, std::string_view a, std::string_view b) noexcept;
+[[nodiscard]] int catalog_index(entry_kind kind, std::string_view id) noexcept;
 
 // Index of the entry matching the current config selection, or -1 when the selection names
 // something the scan did not find (a hand-edited path, a deleted folder).

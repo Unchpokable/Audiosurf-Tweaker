@@ -21,4 +21,7 @@ namespace tw::ui::wire
 // literal rather than dropped, so a malformed token degrades to slightly wrong text instead of
 // truncating the message.
 [[nodiscard]] std::string percent_decode(std::string_view text);
+
+// First diagnostic line, clipped before encoding without splitting a UTF-8 sequence.
+[[nodiscard]] std::string_view first_line(std::string_view text, std::size_t limit = 400) noexcept;
 } // namespace tw::ui::wire

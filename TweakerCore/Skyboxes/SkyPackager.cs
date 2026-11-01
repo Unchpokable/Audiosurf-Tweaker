@@ -175,7 +175,7 @@ namespace TweakerCore.Skyboxes
                 }
 
                 if (root.TryGetProperty("format", out var format) && format.ValueKind == JsonValueKind.Number && format.TryGetInt32(out var formatNumber) && formatNumber > 1)
-                    Warning(manifestName, $"\"format\": {formatNumber} is newer than this Tweaker knows (1) - the plugin reads it anyway, some of it may be ignored");
+                    Error(manifestName, $"\"format\": {formatNumber} is newer than this Tweaker knows (1) - update Tweaker to load this sky");
 
                 // A referenced file: a name the plugin would agree to read, and one that is in the package.
                 void Reference(string layer, string what, string relative)

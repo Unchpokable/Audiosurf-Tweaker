@@ -178,6 +178,14 @@ struct sky_program {
     // (or the warnings). A file program that fails to recompile keeps the bytecode it had, so an
     // edit that does not compile leaves the previous sky up instead of blanking it.
     std::string diagnostics;
+    std::string vertex_diagnostics;
+    bool pixel_failed {};
+    bool vertex_failed {};
+
+    [[nodiscard]] bool failed() const noexcept
+    {
+        return pixel_failed || vertex_failed;
+    }
 
     // A compile running on a worker thread. Valid means one is in flight; poll_program collects it.
     tw::plugin::bg_work::task<compile::result> pending;

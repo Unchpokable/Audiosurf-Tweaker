@@ -5,11 +5,10 @@
 // The scripts as the host sees them: the SCRIPT_* half of TW_OVL, both directions
 // (Docs/Internal/overlay-scripts.md; why it is shaped this way - script-manager.md §7).
 //
-// **Two threads, and a mailbox between them.** Commands arrive on whichever thread delivers WM_COPYDATA
-// and are only parsed and posted there. Switching a script on is running its body, and the registry
-// belongs to the engine/render thread - so the commands are carried out by pump(), once per overlay frame
-// from lua_host::draw_frame, before any script draws: the same place an overlay click on the Scripts tab
-// is carried out. An empty mailbox costs one atomic load.
+// Commands are parsed and queued synchronously in the game's WndProc. Quest3D's window and
+// engine/render callbacks use the same main thread. pump() defers execution to lua_host::draw_frame,
+// before scripts draw; it does not hand work to another thread. The mailbox also tolerates reentrant
+// message delivery. An empty mailbox costs one atomic load.
 //
 // **What goes back is changes, not a feed.** pump() also compares registry::revision() with the one it
 // last saw, and only when it moved looks at the scripts and sends a SCRIPT_STATE for each one whose state
@@ -31,7 +30,7 @@ using present_fn = bool (*)() noexcept;
 // host nothing is sent and nothing is remembered as sent: a connecting host gets the whole list anyway.
 void set_link(send_fn send, present_fn present) noexcept;
 
-// IPC thread. One already-split SCRIPT_* op: `op` is the leading token, `rest` the remainder, unparsed.
+// WndProc. One already-split SCRIPT_* op: `op` is the leading token, `rest` the remainder, unparsed.
 // Malformed and unknown ops are dropped silently, like every other op of the protocol.
 void handle_op(std::string_view op, std::string_view rest);
 

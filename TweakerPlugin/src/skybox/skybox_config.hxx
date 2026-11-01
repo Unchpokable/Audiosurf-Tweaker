@@ -16,7 +16,8 @@
 // SkyConfigs\ (see sky_settings) - a different file with a different meaning, which is why the two sit
 // in different folders and a sky may be called anything, "module" included.
 //
-// Plugin-local and deliberately not part of TW_OVL: none of this is host state.
+// The plugin owns this while the game runs. TW_OVL can change enabled/selection; the host may
+// edit those two fields directly only while the game is stopped. All other settings stay local.
 namespace tw::skybox::config
 {
 // The sky a fresh module.json selects, and the cube map the draw path falls back to when the selected

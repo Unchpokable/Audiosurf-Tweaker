@@ -11,11 +11,6 @@
 
 namespace
 {
-// A message is cut to this many bytes before it is encoded (overlay-scripts.md). Not for the transport -
-// the pipe takes any length - but because the full text and the traceback are the overlay tab's, and a
-// row in TweakerUI wants one line.
-constexpr std::size_t k_message_limit = 400;
-
 enum class command_kind : std::uint8_t {
     set,
     reload,
@@ -32,7 +27,7 @@ struct command {
     std::vector<std::string> files;
 };
 
-// Written by the IPC thread, emptied by the engine thread. `g_mail` is what keeps the empty case to one
+// Posted from WndProc, emptied at the engine frame boundary. `g_mail` is what keeps the empty case to one
 // load: the mutex is only taken when there is something to take.
 std::mutex g_mailbox_mutex;
 std::vector<command> g_mailbox;
@@ -69,27 +64,6 @@ std::pair<std::string_view, std::string_view> split_token(std::string_view text)
     }
 
     return { text.substr(0, space), text.substr(space + 1) };
-}
-
-// First line, at most k_message_limit bytes, and never half a UTF-8 sequence: the host decodes it as
-// UTF-8, and a cut continuation byte would turn into a replacement character at the end.
-std::string_view clip(std::string_view text) noexcept
-{
-    const std::size_t end = text.find_first_of("\r\n");
-    if(end != std::string_view::npos) {
-        text = text.substr(0, end);
-    }
-
-    if(text.size() <= k_message_limit) {
-        return text;
-    }
-
-    std::size_t cut = k_message_limit;
-    while(cut > 0 && (static_cast<unsigned char>(text[cut]) & 0xC0) == 0x80) {
-        --cut;
-    }
-
-    return text.substr(0, cut);
 }
 
 bool connected() noexcept
@@ -329,14 +303,14 @@ std::string describe(const script& entry)
 
     if(entry.failed) {
         status = "failed";
-        message = clip(entry.error);
+        message = tw::ui::wire::first_line(entry.error);
     }
     else if(!entry.enabled) {
         status = "off";
     }
     else if(entry.health.suspended) {
         status = "suspended";
-        message = clip(entry.health.reason);
+        message = tw::ui::wire::first_line(entry.health.reason);
     }
 
     std::string text = std::format("{} {}", entry.enabled ? "true" : "false", status);

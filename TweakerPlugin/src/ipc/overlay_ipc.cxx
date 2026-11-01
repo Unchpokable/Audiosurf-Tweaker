@@ -11,6 +11,8 @@
 #include "plugin/globals.hxx"
 #include "plugin/paths.hxx"
 
+#include "skybox/sky_remote.hxx"
+
 #include "ui/overlay_state.hxx"
 #include "ui/pending_actions.hxx"
 #include "ui/wire_text.hxx"
@@ -33,7 +35,8 @@ constexpr std::size_t k_max_fixed_op_tokens = 3;
 //
 // 2: the SCRIPT_* ops (Docs/Internal/overlay-scripts.md).
 // 3: SCRIPT_ORDER, the run order of scripts (Docs/Internal/script-coexistence.md §3).
-constexpr int k_protocol_version = 3;
+// 4: SKY_* selection, catalog and loading state.
+constexpr int k_protocol_version = 4;
 
 // Whether Audiosurf Tweaker is connected, and the bridge window it talks through
 // (Docs/Internal/plugin-offline-mode.md §4.5).
@@ -274,6 +277,11 @@ void handle_tw_ovl_op(std::string_view payload)
         return;
     }
 
+    if(op.starts_with("SKY_")) {
+        tw::skybox::remote::handle_op(op, rest);
+        return;
+    }
+
     if(op == "HANDSHAKE_BEGIN") {
         std::size_t token_count = 0;
         const auto tokens = split_fixed_tokens(rest, token_count);
@@ -321,6 +329,7 @@ void handle_tw_ovl_op(std::string_view payload)
         // After the ACK, from the engine thread on its next overlay frame: the state of every script, so the
         // host starts from what is actually running rather than from scripts.cfg.
         tw::lua::remote::request_sync();
+        tw::skybox::remote::request_sync();
         return;
     }
 
@@ -395,11 +404,9 @@ bool handle_copydata(HWND /*hwnd*/, UINT /*msg*/, WPARAM /*wparam*/, LPARAM lpar
         return false;
     }
 
-    // Parsed synchronously, right here on whichever thread delivers WM_COPYDATA - no inbound
-    // queue: the wire payloads involved are tiny (a handful of tokens, at most a few dozen skin
-    // names) and arrive rarely (handshake once, tweak toggles are user-driven, skin list on
-    // install/connect), so this is not hot-path work by this project's own definition (EndScene/
-    // CallChannel/per-frame code) even though it may now run off the render thread's timeline.
+    // Parsed synchronously on the game's window/engine thread. There is no inbound worker.
+    // SCRIPT_* and SKY_* defer execution to their frame boundary; that is still the same thread,
+    // not permission to perform expensive work here or in pump().
     handle_tw_ovl_op(std::string_view(data).substr(k_tw_ovl_prefix.size()));
 
     // v1 requirement: swallow TW_OVL messages and do not forward them into the game's own handler.

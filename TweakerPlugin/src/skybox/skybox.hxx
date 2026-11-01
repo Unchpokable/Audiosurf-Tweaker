@@ -18,8 +18,8 @@
 //     and the game's own draw is skipped.
 //
 // Settings live in engine\TweakerStuff\SkyboxReplacer\module.json (skybox/skybox_config), skies on disk
-// in the Skyboxes folder next to it. Nothing here is wired to TW_OVL or the host UI: the Skybox
-// Replacer works the same with or without the Tweaker running.
+// in the Skyboxes folder next to it. TW_OVL exposes enable, selection and loading state; rendering
+// and all parameters still belong to the plugin and work without the host.
 namespace tw::skybox
 {
 struct sky_program;
@@ -72,6 +72,27 @@ struct status {
 };
 
 [[nodiscard]] status current_status() noexcept;
+
+// State of the selection, including a failed package while a fallback is drawing successfully.
+// No I/O; called on the engine/render thread. Diagnostics remain owned by the loader/programs.
+enum class load_state {
+    off,
+    missing,
+    compiling,
+    failed,
+    waiting,
+    ready,
+};
+
+struct load_status {
+    load_state state { load_state::waiting };
+
+    std::string_view message;
+};
+
+[[nodiscard]] load_status current_load_status() noexcept;
+
+[[nodiscard]] unsigned int revision() noexcept;
 
 enum class reload_outcome {
     none,

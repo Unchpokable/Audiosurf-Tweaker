@@ -7,6 +7,8 @@
 #include "framework/imgui_backend.hxx"
 #include "framework/wndproc_hub.hxx"
 
+#include "skybox/sky_remote.hxx"
+
 #include "ipc/overlay_ipc.hxx"
 
 #include "lua/lua_host.hxx"
@@ -109,6 +111,7 @@ void initialize() noexcept
     tw::ui::pending_actions::set_send_backend(&tw::ipc::send_overlay_command);
     tw::ui::qp::set_send_backend(&tw::ipc::send_overlay_command);
     tw::lua::remote::set_link(&tw::ipc::send_overlay_command, &tw::ipc::host_present);
+    tw::skybox::remote::set_link(&tw::ipc::send_overlay_command, &tw::ipc::host_present);
 
     tw::ipc::initialize();
 }

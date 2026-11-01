@@ -46,7 +46,8 @@ namespace TweakerUI.Core
         /// 2: the SCRIPT_* ops (Docs/Internal/overlay-scripts.md).
         /// 3: SCRIPT_ORDER, the run order of scripts (Docs/Internal/script-coexistence.md §3).
         /// </summary>
-        private const int ExpectedProtocolVersion = 3;
+        // 4: SKY_* selection, catalog and loading state. Routing is added with the host bridge.
+        private const int ExpectedProtocolVersion = 4;
 
         // Must match TweakerPlugin's presence::claim() (src/plugin/presence.cxx) exactly, including the
         // deliberate absence of any version or path component - the point is that a newer host can still
