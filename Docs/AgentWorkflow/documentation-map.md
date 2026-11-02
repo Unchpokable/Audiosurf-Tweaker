@@ -21,6 +21,7 @@ KnownBugs — личный блокнот владельца и в эту кар
 | Тема | Вход |
 |---|---|
 | Общая архитектура | [architecture](architecture.md); [принципы](project-principles.md) |
+| Стиль и организация кода | [code-style](code-style.md): обязательное чтение до правок; TU как модуль состояния, необходимость классов, запрет private static, читаемость/имена, naming/layout, PCH/include, ошибки/hooks и организация C#/AXAML |
 | Защита от повторного запуска и присутствие модулей | Механизмы single-instance/mutex/pipe разобраны в [архиве обзора](../Internal/Archive/agent-migration/overview.pre-migration.md); текущую архитектурную вводную бери из architecture, не из исторического обзора. |
 | Загрузка/оффлайн/установка | [plugin-offline-mode](../Internal/plugin-offline-mode.md): этапы загрузки и раскладка; старую политику совместимости и syscalls заменяют действующие workflow-правила |
 | Протокол хост/bridge/плагин | [overlay-protocol](../Internal/overlay-protocol.md), [Quick Player](../Internal/overlay-quickplayer.md), [Scripts](../Internal/overlay-scripts.md) |

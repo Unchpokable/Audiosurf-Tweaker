@@ -8,6 +8,7 @@
 |---|---|
 | Понять три приложения и границы модулей | [architecture.md](architecture.md) |
 | Ветки, коммиты, приёмка, отчёт и новые решения | [agent-workflow.md](agent-workflow.md) |
+| Стиль кода, TU/классы, naming, логические блоки, PCH/include и организация UI | [code-style.md](code-style.md), до правок соответствующего кода |
 | Сборка, проверки, native-правила, генерация и поставка | [development.md](development.md) |
 | Продуктовые ограничения, совместимость, Lua API и UI | [project-principles.md](project-principles.md) |
 | CgrPy, IDA MCP, Ghidra и сохранность баз | [reverse-engineering-tools.md](reverse-engineering-tools.md) |

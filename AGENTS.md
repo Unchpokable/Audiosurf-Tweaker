@@ -74,9 +74,9 @@ IPC-мост **asbridge** и внутриигровой x86-модуль **Tweak
   только когда запуск входит в проверку. Всю `.sln` не считай dotnet-only целью.
 - Правишь deploy-скрипт — правь парный `.ps1`/`.sh`. Состав поставки задают
   `CopyTweakerPlugin` и `CopyDevTools`, а не ручное копирование набора файлов.
-- C++ — **C++23**, `.hxx`/`.cxx`, CRLF; источник стиля — `.clang-format`
-  соответствующего компонента и naming из `.clang-tidy`. Vendored-зависимости
-  не меняй. Правила PCH, ABI и ошибок — в `development.md`.
+- Перед правками кода прочитай [стиль и организацию](Docs/AgentWorkflow/code-style.md).
+  C++ — **C++23**, `.hxx`/`.cxx`, CRLF; layout — `.clang-format`, naming —
+  `.clang-tidy`. Vendored-зависимости не меняй; runtime-правила — в `development.md`.
 - В TweakerPlugin **не создавай покадровую тяжёлую системную или I/O-нагрузку**.
   Файлы и тяжёлые задачи, включая компиляцию шейдеров, — `plugin::bg_work` с
   покадровой проверкой готовности без блокирующего ожидания. Игровой WndProc/IPC
