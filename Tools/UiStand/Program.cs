@@ -27,7 +27,7 @@ class App : Application
         foreach (var d in new[] { "NeutralColors", "AccentColors", "SharedControlTemplates" })
             Resources.MergedDictionaries.Add(new ResourceInclude(new Uri("avares://TweakerUI/")) { Source = new Uri($"avares://TweakerUI/Themes/{d}.axaml") });
         Styles.Add(new FluentTheme());
-        foreach (var s in new[] { "ScrollBarStyles", "SharedStyles", "Styles", "SkinChangerStyles", "TweakerStyles", "SettingsStyles", "StatusBarStyles", "QuickPlayerStyles", "ScriptsStyles" })
+        foreach (var s in new[] { "ScrollBarStyles", "SharedStyles", "Styles", "SkinChangerStyles", "TweakerStyles", "SettingsStyles", "StatusBarStyles", "QuickPlayerStyles", "ScriptsStyles", "SkyboxesStyles" })
             Styles.Add(new StyleInclude(new Uri("avares://TweakerUI/")) { Source = new Uri($"avares://TweakerUI/Themes/{s}.axaml") });
     }
 }
@@ -39,7 +39,7 @@ static class Program
     {
         if (args.Length == 0)
         {
-            Console.WriteLine("modes: shoot <dir> | compare <dirA> <dirB> | diffmap <a.png> <b.png> <out.png> | transitions | colors <dir> | mem [fast] [rounds=N] [cycles=N] | tabs | scripts <dir> | scriptdev <dir> | readme <dir>");
+            Console.WriteLine("modes: shoot <dir> | compare <dirA> <dirB> | diffmap <a.png> <b.png> <out.png> | transitions | colors <dir> | mem [fast] [rounds=N] [cycles=N] | tabs | scripts <dir> | scriptdev <dir> | skyboxes <dir> | readme <dir>");
             return 2;
         }
 
@@ -62,6 +62,7 @@ static class Program
             case "tabs": TabLeak.Run(); return 0;
             case "scripts": return ScriptsTab.Run(args[1]);
             case "scriptdev": return ScriptDevTab.Run(args[1]);
+            case "skyboxes": return SkyboxesTab.Run(args[1]);
             case "readme": return ReadmeShots.Run(args[1]);
             default: Console.WriteLine($"unknown mode {args[0]}"); return 2;
         }
@@ -95,7 +96,7 @@ static class Snapshots
         ("list-qp-queue", "<ListBox Classes='QPQueueList' Width='260'><ListBoxItem Name='t' Height='40'>Item</ListBoxItem><ListBoxItem>Other</ListBoxItem></ListBox>", new[] { "rest", "pointerover", "selected" }),
     };
 
-    static readonly string[] Views = { "SkinChangerView", "ColorsConfiguratorView", "TweakerView", "QuickPlayerView", "ScriptsView", "ScriptDevView", "SettingView" };
+    static readonly string[] Views = { "SkinChangerView", "ColorsConfiguratorView", "TweakerView", "QuickPlayerView", "ScriptsView", "ScriptDevView", "SkyboxesView", "SettingView" };
 
     // Headless animation clocks don't advance reliably (a transition can sit at its first frame forever),
     // and Avalonia 12 keeps IClock/ClockBase internal, so there is no manual clock to drive instead. Dropping
@@ -317,6 +318,7 @@ static class Transitions
         foreach (var b in buttons)
             cases.Add(($"Button.{b.Replace(' ', '.')}", $"<Button Name='t' Classes='{b}' Content='Label' Width='160' Height='36'/>", new[] { "pointerover", "pressed" }));
         cases.Add(("ToggleButton.Switch", "<ToggleButton Name='t' Classes='Switch'/>", new[] { "pointerover", "checked" }));
+        cases.Add(("TabItem.SKPage", "<TabControl><TabItem Classes='SKPage' Header='Game'/><TabItem Name='t' Classes='SKPage' Header='Projects'/></TabControl>", new[] { "pointerover", "tab-selected" }));
         foreach (var b in new[] { "NavItem", "QPCharacterButton", "QPSegmentButton", "QPSegmentIconButton" })
             cases.Add(($"RadioButton.{b}", $"<RadioButton Name='t' Classes='{b}' Content='Label' Width='160' Height='36'/>", new[] { "pointerover", "checked" }));
         foreach (var l in new[] { "QPPlaylistList", "QPQueueList", "RowList" })
@@ -354,6 +356,7 @@ static class Transitions
                         case "pressed": w.MouseDown(p, MouseButton.Left); break;
                         case "checked": ((ToggleButton)t).IsChecked = true; break;
                         case "selected": ((ListBoxItem)t).IsSelected = true; break;
+                        case "tab-selected": ((TabItem)t).IsSelected = true; break;
                     }
                     Dispatcher.UIThread.RunJobs();
                     var after = Snapshot(t);

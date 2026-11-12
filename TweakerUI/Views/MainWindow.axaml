@@ -57,6 +57,7 @@
                             <RadioButton Classes="NavItem" Content="Quick Player" GroupName="Nav" Command="{Binding ShowQuickPlayerCommand}"/>
                             <RadioButton Classes="NavItem" Content="Scripts" GroupName="Nav" Command="{Binding ShowScriptsCommand}"/>
                             <RadioButton Classes="NavItem" Content="Script Dev" GroupName="Nav" Command="{Binding ShowScriptDevCommand}"/>
+                            <RadioButton Classes="NavItem" Content="Skyboxes" GroupName="Nav" Command="{Binding ShowSkyboxesCommand}"/>
                             <RadioButton Classes="NavItem" Content="Settings" GroupName="Nav" Command="{Binding ShowSettingsCommand}"/>
                         </StackPanel>
 

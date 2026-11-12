@@ -55,6 +55,7 @@ static class ReadmeShots
         public QuickPlayerViewModel Player;
         public ScriptsViewModel Scripts;
         public ScriptDevViewModel ScriptDev;
+        public SkyboxesViewModel Skyboxes;
         public SettingViewModel Settings;
     }
 
@@ -142,6 +143,7 @@ static class ReadmeShots
             window.Close();
             shell.Scripts.SetActive(false);
             shell.ScriptDev.SetActive(false);
+            shell.Skyboxes.Dispose();
         }
         finally
         {
@@ -247,6 +249,7 @@ static class ReadmeShots
         overlay.GetField("_connectedLoadMode", BindingFlags.Static | BindingFlags.NonPublic)!.SetValue(null, "channels");
 
         shell.Settings = new SettingViewModel();
+        shell.Skyboxes = new SkyboxesViewModel();
         Set(shell.Settings, "texturesFolderPath", ShownGame + @"\engine\textures", "TexturesFolderPath");
 
         return shell;
@@ -265,6 +268,7 @@ static class ReadmeShots
         Backing("QuickPlayerVM", shell.Player);
         Backing("ScriptsVM", shell.Scripts);
         Backing("ScriptDevVM", shell.ScriptDev);
+        Backing("SkyboxesVM", shell.Skyboxes);
         Backing("SettingsVM", shell.Settings);
         typeof(MainWindowViewModel).GetField("currentView", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(vm, shell.Skins);
 

@@ -29,6 +29,7 @@ namespace TweakerUI.ViewModels
             QuickPlayerVM = new QuickPlayerViewModel();
             ScriptsVM = new ScriptsViewModel();
             ScriptDevVM = new ScriptDevViewModel();
+            SkyboxesVM = new SkyboxesViewModel();
             SettingsVM = new SettingViewModel();
             // Fast Previews changes what Skin Changer holds in memory, not just a flag it reads later -
             // the switch has to reach it (the flag alone left the two out of step, KnownBugs #5).
@@ -43,6 +44,7 @@ namespace TweakerUI.ViewModels
             _asHandle = AudiosurfHandle.Instance;
             _asHandle.StateChanged += OnAudiosurfStateChanged;
 
+            SkyboxOverlayBridge.Initialize();
             OverlayHelper.Initialize();
             ScriptsOverlayBridge.Initialize();
             OverlayHelper.LinkStateChanged += OnPluginStateChanged;
@@ -55,6 +57,7 @@ namespace TweakerUI.ViewModels
         public QuickPlayerViewModel QuickPlayerVM { get; }
         public ScriptsViewModel ScriptsVM { get; }
         public ScriptDevViewModel ScriptDevVM { get; }
+        public SkyboxesViewModel SkyboxesVM { get; }
         public SettingViewModel SettingsVM { get; }
 
         [ObservableProperty]
@@ -66,6 +69,7 @@ namespace TweakerUI.ViewModels
         {
             ScriptsVM.SetActive(value == ScriptsVM);
             ScriptDevVM.SetActive(value == ScriptDevVM);
+            SkyboxesVM.SetActive(value == SkyboxesVM);
         }
 
         public string AudiosurfStatusMessage => _asHandle.StateMessage;
@@ -98,6 +102,9 @@ namespace TweakerUI.ViewModels
         private void ShowScriptDev() => CurrentView = ScriptDevVM;
 
         [RelayCommand]
+        private void ShowSkyboxes() => CurrentView = SkyboxesVM;
+
+        [RelayCommand]
         private void ShowSettings() => CurrentView = SettingsVM;
 
         // ReinitializeWndProcMessageService disposes the old bridge connection synchronously (up to a
@@ -123,6 +130,7 @@ namespace TweakerUI.ViewModels
             QuickPlayerVM.Dispose();
             ScriptsVM.Dispose();
             ScriptDevVM.Dispose();
+            SkyboxesVM.Dispose();
         }
 
         private void OnAudiosurfStateChanged(object sender, EventArgs e)

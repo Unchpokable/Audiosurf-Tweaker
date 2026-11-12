@@ -1,0 +1,67 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:core="using:TweakerUI.Core">
+
+    <!-- Shared cards, rows, fields, switches and button templates come from SharedStyles. -->
+    <Style Selector="TextBlock.SKActive">
+        <Setter Property="Foreground" Value="{DynamicResource AccentPrimaryBrush}"/>
+        <Setter Property="Opacity" Value="0.2"/>
+    </Style>
+    <Style Selector="TextBlock.SKActive.Selected">
+        <Setter Property="Opacity" Value="1"/>
+    </Style>
+    <Style Selector="Button.SKAction">
+        <Setter Property="Margin" Value="0,0,8,6"/>
+    </Style>
+    <!-- Own the header template: Fluent paints its selected underline independently of Foreground. -->
+    <Style Selector="TabItem.SKPage">
+        <Setter Property="Background" Value="{DynamicResource SurfaceSoftBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}"/>
+        <Setter Property="FontSize" Value="15"/>
+        <Setter Property="FontWeight" Value="SemiBold"/>
+        <Setter Property="Padding" Value="16,8"/>
+        <Setter Property="Margin" Value="0,0,8,0"/>
+        <Setter Property="MinWidth" Value="76"/>
+        <Setter Property="CornerRadius" Value="8"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Name="PART_Border"
+                        Background="{TemplateBinding Background}"
+                        CornerRadius="{TemplateBinding CornerRadius}">
+                    <Border.Transitions>
+                        <Transitions>
+                            <core:CrossfadeBrushTransition Property="Background" Duration="0:0:0.15"/>
+                        </Transitions>
+                    </Border.Transitions>
+                    <ContentPresenter Name="PART_HeaderPresenter"
+                                      Content="{TemplateBinding Header}"
+                                      ContentTemplate="{TemplateBinding HeaderTemplate}"
+                                      Foreground="{TemplateBinding Foreground}"
+                                      FontSize="{TemplateBinding FontSize}"
+                                      FontWeight="{TemplateBinding FontWeight}"
+                                      Padding="{TemplateBinding Padding}"
+                                      HorizontalContentAlignment="Center"
+                                      VerticalContentAlignment="Center">
+                        <ContentPresenter.Transitions>
+                            <Transitions>
+                                <core:CrossfadeBrushTransition Property="Foreground" Duration="0:0:0.15"/>
+                            </Transitions>
+                        </ContentPresenter.Transitions>
+                    </ContentPresenter>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="TabItem.SKPage:pointerover">
+        <Setter Property="Background" Value="{DynamicResource AccentHoverBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AccentTextBrush}"/>
+    </Style>
+    <Style Selector="TabItem.SKPage:selected">
+        <Setter Property="Background" Value="{DynamicResource AccentPrimaryBrush}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextOnAccentBrush}"/>
+    </Style>
+    <Style Selector="TabItem.SKPage:disabled">
+        <Setter Property="Opacity" Value="0.4"/>
+    </Style>
+</Styles>

@@ -117,6 +117,9 @@ namespace TweakerUI.Core
         /// </summary>
         internal static event EventHandler<string> ScriptsMessageReceived;
 
+        /// <summary>A SKY_* protocol line on the bridge thread; parsed and cached by SkyboxOverlayBridge.</summary>
+        internal static event EventHandler<string> SkyboxMessageReceived;
+
         internal static PluginLinkState LinkState
         {
             get { lock (_lock) return _linkState; }
@@ -252,7 +255,11 @@ namespace TweakerUI.Core
         /// Sends one already-formatted SCRIPT_* op line. Returns false when there is no connected plugin to send it
         /// to - the caller decides what that means (a switch that cannot be confirmed must not pretend it was sent).
         /// </summary>
-        internal static bool SendScripts(string opLine)
+        internal static bool SendScripts(string opLine) => SendConnectedOperation(opLine);
+
+        internal static bool SendSkybox(string opLine) => SendConnectedOperation(opLine);
+
+        private static bool SendConnectedOperation(string opLine)
         {
             if (!IsReady || string.IsNullOrEmpty(opLine))
                 return false;
@@ -731,6 +738,9 @@ namespace TweakerUI.Core
 
             if (content.StartsWith(TweakerCore.Scripting.ScriptWire.Prefix, StringComparison.Ordinal))
                 ScriptsMessageReceived?.Invoke(null, content);
+
+            if (content.StartsWith(TweakerCore.Skyboxes.SkyWire.Prefix, StringComparison.Ordinal))
+                SkyboxMessageReceived?.Invoke(null, content);
         }
 
         /// <summary>

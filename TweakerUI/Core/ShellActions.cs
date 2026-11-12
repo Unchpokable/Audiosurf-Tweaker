@@ -43,5 +43,19 @@ namespace TweakerUI.Core
                 return exception.Message;
             }
         }
+
+        public static async Task<string> RecycleFileAsync(string file)
+        {
+            try
+            {
+                await Task.Run(() => Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(
+                    file, Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs, Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin));
+                return null;
+            }
+            catch (Exception exception) when (exception is IOException || exception is UnauthorizedAccessException || exception is OperationCanceledException)
+            {
+                return exception.Message;
+            }
+        }
     }
 }

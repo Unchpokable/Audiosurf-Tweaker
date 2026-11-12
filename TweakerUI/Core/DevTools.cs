@@ -33,6 +33,10 @@ namespace TweakerUI.Core
 
         internal static string RecentProjectsFile => Path.Combine(Root, "recent-projects.txt");
 
+        internal static string SkySources => Path.Combine(Root, "SkySources");
+
+        internal static string RecentSkyProjectsFile => Path.Combine(Root, "recent-sky-projects.txt");
+
         internal static Twllink Twllink => new Twllink(Path.Combine(Binaries, Twllink.ExecutableName));
     }
 }
