@@ -46,6 +46,7 @@ rows() {
   "$PY" - "$MANIFEST" "$ONLY" <<'PY'
 import json, sys
 
+sys.stdout.reconfigure(newline="\n")   # Windows would otherwise emit CRLF and a stray CR in the last field
 manifest, only = sys.argv[1], sys.argv[2]
 wanted = {name.strip() for name in only.split(",") if name.strip()}
 with open(manifest, encoding="utf-8") as f:
@@ -111,8 +112,13 @@ publish() { # <name> <prefix> <repo> <visibility> <description>
   fi
 
   if gh repo view "$ORG/$repo" >/dev/null 2>&1; then
-    if git ls-remote --exit-code "https://github.com/$ORG/$repo.git" refs/heads/main >/dev/null 2>&1; then
-      die "$ORG/$repo already has main - refusing to overwrite"
+    remote_main="$(git ls-remote "https://github.com/$ORG/$repo.git" refs/heads/main | awk '{print $1}')"
+    if [ -n "$remote_main" ]; then
+      if [ "$remote_main" = "$(git rev-parse "$branch")" ]; then
+        say "   already published at $remote_main"
+        return
+      fi
+      die "$ORG/$repo already has main at $remote_main - refusing to overwrite"
     fi
   else
     say "   creating $ORG/$repo"
@@ -128,6 +134,7 @@ components="$(rows)"
 [ -n "$components" ] || die "no components selected"
 while IFS=$'\t' read -r name prefix repo visibility description; do
   [ -n "$name" ] || continue
+  description="${description%$'\r'}"
   publish "$name" "$prefix" "$repo" "$visibility" "$description"
 done <<< "$components"
 
