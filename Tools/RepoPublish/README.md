@@ -27,7 +27,12 @@ export GH_TOKEN="$(gh auth token)"   # не печатать токен в ло�
 DRY_RUN=true  bash Tools/RepoPublish/publish.sh          # отчёт
 DRY_RUN=false bash Tools/RepoPublish/publish.sh          # создать и запушить
 ONLY=Canvas   DRY_RUN=false bash Tools/RepoPublish/publish.sh
+REUSE=true    DRY_RUN=false bash Tools/RepoPublish/publish.sh   # повторно использовать publish/*
 ```
+
+Сплит начинается с коммита, который впервые затронул папку: раньше её не существовало, и обход
+всей истории только тратил бы время. Перед push скрипт сверяет дерево сплита с `HEAD:<папка>`,
+поэтому `REUSE=true` не может опубликовать устаревшую ветку.
 
 Скрипт использует `git-subtree` из состава Git, поэтому на Windows запускается из Git Bash.
 Если рабочая копия грязная — отказ: сплит идёт от коммита, а не от незакоммиченных файлов.
