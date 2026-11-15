@@ -12,7 +12,9 @@
 #   REUSE=true     reuse an existing publish/<name> branch instead of splitting again
 #
 # The split starts at the commit that first touched the directory: earlier commits cannot contain
-# it, so walking the whole history would only cost time.
+# it, so walking the whole history would only cost time. That commit is grafted to be a root for
+# the duration of the split (a temporary replace ref, removed afterwards), which is what makes
+# git-subtree process dozens of commits instead of the whole history.
 #
 # Requires git (with git-subtree), gh (authenticated) and python3 or python (to read the manifest).
 set -euo pipefail
@@ -34,6 +36,10 @@ PY="$(command -v python3 || command -v python || true)"
 [ -n "$PY" ] || die "python3 (or python) is required to read $MANIFEST"
 
 [ -z "$(git status --porcelain)" ] || die "the working tree is not clean"
+
+ACTIVE_REPLACE=""
+cleanup() { [ -n "$ACTIVE_REPLACE" ] && git replace -d "$ACTIVE_REPLACE" >/dev/null 2>&1 || true; }
+trap cleanup EXIT
 
 # Emits one component per line: name <TAB> prefix <TAB> repo <TAB> visibility <TAB> description.
 rows() {
@@ -84,7 +90,12 @@ publish() { # <name> <prefix> <repo> <visibility> <description>
     say "   reusing $branch"
   else
     git branch -D "$branch" >/dev/null 2>&1 || true
-    git subtree split -b "$branch" --prefix="$prefix" "$base"
+    git replace -d "$base" >/dev/null 2>&1 || true
+    git replace --graft "$base"
+    ACTIVE_REPLACE="$base"
+    git subtree split -b "$branch" --prefix="$prefix" HEAD
+    git replace -d "$base" >/dev/null 2>&1 || true
+    ACTIVE_REPLACE=""
   fi
 
   files="$(git ls-tree -r --name-only "$branch" | wc -l | tr -d ' ')"
