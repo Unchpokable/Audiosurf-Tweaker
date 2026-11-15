@@ -1,0 +1,38 @@
+# Publishes a directory of this repository as its own repository in the organization, keeping the
+# history. One-shot bootstrap: Docs/Internal/repo-layout-plan.md §4.1 and Tools/RepoPublish/README.md.
+#
+# Kept in the tree so the split can be reproduced and audited; it is never triggered automatically.
+name: Publish component repositories
+
+on:
+  workflow_dispatch:
+    inputs:
+      components:
+        description: Comma-separated component names; empty publishes every component
+        default: ""
+      dry_run:
+        description: Split and report only, push nothing
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-components
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: publish-components   # required reviewer; configure in repository settings
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0              # git subtree split needs the full history
+      - name: Split and push
+        env:
+          GH_TOKEN: ${{ secrets.ORG_PUBLISH_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          ONLY: ${{ inputs.components }}
+        run: bash Tools/RepoPublish/publish.sh

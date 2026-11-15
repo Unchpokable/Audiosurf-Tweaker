@@ -1,0 +1,30 @@
+[
+  {
+    "name": "puzzlepro_hud",
+    "prefix": "TweakerPlugin/assets/script-projects/puzzlepro_hud",
+    "repo": "puzzlepro_hud",
+    "visibility": "public",
+    "description": "PuzzlePRO HUD: a HUD replacer script for Audiosurf Tweaker"
+  },
+  {
+    "name": "Canvas",
+    "prefix": "Skyboxes/ODC_VolTex.sky",
+    "repo": "Canvas",
+    "visibility": "public",
+    "description": "Canvas: a sky package for Audiosurf Tweaker"
+  },
+  {
+    "name": "Skyboxes",
+    "prefix": "Skyboxes",
+    "repo": "Skyboxes",
+    "visibility": "public",
+    "description": "Sky packages shipped with Audiosurf Tweaker"
+  },
+  {
+    "name": "ScriptProjects",
+    "prefix": "TweakerPlugin/assets/script-projects",
+    "repo": "ScriptProjects",
+    "visibility": "public",
+    "description": "Projects behind the scripts shipped with Audiosurf Tweaker"
+  }
+]

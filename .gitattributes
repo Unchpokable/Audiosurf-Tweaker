@@ -74,3 +74,6 @@ Docs/Internal/Archive/agent-migration/script-tabs-roadmap.md -text
 
 # Bash deploy entry points must keep a valid shebang and parse in Git Bash on Windows.
 Scripts/Deploy*.sh text eol=lf
+
+# The component publish script runs under bash on Windows and Linux and must stay LF on both.
+Tools/RepoPublish/publish.sh text eol=lf
