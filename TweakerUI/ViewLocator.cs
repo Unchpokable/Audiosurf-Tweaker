@@ -1,38 +1,27 @@
-using System;
-using System.Diagnostics.CodeAnalysis;
 using Avalonia.Controls;
 using Avalonia.Controls.Templates;
 using TweakerUI.ViewModels;
+using TweakerUI.Views;
 
 namespace TweakerUI
 {
-    /// <summary>
-    /// Given a view model, returns the corresponding view if possible.
-    /// </summary>
-    [RequiresUnreferencedCode(
-        "Default implementation of ViewLocator involves reflection which may be trimmed away.",
-        Url = "https://docs.avaloniaui.net/docs/concepts/view-locator")]
     public class ViewLocator : IDataTemplate
     {
-        public Control Build(object param)
+        public Control Build(object data) => data switch
         {
-            if (param is null)
-                return null;
+            SkinChangerViewModel => new SkinChangerView(),
+            ColorsConfiguratorViewModel => new ColorsConfiguratorView(),
+            TweakerViewModel => new TweakerView(),
+            QuickPlayerViewModel => new QuickPlayerView(),
+            ScriptsViewModel => new ScriptsView(),
+            ScriptDevViewModel => new ScriptDevView(),
+            SkyboxesViewModel => new SkyboxesView(),
+            SettingViewModel => new SettingView(),
+            _ => null
+        };
 
-            var name = param.GetType().FullName.Replace("ViewModel", "View", StringComparison.Ordinal);
-            var type = Type.GetType(name);
-
-            if (type != null)
-            {
-                return (Control)Activator.CreateInstance(type);
-            }
-
-            return new TextBlock { Text = "Not Found: " + name };
-        }
-
-        public bool Match(object data)
-        {
-            return data is ViewModelBase;
-        }
+        public bool Match(object data) => data is SkinChangerViewModel or ColorsConfiguratorViewModel
+            or TweakerViewModel or QuickPlayerViewModel or ScriptsViewModel or ScriptDevViewModel
+            or SkyboxesViewModel or SettingViewModel;
     }
 }

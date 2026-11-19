@@ -3,13 +3,9 @@
     Builds a debuggable, multi-file distributable bundle of Audiosurf Tweaker into /distr/.
 
 .DESCRIPTION
-    Debug counterpart of Deploy.ps1. Where Deploy.ps1 collapses TweakerUI into one single-file
-    exe for distribution, this script publishes it the "normal" way - one DLL per assembly plus
-    the self-contained .NET runtime (~200+ files) and every PDB left in place (managed AND the
-    native SkiaSharp/HarfBuzzSharp ones that Deploy.ps1 deletes) - so a debugger can attach to the
-    running TweakerUI.exe process and resolve symbols/step through code, which PublishSingleFile's
-    self-extracting bundle makes impractical (native assets only unpack to a temp cache on launch,
-    and single-file managed assemblies confuse some debuggers' module resolution).
+    Debug counterpart of Deploy: publishes managed assemblies and the self-contained CoreCLR
+    runtime with symbols for debugger attachment. Native AOT is explicitly disabled for UI.
+    TweakerNative.dll is the same x64 Release helper used by managed builds and tests.
 
     LegacyDataConverter is NOT built Debug - it's not the thing being debugged here, it's built
     Release exactly like Deploy.ps1 does, so ILRepack's default merge target still IL-merges it
@@ -62,7 +58,7 @@ New-Item -ItemType Directory -Path $distDir | Out-Null
 # --- 1. TweakerUI: multi-file publish, symbols kept ---------------------------------------------
 $tweakerOut = Join-Path $distDir "TweakerUI"
 Write-Host "==> Publishing TweakerUI ($Configuration, $Runtime, self-contained, multi-file with PDBs)"
-dotnet publish $tweakerUiProj -c $Configuration -r $Runtime --self-contained true -o $tweakerOut
+dotnet publish $tweakerUiProj -c $Configuration -r $Runtime --self-contained true -p:PublishAot=false -o $tweakerOut
 if ($LASTEXITCODE -ne 0) { throw "TweakerUI publish failed" }
 
 Write-Host "==> Locating asbridge.exe from the CMake pre-build hook"
@@ -129,7 +125,7 @@ $linkerProj = Join-Path $repoRoot "TweakerLuaLinker\TweakerLuaLinker.csproj"
 $linkerOut = Join-Path $repoRoot "TweakerLuaLinker\bin\publish"
 $devToolsOut = Join-Path $tweakerOut "DevTools\Binaries"
 Write-Host "==> Publishing twllink ($Configuration, Native AOT, with symbols)"
-dotnet publish $linkerProj -c $Configuration -p:TwPublish=aot -o $linkerOut
+dotnet publish $linkerProj -c $Configuration -p:PublishAot=true -o $linkerOut
 if ($LASTEXITCODE -ne 0) { throw "twllink publish failed - Native AOT links with MSVC (Visual Studio's C++ workload)" }
 New-Item -ItemType Directory -Force -Path $devToolsOut | Out-Null
 Copy-Item (Join-Path $linkerOut "twllink.exe"), (Join-Path $linkerOut "twllink.pdb") -Destination $devToolsOut -Force

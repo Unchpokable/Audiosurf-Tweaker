@@ -13,8 +13,6 @@ namespace TweakerUI.Core
         internal static string WatcherTempFile { get; set; }
         internal static bool WatcherShouldStoreTextures { get; set; }
         internal static bool WatcherTempFileOverrided { get; set; }
-        internal static bool IsUWPNotificationsAllowed { get; set; }
-        internal static bool IsUWPNotificationSilent { get; set; }
         internal static bool IsDarkTheme { get; set; }
         // Whether the in-game plugin is driven from here at all: skins, tweaks and the Player tab in the
         // overlay (Docs/Internal/plugin-offline-mode.md §6.5). Off leaves an installed plugin running offline -

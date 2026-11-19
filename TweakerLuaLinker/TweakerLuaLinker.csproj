@@ -21,18 +21,11 @@
     <InvariantGlobalization>true</InvariantGlobalization>
   </PropertyGroup>
 
-  <!--
-    Publish mode. Native AOT is the goal; single-file self-contained is the fallback if Loretta
-    turns out not to survive trimming/AOT (the parser matters more than the publish mode, §9.3).
-    Pick with -p:TwPublish=aot | single.
-  -->
-  <PropertyGroup Condition="'$(TwPublish)' == 'single'">
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(TwPublish)' != 'single'">
-    <PublishAot>true</PublishAot>
+  <!-- Publication uses Native AOT; normal builds and project-reference consumers remain managed. -->
+  <PropertyGroup>
+    <PublishAot Condition="'$(PublishAot)' == ''">true</PublishAot>
+    <IlcTreatWarningsAsErrors>true</IlcTreatWarningsAsErrors>
+    <ILLinkTreatWarningsAsErrors>true</ILLinkTreatWarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>

@@ -26,8 +26,6 @@ namespace TweakerUI.ViewModels
             IsShouldCheckTextures = SettingsProvider.ControlSystemActive;
             IsShouldUseSafetyInstallation = SettingsProvider.SafeInstall;
             IsFastPreview = SettingsProvider.UseFastPreview;
-            IsUWPNotificationsAllowed = SettingsProvider.IsUWPNotificationsAllowed;
-            IsUWPNotificationSilent = SettingsProvider.IsUWPNotificationSilent;
             // Assigned directly, not through the property setter - the theme is already applied by the
             // time this VM is constructed (App.axaml.cs applies it before the window is shown), so
             // there's no need to call ThemeService.Apply a second time for the value it started at.
@@ -188,26 +186,6 @@ namespace TweakerUI.ViewModels
         partial void OnIsFastPreviewChanged(bool value)
         {
             SettingsProvider.UseFastPreview = value;
-            ApplySettings();
-        }
-
-        [ObservableProperty]
-        private bool isUWPNotificationsAllowed;
-
-        partial void OnIsUWPNotificationsAllowedChanged(bool value)
-        {
-            SettingsProvider.IsUWPNotificationsAllowed = value;
-            if (value)
-                ApplicationNotificationManager.Manager.ShowUWPNotification("UWP Notification settings", "Windows notifications enabled");
-            ApplySettings();
-        }
-
-        [ObservableProperty]
-        private bool isUWPNotificationSilent;
-
-        partial void OnIsUWPNotificationSilentChanged(bool value)
-        {
-            SettingsProvider.IsUWPNotificationSilent = value;
             ApplySettings();
         }
 

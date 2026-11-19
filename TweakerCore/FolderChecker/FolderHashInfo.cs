@@ -73,7 +73,7 @@ namespace TweakerCore.FolderChecker
 
         public void Save(string path)
         {
-            File.WriteAllText(Path.Combine(path, StateFileName), JsonSerializer.Serialize(this));
+            File.WriteAllText(Path.Combine(path, StateFileName), JsonSerializer.Serialize(this, CoreJsonContext.Compact.FolderHashInfo));
         }
 
         // Local cache only - if the file at this path predates the JSON format (or is otherwise
@@ -89,7 +89,7 @@ namespace TweakerCore.FolderChecker
 
             try
             {
-                folderInfo = JsonSerializer.Deserialize<FolderHashInfo>(File.ReadAllText(stateFile));
+                folderInfo = JsonSerializer.Deserialize(File.ReadAllText(stateFile), CoreJsonContext.Compact.FolderHashInfo);
             }
             catch (JsonException)
             {

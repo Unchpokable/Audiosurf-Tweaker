@@ -18,7 +18,7 @@ namespace QuickPlayerCore
     /// the mode loops. Repeating and stopping apply to a track *finishing on its own*: RepeatOne does
     /// not trap the user on one song and Single does not disable the transport.
     /// </summary>
-    [JsonConverter(typeof(JsonStringEnumConverter))]
+    [JsonConverter(typeof(JsonStringEnumConverter<PlaybackMode>))]
     public enum PlaybackMode
     {
         /// <summary>Playlist order, stop after the last entry. The default, and what AutoAdvance = true used to do.</summary>
@@ -41,7 +41,7 @@ namespace QuickPlayerCore
     }
 
     /// <summary>What has to happen before Quick Player starts the next entry.</summary>
-    [JsonConverter(typeof(JsonStringEnumConverter))]
+    [JsonConverter(typeof(JsonStringEnumConverter<AdvanceTrigger>))]
     public enum AdvanceTrigger
     {
         /// <summary>
@@ -94,8 +94,6 @@ namespace QuickPlayerCore
 
         public static event Action<string, Exception> OperationFailed;
 
-        private static readonly JsonSerializerOptions _jsonOptions = new() { WriteIndented = true };
-
         public static Playlist Load(Guid id) => LoadFromPath(PathFor(id));
 
         public static IEnumerable<Playlist> LoadAll()
@@ -117,7 +115,7 @@ namespace QuickPlayerCore
             try
             {
                 Directory.CreateDirectory(QuickPlayerPaths.PlaylistsDirectory);
-                File.WriteAllText(PathFor(Id), JsonSerializer.Serialize(this, _jsonOptions), Encoding.UTF8);
+                File.WriteAllText(PathFor(Id), JsonSerializer.Serialize(this, PlayerJsonContext.Default.Playlist), Encoding.UTF8);
                 return true;
             }
             catch (Exception ex)
@@ -155,7 +153,7 @@ namespace QuickPlayerCore
             try
             {
                 var json = File.ReadAllText(path, Encoding.UTF8);
-                var playlist = JsonSerializer.Deserialize<Playlist>(json);
+                var playlist = JsonSerializer.Deserialize(json, PlayerJsonContext.Default.Playlist);
 
                 // Entries imported before titles were parsed still carry the user's own bracket tags
                 // inside SongTitle, which is exactly the state that makes TempFileTagger append a

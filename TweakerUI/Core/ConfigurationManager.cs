@@ -1,11 +1,8 @@
-using Gameloop.Vdf;
-using Gameloop.Vdf.JsonConverter;
 using Microsoft.Win32;
-using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
-using System.Configuration;
 using System.IO;
+using System.Linq;
+using TweakerCore.Configuration;
 using Settings = TweakerUI.Core.SettingsProvider;
 
 namespace TweakerUI.Core
@@ -15,22 +12,8 @@ namespace TweakerUI.Core
     {
         internal static event Action<Exception> InitializationFaultCallback;
 
-        // OpenExeConfiguration(path) looks for "<path>.config". AppDomain.CurrentDomain.FriendlyName
-        // was "audiosurftweaker.exe" on .NET Framework (matching the shipped audiosurftweaker.exe.config),
-        // but on modern .NET it's just "audiosurftweaker" with no extension - which doesn't match the
-        // config file the SDK actually produces, so every read/write here silently missed the real
-        // config. Previously fixed with Assembly.GetExecutingAssembly().Location (giving
-        // TweakerUI.dll.config, which the SDK does produce on a normal multi-file publish) - but that
-        // broke again under Deploy.ps1's self-contained single-file publish: Assembly.Location returns
-        // an empty string for assemblies loaded from a PublishSingleFile bundle (documented .NET
-        // behavior, no separate .dll on disk to report a path for), so every OpenExeConfiguration call
-        // below silently failed and every setting silently sat on its C# default - same failure class
-        // as the FriendlyName bug this comment used to describe, just re-triggered by a different publish
-        // mode. Environment.ProcessPath (the actual apphost .exe, not the managed assembly) resolves
-        // correctly in every publish mode - framework-dependent, self-contained multi-file, and
-        // single-file alike - and gives TweakerUI.exe.config, which OpenExeConfiguration creates fresh
-        // via the self-healing path below (EnsureDefaultKeysExist) if it isn't there yet.
-        private static string ExePath => Environment.ProcessPath;
+        // The apphost path is valid for both managed development and Native AOT publication.
+        private static string ConfigPath => Environment.ProcessPath + ".config";
 
         private const string FirstRunKey = "FirstRun";
 
@@ -39,12 +22,7 @@ namespace TweakerUI.Core
         // (defaults, read, write) - a key added to one and forgotten in another silently stopped
         // persisting, with nothing to point at why.
         //
-        // The defaults exist because OpenExeConfiguration on a missing/incomplete config file returns a
-        // non-null but empty AppSettings section (confirmed by direct test), so Settings[key].Value threw
-        // a NullReferenceException that SetUpDefaultSettings' own try/catch swallowed *before* it ever
-        // reached cfg.Save() - meaning a missing config file could never self-heal, it would just fail the
-        // same way on every launch. EnsureDefaultKeysExist closes that regardless of why a key is missing
-        // (packaging step, manual edit, a setting added after a user's config was already on disk, ...).
+        // Missing keys are supplemented on disk without replacing the user's existing values.
         private static readonly SettingBinding[] Bindings =
         {
             Bind("TexturesPath", "None", () => Settings.GameTexturesPath, v => Settings.GameTexturesPath = v),
@@ -57,8 +35,6 @@ namespace TweakerUI.Core
             Bind("WatcherTempFile", "Storage/temp.tasp", () => Settings.WatcherTempFile, v => Settings.WatcherTempFile = v),
             Bind("WatcherShouldStoreTextures", false, () => Settings.WatcherShouldStoreTextures, v => Settings.WatcherShouldStoreTextures = v),
             Bind("WatcherTempFileOverrided", false, () => Settings.WatcherTempFileOverrided, v => Settings.WatcherTempFileOverrided = v),
-            Bind("UWPNotificationsAllowed", false, () => Settings.IsUWPNotificationsAllowed, v => Settings.IsUWPNotificationsAllowed = v),
-            Bind("UWPNotificationSilent", true, () => Settings.IsUWPNotificationSilent, v => Settings.IsUWPNotificationSilent = v),
             Bind("DarkTheme", false, () => Settings.IsDarkTheme, v => Settings.IsDarkTheme = v),
             Bind("SyncOverlayWithTweaker", true, () => Settings.SyncOverlayWithTweaker, v => Settings.SyncOverlayWithTweaker = v),
             Bind("ScriptEditor", "", () => Settings.ScriptEditor, v => Settings.ScriptEditor = v),
@@ -72,6 +48,8 @@ namespace TweakerUI.Core
         // file does not keep accumulating rows nothing reads. Safe to empty once no user config still has them.
         private static readonly string[] ObsoleteKeys =
         {
+            "UWPNotificationsAllowed",
+            "UWPNotificationSilent",
             "EnableInGameOverlay", // -> SyncOverlayWithTweaker (plugin-offline-mode.md §6.5)
         };
 
@@ -87,20 +65,14 @@ namespace TweakerUI.Core
         {
             try
             {
-                Configuration cfg = System.Configuration.ConfigurationManager.OpenExeConfiguration(ExePath);
-
-                if (cfg.AppSettings == null)
-                {
-                    InitializationFaultCallback?.Invoke(new Exception("Null configuration section"));
-                    return;
-                }
+                var cfg = new XmlSettingsStore(ConfigPath);
 
                 EnsureDefaultKeysExist(cfg);
 
-                if (!bool.Parse(cfg.AppSettings.Settings[FirstRunKey].Value) && Directory.Exists(cfg.AppSettings.Settings["TexturesPath"].Value))
+                if (!bool.Parse(cfg.Get(FirstRunKey)) && Directory.Exists(cfg.Get("TexturesPath")))
                     return;
 
-                cfg.AppSettings.Settings[FirstRunKey].Value = bool.FalseString;
+                cfg.Set(FirstRunKey, bool.FalseString);
                 cfg.Save();
 
                 var gameInstallPath = GetAudiosurfBaseDirectory();
@@ -113,9 +85,8 @@ namespace TweakerUI.Core
                     return;
                 }
 
-                cfg.AppSettings.Settings["TexturesPath"].Value = texturesPath;
+                cfg.Set("TexturesPath", texturesPath);
                 cfg.Save();
-                System.Configuration.ConfigurationManager.RefreshSection("appSettings");
             }
             catch (Exception e)
             {
@@ -123,33 +94,16 @@ namespace TweakerUI.Core
             }
         }
 
-        private static void EnsureDefaultKeysExist(Configuration cfg)
+        private static void EnsureDefaultKeysExist(XmlSettingsStore cfg)
         {
-            var addedAnyKey = false;
-
-            void EnsureKey(string key, string defaultValue)
-            {
-                if (cfg.AppSettings.Settings[key] != null)
-                    return;
-
-                cfg.AppSettings.Settings.Add(key, defaultValue);
-                addedAnyKey = true;
-            }
-
-            EnsureKey(FirstRunKey, "true");
+            var changed = cfg.Ensure(FirstRunKey, "true");
             foreach (var binding in Bindings)
-                EnsureKey(binding.Key, binding.Default);
+                changed |= cfg.Ensure(binding.Key, binding.Default);
 
             foreach (var key in ObsoleteKeys)
-            {
-                if (cfg.AppSettings.Settings[key] == null)
-                    continue;
+                changed |= cfg.Remove(key);
 
-                cfg.AppSettings.Settings.Remove(key);
-                addedAnyKey = true;
-            }
-
-            if (addedAnyKey)
+            if (changed)
                 cfg.Save();
         }
 
@@ -157,13 +111,10 @@ namespace TweakerUI.Core
         {
             try
             {
-                // Explicit OpenExeConfiguration(ExePath), not the static implicit ConfigurationManager.AppSettings -
-                // the implicit resolution mirrors the same FriendlyName-based lookup that's broken on modern .NET
-                // (see ExePath comment above), so it misses the real config file the same way.
-                var settings = System.Configuration.ConfigurationManager.OpenExeConfiguration(ExePath).AppSettings.Settings;
+                var settings = new XmlSettingsStore(ConfigPath);
 
                 foreach (var binding in Bindings)
-                    binding.Write(settings[binding.Key]?.Value);
+                    binding.Write(settings.Get(binding.Key) ?? binding.Default);
             }
             catch (Exception e)
             {
@@ -175,10 +126,11 @@ namespace TweakerUI.Core
         {
             try
             {
-                var cfg = System.Configuration.ConfigurationManager.OpenExeConfiguration(ExePath);
+                var cfg = new XmlSettingsStore(ConfigPath);
+                EnsureDefaultKeysExist(cfg);
 
                 foreach (var binding in Bindings)
-                    cfg.AppSettings.Settings[binding.Key].Value = binding.Read();
+                    cfg.Set(binding.Key, binding.Read());
 
                 cfg.Save();
             }
@@ -221,28 +173,13 @@ namespace TweakerUI.Core
                 }
                 return null;
             }
-            else
-                return Path.Combine(GetAudiosurfBaseDirectoryFromVDF(libfolders), "steamapps\\common\\Audiosurf");
+            var libraryPath = GetAudiosurfBaseDirectoryFromVDF(libfolders);
+            return libraryPath == null ? null : Path.Combine(libraryPath, "steamapps", "common", "Audiosurf");
         }
 
-        private static string GetAudiosurfBaseDirectoryFromVDF(string libfordersFilePath)
+        private static string GetAudiosurfBaseDirectoryFromVDF(string libraryFoldersFilePath)
         {
-            var vdf = VdfConvert.Deserialize(File.ReadAllText(libfordersFilePath));
-            var json = JsonConvert.DeserializeObject<Dictionary<string, LibraryFoldersRecord>>(vdf.ToJson().Value.ToString());
-            foreach (var folder in json.Keys)
-            {
-                if (json[folder].Apps.ContainsKey("12900"))
-                    return json[folder].Path;
-            }
-
-            return null;
-        }
-
-        // Only the two fields this lookup needs; Json.NET ignores the rest of the record.
-        private class LibraryFoldersRecord
-        {
-            public string Path { get; set; }
-            public Dictionary<string, string> Apps { get; set; }
+            return SteamLibraryFolders.AudiosurfLibraries(File.ReadAllText(libraryFoldersFilePath)).FirstOrDefault();
         }
     }
 }

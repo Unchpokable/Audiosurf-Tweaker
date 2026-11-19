@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using QuickPlayerCore.Audiosurf;
+using QuickPlayerCore.MetadataParsers;
 
 namespace QuickPlayerCore
 {
@@ -78,10 +79,8 @@ namespace QuickPlayerCore
                 Directory.CreateDirectory(tempDir);
                 File.Copy(entry.FilePath, staging, overwrite: true);
 
-                var file = TagLib.File.Create(staging);
                 var suffix = string.Concat(activeTags.Select(t => SongTagCatalog.Get(t.Token).Format(t.Parameter)));
-                file.Tag.Title = string.IsNullOrEmpty(suffix) ? entry.SongTitle : $"{entry.SongTitle} {suffix}";
-                file.Save();
+                NativeAudioMetadata.SetTitle(staging, string.IsNullOrEmpty(suffix) ? entry.SongTitle : $"{entry.SongTitle} {suffix}");
 
                 try
                 {

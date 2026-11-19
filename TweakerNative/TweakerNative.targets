@@ -1,0 +1,21 @@
+<Project>
+  <PropertyGroup>
+    <TweakerNativeSourceDir>$(MSBuildThisFileDirectory)</TweakerNativeSourceDir>
+    <TweakerNativeBuildDir>$(TweakerNativeSourceDir)build\msbuild</TweakerNativeBuildDir>
+  </PropertyGroup>
+
+  <!-- The library belongs to QuickPlayerCore's runtime assets, so project references also copy it
+       to UI, managed tests and publication. Debug uses the same self-contained Release helper. -->
+  <ItemGroup>
+    <Content Include="$(TweakerNativeBuildDir)\bin\Release\TweakerNative.dll"
+             Link="TweakerNative.dll" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(TweakerNativeBuildDir)\licenses\TagLib-MPL.txt;$(TweakerNativeBuildDir)\licenses\TagLib-LGPL.txt;$(TweakerNativeBuildDir)\licenses\utfcpp.txt;$(TweakerNativeBuildDir)\licenses\zlib.txt"
+             Link="Licenses\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="BuildTweakerNative" BeforeTargets="PrepareForBuild" Condition="'$(DesignTimeBuild)' != 'true'">
+    <Error Condition="!$([MSBuild]::IsOSPlatform('Windows'))" Text="TweakerNative requires Windows x64 and MSVC." />
+    <Exec Command="cmake -A x64 -S &quot;$(TweakerNativeSourceDir).&quot; -B &quot;$(TweakerNativeBuildDir)&quot;" />
+    <Exec Command="cmake --build &quot;$(TweakerNativeBuildDir)&quot; --config Release --target TweakerNative --parallel" />
+  </Target>
+</Project>

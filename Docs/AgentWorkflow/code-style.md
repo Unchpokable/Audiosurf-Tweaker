@@ -343,8 +343,8 @@ callback-ом (`attach_ui_plugin`), без жёсткой зависимости
 Это правила организации из прежнего CLAUDE, а не перенос C++ naming на C#.
 
 - ViewModel наследуются от `ViewModelBase : ObservableObject`. ViewLocator
-  резолвит `FooViewModel` → `FooView` по имени типа через рефлексию: для новой
-  пары нужны совпадающие имена и namespace, отдельная ручная регистрация не нужна.
+  создаёт View статическим switch без reflection: новую пару добавляй в Build
+  и Match. При переключении создаётся новый View; DataContext назначает Avalonia.
 - Каждой вкладке соответствует свой `<Prefix>Styles.axaml` в `Themes/`.
   Палитры, темы и общие шаблоны — в общих словарях, через `DynamicResource`,
   чтобы смена темы не требовала перезапуска.

@@ -1,10 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
-		<!-- Needs a Windows SDK-versioned TFM (not bare net10.0-windows), same reason and fix as
-         SkinChangerRestyle: the WinRT toast notification projection (ToastContentBuilder.Show())
-         only resolves with a Windows SDK version on the TFM. This is Windows-only regardless
-         (WM_COPYDATA/asbridge), so the extra specificity costs nothing on the rest of the project. -->
+		<PublishAot>true</PublishAot>
+		<IlcTreatWarningsAsErrors>true</IlcTreatWarningsAsErrors>
+		<ILLinkTreatWarningsAsErrors>true</ILLinkTreatWarningsAsErrors>
+		<JsonSerializerIsReflectionEnabledByDefault>false</JsonSerializerIsReflectionEnabledByDefault>
 		<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
 		<RootNamespace>TweakerUI</RootNamespace>
 		<!-- Nullable inherited as "disable" from Directory.Build.props (project-wide policy from Phase 3a,
@@ -14,6 +14,13 @@
 		<ApplicationManifest>app.manifest</ApplicationManifest>
 		<AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
 	</PropertyGroup>
+
+  <!-- Settings are attached to the apphost path in every deployment mode. -->
+  <Target Name="UseApphostConfigurationPath" AfterTargets="PrepareForBuild">
+    <ItemGroup>
+      <AppConfigWithTargetPath Update="@(AppConfigWithTargetPath)" TargetPath="$(AssemblyName).exe.config" />
+    </ItemGroup>
+  </Target>
 
 	<ItemGroup>
 		<Folder Include="Models\" />
@@ -30,19 +37,8 @@
 			<PrivateAssets Condition="'$(Configuration)' != 'Debug'">All</PrivateAssets>
 		</PackageReference>
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.1" />
-		<PackageReference Include="Gameloop.Vdf" Version="0.6.2" />
-		<PackageReference Include="Gameloop.Vdf.JsonConverter" Version="0.2.1" />
-		<PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
 		<PackageReference Include="SkiaSharp" Version="4.150.0" />
-		<PackageReference Include="System.Configuration.ConfigurationManager" Version="10.0.9" />
-	
-    <!-- Not used directly - pinned up from the vulnerable floors pulled in transitively
-         (Gameloop.Vdf.JsonConverter -> Newtonsoft.Json 12.0.3, GHSA-5crp-9r3c-p9vr;
-         Microsoft.Toolkit.Uwp.Notifications -> System.Drawing.Common 4.7.0, GHSA-rxg9-xrhp-64gj).
-         NuGet resolves to the highest floor across the graph, so a direct reference here is enough
-         to override both without touching the packages that actually need them. -->
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-    <PackageReference Include="System.Drawing.Common" Version="10.0.10" />
+
   </ItemGroup>
 
   <ItemGroup>
@@ -62,16 +58,19 @@
 	    by the deploy scripts, which publish the linker separately and put it in the same place: an AOT
 	    publish on every dotnet build would cost tens of seconds and require MSVC.
 
-	    The global properties a self-contained single-file publish of TweakerUI sets would otherwise flow
+	    The global properties an AOT publish of TweakerUI sets would otherwise flow
 	    into the linker's build too, so they are removed from the reference. _IsPublishing among them is
 	    not optional: with it, the linker's PublishAot turns its plain build self-contained, and the whole
-	    runtime lands in DevTools\Binaries\ beside it.
+	    runtime lands in DevTools\Binaries\ beside it. Private=false also keeps the tool
+	    out of UI publish assets; it is not a runtime executable reference.
 	-->
 	<ItemGroup>
 		<ProjectReference Include="..\TweakerLuaLinker\TweakerLuaLinker.csproj"
 		                  ReferenceOutputAssembly="false"
 		                  OutputItemType="TwllinkBuildOutput"
-		                  GlobalPropertiesToRemove="_IsPublishing;SelfContained;PublishSingleFile;IncludeNativeLibrariesForSelfExtract;IncludeAllContentForSelfExtract;DebugType;CopyOutputSymbolsToPublishDirectory" />
+		                  Private="false"
+		                  AdditionalProperties="ShouldBeValidatedAsExecutableReference=false;PublishAot=false;SelfContained=false"
+		                  GlobalPropertiesToRemove="PublishAot;PublishTrimmed;_IsPublishing;SelfContained;PublishSingleFile;IncludeNativeLibrariesForSelfExtract;IncludeAllContentForSelfExtract;DebugType;CopyOutputSymbolsToPublishDirectory" />
 	</ItemGroup>
 
 	<!--

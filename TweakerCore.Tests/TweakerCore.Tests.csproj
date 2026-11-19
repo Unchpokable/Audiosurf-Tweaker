@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <PublishAot>false</PublishAot>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
@@ -22,7 +23,9 @@
   <ItemGroup>
     <ProjectReference Include="..\TweakerLuaLinker\TweakerLuaLinker.csproj"
                       ReferenceOutputAssembly="false"
-                      OutputItemType="TwllinkBuildOutput" />
+                      OutputItemType="TwllinkBuildOutput"
+                      Private="false"
+                      AdditionalProperties="PublishAot=false;SelfContained=false;ShouldBeValidatedAsExecutableReference=false" />
   </ItemGroup>
 
   <Target Name="CopyTwllink" AfterTargets="Build">

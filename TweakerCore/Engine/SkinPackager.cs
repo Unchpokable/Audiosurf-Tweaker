@@ -29,8 +29,6 @@ namespace TweakerCore.Engine
             "tileflyup.png", "tiles.png"
         };
 
-        private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions { WriteIndented = true };
-
         public static bool CompileToPath(AudiosurfSkinExtended skin, string path)
         {
             return CompileToFile(skin, Path.Combine(path, skin.Name + Env.ActualSkinExtention));
@@ -158,7 +156,7 @@ namespace TweakerCore.Engine
                     using (var entryStream = manifestEntry.Open())
                     using (var reader = new StreamReader(entryStream, Encoding.UTF8))
                     {
-                        manifest = JsonSerializer.Deserialize<SkinManifest>(reader.ReadToEnd());
+                        manifest = JsonSerializer.Deserialize(reader.ReadToEnd(), CoreJsonContext.Default.SkinManifest);
                     }
 
                     manifest.Name = newName;
@@ -168,7 +166,7 @@ namespace TweakerCore.Engine
                     using (var entryStream = newEntry.Open())
                     using (var writer = new StreamWriter(entryStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
                     {
-                        writer.Write(JsonSerializer.Serialize(manifest, _jsonOptions));
+                        writer.Write(JsonSerializer.Serialize(manifest, CoreJsonContext.Default.SkinManifest));
                     }
                 }
 
@@ -285,7 +283,7 @@ namespace TweakerCore.Engine
             using (var entryStream = manifestEntry.Open())
             using (var reader = new StreamReader(entryStream, Encoding.UTF8))
             {
-                return JsonSerializer.Deserialize<SkinManifest>(reader.ReadToEnd());
+                return JsonSerializer.Deserialize(reader.ReadToEnd(), CoreJsonContext.Default.SkinManifest);
             }
         }
 
@@ -333,7 +331,7 @@ namespace TweakerCore.Engine
                 using (var entryStream = manifestEntry.Open())
                 using (var writer = new StreamWriter(entryStream, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false)))
                 {
-                    writer.Write(JsonSerializer.Serialize(manifest, _jsonOptions));
+                    writer.Write(JsonSerializer.Serialize(manifest, CoreJsonContext.Default.SkinManifest));
                 }
             }
         }

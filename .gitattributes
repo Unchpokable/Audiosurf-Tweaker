@@ -71,3 +71,6 @@ Tools/CgrPy/cgrpy.cmd text eol=crlf
 Docs/Internal/Archive/agent-migration/CLAUDE.pre-migration.md -text
 Docs/Internal/Archive/agent-migration/overview.pre-migration.md -text
 Docs/Internal/Archive/agent-migration/script-tabs-roadmap.md -text
+
+# Bash deploy entry points must keep a valid shebang and parse in Git Bash on Windows.
+Scripts/Deploy*.sh text eol=lf

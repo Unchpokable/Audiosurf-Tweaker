@@ -33,8 +33,7 @@ Diagnostics/            Diagnostic, DiagnosticBag, DiagnosticCodes (коды н�
 
 ```
 dotnet build TweakerLuaLinker/TweakerLuaLinker.csproj
-dotnet publish TweakerLuaLinker/TweakerLuaLinker.csproj -c Release -p:TwPublish=aot -o <dir>      # основной путь
-dotnet publish TweakerLuaLinker/TweakerLuaLinker.csproj -c Release -p:TwPublish=single -o <dir>   # запасной
+dotnet publish TweakerLuaLinker/TweakerLuaLinker.csproj -c Release -o <dir>   # Native AOT
 ```
 
 AOT-публикация должна проходить **без единого предупреждения** тримминга и AOT — это проверялось при

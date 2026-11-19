@@ -83,15 +83,13 @@ namespace TweakerUI.Models
         public override bool Equals(object obj) => obj is ColorPalette other && Equals(other);
         public override int GetHashCode() => Id.GetHashCode();
 
-        private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions { WriteIndented = true };
-
         public static bool Save(ColorPalette obj, string path)
         {
             var fullPath = $"{path}\\{obj.Name}{ColorPalettePrint.PaletteFileExtension}";
             try
             {
                 var print = new ColorPalettePrint(obj);
-                File.WriteAllText(fullPath, JsonSerializer.Serialize(print, _jsonOptions), Encoding.UTF8);
+                File.WriteAllText(fullPath, JsonSerializer.Serialize(print, PaletteJsonContext.Default.ColorPalettePrint), Encoding.UTF8);
                 return true;
             }
             catch (Exception ex)
@@ -109,7 +107,7 @@ namespace TweakerUI.Models
                     return null;
 
                 var json = File.ReadAllText(path, Encoding.UTF8);
-                var obj = JsonSerializer.Deserialize<ColorPalettePrint>(json);
+                var obj = JsonSerializer.Deserialize(json, PaletteJsonContext.Default.ColorPalettePrint);
                 return new ColorPalette(obj);
             }
             catch (Exception ex)

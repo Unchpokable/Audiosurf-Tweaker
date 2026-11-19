@@ -156,29 +156,6 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Notifications -->
-                <Border Classes="Card Roomy">
-                    <StackPanel Spacing="2">
-                        <TextBlock Text="Notifications" Classes="CardTitle" Margin="0,0,0,8"/>
-
-                        <Border Classes="ToggleRow"
-                                ToolTip.Tip="Send Windows notifications after actions complete, instead of the app's own colored popups">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Text="Use UWP notifications" Classes="ToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Grid.Column="1" Classes="Switch" IsChecked="{Binding IsUWPNotificationsAllowed, Mode=TwoWay}"/>
-                            </Grid>
-                        </Border>
-
-                        <Border Classes="ToggleRow STNested" IsEnabled="{Binding IsUWPNotificationsAllowed}"
-                                ToolTip.Tip="Show UWP notifications but suppress the system notification sound">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Text="Mute UWP notifications" Classes="ToggleLabel" VerticalAlignment="Center"/>
-                                <ToggleButton Grid.Column="1" Classes="Switch" IsChecked="{Binding IsUWPNotificationSilent, Mode=TwoWay}"/>
-                            </Grid>
-                        </Border>
-                    </StackPanel>
-                </Border>
-
             </StackPanel>
         </ScrollViewer>
     </Border>

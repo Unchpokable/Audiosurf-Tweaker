@@ -19,8 +19,6 @@ namespace TweakerUI.Models
 
         public List<ColorPalettePrint> ColorPalettes { get; set; }
 
-        private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions { WriteIndented = true };
-
         // Matches by Id, not by value - two untouched "New Palette" defaults have identical
         // name+colors, and matching on value would silently edit whichever one happens to come
         // first in storage instead of the one actually selected in the UI.
@@ -61,7 +59,7 @@ namespace TweakerUI.Models
                     return null;
 
                 var json = File.ReadAllText(path, Encoding.UTF8);
-                return JsonSerializer.Deserialize<PaletteDynamicLoadContainer>(json);
+                return JsonSerializer.Deserialize(json, PaletteJsonContext.Default.PaletteDynamicLoadContainer);
             }
             catch (Exception ex)
             {
@@ -75,7 +73,7 @@ namespace TweakerUI.Models
             var fullPath = path + PaletteContainerFileExtension;
             try
             {
-                File.WriteAllText(fullPath, JsonSerializer.Serialize(obj, _jsonOptions), Encoding.UTF8);
+                File.WriteAllText(fullPath, JsonSerializer.Serialize(obj, PaletteJsonContext.Default.PaletteDynamicLoadContainer), Encoding.UTF8);
                 return true;
             }
             catch (Exception ex)

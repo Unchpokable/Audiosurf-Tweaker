@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <PublishAot>false</PublishAot>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
@@ -12,6 +13,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\QuickPlayerCore\QuickPlayerCore.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Fixtures\tone*.*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

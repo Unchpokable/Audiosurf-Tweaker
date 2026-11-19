@@ -2,6 +2,7 @@
 
   <!-- Same deviations from Directory.Build.props as the linker itself, for the same reasons (see its .csproj). -->
   <PropertyGroup>
+    <PublishAot>false</PublishAot>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
@@ -15,7 +16,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TweakerLuaLinker\TweakerLuaLinker.csproj" />
+    <ProjectReference Include="..\TweakerLuaLinker\TweakerLuaLinker.csproj" AdditionalProperties="PublishAot=false" />
   </ItemGroup>
 
 </Project>

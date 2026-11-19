@@ -3,6 +3,7 @@
        Not part of the .sln on purpose - it depends on TweakerUI's build output, not on its project.
        Build TweakerUI first (dotnet build TweakerUI/TweakerUI.csproj). See README.md. -->
   <PropertyGroup>
+    <PublishAot>false</PublishAot>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <Nullable>disable</Nullable>
@@ -25,5 +26,8 @@
     <Reference Include="TweakerCore"><HintPath>$(UiBin)\TweakerCore.dll</HintPath></Reference>
     <Reference Include="QuickPlayerCore"><HintPath>$(UiBin)\QuickPlayerCore.dll</HintPath></Reference>
     <Reference Include="AudiosurfInterface"><HintPath>$(UiBin)\AudiosurfInterface.dll</HintPath></Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(UiBin)\TweakerNative.dll" Link="TweakerNative.dll" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

@@ -89,7 +89,7 @@ namespace TweakerCore.Scripting
     /// Text is hashed without carriage returns: a project checked out by git with autocrlf has every file with CRLF,
     /// and that must not read as "the user edited all of them".
     /// </summary>
-    public static class AgentSetup
+    public static partial class AgentSetup
     {
         public const string TweakerFolder = ".tweaker";
         public const string ManifestPath = TweakerFolder + "/manifest.json";
@@ -211,7 +211,7 @@ namespace TweakerCore.Scripting
                 return;
 
             var local = new LocalFile { Format = 1, Game = string.IsNullOrEmpty(gameRoot) ? null : gameRoot, DevTools = devtools };
-            var text = JsonSerializer.Serialize(local, new JsonSerializerOptions { WriteIndented = true }).Replace("\r\n", "\n") + "\n";
+            var text = JsonSerializer.Serialize(local, AgentJsonContext.Default.LocalFile).Replace("\r\n", "\n") + "\n";
             var path = Full(projectRoot, LocalPath);
             if (File.Exists(path) && File.ReadAllText(path) == text)
                 return; // unchanged: no write, so a watcher on the project sees nothing
@@ -553,6 +553,13 @@ namespace TweakerCore.Scripting
 
         // --- the files of .tweaker\ -----------------------------------------------------------------------------
 
+        [JsonSourceGenerationOptions(WriteIndented = true)]
+        [JsonSerializable(typeof(LocalFile))]
+        [JsonSerializable(typeof(AgentManifest))]
+        private partial class AgentJsonContext : JsonSerializerContext
+        {
+        }
+
         private sealed class LocalFile
         {
             [JsonPropertyName("format")]
@@ -610,7 +617,7 @@ namespace TweakerCore.Scripting
                     return new AgentManifest();
                 try
                 {
-                    var loaded = JsonSerializer.Deserialize<AgentManifest>(File.ReadAllText(path)) ?? new AgentManifest();
+                    var loaded = JsonSerializer.Deserialize(File.ReadAllText(path), AgentJsonContext.Default.AgentManifest) ?? new AgentManifest();
                     loaded.Files = new Dictionary<string, string>(loaded.Files ?? new Dictionary<string, string>(), StringComparer.OrdinalIgnoreCase);
                     loaded.Exists = true;
                     return loaded;
@@ -631,7 +638,7 @@ namespace TweakerCore.Scripting
                     Files = Files.OrderBy(f => f.Key, StringComparer.Ordinal).ToDictionary(f => f.Key, f => f.Value)
                 };
                 // Sorted and LF: the manifest is committed, and a diff of it should show what changed, not reorderings.
-                File.WriteAllText(path, JsonSerializer.Serialize(sorted, new JsonSerializerOptions { WriteIndented = true }).Replace("\r\n", "\n") + "\n");
+                File.WriteAllText(path, JsonSerializer.Serialize(sorted, AgentJsonContext.Default.AgentManifest).Replace("\r\n", "\n") + "\n");
                 Exists = true;
             }
         }

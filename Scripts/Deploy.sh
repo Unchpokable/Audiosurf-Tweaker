@@ -3,21 +3,11 @@
 # Bash/Git-Bash-under-Windows counterpart of Deploy.ps1 - same steps, same output layout, kept in
 # sync by hand since there's no cross-shell script-sharing story here worth the indirection.
 #
-# Publishes TweakerUI as a self-contained, single-file win-x64 app (bundled .NET runtime, no
-# separate install required on the target machine, one exe instead of a ~250-file folder), builds
-# LegacyDataConverter (the .NET Framework 4.8.1 legacy skin/palette converter - frozen off net10
-# on purpose, see Directory.Build.props) through full MSBuild since it's an old-style csproj the
-# dotnet CLI can't load, and drops both straight into /distr/TweakerUI/ as a single flat folder.
-#
-# PublishSingleFile bundles the managed app + .NET runtime into one exe; native assets
-# (SkiaSharp/HarfBuzzSharp/Avalonia natives) can't run from inside that bundle, so
-# IncludeNativeLibrariesForSelfExtract=true self-extracts just those to
-# %TEMP%\.net\TweakerUI\<hash>\ on first launch and reuses that cache on later launches - this is
-# expected .NET single-file behavior, not a bug, and needs no cleanup of its own. The two *.pdb
-# files those native packages carry alongside their .dll (89MB/20MB - debug symbols for
-# SkiaSharp/HarfBuzzSharp's native code, never loaded at runtime) get deleted explicitly below;
-# neither DebugType=none nor CopyOutputSymbolsToPublishDirectory=false reaches them since they're
-# copied as native package content, not through the managed PDB pipeline.
+# Publishes TweakerUI as a win-x64 Native AOT executable. No .NET runtime install is needed.
+# Native Avalonia/Skia/HarfBuzz libraries and TweakerNative.dll remain beside the executable;
+# there is no CoreCLR bundle or first-launch self-extraction.
+# LegacyDataConverter stays on .NET Framework 4.8.1 and is merged by ILRepack.
+# Native package debug symbols are removed from the public bundle.
 #
 # asbridge.exe is NOT built separately here - TweakerUI.csproj already has its own CMake pre-build
 # hook (BuildAsBridge/CopyAsBridge targets) that runs as part of any build, including the one
@@ -65,11 +55,11 @@ for attempt in 1 2 3 4 5; do
 done
 mkdir -p "$DIST_DIR"
 
-# --- 1. TweakerUI: self-contained publish -------------------------------------------------------
+# --- 1. TweakerUI: Native AOT publish -------------------------------------------------------
 TWEAKER_OUT="$DIST_DIR/TweakerUI"
-echo "==> Publishing TweakerUI ($CONFIGURATION, $RUNTIME, self-contained single-file)"
+echo "==> Publishing TweakerUI ($CONFIGURATION, $RUNTIME, Native AOT)"
 dotnet publish "$TWEAKER_UI_PROJ" -c "$CONFIGURATION" -r "$RUNTIME" --self-contained true \
-    -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:IncludeAllContentForSelfExtract=true \
+    -p:PublishAot=true \
     -p:DebugType=none -p:CopyOutputSymbolsToPublishDirectory=false \
     -o "$TWEAKER_OUT"
 
@@ -168,7 +158,7 @@ LINKER_PROJ="$REPO_ROOT/TweakerLuaLinker/TweakerLuaLinker.csproj"
 LINKER_OUT="$REPO_ROOT/TweakerLuaLinker/bin/publish"
 DEVTOOLS_OUT="$TWEAKER_OUT/DevTools/Binaries"
 echo "==> Publishing twllink ($CONFIGURATION, Native AOT)"
-if ! dotnet publish "$LINKER_PROJ" -c "$CONFIGURATION" -p:TwPublish=aot -o "$LINKER_OUT"; then
+if ! dotnet publish "$LINKER_PROJ" -c "$CONFIGURATION" -p:PublishAot=true -o "$LINKER_OUT"; then
     echo "ERROR: twllink publish failed - Native AOT links with MSVC (Visual Studio's C++ workload)" >&2
     exit 1
 fi

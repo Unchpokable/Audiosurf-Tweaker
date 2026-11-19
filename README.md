@@ -272,7 +272,9 @@ reports, not anything a script draws.
 
 ## Building from source
 
-The desktop side is .NET 10. Building it also builds `asbridge.exe` and the injector, so you need:
+The desktop side is .NET 10. Public `TweakerUI.exe` and `twllink.exe` use Native AOT; normal builds,
+NUnit tests and UiStand remain managed. Building the UI also builds `asbridge.exe`, the injector and
+the x64 `TweakerNative.dll` audio metadata helper, so you need:
 
 - the [.NET 10 SDK](https://dotnet.microsoft.com/download);
 - Visual Studio 2022 or later with the **Desktop development with C++** workload, and CMake.
@@ -283,13 +285,16 @@ dotnet build TweakerUI/TweakerUI.csproj
 dotnet run --project TweakerUI/TweakerUI.csproj
 ```
 
-Two projects need the full Visual Studio MSBuild rather than `dotnet build`: `LegacyDataConverter` (the
-converter for old skins, which stays on .NET Framework) and `Installer`. The deploy scripts build them that way.
+`LegacyDataConverter` (the required converter for old skins, on .NET Framework 4.8.1) needs the full
+Visual Studio MSBuild. The deploy scripts build and merge it into a separate executable.
+The first helper build downloads pinned TagLib 2.3.2 (including utfcpp) and zlib 1.4 release archives;
+subsequent builds reuse CMake's dependency cache. Their licenses ship beside the helper.
 
 The in-game plugin (`TweakerPlugin/`) is an x86 C++23 DLL. It also needs the DirectX SDK (June 2010) and
 Dear ImGui, plus the Quest3D SDK, which is proprietary and not part of this repository. Without them the
 plugin is skipped with a warning and everything else still builds. Release bundles are produced by
-`Scripts/Deploy.ps1` (or `Deploy.sh` in Git Bash).
+`Scripts/Deploy.ps1` (or `Deploy.sh` in Git Bash). `DeployDebug` produces a managed, self-contained
+bundle with symbols. Native DLLs stay beside the UI in both variants.
 
 Tests are NUnit, one project per library: `dotnet test TweakerCore.Tests/TweakerCore.Tests.csproj` and so
 on. `Tools/UiStand/` renders the app's real views offscreen. That is how the screenshots on this page are
@@ -305,7 +310,7 @@ Audiosurf Tweaker is built on:
 | | |
 |---|---|
 | [Avalonia](https://avaloniaui.net/), [CommunityToolkit.Mvvm](https://github.com/CommunityToolkit/dotnet), [SkiaSharp](https://github.com/mono/SkiaSharp) | the desktop UI |
-| [TagLib#](https://github.com/mono/taglib-sharp) | reading audio files and their tags |
+| [TagLib](https://taglib.org/) | native audio metadata reader/writer through TweakerNative.dll |
 | [Gameloop.Vdf](https://github.com/shravan2x/Gameloop.Vdf) | finding the game in your Steam libraries |
 | [Loretta](https://github.com/LorettaDevs/Loretta) | parsing Lua in `twllink` |
 | [Dear ImGui](https://github.com/ocornut/imgui) | the in-game overlay |

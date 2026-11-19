@@ -31,14 +31,14 @@ API и реализации, запрет private static и примеры — �
 - `QuickPlayerCore` — плейлисты, теги, порядок и драйвер воспроизведения; зависит
   от моделей и интерфейса игры, не от UI.
 - `TweakerUI` — единственный UI. MVVM через CommunityToolkit.Mvvm; ViewLocator
-  находит View по имени ViewModel. Модельные слои сообщают события C#, а не
+  явно создаёт View для поддерживаемых ViewModel без reflection. Модельные слои сообщают события C#, а не
   передают Avalonia-объекты вверх по графу зависимостей.
 - `TweakerLuaLinker`/`twllink` — отдельный CLI для Lua-проектов (Loretta, bundle,
   diagnostics, line map, API definitions). Это инструмент, а не библиотека UI.
 - `LegacyDataConverter` — обязательный внешний .NET Framework 4.8.1 инструмент
   конвертации старых скинов. BinaryFormatter изолирован здесь, не в .NET 10.
-- `Installer` пока присутствует в дереве, но является устаревшим артефактом,
-  подлежащим удалению отдельной работой; не включай его в целевую архитектуру.
+- `TweakerNative` — x64 C++23 helper внешнего хоста: native TagLib через C ABI/PInvoke
+  для QuickPlayerCore. Не связан с x86 плагином или IPC-мостом.
 
 Управляемая сторона обычно x64; игра, asbridge, InjectHelper и плагин — x86.
 `Nullable`/`ImplicitUsings` определяются `Directory.Build.props`. Намеренные

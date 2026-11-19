@@ -2,7 +2,6 @@ using System;
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Controls.Notifications;
-using Microsoft.Toolkit.Uwp.Notifications;
 using TweakerUI.Core.Dialogs;
 using TweakerUI.Views.Dialogs;
 
@@ -31,10 +30,7 @@ namespace TweakerUI.Core
 
         public void Show(string title, string message, NotificationType type)
         {
-            if (SettingsProvider.IsUWPNotificationsAllowed)
-                ShowUWPNotification(title, message);
-            else
-                _host?.Show(new Notification(title, message, type));
+            _host?.Show(new Notification(title, message, type));
         }
 
         public void ShowError(string title, string message) => Show(title, message, NotificationType.Error);
@@ -57,7 +53,7 @@ namespace TweakerUI.Core
 
         /// <summary>
         /// The same dialog with an arbitrary button list, returning the index of the one pressed. The plugin
-        /// flows need three outcomes each (plugin-offline-mode.md §6.4, §6.5), and folding a third state into
+        /// flows need three outcomes each (plugin-offline-mode.md В§6.4, В§6.5), and folding a third state into
         /// <see cref="AskForAction"/>'s bool is how "cancel" and "no" end up indistinguishable.
         /// </summary>
         public Task<int> AskForChoice(string title, string message, params string[] buttons)
@@ -68,29 +64,6 @@ namespace TweakerUI.Core
         public Task ShowImportantInfo(string title, string message)
         {
             return TweakerDialogWindow.ShowAsync(AppShell.MainWindow, message, title, TweakerDialogButtons.OK);
-        }
-
-        public void ShowUWPNotification(string caption, string message)
-        {
-            var toast = new ToastContentBuilder()
-                .AddHeader("0", caption, new ToastArguments())
-                .SetToastDuration(ToastDuration.Short)
-                .AddText(message);
-
-            if (SettingsProvider.IsUWPNotificationSilent)
-                toast.AddAudio(new ToastAudio() { Silent = true });
-
-            try
-            {
-                toast.Show();
-            }
-            catch
-            {
-                // Toast notifications commonly throw for unpackaged Win32 apps without a registered
-                // AUMID/shortcut (e.g. a portable build) - falling back to the in-app notification host
-                // beats losing the message entirely.
-                _host?.Show(new Notification(caption, message, NotificationType.Information));
-            }
         }
     }
 }

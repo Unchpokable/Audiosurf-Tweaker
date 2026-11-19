@@ -4,13 +4,9 @@
 # kept in sync by hand since there's no cross-shell script-sharing story here worth the
 # indirection (same convention as Deploy.ps1/Deploy.sh).
 #
-# Debug counterpart of Deploy.sh. Where Deploy.sh collapses TweakerUI into one single-file exe
-# for distribution, this script publishes it the "normal" way - one DLL per assembly plus the
-# self-contained .NET runtime (~200+ files) and every PDB left in place (managed AND the native
-# SkiaSharp/HarfBuzzSharp ones that Deploy.sh deletes) - so a debugger can attach to the running
-# TweakerUI.exe process and resolve symbols/step through code, which PublishSingleFile's
-# self-extracting bundle makes impractical (native assets only unpack to a temp cache on launch,
-# and single-file managed assemblies confuse some debuggers' module resolution).
+# Debug counterpart of Deploy: publishes managed assemblies and the self-contained CoreCLR
+# runtime with symbols for debugger attachment. Native AOT is explicitly disabled for UI.
+# TweakerNative.dll is the same x64 Release helper used by managed builds and tests.
 #
 # LegacyDataConverter is NOT built Debug - it's not the thing being debugged here, it's built
 # Release exactly like Deploy.sh does, so ILRepack's default merge target still IL-merges it into
@@ -135,7 +131,7 @@ LINKER_PROJ="$REPO_ROOT/TweakerLuaLinker/TweakerLuaLinker.csproj"
 LINKER_OUT="$REPO_ROOT/TweakerLuaLinker/bin/publish"
 DEVTOOLS_OUT="$TWEAKER_OUT/DevTools/Binaries"
 echo "==> Publishing twllink ($CONFIGURATION, Native AOT, with symbols)"
-if ! dotnet publish "$LINKER_PROJ" -c "$CONFIGURATION" -p:TwPublish=aot -o "$LINKER_OUT"; then
+if ! dotnet publish "$LINKER_PROJ" -c "$CONFIGURATION" -p:PublishAot=true -o "$LINKER_OUT"; then
     echo "ERROR: twllink publish failed - Native AOT links with MSVC (Visual Studio's C++ workload)" >&2
     exit 1
 fi

@@ -1,6 +1,7 @@
 namespace QuickPlayerCore.Tests
 {
-    using System;
+    using QuickPlayerCore.MetadataParsers;
+using System;
     using System.Collections.Generic;
     using System.IO;
     using System.Text;
@@ -75,8 +76,8 @@ namespace QuickPlayerCore.Tests
             Assert.AreNotEqual(source, result);
             Assert.IsTrue(File.Exists(result));
 
-            var tagged = TagLib.File.Create(result);
-            Assert.AreEqual("My Song [as-4lane]", tagged.Tag.Title);
+            var tagged = MetadataReader.ReadData(result);
+            Assert.AreEqual("My Song [as-4lane]", tagged.SongName);
         }
 
         [Test]
@@ -110,15 +111,15 @@ namespace QuickPlayerCore.Tests
             entry.Tags.Add(new PlaylistTag { Token = SongTagToken.FourLanes });
 
             var firstResult = TempFileTagger.ResolvePlaybackPath(playlistId, entry);
-            Assert.AreEqual("Changing Song [as-4lane]", TagLib.File.Create(firstResult).Tag.Title);
+            Assert.AreEqual("Changing Song [as-4lane]", MetadataReader.ReadData(firstResult).SongName);
 
             entry.Tags.Add(new PlaylistTag { Token = SongTagToken.Portal });
             var secondResult = TempFileTagger.ResolvePlaybackPath(playlistId, entry);
 
             Assert.AreNotEqual(firstResult, secondResult);
-            Assert.AreEqual("Changing Song [as-4lane][as-portal]", TagLib.File.Create(secondResult).Tag.Title);
+            Assert.AreEqual("Changing Song [as-4lane][as-portal]", MetadataReader.ReadData(secondResult).SongName);
             // The first copy survives untouched - it may be the one the game currently has open.
-            Assert.AreEqual("Changing Song [as-4lane]", TagLib.File.Create(firstResult).Tag.Title);
+            Assert.AreEqual("Changing Song [as-4lane]", MetadataReader.ReadData(firstResult).SongName);
         }
 
         [Test]
@@ -137,8 +138,8 @@ namespace QuickPlayerCore.Tests
             var second = TempFileTagger.ResolvePlaybackPath(playlistId, portal);
 
             Assert.AreNotEqual(first, second);
-            Assert.AreEqual("Twice [as-4lane]", TagLib.File.Create(first).Tag.Title);
-            Assert.AreEqual("Twice [as-portal]", TagLib.File.Create(second).Tag.Title);
+            Assert.AreEqual("Twice [as-4lane]", MetadataReader.ReadData(first).SongName);
+            Assert.AreEqual("Twice [as-portal]", MetadataReader.ReadData(second).SongName);
         }
 
         [Test]

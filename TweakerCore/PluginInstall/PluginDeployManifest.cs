@@ -60,7 +60,7 @@ namespace TweakerCore.PluginInstall
             PluginDeployManifest loaded = null;
             try
             {
-                loaded = JsonSerializer.Deserialize<PluginDeployManifest>(File.ReadAllText(path));
+                loaded = JsonSerializer.Deserialize(File.ReadAllText(path), CoreJsonContext.Default.PluginDeployManifest);
             }
             catch (JsonException)
             {
@@ -85,7 +85,7 @@ namespace TweakerCore.PluginInstall
         {
             var path = PathFor(engineDirectory);
             Directory.CreateDirectory(Path.GetDirectoryName(path));
-            File.WriteAllText(path, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(path, JsonSerializer.Serialize(this, CoreJsonContext.Default.PluginDeployManifest));
             Exists = true;
         }
 

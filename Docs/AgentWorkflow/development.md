@@ -16,12 +16,16 @@
 | Отдельная managed-модель | `dotnet build TweakerCore/TweakerCore.csproj` | то же, подставь нужный проект |
 
 Deploy пересоздаёт `distr/`: перед запуском проверь отсутствие нужных локальных
-материалов в этой папке. Release — self-contained single-file win-x64;
-DeployDebug — multi-file с PDB. LegacyDataConverter в обоих случаях Release
-через полный MSBuild, найденный vswhere. Twllink публикуется Native AOT;
-предусмотрен `-p:TwPublish=single` как fallback. Не называй dotnet build всей
-`.sln` рабочей заменой: LegacyDataConverter и пока не удалённый Installer
-требуют полного MSBuild.
+материалов в этой папке. Release — Native AOT win-x64 UI и twllink;
+DeployDebug — managed UI с CoreCLR и PDB, twllink остаётся AOT. LegacyDataConverter
+в обоих случаях Release через полный MSBuild, найденный vswhere. Не называй
+dotnet build всей `.sln` рабочей заменой: LegacyDataConverter требует полного MSBuild.
+Локальные build/run, NUnit и UiStand используют managed-сборки.
+
+`QuickPlayerCore` через `TweakerNative.targets` собирает обязательную x64 helper DLL
+и переносит её вместе с лицензиями в выход потребителя, включая publish и тесты.
+Первый CMake configure скачивает закреплённые TagLib 2.3.2/utfcpp и zlib 1.4;
+дерево `TweakerNative/build/msbuild` не связано с x86 plugin/bridge targets.
 
 Managed: .NET 10, UI — Windows TFM; LegacyDataConverter — net481. Нативная
 сборка требует MSVC C++ tools, Windows SDK, CMake/Ninja, DirectX June 2010 SDK,
