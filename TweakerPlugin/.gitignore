@@ -7,10 +7,8 @@
 CMakeUserPresets.json
 compile_commands.json
 
-# ImGui is fetched by CMake. The DirectX and Quest3D SDKs are submodules: DirectX points at the
-# public archival mirror, Quest3D at the private organization repository with update = none
-# (Tools/ReleaseChannel/README.md).
-/ImGui/
+# All third-party trees used by the plugin are submodules now (DirectX, ImGui, Detours, LuaJIT,
+# Quest3D). ImGui is pinned to a release tag; the others to the commit or branch tested here.
 /Detours/
 /LuaJIT/
 

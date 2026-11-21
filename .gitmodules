@@ -30,3 +30,6 @@
 	url = https://github.com/Audiosurf-Tweaker/Quest3D-SDK.git
 	branch = main
 	update = none
+[submodule "TweakerPlugin/ImGui"]
+	path = TweakerPlugin/ImGui
+	url = https://github.com/ocornut/imgui.git

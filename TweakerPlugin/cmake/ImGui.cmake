@@ -1,4 +1,4 @@
-# Vendored Dear ImGui under ImGui/ (typically gitignored; clone/copy locally to build).
+# Dear ImGui, pinned as a submodule (TweakerPlugin/ImGui, tag v1.92.9).
 # Core sources only — DX9/Win32 backends are wired separately when the overlay bind lands.
 
 set(IMGUI_DIR "${CMAKE_SOURCE_DIR}/ImGui")
@@ -6,7 +6,7 @@ set(IMGUI_DIR "${CMAKE_SOURCE_DIR}/ImGui")
 if(NOT EXISTS "${IMGUI_DIR}/imgui.h")
     message(FATAL_ERROR
         "Dear ImGui not found at \"${IMGUI_DIR}\".\n"
-        "Place a Dear ImGui tree there (imgui.h + imgui*.cpp).")
+        "It is a submodule now: git submodule update --init TweakerPlugin/ImGui")
 endif()
 
 add_library(imgui STATIC
