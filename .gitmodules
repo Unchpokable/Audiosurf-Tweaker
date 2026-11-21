@@ -25,3 +25,8 @@
 	path = TweakerPlugin/DirectX-SDK-June2010
 	url = https://github.com/testing-laboratory/DirectX-SDK-June2010.git
 	branch = master
+[submodule "TweakerPlugin/Quest3D-SDK"]
+	path = TweakerPlugin/Quest3D-SDK
+	url = https://github.com/Audiosurf-Tweaker/Quest3D-SDK.git
+	branch = main
+	update = none
