@@ -298,7 +298,8 @@ dotnet build TweakerUI/TweakerUI.csproj
 dotnet run --project TweakerUI/TweakerUI.csproj
 ```
 
-The public component repositories (`ScriptProjects`, `Skyboxes`) come with that clone.
+The public component repositories (`ScriptProjects`, `Skyboxes`, `BundledSkins`) come with that
+clone; `BundledSkins` is the bulk of it, the skin packs shipped with the app.
 `TweakerPlugin/harness` is a **private** repository of the offline test harness and is skipped on
 purpose: without access to the organization it stays empty, and everything that does not need it
 still builds and runs. With access: `git submodule update --init TweakerPlugin/harness`. Cloned
