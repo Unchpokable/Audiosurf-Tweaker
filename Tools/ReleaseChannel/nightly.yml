@@ -89,12 +89,14 @@ jobs:
           "NIGHTLY_DATE=$date" >> $env:GITHUB_ENV
           "NIGHTLY_ZIP=$zip" >> $env:GITHUB_ENV
 
-      - name: Publish the pre-release
+      - name: Publish the nightly release
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
           BUILD_REF: ${{ inputs.ref || 'main' }}
         run: |
           $tag = "nightly-$env:NIGHTLY_DATE-$env:GITHUB_RUN_NUMBER"
+          $title = "Nightly $env:NIGHTLY_DATE"
+          if ($env:BUILD_REF -ne "main") { $title += " ($env:BUILD_REF)" }
           gh release create $tag $env:NIGHTLY_ZIP --repo $env:GITHUB_REPOSITORY `
-            --title "Nightly $env:NIGHTLY_DATE ($env:BUILD_REF)" --prerelease --generate-notes
+            --title $title --generate-notes
