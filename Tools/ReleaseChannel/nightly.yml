@@ -69,6 +69,16 @@ jobs:
           & .\tweaker\Scripts\Deploy.ps1
           if ($LASTEXITCODE -ne 0) { throw "Deploy.ps1 failed" }
 
+      - name: Check the plugin is in the bundle
+        if: steps.quest3d.outputs.token != ''
+        shell: pwsh
+        run: |
+          $dll = "tweaker\distr\TweakerUI\PluginPayload\channels\TweakerPlugin.dll"
+          if (-not (Test-Path $dll)) {
+            throw "Quest3D SDK was configured but TweakerPlugin.dll is missing - the native build failed"
+          }
+          Get-Item $dll | Select-Object FullName, Length
+
       - name: Pack
         shell: pwsh
         run: |
