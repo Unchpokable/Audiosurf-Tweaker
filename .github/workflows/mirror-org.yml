@@ -1,0 +1,32 @@
+# Mirrors Revive into the organization's mirror repository on every push and asks the nightly
+# channel to build. The mirror itself is a copy: it never receives a commit of its own.
+name: Mirror to the organization
+
+on:
+  push:
+    branches: [Revive]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mirror-org
+  cancel-in-progress: false
+
+jobs:
+  mirror:
+    # The copy of this workflow in the mirror repository must never run there.
+    if: github.repository == 'Unchpokable/Audiosurf-Tweaker'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push main, tags and dispatch the nightly
+        env:
+          GH_TOKEN: ${{ secrets.ORG_PUBLISH_TOKEN }}
+          MIRROR_REPO: Audiosurf-Tweaker/Audiosurf-Tweaker
+          NIGHTLY_REPO: Audiosurf-Tweaker/Audiosurf-Tweaker-Nightly
+        run: bash Tools/RepoPublish/mirror.sh

@@ -1,0 +1,66 @@
+# Nightly build channel: checks the organization mirror out with its component submodules and
+# publishes Audiosurf-Tweaker-Nightly-<yyyyMMdd>.zip as a pre-release.
+#
+# The Nightly repository has no code, so this file lives there; the source copy is
+# Tools/ReleaseChannel/nightly.yml in the main repository. Keep the two identical.
+name: Nightly
+
+on:
+  repository_dispatch:
+    types: [nightly]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # The plugin needs the Quest3D SDK and the DirectX June 2010 SDK. The default hosted runner
+    # builds everything except TweakerPlugin.dll; set the repository variable NIGHTLY_RUNNER to a
+    # self-hosted runner that has them for a complete nightly.
+    runs-on: ${{ vars.NIGHTLY_RUNNER || 'windows-latest' }}
+    steps:
+      - name: Check out the mirror
+        uses: actions/checkout@v4
+        with:
+          repository: Audiosurf-Tweaker/Audiosurf-Tweaker
+          ref: main
+          path: tweaker
+          fetch-depth: 0
+          submodules: false
+
+      - name: Initialize the component submodules
+        run: git -C tweaker submodule update --init --recursive ScriptProjects Skyboxes BundledSkins
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build the nightly bundle
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          & .\tweaker\Scripts\Deploy.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Deploy.ps1 failed" }
+
+      - name: Pack
+        shell: pwsh
+        run: |
+          $date = (Get-Date).ToUniversalTime().ToString("yyyyMMdd")
+          $zip = "Audiosurf-Tweaker-Nightly-$date.zip"
+          Compress-Archive -Path tweaker\distr\* -DestinationPath $zip -Force
+          "NIGHTLY_DATE=$date" >> $env:GITHUB_ENV
+          "NIGHTLY_ZIP=$zip" >> $env:GITHUB_ENV
+
+      - name: Publish the pre-release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = "nightly-$env:NIGHTLY_DATE-$env:GITHUB_RUN_NUMBER"
+          gh release create $tag $env:NIGHTLY_ZIP `
+            --title "Nightly $env:NIGHTLY_DATE" --prerelease --generate-notes

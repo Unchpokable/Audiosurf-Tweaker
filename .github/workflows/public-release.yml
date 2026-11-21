@@ -1,0 +1,68 @@
+# Manual public release from the organization's mirror repository.
+#
+# The plugin needs the proprietary Quest3D SDK and the DirectX June 2010 SDK, so the default
+# windows-latest runner builds everything except TweakerPlugin.dll. Point `runner` at a self-hosted
+# runner that has them for a complete release.
+name: Public Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag, for example v1.4.0
+        required: true
+      runner:
+        description: Runner label (self-hosted one with the DirectX/Quest3D SDKs for the plugin)
+        default: windows-latest
+      prerelease:
+        description: Mark the release as a pre-release
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: public-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository == 'Audiosurf-Tweaker/Audiosurf-Tweaker'
+    runs-on: ${{ inputs.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Initialize the component submodules
+        run: git submodule update --init --recursive ScriptProjects Skyboxes BundledSkins
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Build the release bundle
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          & .\Scripts\Deploy.ps1
+          if ($LASTEXITCODE -ne 0) { throw "Deploy.ps1 failed" }
+
+      - name: Pack
+        shell: pwsh
+        run: |
+          $tag = "${{ inputs.tag }}"
+          $zip = "Audiosurf-Tweaker-$tag.zip"
+          Compress-Archive -Path distr\* -DestinationPath $zip -Force
+          "RELEASE_ZIP=$zip" >> $env:GITHUB_ENV
+
+      - name: Publish the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $arguments = @("${{ inputs.tag }}", $env:RELEASE_ZIP, "--title", "${{ inputs.tag }}", "--generate-notes")
+          if ("${{ inputs.prerelease }}" -eq "true") { $arguments += "--prerelease" }
+          gh release create @arguments
