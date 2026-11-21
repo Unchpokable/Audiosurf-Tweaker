@@ -102,7 +102,8 @@ void read_default(yyjson_val* value, tw::skybox::package::param& out) noexcept
     std::size_t index = 0;
     std::size_t max = 0;
     yyjson_val* element = nullptr;
-    yyjson_arr_foreach(value, index, max, element) {
+    yyjson_arr_foreach(value, index, max, element)
+    {
         if(index < out.value.size()) {
             out.value[index] = as_float(element, 0.f);
         }
@@ -242,7 +243,7 @@ void read_light(yyjson_val* element, std::string_view group, tw::skybox::package
             // and warning about those would be noise.
             if(name == "direction" || name == "radiance") {
                 out.diagnostics.emplace_back("light '" + light.id + "': '" + std::string(name)
-                    + "' is computed from the other fields and cannot be declared - the declaration was ignored");
+                                             + "' is computed from the other fields and cannot be declared - the declaration was ignored");
             }
 
             continue;
@@ -283,7 +284,8 @@ void read_shared(yyjson_val* shared, tw::skybox::package::manifest& out)
         std::size_t index = 0;
         std::size_t max = 0;
         yyjson_val* element = nullptr;
-        yyjson_arr_foreach(array, index, max, element) {
+        yyjson_arr_foreach(array, index, max, element)
+        {
             if(yyjson_is_obj(element)) {
                 read_light(element, group, out);
             }
@@ -300,7 +302,8 @@ void read_shared(yyjson_val* shared, tw::skybox::package::manifest& out)
     std::size_t index = 0;
     std::size_t max = 0;
     yyjson_val* element = nullptr;
-    yyjson_arr_foreach(values, index, max, element) {
+    yyjson_arr_foreach(values, index, max, element)
+    {
         if(!yyjson_is_obj(element)) {
             continue;
         }
@@ -358,7 +361,8 @@ void read_params(yyjson_val* object, tw::skybox::package::layer& out, tw::skybox
     std::size_t group_index = 0;
     std::size_t group_max = 0;
     yyjson_val* group_element = nullptr;
-    yyjson_arr_foreach(groups, group_index, group_max, group_element) {
+    yyjson_arr_foreach(groups, group_index, group_max, group_element)
+    {
         if(!yyjson_is_obj(group_element)) {
             continue;
         }
@@ -373,7 +377,8 @@ void read_params(yyjson_val* object, tw::skybox::package::layer& out, tw::skybox
         std::size_t index = 0;
         std::size_t max = 0;
         yyjson_val* element = nullptr;
-        yyjson_arr_foreach(entries, index, max, element) {
+        yyjson_arr_foreach(entries, index, max, element)
+        {
             if(!yyjson_is_obj(element)) {
                 continue;
             }
@@ -384,7 +389,7 @@ void read_params(yyjson_val* object, tw::skybox::package::layer& out, tw::skybox
             // to put what the user moves it to.
             if(param.variable.empty() == param.property.empty()) {
                 sky.diagnostics.emplace_back("layer '" + out.id + "': knob '" + param.label
-                    + "' must name exactly one of \"var\" (a shader variable) or \"prop\" (a layer property)");
+                                             + "' must name exactly one of \"var\" (a shader variable) or \"prop\" (a layer property)");
                 continue;
             }
 
@@ -434,7 +439,8 @@ void read_fill(yyjson_val* element, tw::skybox::package::layer& layer, tw::skybo
             // their image looks like on a sprite is a reasonable thing to be doing. But the built-in
             // shader reads rgb as a *surface normal*, so a painting arrives as lighting nonsense, and
             // "my texture came out wrong" is worth one line here rather than an evening.
-            out.diagnostics.emplace_back("layer '" + layer.id
+            out.diagnostics.emplace_back(
+                "layer '" + layer.id
                 + "': fill kind 'texture' with no shader of its own - the built-in sprite shader reads rgb as a surface normal and "
                   "alpha as density, which is unlikely to be what this image holds");
         }
@@ -447,7 +453,8 @@ void read_fill(yyjson_val* element, tw::skybox::package::layer& layer, tw::skybo
         // so this asks the built-in shader to read a texture that will not be bound. Said here rather
         // than left to look like a broken texture at run time.
         if(layer.shader.empty()) {
-            out.diagnostics.emplace_back("layer '" + layer.id
+            out.diagnostics.emplace_back(
+                "layer '" + layer.id
                 + "': fill kind 'shader' needs the layer to name its own shader - the built-in one samples an atlas, and this "
                   "kind is the declaration that there is none");
             layer.fill.kind = tw::skybox::package::fill_kind::builtin;
@@ -455,7 +462,7 @@ void read_fill(yyjson_val* element, tw::skybox::package::layer& layer, tw::skybo
     }
     else if(kind != "builtin") {
         out.diagnostics.emplace_back("layer '" + layer.id + "': unknown fill kind '" + std::string(kind)
-            + "' - this build understands builtin, atlas, texture and shader");
+                                     + "' - this build understands builtin, atlas, texture and shader");
     }
 
     layer.fill.tiles = std::clamp(as_int(yyjson_obj_get(fill, "tiles"), layer.fill.tiles), 1, 64);
@@ -493,7 +500,8 @@ void read_textures(yyjson_val* element, tw::skybox::package::layer& layer, tw::s
     std::size_t index = 0;
     std::size_t max = 0;
     yyjson_val* entry = nullptr;
-    yyjson_arr_foreach(textures, index, max, entry) {
+    yyjson_arr_foreach(textures, index, max, entry)
+    {
         if(!yyjson_is_obj(entry)) {
             out.diagnostics.emplace_back("layer '" + layer.id + "': every entry of 'textures' must be an object");
             continue;
@@ -511,8 +519,8 @@ void read_textures(yyjson_val* element, tw::skybox::package::layer& layer, tw::s
         // Clamped to what ps_3_0 has. Sixteen samplers is the shader model's number, not the card's.
         const int slot = as_int(yyjson_obj_get(entry, "slot"), 0);
         if(slot < 0 || slot > 15) {
-            out.diagnostics.emplace_back(
-                "layer '" + layer.id + "': texture '" + texture.path + "' asks for sampler " + std::to_string(slot) + " - ps_3_0 has s0..s15");
+            out.diagnostics.emplace_back("layer '" + layer.id + "': texture '" + texture.path + "' asks for sampler " + std::to_string(slot)
+                                         + " - ps_3_0 has s0..s15");
             continue;
         }
         texture.slot = slot;
@@ -526,7 +534,7 @@ void read_textures(yyjson_val* element, tw::skybox::package::layer& layer, tw::s
         }
         else if(address != "wrap") {
             out.diagnostics.emplace_back("layer '" + layer.id + "': texture '" + texture.path + "': unknown address mode '"
-                + std::string(address) + "' - this build understands wrap, clamp and mirror");
+                                         + std::string(address) + "' - this build understands wrap, clamp and mirror");
         }
 
         const std::string_view filter = member_string(entry, "filter", "linear");
@@ -534,8 +542,8 @@ void read_textures(yyjson_val* element, tw::skybox::package::layer& layer, tw::s
             texture.filter = tw::skybox::package::texture_filter::point;
         }
         else if(filter != "linear") {
-            out.diagnostics.emplace_back("layer '" + layer.id + "': texture '" + texture.path + "': unknown filter '"
-                + std::string(filter) + "' - this build understands linear and point");
+            out.diagnostics.emplace_back("layer '" + layer.id + "': texture '" + texture.path + "': unknown filter '" + std::string(filter)
+                                         + "' - this build understands linear and point");
         }
 
         const auto clash = std::find_if(layer.textures.begin(), layer.textures.end(), [slot](const auto& other) {
@@ -543,8 +551,8 @@ void read_textures(yyjson_val* element, tw::skybox::package::layer& layer, tw::s
         });
 
         if(clash != layer.textures.end()) {
-            out.diagnostics.emplace_back("layer '" + layer.id + "': '" + texture.path + "' and '" + clash->path
-                + "' both ask for sampler " + std::to_string(slot) + " - the second one would never be sampled");
+            out.diagnostics.emplace_back("layer '" + layer.id + "': '" + texture.path + "' and '" + clash->path + "' both ask for sampler "
+                                         + std::to_string(slot) + " - the second one would never be sampled");
             continue;
         }
 
@@ -563,7 +571,8 @@ void read_layers(yyjson_val* root, tw::skybox::package::manifest& out)
     std::size_t index = 0;
     std::size_t max = 0;
     yyjson_val* element = nullptr;
-    yyjson_arr_foreach(layers, index, max, element) {
+    yyjson_arr_foreach(layers, index, max, element)
+    {
         if(!yyjson_is_obj(element)) {
             continue;
         }
@@ -599,8 +608,8 @@ void read_layers(yyjson_val* root, tw::skybox::package::manifest& out)
         }
 
         if(layer.kind == tw::skybox::package::layer_kind::unknown) {
-            out.diagnostics.emplace_back("layer '" + layer.id + "': unknown kind '" + std::string(kind_text)
-                + "' - this build understands fullsky and sprites");
+            out.diagnostics.emplace_back(
+                "layer '" + layer.id + "': unknown kind '" + std::string(kind_text) + "' - this build understands fullsky and sprites");
             continue;
         }
 
@@ -743,9 +752,8 @@ manifest read_manifest(manifest out)
     if(parsed.doc == nullptr) {
         // The offset is worth carrying through: "invalid character" without a position is a worse
         // message than no message, on a file that may be a thousand lines long.
-        out.diagnostics.emplace_back(
-            std::string { k_manifest_name } + ": " + (error.msg != nullptr ? error.msg : "could not be parsed") + " at byte "
-            + std::to_string(error.pos));
+        out.diagnostics.emplace_back(std::string { k_manifest_name } + ": " + (error.msg != nullptr ? error.msg : "could not be parsed")
+                                     + " at byte " + std::to_string(error.pos));
         return out;
     }
 

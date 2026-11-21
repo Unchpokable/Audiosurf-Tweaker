@@ -52,7 +52,10 @@ KnownBugs — личный блокнот владельца и в эту кар
 - [lua](../Internal/reversing-journal-lua.md): формат CGR, Aco_Lua и ранний ресёрч;
 - [geometry](../Internal/reversing-journal-geometry.md): ObjectData/меши/OBJ;
 - [render](../Internal/reversing-journal-render.md): сцена, окружение трассы,
-  частицы, порядок отрисовки, ограничения скриптового доступа.
+  частицы, порядок отрисовки, ограничения скриптового доступа;
+- [largeaddressaware-audit](../Internal/largeaddressaware-audit.md): что в игре
+  сломается от адресов выше 0x7FFFFFFF; аудит всех 254 образов под флаг
+  `LARGEADDRESSAWARE`, вердикт и рецепт проверки принудительно высокими адресами.
 
 Производные английские справочники — [internals](../internals.md). Не переноси
 число из памяти без проверки указанной CgrPy-командой или бинарём. Новую
