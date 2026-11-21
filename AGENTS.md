@@ -67,7 +67,7 @@ IPC-мост **asbridge** и внутриигровой x86-модуль **Tweak
 
 ## Субмодули
 
-`ScriptProjects/`, `Skyboxes/` и `TweakerPlugin/harness/` — сабмодули организации
+`ScriptProjects/`, `Skyboxes/`, `BundledSkins/` и `TweakerPlugin/harness/` — сабмодули организации
 [Audiosurf-Tweaker](https://github.com/Audiosurf-Tweaker); план и решения —
 [repo-layout-plan](Docs/Internal/repo-layout-plan.md).
 
@@ -80,6 +80,8 @@ IPC-мост **asbridge** и внутриигровой x86-модуль **Tweak
   (`ShippedProjectsTests` проверяет совпадение).
 - `dev/` в контентных репозиториях не коммитится. Пробы живут в приватном harness
   (`scripts/dev/`, `projects/dev/`); в `TweakerPlugin/assets/scripts/dev/` их больше нет.
+- Скины поставляются из `BundledSkins/`: deploy копирует их в `Skins/` рядом с
+  `TweakerUI.exe`. Новый скин — коммит в сабмодуле и бамп указателя, а не файл в приложении.
 - Harness — приватный сабмодуль с `update = none`: у внешнего клона он пропускается.
   Не делай его публичным и не инициализируй принудительно у чужих клонов.
 

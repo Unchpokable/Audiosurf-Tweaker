@@ -279,6 +279,7 @@ reports, not anything a script draws.
 | `TweakerPlugin/` | the in-game plugin: shaders, Lua, overlay |
 | `ScriptProjects/` | submodule: the [source projects](https://github.com/Audiosurf-Tweaker/ScriptProjects) behind the shipped scripts |
 | `Skyboxes/` | submodule: the [sky packages](https://github.com/Audiosurf-Tweaker/Skyboxes) that ship with the plugin |
+| `BundledSkins/` | submodule: the [skin packs](https://github.com/Audiosurf-Tweaker/BundledSkins) shipped in the `Skins` folder beside the app |
 | `TweakerPlugin/harness/` | private submodule: the offline native test harness |
 | `Docs/` | the manuals, the developers' notes and the reverse-engineering journals |
 

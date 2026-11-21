@@ -172,8 +172,10 @@ PUBLIC `MINIZ_NO_*` менять осторожно: они влияют на la
 инициализированы, иначе deploy останавливается с командой
 `git submodule update --init --recursive`. Источники — `TweakerPlugin/assets/scripts/`
 и `Skyboxes/` (сабмодуль); `ScriptProjects/` — проекты, из которых собран бандл;
-`dev/` не поставляется. В пейлоад не попадают `.git`, `.github`, `.tweaker` и
-README сабмодулей — это тоже проверяет preflight.
+`dev/` не поставляется. Скины — `BundledSkins/` (сабмодуль): deploy копирует их в
+`Skins/` рядом с `TweakerUI.exe`, а preflight требует хотя бы один `.askin2`/`.tasp`.
+В пейлоад не попадают `.git`, `.github`, `.tweaker` и README сабмодулей — это тоже
+проверяет preflight.
 
 `CopyDevTools` задаёт `DevToolsPayload`: twllink отдельно в Binaries,
 CgrPy/публичные docs/AgentKit. Деплой выбирает свежий payload по stamp, не

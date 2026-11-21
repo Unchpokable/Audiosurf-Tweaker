@@ -1,9 +1,11 @@
 # Суб-репозитории и релизный канал организации — план
 
 **Статус (21.11.2026):** план согласован владельцем (решения — §2); Ф0–Ф2 выполнены 15.11.2026,
-Ф3 — 21.11.2026, всё ждёт проверки владельцем. Работа идёт фазами §6, каждая заканчивается
-приёмкой владельца; итоги фаз записываются в §10. Нормативные правила работы — [AGENTS.md](../../AGENTS.md)
-и [Docs/AgentWorkflow](../AgentWorkflow/README.md); этот документ описывает конкретную работу.
+Ф3 — 21.11.2026, канал зеркала и Nightly создан (Ф4, 21.11.2026). Всё ждёт проверки владельцем;
+автоматика включается после слияния ветки в `Revive` и добавления секрета. Работа идёт фазами §6,
+каждая заканчивается приёмкой владельца; итоги фаз записываются в §10. Нормативные правила работы —
+[AGENTS.md](../../AGENTS.md) и [Docs/AgentWorkflow](../AgentWorkflow/README.md); этот документ
+описывает конкретную работу.
 
 **Что это.** Приложение остаётся одним репозиторием (`Unchpokable/Audiosurf-Tweaker`) с одним
 `.sln`, одним `Deploy` и одним релизом. Сопроводительные материалы, которые поставляются вместе
@@ -38,7 +40,7 @@
 |---|---|
 | 2.1 | Имена и видимость репозиториев — по таблице §3.1: `harness` приватный, `ScriptProjects`, `Skyboxes`, `Canvas`, `puzzlepro_hud` публичные, лицензия MIT. |
 | 2.2 | Harness подключается **сабмодулем**, даже если для стороннего наблюдателя он остаётся ссылкой в никуда. |
-| 2.3 | Репозиторий приложения в организации **нужен**: там будут выходить RC, alpha и экспериментальные сборки, которых не будет в личном репозитории. Личный репозиторий остаётся источником стабильной ветки. |
+| 2.3 | Репозиторий приложения в организации нужен как **зеркало** `Revive`; релизные каналы отдельные: Nightly (ночные сборки) и ручной Public Release в зеркале. |
 | 2.4 | Ветка по умолчанию у всех новых репозиториев — `main`. `Revive` в приложении изначально временная. |
 | 2.5 | `OurDraftsCollides.sky` и `Skyboxes/dev/OurDraftsZipped.sky` удаляются из репозитория (в истории остаются). `ODC_VolTex.sky` переименовывается в `Canvas`: имя пакета в манифесте — `Canvas`, шейдер — `canvas.hlsl`. |
 | 2.6 | Все пробы переносятся в приватный harness. `dev/` в контентных репозиториях остаётся в `.gitignore` как локальная рабочая папка. |
@@ -46,6 +48,7 @@
 | 2.8 | Релиз `puzzlepro_hud` делается сразу, а не откладывается. |
 | 2.9 | Работа начинается после того, как работа по вкладке Skyboxes закоммичена; сейчас это выполнено. |
 | 2.10 | Сгенерированные файлы в корне (`out/meshes.csv`, `imgui.ini`, `smoke_overlay.cfg`) — мусор, удаляются из git. |
+| 2.11 | Скины — отдельный репозиторий `BundledSkins` и часть поставки: deploy копирует их в `Skins/` рядом с `TweakerUI.exe`. Новый скин — коммит в сабмодуле и бамп указателя. |
 
 ---
 
@@ -55,12 +58,14 @@
 
 | Репозиторий | Видимость | Что внутри | Точка монтирования в приложении | Ветка | Релизы |
 |---|---|---|---|---|---|
-| `Audiosurf-Tweaker/Audiosurf-Tweaker` | public | копия приложения: `Revive` → `main`, экспериментальные ветки, pre-releases | — (это само приложение) | `main` | RC/alpha/experimental (pre-release) |
+| `Audiosurf-Tweaker/Audiosurf-Tweaker` | public | зеркало приложения: `Revive` → `main` (fast-forward) и теги; ручной Public Release | — (это само приложение) | `main` | public releases (вручную) |
+| `Audiosurf-Tweaker/Audiosurf-Tweaker-Nightly` | public | **без кода**: workflow ночной сборки, связанный с зеркалом | — | `main` | `Audiosurf-Tweaker-Nightly-<yyyyMMdd>.zip` (pre-release) |
 | `Audiosurf-Tweaker/harness` | **private** | native harness и перенесённые пробы | `TweakerPlugin/harness/` | `main` | нет |
 | `Audiosurf-Tweaker/ScriptProjects` | public | контейнер: README, `.gitignore` (`/dev/`), сабмодуль `puzzlepro_hud` | `ScriptProjects/` | `main` | нет |
 | `Audiosurf-Tweaker/puzzlepro_hud` | public | исходник скрипта: 17 модулей, `docs/DESIGN.md` | `ScriptProjects/puzzlepro_hud/` | `main` | `vX.Y.Z`: `puzzlepro_hud.lua` + `.lua.map` |
 | `Audiosurf-Tweaker/Skyboxes` | public | контейнер: README, `.gitignore` (`/dev/`), сабмодуль `Canvas.sky` | `Skyboxes/` | `main` | нет |
 | `Audiosurf-Tweaker/Canvas` | public | пакет неба, **корень репозитория = корень пакета** | `Skyboxes/Canvas.sky/` | `main` | `v1.0.0`: `Canvas.sky` (zip) |
+| `Audiosurf-Tweaker/BundledSkins` | public | скины `.askin2`/`.tasp`, поставляемые с приложением | `BundledSkins/` | `main` | нет |
 
 `Canvas.sky` в точке монтирования сохраняет суффикс `.sky`: плагин опознаёт пакет по расширению
 записи в `Skyboxes\`. Имя репозитория при этом короткое — `Canvas`; имя пути и имя репозитория
@@ -70,16 +75,18 @@
 
 ```
 github.com/Audiosurf-Tweaker
-├─ Audiosurf-Tweaker      канал: main = Revive, exp/*, pre-releases
-├─ harness                private
+├─ Audiosurf-Tweaker          зеркало Revive → main; ручной Public Release
+├─ Audiosurf-Tweaker-Nightly  без кода; ночная сборка зеркала
+├─ harness                    private
 ├─ ScriptProjects
 │  └─ puzzlepro_hud
-└─ Skyboxes
-   └─ Canvas              монтируется как Canvas.sky
+├─ Skyboxes
+│  └─ Canvas                  монтируется как Canvas.sky
+└─ BundledSkins               скины в поставке
 ```
 
-Имя `Audiosurf-Tweaker/Audiosurf-Tweaker` — рабочее; его можно поменять до первого пуша без
-последствий. Если меняется, меняется и URL в §4.2.
+Зеркало и Nightly созданы 21.11.2026. Включение автоматики — после слияния ветки в `Revive`
+и добавления секрета (§4.5); до этого зеркало можно обновлять вручную `Tools/RepoPublish/mirror.sh`.
 
 ### 3.2 Дерево приложения после перестройки
 
@@ -95,6 +102,7 @@ Unchpokable/Audiosurf-Tweaker          (публичный, Revive, «монол
 ├─ Skyboxes/                   → submodule  Skyboxes
 │  ├─ dev/                     (gitignored)
 │  └─ Canvas.sky/              → submodule  Canvas
+├─ BundledSkins/               → submodule  BundledSkins   (deploy копирует в Skins/ рядом с exe)
 ├─ TweakerPlugin/assets/scripts/puzzlepro_hud.lua + .lua.map   (собранный бандл остаётся здесь)
 └─ .gitmodules
 ```
@@ -109,6 +117,10 @@ Unchpokable/Audiosurf-Tweaker          (публичный, Revive, «монол
 [submodule "Skyboxes"]
 	path = Skyboxes
 	url = https://github.com/Audiosurf-Tweaker/Skyboxes.git
+	branch = main
+[submodule "BundledSkins"]
+	path = BundledSkins
+	url = https://github.com/Audiosurf-Tweaker/BundledSkins.git
 	branch = main
 [submodule "TweakerPlugin/harness"]
 	path = TweakerPlugin/harness
@@ -214,105 +226,100 @@ jobs:
 Workflow не выносит harness: harness не в git, а временный коммит в публичный монолит навсегда
 опубликовал бы приватный код в истории. Harness создаётся локально (§6, Ф2).
 
-### 4.2 Канал приложения в организации
+### 4.2 Зеркало приложения
 
-`Audiosurf-Tweaker/Audiosurf-Tweaker` — не зеркало всех ссылок, а канал:
+`Audiosurf-Tweaker/Audiosurf-Tweaker` — копия приложения, а не второй источник правды:
 
-- `main` — fast-forward копия `Revive`;
-- `exp/*` — экспериментальные ветки, создаются в организации от `main`, обратно не сливаются;
-- теги: стабильные приходят из личного репозитория, RC/alpha создаются только в организации;
-- issues, PR, релизы, секреты и wiki не синхронизируются: релизы создаются в каждом репозитории
-  отдельно.
+- `main` — fast-forward копия `Revive`; собственных коммитов у зеркала нет;
+- все теги, достижимые из `Revive`, доезжают поимённо; существующий тег не перезаписывается;
+- issues, PR, релизы и секреты не синхронизируются;
+- в зеркале живёт ручной `public-release.yml` (§4.4); его копия в личном репозитории не
+  запускается из-за guard.
 
-Workflow: `.github/workflows/sync-org.yml` в личном репозитории.
+Workflow: `.github/workflows/mirror-org.yml`, логика — `Tools/RepoPublish/mirror.sh`.
 
 ```yaml
-name: Sync the organization channel
+name: Mirror to the organization
 on:
   push:
     branches: [Revive]
   workflow_dispatch:
-    inputs:
-      dry_run: { type: boolean, default: true }
-
 permissions:
   contents: read
-
-concurrency:
-  group: sync-org
-  cancel-in-progress: false
-
 jobs:
-  sync:
+  mirror:
     if: github.repository == 'Unchpokable/Audiosurf-Tweaker'
     runs-on: ubuntu-latest
-    environment: publish-components
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - name: Fast-forward main and add missing tags
-        env:
-          GH_TOKEN: ${{ secrets.ORG_PUBLISH_TOKEN }}   # нужен scope workflow: синхронизируются .github/workflows
-        run: bash Tools/RepoPublish/sync-org.sh
+      - env:
+          GH_TOKEN: ${{ secrets.ORG_PUBLISH_TOKEN }}
+        run: bash Tools/RepoPublish/mirror.sh
 ```
 
 Свойства и ограничения:
 
-- push **только fast-forward**, без `--force`: если в организации кто-то закоммитил в `main`
-  напрямую, синхронизация падает и это видно — так и задумано;
-- теги добавляются поимённо и только отсутствующие; существующий тег никогда не перезаписывается;
+- push **только fast-forward**, без `--force`: если в зеркале появился собственный коммит,
+  синхронизация падает и это видно — так и задумано;
+- теги добавляются поимённо и только отсутствующие; существующий тег не перезаписывается;
+- после push скрипт шлёт `repository_dispatch` (`event_type: nightly`) в Nightly — так ночная
+  сборка узнаёт о новом `main`;
 - токен должен иметь scope `workflow`, иначе push изменённых `.github/workflows/*` отклоняется;
-- правила ветки `main` в организации: запрет force-push и удаления, bypass у аккаунта-публикатора;
-- guard `github.repository` не даёт workflow сработать в копии организации (там нет ветки `Revive`,
-  но guard остаётся вторым рубежом);
-- push, сделанный PAT, **запускает** workflow в организации — это ожидаемо: `verify.yml` (§4.3)
+- guard `github.repository` не даёт workflow сработать в зеркале;
+- правка чего-либо прямо в зеркале запрещена: следующий push либо не пройдёт, либо затрёт правку;
+- push, сделанный PAT, **запускает** workflow в зеркале — это ожидаемо: `verify.yml` (§4.3)
   проверяет зеркало;
-- README в копии идентичен личному и ссылается на личные релизы. Информация о канале живёт
-  в описании репозитория, закреплённом обсуждении и release notes, а не в README: иначе каждая
-  синхронизация затирала бы его. Правка README в копии запрещена.
-- если `Revive` когда-нибудь переименуют в `main` (ветка временная, §2.4), триггер и guard
-  обновляются в том же изменении.
+- README в зеркале идентичен личному и ссылается на личные релизы. Информация о канале живёт
+  в описании репозитория и release notes, а не в README: иначе каждая синхронизация затирала
+  бы его. Правка README в зеркале запрещена;
+- если `Revive` когда-нибудь переименуют в `main` (ветка временная, §2.4), триггер, guard и
+  `SOURCE_BRANCH` в `mirror.sh` обновляются в том же изменении.
 
 ### 4.3 Постоянный CI
 
 | Где | Что | Зачем |
 |---|---|---|
-| приложение | `verify.yml`: checkout без `--recurse-submodules`, затем `git submodule update --init --recursive ScriptProjects Skyboxes`; `setup-dotnet 10.0.x`; `TweakerCore.Tests`, `AudiosurfInterface.Tests`, `QuickPlayerCore.Tests`, `TweakerLuaLinker.Tests` | публичные сабмодули достаются явно, приватный harness не нужен; native/harness/игра в CI не гоняются |
+| приложение | `verify.yml`: checkout без `--recurse-submodules`, затем `git submodule update --init --recursive ScriptProjects Skyboxes BundledSkins`; `setup-dotnet 10.0.x`; `TweakerCore.Tests`, `AudiosurfInterface.Tests`, `QuickPlayerCore.Tests`, `TweakerLuaLinker.Tests` | публичные сабмодули достаются явно, приватный harness не нужен; native/harness/игра в CI не гоняются |
 | приложение | удалить `build.yml` (SonarCloud на мёртвом `master`) | устарел, нормой проверки не является |
 | `Canvas` | `release.yml` на тег: `zip` содержимого без `.git*` и `.github/` → ассет `Canvas.sky` | «зайти и скачать релиз» |
 | `puzzlepro_hud` | `release.yml` на тег: checkout приложения на ref из входа (по умолчанию `Revive`), собрать `twllink`, собрать проект, проверить `version` == тег, приложить `.lua` + `.lua.map` | живой артефакт для авторов |
 | `harness` | нет CI | нужны Windows SDK, DirectX-устройство и игровые фикстуры; прогон ручной |
 
-`verify.yml` в организации (после §4.2) запускается на push в `main` — это проверка зеркала.
+`verify.yml` в зеркале запускается на push в `main` — это проверка зеркала.
 Нативные проверки и проверка в игре остаются за владельцем.
 
-### 4.4 Экспериментальные сборки
+### 4.4 Nightly и публичные релизы
 
-Назначение канала (§2.3): RC, alpha и экспериментальные сборки, которых нет в личном репозитории.
+Два разных канала, оба собирают зеркало (§4.2), а не личный репозиторий.
 
-- Ветки `exp/<тема>` создаются в организации от `main`; PR — внутри организации.
-- Теги pre-release: `vX.Y.Z-rc.N`, `vX.Y.Z-alpha.N`; тег `vX.Y.Z` без суффикса остаётся
-  за стабильным релизом личного репозитория.
-- Workflow `release-experimental.yml` лежит в личном дереве (чтобы переживать синхронизацию),
-  запускается только `workflow_dispatch` и только в организации:
-  `if: github.repository == 'Audiosurf-Tweaker/Audiosurf-Tweaker'`.
-  Входы: `ref`, `tag`, `title`, флаг `prerelease`.
-- Что собирает hosted-runner: managed-часть, `asbridge`, инжектор, `twllink`, `LegacyDataConverter`.
-  Плагин `TweakerPlugin.dll` **не собирается**: нет DirectX SDK (June 2010) и Quest3D SDK,
-  а класть их в кэш раннера нельзя — они не распространяются. Сборка честно помечается
-  «UI-only: without the in-game plugin».
-- Полная сборка с плагином — отдельное решение (§9): self-hosted runner владельца с SDK
-  (риск: публичный репозиторий + self-hosted runner; допустимо только с `workflow_dispatch`,
-  protected environment и запретом PR-сборок) либо локальная сборка владельцем и ручная
-  загрузка ассета в релиз.
-- Стабильные релизы по-прежнему выходят из личного репозитория.
+**Nightly** — `Audiosurf-Tweaker/Audiosurf-Tweaker-Nightly`, без кода:
+
+- workflow `.github/workflows/nightly.yml`; источник — `Tools/ReleaseChannel/nightly.yml`,
+  копия в Nightly ведётся вручную (в репозитории без кода её нечем зеркалить);
+- триггер: `repository_dispatch` с `event_type: nightly` от зеркала после push в `main`,
+  плюс ручной `workflow_dispatch`;
+- checkout зеркала `main` с сабмодулями `ScriptProjects`, `Skyboxes`, `BundledSkins`
+  (harness пропускается `update = none`), затем `Scripts/Deploy.ps1`;
+- ассет `Audiosurf-Tweaker-Nightly-<yyyyMMdd>.zip`, релиз — pre-release; тег включает
+  `GITHUB_RUN_NUMBER`, чтобы несколько сборок за день не конфликтовали;
+- один прогон за раз (`concurrency: nightly`, `cancel-in-progress: true`).
+
+**Public Release** — вручную в зеркале: `.github/workflows/public-release.yml`; входы `tag`,
+`runner`, `prerelease`; собирает `main`, прикладывает `Audiosurf-Tweaker-<tag>.zip` к релизу.
+
+**Раннер и плагин.** Hosted `windows-latest` не имеет Quest3D SDK и DirectX June 2010, поэтому
+`TweakerPlugin.dll` в такой сборке отсутствует (UI-only). Полная сборка — self-hosted раннер
+с обоими SDK: переменная `NIGHTLY_RUNNER` в Nightly и вход `runner` у Public Release. Пока
+раннера нет, nightly честно остаётся UI-only; это ограничение платформы, а не настройки.
 
 ### 4.5 Секреты и права (одно место)
 
 | Секрет | Где | Зачем | Срок |
 |---|---|---|---|
-| `ORG_PUBLISH_TOKEN` | личный репозиторий, environment `publish-components` | создание репозиториев, push компонентов, sync канала | до конца миграции, затем отзыв |
-| `GITHUB_TOKEN` | оба репозитория | `verify.yml`; релиз `Canvas` и `puzzlepro_hud` | штатно |
+| `ORG_PUBLISH_TOKEN` | личный репозиторий | push зеркала и тегов, dispatch nightly; публикация компонентов (Ф1) | постоянно после включения |
+| `GITHUB_TOKEN` | зеркало, Nightly, контентные репозитории | `verify.yml`; релизы Nightly и Public Release; `Canvas` и `puzzlepro_hud` | штатно |
+| `NIGHTLY_RUNNER` (переменная) | Nightly | label self-hosted раннера с DirectX/Quest3D SDK; без неё — `windows-latest` (UI-only) | по мере надобности |
 
 Организация: разрешить создание репозиториев владельцу, отключить Actions там, где workflow нет,
 включить branch protection на `main` публичных репозиториев. Приватный `harness` на free-плане
@@ -340,6 +347,8 @@ repository public`. Это ограничение плана, а не ошибк
 | `TweakerPlugin/assets/scripts/dev/**` | удалить из приложения, перенести в harness | источники проб уже не в приложении |
 | `TweakerPlugin/assets/script-projects/**` | удалить из приложения | переезжает в `ScriptProjects` |
 | `Skyboxes/**` | удалить из приложения | переезжает в `Skyboxes` |
+| `BundledSkins/` | сабмодуль; deploy копирует содержимое в `Skins/` рядом с `TweakerUI.exe`, preflight требует хотя бы один `.askin2`/`.tasp` | скины — часть поставки (§2.11) |
+| `.github/workflows/mirror-org.yml`, `public-release.yml`, `Tools/RepoPublish/mirror.sh`, `Tools/ReleaseChannel/` | §4.2, §4.4 | зеркало, Nightly и публичные релизы |
 | `TweakerPlugin/src/resource/CMakeLists.txt` | убрать `script-projects` из исключений | папки больше нет в `assets` |
 | `README.md` | раскладка, клонирование, приватный harness, «one sky», ссылки на организацию | публичное лицо |
 | `AGENTS.md` | раздел «Субмодули»: где править, порядок «коммит в сабмодуле → push → бамп указателя тем же PR», `dev/` не коммитится | агенты должны знать раскладку |
@@ -440,19 +449,21 @@ repository public`. Это ограничение плана, а не ошибк
 
 **Готово, когда:** Code Review владельца пройден, сборка и офлайн-проверки зелёные.
 
-### Ф4. Канал, CI и процессы
+### Ф4. Зеркало, nightly и CI
 
-1. Создать `Audiosurf-Tweaker/Audiosurf-Tweaker` (пустой, `main` по умолчанию) и прогнать
-   `sync-org.yml` (dry-run, затем реальный запуск).
-2. `verify.yml` в приложении; удалить `build.yml`; убедиться, что в копии организации он
-   запускается на push в `main`.
-3. `release.yml` в `Canvas`; `release.yml` в `puzzlepro_hud`; `release-experimental.yml`
-   в приложении с guard организации (§4.4).
-4. Branch protection, topics, descriptions, homepage.
-5. Обновить документацию §5: `AGENTS.md`, `development.md`, `README.md`, карту документов.
+1. Зеркало `Audiosurf-Tweaker/Audiosurf-Tweaker` создано 21.11.2026 и засеяно `Revive`;
+   `mirror-org.yml` и `Tools/RepoPublish/mirror.sh` готовы.
+2. Nightly `Audiosurf-Tweaker/Audiosurf-Tweaker-Nightly` создан 21.11.2026; workflow —
+   `.github/workflows/nightly.yml`, источник `Tools/ReleaseChannel/nightly.yml`.
+3. `verify.yml` в приложении; удалить `build.yml`; в зеркале он запускается на push в `main`.
+4. `release.yml` в `Canvas` и `puzzlepro_hud` — сделано 15.11.2026.
+5. Секрет `ORG_PUBLISH_TOKEN` (scope `repo`, `workflow`) в личном репозитории; при желании
+   переменная `NIGHTLY_RUNNER` в Nightly для полной сборки с плагином.
+6. Branch protection, topics, descriptions.
+7. Включение: после слияния ветки в `Revive` первый push запускает mirror → dispatch nightly.
 
-**Готово, когда:** push в `Revive` автоматически обновляет `main` организации; CI зелёный
-в обоих репозиториях; релизы `Canvas` и `puzzlepro_hud` создаются по тегу.
+**Готово, когда:** push в `Revive` обновляет `main` зеркала и запускает Nightly; Nightly
+публикует `Audiosurf-Tweaker-Nightly-<date>.zip`; CI зелёный; Public Release собирается вручную.
 
 ### Ф5. Приёмка
 
@@ -538,6 +549,6 @@ repository public`. Это ограничение плана, а не ошибк
 | Ф1 | 15.11.2026 | Опубликованы: `puzzlepro_hud` `a2ee0de` (91 файл, 11 коммитов), `Canvas` `02d231c` (6, 1), `Skyboxes` `614632c` (13, 3), `ScriptProjects` `86a0768` (94, 11). Число файлов и коммитов удалённо совпадает с локальными сплитами, `main` — ветка по умолчанию, descriptions/topics выставлены, force-push и удаление `main` запрещены. Публикация выполнена локально тем же токеном (Actions и секрет — позже, по решению владельца). Сплит начинается от коммита, впервые затронувшего папку, через временный replace-гraft; дерево сверяется с `HEAD:<папка>` перед push. | ждёт осмотра организации |
 | Ф2 | 15.11.2026 | `Canvas`: пакет и шейдер переименованы, манифест почищен, добавлены README/LICENSE/`.gitignore`/release-workflow, тег `v1.0.0` → релиз с `Canvas.sky` (zip проверен: `Config.json` в корне, 6.9 МБ). `Skyboxes`: удалены `OurDraftsCollides.sky`, `dev/` и старый `ODC_VolTex.sky`; добавлен сабмодуль `Canvas.sky` на `9f083fa` (тег); README/LICENSE/`.gitignore`. `puzzlepro_hud`: README/LICENSE/release-workflow, тег `v1.8.0` → релиз с `.lua` + `.lua.map` (sha256 совпал с локальной сборкой). `ScriptProjects`: `puzzlepro_hud` заменён сабмодулем на `fd262a0` (release-коммит), `dev/` удалён, README/LICENSE. `harness`: 137 файлов / 0.9 МБ в приватном репозитории; пробы перенесены в `scripts/dev` и `projects/dev/map_probe`, пути в `ljtest.cxx` и `run.bat` обновлены. Клоны `Skyboxes` и `ScriptProjects` с `--recurse-submodules` проверены. Тег `v1.8.0` был переставлен на исправление workflow до появления релиза (релиз не существовал). Branch protection приватного harness недоступен на free-плане (§4.5). | ждёт осмотра организации |
 | Ф3 | 21.11.2026 | Ветка перебазирована на `Revive` (`4b44df0` Native AOT, `1097144`). `Skyboxes/`, `ScriptProjects/` и `TweakerPlugin/harness` подключены сабмодулями (у harness `update = none`), старые каталоги и `TweakerPlugin/assets/scripts/dev` удалены. `TweakerUI.csproj`: payload исключает `.git*`, `.github`, `.tweaker`, `shadertoolsconfig.json`, README сабмодулей и корневой LICENSE, предупреждает о неинициализированном `Canvas.sky`. `ShippedProjectsTests` переведён на `ScriptProjects` (с пропуском локального `dev/`); добавлены `RepositoryLayoutTests` и `ShippedSkiesTests`. Все четыре deploy-скрипта получили общий preflight (`Scripts/DeployPreflight.ps1`/`.sh`): проверка сабмодулей до очистки `distr` и проверка payload на служебные файлы. Документация обновлена (README, AGENTS, development, reverse-engineering-tools, local-environment, публичные ссылки). Проверки: `dotnet build TweakerUI` — успешно, payload содержит только `Canvas.sky` и скрипты, 0 служебных файлов; `DeployDebug` — успешно (349 файлов); `TweakerLuaLinker.Tests` 167/167, `ShippedProjectsTests` 2/2, `RepositoryLayoutTests` 2/2, `ShippedSkiesTests` проходят (NUnit console, `DOTNET_ROLL_FORWARD=LatestMajor`, `TEMP` в рабочей папке). `dotnet test` в этой сессии падает на testhost (`Access denied` при открытии parent process) — ограничение окружения, не кода. | ждёт проверки владельцем |
-| Ф4 | | | |
+| Ф4 | 21.11.2026 | Созданы зеркало `Audiosurf-Tweaker/Audiosurf-Tweaker` (засеяно `Revive` `1097144`, 17 тегов) и `Audiosurf-Tweaker-Nightly` (workflow `nightly.yml`, копия `Tools/ReleaseChannel/nightly.yml`). В дереве: `mirror-org.yml`, `public-release.yml`, `Tools/RepoPublish/mirror.sh`, `Tools/ReleaseChannel/`. `BundledSkins` добавлен сабмодулем (`34c2be4`, 17 паков, 253 МБ); deploy копирует скины в `Skins/` рядом с `TweakerUI.exe`, preflight требует хотя бы один `.askin2`/`.tasp`; `DeployDebug` проверен — 367 файлов, 548.8 МБ, скины на месте. Не включено: секрет `ORG_PUBLISH_TOKEN` в личном репозитории, `verify.yml`, слияние ветки в `Revive`. | канал создан; автоматика ждёт секрета и слияния |
 | Ф5 | | | |
 | Ф6 | | | |
