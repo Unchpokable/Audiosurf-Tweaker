@@ -5,3 +5,15 @@
 	path = TweakerPlugin/LuaJIT
 	url = https://github.com/LuaJIT/LuaJIT.git
 	branch = v2.1
+[submodule "ScriptProjects"]
+	path = ScriptProjects
+	url = https://github.com/Audiosurf-Tweaker/ScriptProjects.git
+	branch = main
+[submodule "Skyboxes"]
+	path = Skyboxes
+	url = https://github.com/Audiosurf-Tweaker/Skyboxes.git
+	branch = main
+[submodule "TweakerPlugin/harness"]
+	path = TweakerPlugin/harness
+	url = https://github.com/Audiosurf-Tweaker/harness.git
+	update = none

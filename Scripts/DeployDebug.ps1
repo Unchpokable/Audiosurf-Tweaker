@@ -44,6 +44,10 @@ $distDir = Join-Path $repoRoot "distr"
 $tweakerUiProj = Join-Path $repoRoot "TweakerUI\TweakerUI.csproj"
 $legacyConverterProj = Join-Path $repoRoot "LegacyDataConverter\LegacyDataConverter.csproj"
 
+# The sky package and the script project are submodules: fail before distr\ is touched.
+. (Join-Path $PSScriptRoot "DeployPreflight.ps1")
+Assert-DeploySources -RepositoryRoot $repoRoot
+
 Write-Host "==> Cleaning $distDir"
 if (Test-Path $distDir) {
     # Retried - Explorer/Defender/the indexer transiently hold a directory handle open right after
@@ -91,6 +95,7 @@ $pluginPayload = Get-ChildItem -Path (Join-Path $repoRoot "TweakerUI\bin") -Recu
 if ($pluginPayload) {
     Copy-Item $pluginPayload.FullName -Destination $tweakerOut -Recurse -Force
     Write-Host "    $($pluginPayload.FullName) -> $(Join-Path $tweakerOut 'PluginPayload')"
+    Assert-PluginPayload -PayloadRoot $pluginPayload.FullName
 } else {
     Write-Host "    PluginPayload\channels\TweakerPlugin.dll not found - the in-game plugin will be unavailable in this bundle (see TweakerPlugin/cmake/*.cmake)." -ForegroundColor Yellow
 }

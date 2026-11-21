@@ -206,7 +206,7 @@ static class ReadmeShots
         shell.ScriptDev.SetActive(true);
         var projectsRoot = Path.Combine(root, "Projects");
         var hud = Path.Combine(projectsRoot, "puzzlepro_hud");
-        CopyTree(Path.Combine(repo, "TweakerPlugin", "assets", "script-projects", "puzzlepro_hud"), hud);
+        CopyTree(Path.Combine(repo, "ScriptProjects", "puzzlepro_hud"), hud);
         TryDelete(Path.Combine(hud, "build"));
         shell.ScriptDev.StartCreateCommand.Execute(null);
         shell.ScriptDev.NewName = "Lap Timer";

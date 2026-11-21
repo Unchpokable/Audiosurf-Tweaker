@@ -41,6 +41,10 @@ DIST_DIR="$REPO_ROOT/distr"
 TWEAKER_UI_PROJ="$REPO_ROOT/TweakerUI/TweakerUI.csproj"
 LEGACY_CONVERTER_PROJ="$REPO_ROOT/LegacyDataConverter/LegacyDataConverter.csproj"
 
+# The sky package and the script project are submodules: fail before distr/ is touched.
+. "$SCRIPT_DIR/DeployPreflight.sh"
+assert_deploy_sources "$REPO_ROOT"
+
 echo "==> Cleaning $DIST_DIR"
 # Retried, same as Deploy.ps1: Explorer/Defender/the indexer transiently hold a directory handle open
 # right after a large exe is deleted from inside it often enough in practice that a single attempt
@@ -112,6 +116,7 @@ if [ -n "$PLUGIN_PAYLOAD_DLL" ]; then
     PLUGIN_PAYLOAD="$(dirname "$(dirname "$PLUGIN_PAYLOAD_DLL")")"
     cp -rf "$PLUGIN_PAYLOAD" "$TWEAKER_OUT/"
     echo "    $PLUGIN_PAYLOAD -> $TWEAKER_OUT/PluginPayload"
+    assert_plugin_payload "$PLUGIN_PAYLOAD"
 else
     echo "    PluginPayload/channels/TweakerPlugin.dll not found - the in-game plugin will be unavailable in this bundle (see TweakerPlugin/cmake/*.cmake)."
 fi

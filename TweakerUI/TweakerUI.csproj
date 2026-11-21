@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
 		<PublishAot>true</PublishAot>
@@ -273,23 +273,29 @@
 		    here would ship a scripting layer with nothing to run.
 
 		    One rule decides what ships, here and for the skyboxes below: a dev\ subfolder never does.
-		    assets\scripts\dev\ holds probes that verify an API works (they print pass/fail verdicts) or
-		    need a fixture the user does not have - real code, still built and still run by the Lua
-		    harness, just not something to hand a player. A subfolder rather than a marker inside the
-		    files because the plugin scans the game's Scripts\ folder non-recursively: anything a
-		    developer does want loaded, they drop in flat, and it stays theirs - not in the payload
-		    means not in the manifest, so Tweaker never claims or deletes it (§6.3).
+		    assets\scripts\dev\ used to hold probes that verify an API works; they now live in the
+		    private harness repository and are not part of this tree at all. A subfolder rather than a
+		    marker inside the files because the plugin scans the game's Scripts\ folder non-recursively:
+		    anything a developer does want loaded, they drop in flat, and it stays theirs - not in the
+		    payload means not in the manifest, so Tweaker never claims or deletes it (§6.3).
 
-		    A script built by twllink from a project (assets\script-projects\) ships with its .lua.map,
-		    which lets the plugin report errors against the project's own files instead of the bundle's
-		    lines (lua-engine-fix-roadmap.md §9.6). The projects themselves never ship - only what they
-		    were built into.
+		    A script built by twllink from a project (ScriptProjects\, a submodule) ships with its
+		    .lua.map, which lets the plugin report errors against the project's own files instead of the
+		    bundle's lines (lua-engine-fix-roadmap.md §9.6). The projects themselves never ship - only
+		    what they were built into.
 		-->
 		<ItemGroup>
 			<TweakerPluginScripts Include="$(TweakerPluginSourceDir)\assets\scripts\*.lua;$(TweakerPluginSourceDir)\assets\scripts\*.lua.map" />
+			<!--
+			    Skyboxes and Canvas.sky are submodules: their checkout brings a .git gitlink file and
+			    repository files (.github, .gitignore, README) that must never reach the player. The
+			    package's own files are what the manifest names.
+			-->
 			<TweakerPluginSkyboxes Include="$(SkyboxSourceDir)\**\*"
-			                       Exclude="$(SkyboxSourceDir)\dev\**\*;$(SkyboxSourceDir)\*.md" />
+			                       Exclude="$(SkyboxSourceDir)\dev\**\*;$(SkyboxSourceDir)\*.md;$(SkyboxSourceDir)\LICENSE*;$(SkyboxSourceDir)\**\README*.md;$(SkyboxSourceDir)\**\.git;$(SkyboxSourceDir)\**\.git\**\*;$(SkyboxSourceDir)\**\.gitignore;$(SkyboxSourceDir)\**\.gitattributes;$(SkyboxSourceDir)\**\.gitmodules;$(SkyboxSourceDir)\**\.github\**\*;$(SkyboxSourceDir)\**\.tweaker\**\*;$(SkyboxSourceDir)\**\shadertoolsconfig.json;$(SkyboxSourceDir)\**\*.partial" />
 		</ItemGroup>
+		<Warning Condition="!Exists('$(SkyboxSourceDir)\Canvas.sky\Config.json')"
+		         Text="Skyboxes\Canvas.sky is missing - run 'git submodule update --init --recursive'. The bundle will ship without a sky package." />
 		<!--
 		    PluginPayload\ mirrors the layout the files end up in inside the game, so installing is a plain
 		    copy of the tree (Docs/Internal/plugin-offline-mode.md §6.1). The DLL therefore goes under
