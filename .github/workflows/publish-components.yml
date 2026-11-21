@@ -30,6 +30,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0              # git subtree split needs the full history
+          persist-credentials: false  # publish.sh adds its own Authorization header
       - name: Split and push
         env:
           GH_TOKEN: ${{ secrets.ORG_PUBLISH_TOKEN }}

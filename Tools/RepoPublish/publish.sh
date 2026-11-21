@@ -62,6 +62,8 @@ git_push() { # <repo> <refspec>
   local url="https://github.com/$ORG/$1.git"
   if [ -n "${GH_TOKEN:-}" ]; then
     local auth
+    # A persisted checkout credential would be a second Authorization header; drop it if present.
+    git config --local --unset-all http.https://github.com/.extraheader >/dev/null 2>&1 || true
     auth="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 | tr -d '\n')"
     git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth" push "$url" "$2"
   else
