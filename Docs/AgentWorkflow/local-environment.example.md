@@ -17,7 +17,7 @@
 | Ghidra scripts | `<личный инструментарий>/ghidra-scripts` |
 | Ghidra headless / JDK | локальные пути; JAVA_HOME задаётся процессу |
 | MSVC/MSBuild/SDK/fxc/clang-format | обнаруженные пути, версии и архитектура |
-| Harness | пока `<repo>/TweakerPlugin/harness`, будущий приватный субрепозиторий по плану владельца |
+| Harness | `<repo>/TweakerPlugin/harness` — приватный сабмодуль организации (`update = none`); инициализируется явно при наличии доступа |
 | Результаты проверок | дата, passed/failed/unavailable, фактический бинарь |
 
 Проверяй разделение Steam-игры и исследовательской копии перед любой командой

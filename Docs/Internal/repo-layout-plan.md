@@ -139,7 +139,7 @@ Unchpokable/Audiosurf-Tweaker          (публичный, Revive, «монол
 ### 3.4 Что осознанно не переезжает
 
 - Код приложения, `TweakerUI`, `TweakerCore`, `ASBridge`, `AudiosurfInterface`, `QuickPlayerCore`,
-  `TweakerLuaLinker`, `LegacyDataConverter`, `Installer`, `Tools/`, `Docs/` — остаются в монолите.
+  `TweakerLuaLinker`, `LegacyDataConverter`, `Tools/`, `Docs/` — остаются в монолите.
 - Ассеты плагина (`TweakerPlugin/assets/{fonts,icons,shaders,skyboxes,textures}`) — встраиваются
   в DLL, к пакетам и проектам отношения не имеют.
 - Шаблоны небес (`TweakerCore/Skyboxes/Templates`) — часть приложения, а не поставляемые пакеты.
@@ -473,7 +473,8 @@ repository public`. Это ограничение плана, а не ошибк
 
 - убрать из git `out/meshes.csv`, `imgui.ini`, `smoke_overlay.cfg` (+ строки в `.gitignore`);
 - `TweakerPlugin/src/resource/CMakeLists.txt`: убрать `script-projects` из исключений;
-- переименование `Audiosurf SkinChanger.sln` и удаление `Installer/` — отдельные работы,
+- переименование `Audiosurf SkinChanger.sln` — отдельная работа; `Installer/` уже удалён
+  коммитом `4b44df0`,
   не смешивать с миграцией.
 
 ---

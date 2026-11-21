@@ -65,6 +65,24 @@ IPC-мост **asbridge** и внутриигровой x86-модуль **Tweak
   API-описания, справочника, LuaLS definitions и twllink.
   Порядок — [development.md](Docs/AgentWorkflow/development.md).
 
+## Субмодули
+
+`ScriptProjects/`, `Skyboxes/` и `TweakerPlugin/harness/` — сабмодули организации
+[Audiosurf-Tweaker](https://github.com/Audiosurf-Tweaker); план и решения —
+[repo-layout-plan](Docs/Internal/repo-layout-plan.md).
+
+- Правка начинается в репозитории компонента: ветка, коммит, push — и только потом
+  указатель сабмодуля в приложении бампается **тем же PR**. Указатель фиксирует
+  проверенную версию, а не «последний main».
+- `ScriptProjects/puzzlepro_hud` и `Skyboxes/Canvas.sky` — вложенные сабмодули:
+  после клона `git submodule update --init --recursive`.
+- После изменения проекта скрипта пересобери бандл в `TweakerPlugin/assets/scripts/`
+  (`ShippedProjectsTests` проверяет совпадение).
+- `dev/` в контентных репозиториях не коммитится. Пробы живут в приватном harness
+  (`scripts/dev/`, `projects/dev/`); в `TweakerPlugin/assets/scripts/dev/` их больше нет.
+- Harness — приватный сабмодуль с `update = none`: у внешнего клона он пропускается.
+  Не делай его публичным и не инициализируй принудительно у чужих клонов.
+
 ## Реализация и проверки
 
 - Полный билд — `Scripts/Deploy.ps1` / `Scripts/Deploy.sh`, отладочная поставка —
@@ -89,9 +107,9 @@ IPC-мост **asbridge** и внутриигровой x86-модуль **Tweak
 - Для UI проверяй снимки до/после и просматривай изменённые области. Запускай
   относящиеся к изменению тесты; skipped, недоступный harness и ручная проверка
   игры не означают passed. Игра проверяется владельцем.
-- Весь native harness будет сохранён отдельным **приватным Git-субрепозиторием**
-  по плану владельца. Пока он локальный; не публикуй его и не меняй подключение
-  самостоятельно. GitHub workflow устарел и не задаёт норму проверки.
+- Native harness живёт в **приватном** сабмодуле `TweakerPlugin/harness` по плану
+  владельца; подключение и адреса сабмодулей меняет владелец. GitHub workflow
+  устарел и не задаёт норму проверки.
 
 Выбор проверок и команды — [development.md](Docs/AgentWorkflow/development.md).
 Принципы API/UI — [project-principles.md](Docs/AgentWorkflow/project-principles.md).

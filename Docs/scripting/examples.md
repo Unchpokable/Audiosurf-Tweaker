@@ -254,8 +254,8 @@ Two details in there are worth more than the measurement:
 
 **Demonstrates:** `tw.ui.tab` with every kind of control, `on_change` and `committed`, `on_click`,
 `tw.storage.read_json` / `write_json`, and a card on the HUD that follows the tab. The script is
-`dev/ui_probe.lua`; it was written to check menu tabs and storage end to end in the game, and it is the
-shortest complete answer to "how do I give my script settings".
+a probe that was written to check menu tabs and storage end to end in the game (it now lives in the
+private harness repository), and it is the shortest complete answer to "how do I give my script settings".
 
 Settings first, read while the script loads — and a file that does not read is worth one line to the
 player, not a failure. `exists` tells the first run (no file, nothing to say) from a spoiled file:

@@ -12,7 +12,7 @@ where it is not, the index is given and the page says so. Check either with `cgr
 
 Most of the traps on this page were found the hard way by **PuzzlePRO HUD**, the first script that read a large part
 of the game's state and replaced half of its HUD. Its
-[design notes](https://github.com/Unchpokable/Audiosurf-Tweaker/blob/HEAD/TweakerPlugin/assets/script-projects/puzzlepro_hud/docs/DESIGN.md)
+[design notes](https://github.com/Audiosurf-Tweaker/puzzlepro_hud/blob/HEAD/docs/DESIGN.md)
 tell each one as it happened — what the obvious script did, what the player saw, what the graph said — and are worth
 reading before writing a tracker, a score display or a HUD replacement. The same notes open the shipped
 `puzzlepro_hud.lua` in the game's `engine\TweakerStuff\Scripts\` folder.

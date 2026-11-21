@@ -82,7 +82,7 @@ engine\TweakerStuff\
 - **Поставляемые скрипты** — `TweakerPlugin/assets/scripts/*.lua` (+ `.lua.map`) →
   `PluginPayload\TweakerStuff\Scripts\` (`CopyTweakerPlugin` в `TweakerUI.csproj`) → игра
   (`PluginInstallation`). Подпапка `dev/` не поставляется. Часть из них собрана из проектов в
-  `TweakerPlugin/assets/script-projects/` (`puzzlepro_hud`); проекты не поставляются.
+  `ScriptProjects/puzzlepro_hud/` (сабмодуль); проекты не поставляются.
 - **`PluginInstallation`** обновляет поставку по манифесту: не менявшийся файл перезаписывает молча,
   изменённый пользователем отодвигает в `.old`, удалённый пользователем не возвращает. Вернуть удалённое —
   «Восстановить» во вкладке Scripts (§5).

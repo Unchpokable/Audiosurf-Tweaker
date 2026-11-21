@@ -52,10 +52,10 @@ cmake --build --preset x86-release
 
 Запиши это в временный `.cmd` с CRLF. Из PowerShell запускай `cmd /c <путь>`,
 из Git Bash — `cmd //c <путь>`; не пытайся импортировать окружение batch в Bash.
-Если harness отсутствует, найди vcvarsall через Visual Studio Installer/vswhere
-и вызови его напрямую; не делай gitignored `vcenv.bat` обязательной частью
-чистого клона. Пресеты `x86-debug`/`x86-release`; `cmake --build --preset smoke`
-собирает исключённый из обычного build target `smoke_test`.
+Если harness не инициализирован (`git submodule update --init TweakerPlugin/harness`),
+найди vcvarsall через Visual Studio Installer/vswhere и вызови его напрямую;
+не делай `vcenv.bat` обязательной частью чистого клона. Пресеты `x86-debug`/`x86-release`;
+`cmake --build --preset smoke` собирает исключённый из обычного build target `smoke_test`.
 
 Если `x86-release` показывает `/Od`/`RTC1` или Debug в CMakeCache, имя каталога
 не доказывает Release: повтори configure правильным пресетом/окружением.
@@ -89,10 +89,12 @@ ASBridge/InjectHelper обязательны при сборке UI; TweakerPlug
 Twllink-тесты с minilua могут пропускаться без собранного LuaJIT; skipped не
 считать успехом исполнения Lua.
 
-**Весь `TweakerPlugin/harness/` будет сохранён в приватном Git-субрепозитории**
-по отдельному плану владельца. Сейчас каталог gitignored; не публикуй его и
-не меняй подключение сам. Локальный `run.bat` запускает suites, `run.bat build`
-добавляет инструменты. Lua-сюитам может требоваться
+**`TweakerPlugin/harness/` — приватный сабмодуль организации** (`update = none`;
+план — [repo-layout-plan](../Internal/repo-layout-plan.md)). У внешнего клона он
+пропускается; с доступом — `git submodule update --init TweakerPlugin/harness`.
+Не публикуй его и не меняй подключение сам. Локальный `run.bat` запускает suites,
+`run.bat build` добавляет инструменты. Пробы живут здесь же (`scripts/dev/`,
+`projects/dev/`), а не в репозитории приложения. Lua-сюитам может требоваться
 `build/x86-release/luajit.lib`: сначала собери плагин. Отмечай локальные
 изменения harness, которых не будет в основном diff. Старый случай с
 `FAILED: lua/ljtest lua/shimtest` и `ALL CHECKS PASSED` — диагностическая история,
@@ -164,9 +166,14 @@ PUBLIC `MINIZ_NO_*` менять осторожно: они влияют на la
 
 `CopyTweakerPlugin` в `TweakerUI.csproj` задаёт единственную раскладку
 `PluginPayload`: DLL в `channels`, Lua в `TweakerStuff/Scripts`, `.sky` в
-`TweakerStuff/SkyboxReplacer/Skyboxes`. Deploy переносит дерево целиком.
-Источники — `TweakerPlugin/assets/scripts/` и `Skyboxes/`; `dev/` не поставляется.
-Нерекурсивный игровой loader не должен знать маркер `@dev`.
+`TweakerStuff/SkyboxReplacer/Skyboxes`. Deploy переносит дерево целиком и
+**проверяет источники до сборки** (`Scripts/DeployPreflight.*`): сабмодули
+`Skyboxes/Canvas.sky` и `ScriptProjects/puzzlepro_hud` должны быть
+инициализированы, иначе deploy останавливается с командой
+`git submodule update --init --recursive`. Источники — `TweakerPlugin/assets/scripts/`
+и `Skyboxes/` (сабмодуль); `ScriptProjects/` — проекты, из которых собран бандл;
+`dev/` не поставляется. В пейлоад не попадают `.git`, `.github`, `.tweaker` и
+README сабмодулей — это тоже проверяет preflight.
 
 `CopyDevTools` задаёт `DevToolsPayload`: twllink отдельно в Binaries,
 CgrPy/публичные docs/AgentKit. Деплой выбирает свежий payload по stamp, не

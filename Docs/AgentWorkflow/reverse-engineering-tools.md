@@ -100,9 +100,9 @@ ASChannels можно переиспользовать. Исторические
 
 ## Остальные зависимости
 
-Native harness/vcenv пока локальные и будут сохранены целиком в приватном
-Git-субрепозитории по отдельному плану владельца. UiStand и smoke_test —
-репозиторные стенды; команды в [development](development.md).
+Native harness живёт в приватном сабмодуле `TweakerPlugin/harness` организации
+(`update = none`); с доступом — `git submodule update --init TweakerPlugin/harness`.
+UiStand и smoke_test — репозиторные стенды; команды в [development](development.md).
 ilspycmd в старой работе был временно установлен в scratchpad: постоянную
 установку не предполагаем. Ценные снимки и storyboard сохраняй обычными
 файлами с привязкой к проверке, а не только облачной страницей Claude Artifact.

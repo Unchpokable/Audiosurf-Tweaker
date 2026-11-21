@@ -163,7 +163,8 @@ Swap the game's sky for one of your own. A sky can be:
   sprite clouds placed by Lua, its own lights, and sliders that appear in the overlay so you can tweak the
   sky mid-ride. Packages reload as soon as you save a file.
 
-The plugin ships with two sky packages. To make your own, start with
+The plugin ships with one sky package, **Canvas**
+([its repository](https://github.com/Audiosurf-Tweaker/Canvas)). To make your own, start with
 [**Making skies for Audiosurf**](Docs/skyboxes.md).
 
 ### Lua scripts
@@ -270,6 +271,17 @@ reports, not anything a script draws.
 | [**Texture packs**](Docs/texturing.md) | What each of the game's textures is for and how to draw them. |
 | [`Docs/Internal/`](Docs/Internal/) | The developers' working notes: architecture, protocols, and the reverse-engineering journals of the game. They are in Russian and rougher than the manuals, but they are where the map of the game's internals lives. |
 
+## Repository layout
+
+| | |
+|---|---|
+| `TweakerUI/`, `TweakerCore/`, `AudiosurfInterface/`, `QuickPlayerCore/`, ... | the desktop application and its libraries |
+| `TweakerPlugin/` | the in-game plugin: shaders, Lua, overlay |
+| `ScriptProjects/` | submodule: the [source projects](https://github.com/Audiosurf-Tweaker/ScriptProjects) behind the shipped scripts |
+| `Skyboxes/` | submodule: the [sky packages](https://github.com/Audiosurf-Tweaker/Skyboxes) that ship with the plugin |
+| `TweakerPlugin/harness/` | private submodule: the offline native test harness |
+| `Docs/` | the manuals, the developers' notes and the reverse-engineering journals |
+
 ## Building from source
 
 The desktop side is .NET 10. Public `TweakerUI.exe` and `twllink.exe` use Native AOT; normal builds,
@@ -284,6 +296,12 @@ git clone --recurse-submodules https://github.com/Unchpokable/Audiosurf-Tweaker.
 dotnet build TweakerUI/TweakerUI.csproj
 dotnet run --project TweakerUI/TweakerUI.csproj
 ```
+
+The public component repositories (`ScriptProjects`, `Skyboxes`) come with that clone.
+`TweakerPlugin/harness` is a **private** repository of the offline test harness and is skipped on
+purpose: without access to the organization it stays empty, and everything that does not need it
+still builds and runs. With access: `git submodule update --init TweakerPlugin/harness`. Cloned
+without submodules: `git submodule update --init --recursive`.
 
 `LegacyDataConverter` (the required converter for old skins, on .NET Framework 4.8.1) needs the full
 Visual Studio MSBuild. The deploy scripts build and merge it into a separate executable.
