@@ -256,9 +256,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+        with: { fetch-depth: 0, persist-credentials: false }
+      - uses: actions/create-github-app-token@v2
+        id: publisher
+        with:
+          app-id: ${{ vars.QUEST3D_APP_ID }}
+          private-key: ${{ secrets.QUEST3D_APP_PRIVATE_KEY }}
+          owner: Audiosurf-Tweaker
+          repositories: Audiosurf-Tweaker,Audiosurf-Tweaker-Nightly
       - env:
-          GH_TOKEN: ${{ secrets.ORG_PUBLISH_TOKEN }}
+          GH_TOKEN: ${{ steps.publisher.outputs.token }}
         run: bash Tools/RepoPublish/mirror.sh
 ```
 
@@ -327,7 +334,7 @@ SDK нужно убрать с GitHub (§9).
 
 | Секрет | Где | Зачем | Срок |
 |---|---|---|---|
-| `ORG_PUBLISH_TOKEN` | личный репозиторий | push зеркала и тегов, dispatch nightly; публикация компонентов (Ф1) | постоянно после включения |
+| `QUEST3D_APP_ID` (переменная) и `QUEST3D_APP_PRIVATE_KEY` (секрет) | личный репозиторий, зеркало и Nightly | один GitHub App: Contents+Workflows write на зеркале, Contents write на Nightly, Contents read на `Quest3D-SDK`; workflow минтит короткоживущие токены | постоянно |
 | `GITHUB_TOKEN` | зеркало, Nightly, контентные репозитории | `verify.yml`; релизы Nightly и Public Release; `Canvas` и `puzzlepro_hud` | штатно |
 | `NIGHTLY_RUNNER` (переменная) | Nightly | label self-hosted раннера с DirectX/Quest3D SDK; без неё — `windows-latest` (UI-only) | по мере надобности |
 | `QUEST3D_APP_ID` (переменная) и `QUEST3D_APP_PRIVATE_KEY` (секрет) | зеркало и Nightly (или org-значения) | GitHub App с `Contents: read` на `Quest3D-SDK`: workflow чекаутит приватный сабмодуль | по необходимости |
@@ -468,8 +475,10 @@ repository public`. Это ограничение плана, а не ошибк
    `.github/workflows/nightly.yml`, источник `Tools/ReleaseChannel/nightly.yml`.
 3. `verify.yml` в приложении; удалить `build.yml`; в зеркале он запускается на push в `main`.
 4. `release.yml` в `Canvas` и `puzzlepro_hud` — сделано 15.11.2026.
-5. Секрет `ORG_PUBLISH_TOKEN` (scope `repo`, `workflow`) в личном репозитории; при желании
-   переменная `NIGHTLY_RUNNER` в Nightly для полной сборки с плагином.
+5. App-значения `QUEST3D_APP_ID` + `QUEST3D_APP_PRIVATE_KEY` в личном репозитории, зеркале и
+   Nightly; App с правами Contents+Workflows write на зеркале, Contents write на Nightly и
+   Contents read на `Quest3D-SDK`, установленный на эти три репозитория; при желании
+   `NIGHTLY_RUNNER` в Nightly для полной сборки с плагином.
 6. Branch protection, topics, descriptions.
 7. Включение: после слияния ветки в `Revive` первый push запускает mirror → dispatch nightly.
 
@@ -487,7 +496,7 @@ repository public`. Это ограничение плана, а не ошибк
 5. Проверка в игре (владелец): `Canvas` рисуется и настраивается, `puzzlepro_hud` грузится,
    ошибки скрипта указывают в `src/…`; старые `ODC_VolTex` и `OurDraftsCollides` вычищены
    установщиком, у выбранного старого неба — статус `missing`.
-6. Слияние в `Revive` и push — по команде владельца; отзыв `ORG_PUBLISH_TOKEN`.
+6. Слияние в `Revive` и push — по команде владельца; `ORG_PUBLISH_TOKEN` больше не нужен.
 
 **Готово, когда:** все пункты §8 выполнены и владелец подтвердил игру.
 
@@ -562,6 +571,6 @@ repository public`. Это ограничение плана, а не ошибк
 | Ф1 | 15.11.2026 | Опубликованы: `puzzlepro_hud` `a2ee0de` (91 файл, 11 коммитов), `Canvas` `02d231c` (6, 1), `Skyboxes` `614632c` (13, 3), `ScriptProjects` `86a0768` (94, 11). Число файлов и коммитов удалённо совпадает с локальными сплитами, `main` — ветка по умолчанию, descriptions/topics выставлены, force-push и удаление `main` запрещены. Публикация выполнена локально тем же токеном (Actions и секрет — позже, по решению владельца). Сплит начинается от коммита, впервые затронувшего папку, через временный replace-гraft; дерево сверяется с `HEAD:<папка>` перед push. | ждёт осмотра организации |
 | Ф2 | 15.11.2026 | `Canvas`: пакет и шейдер переименованы, манифест почищен, добавлены README/LICENSE/`.gitignore`/release-workflow, тег `v1.0.0` → релиз с `Canvas.sky` (zip проверен: `Config.json` в корне, 6.9 МБ). `Skyboxes`: удалены `OurDraftsCollides.sky`, `dev/` и старый `ODC_VolTex.sky`; добавлен сабмодуль `Canvas.sky` на `9f083fa` (тег); README/LICENSE/`.gitignore`. `puzzlepro_hud`: README/LICENSE/release-workflow, тег `v1.8.0` → релиз с `.lua` + `.lua.map` (sha256 совпал с локальной сборкой). `ScriptProjects`: `puzzlepro_hud` заменён сабмодулем на `fd262a0` (release-коммит), `dev/` удалён, README/LICENSE. `harness`: 137 файлов / 0.9 МБ в приватном репозитории; пробы перенесены в `scripts/dev` и `projects/dev/map_probe`, пути в `ljtest.cxx` и `run.bat` обновлены. Клоны `Skyboxes` и `ScriptProjects` с `--recurse-submodules` проверены. Тег `v1.8.0` был переставлен на исправление workflow до появления релиза (релиз не существовал). Branch protection приватного harness недоступен на free-плане (§4.5). | ждёт осмотра организации |
 | Ф3 | 21.11.2026 | Ветка перебазирована на `Revive` (`4b44df0` Native AOT, `1097144`). `Skyboxes/`, `ScriptProjects/` и `TweakerPlugin/harness` подключены сабмодулями (у harness `update = none`), старые каталоги и `TweakerPlugin/assets/scripts/dev` удалены. `TweakerUI.csproj`: payload исключает `.git*`, `.github`, `.tweaker`, `shadertoolsconfig.json`, README сабмодулей и корневой LICENSE, предупреждает о неинициализированном `Canvas.sky`. `ShippedProjectsTests` переведён на `ScriptProjects` (с пропуском локального `dev/`); добавлены `RepositoryLayoutTests` и `ShippedSkiesTests`. Все четыре deploy-скрипта получили общий preflight (`Scripts/DeployPreflight.ps1`/`.sh`): проверка сабмодулей до очистки `distr` и проверка payload на служебные файлы. Документация обновлена (README, AGENTS, development, reverse-engineering-tools, local-environment, публичные ссылки). Проверки: `dotnet build TweakerUI` — успешно, payload содержит только `Canvas.sky` и скрипты, 0 служебных файлов; `DeployDebug` — успешно (349 файлов); `TweakerLuaLinker.Tests` 167/167, `ShippedProjectsTests` 2/2, `RepositoryLayoutTests` 2/2, `ShippedSkiesTests` проходят (NUnit console, `DOTNET_ROLL_FORWARD=LatestMajor`, `TEMP` в рабочей папке). `dotnet test` в этой сессии падает на testhost (`Access denied` при открытии parent process) — ограничение окружения, не кода. | ждёт проверки владельцем |
-| Ф4 | 21.11.2026 | Созданы зеркало `Audiosurf-Tweaker/Audiosurf-Tweaker` (засеяно `Revive` `1097144`, 17 тегов) и `Audiosurf-Tweaker-Nightly` (workflow `nightly.yml`, копия `Tools/ReleaseChannel/nightly.yml`). В дереве: `mirror-org.yml`, `public-release.yml`, `Tools/RepoPublish/mirror.sh`, `Tools/ReleaseChannel/`. `BundledSkins` добавлен сабмодулем (`34c2be4`, 17 паков, 253 МБ); deploy копирует скины в `Skins/` рядом с `TweakerUI.exe`, preflight требует хотя бы один `.askin2`/`.tasp`; `DeployDebug` проверен — 367 файлов, 548.8 МБ, скины на месте. Не включено: секрет `ORG_PUBLISH_TOKEN` в личном репозитории, `verify.yml`, слияние ветки в `Revive`. DirectX SDK переведён в сабмодуль (`testing-laboratory/DirectX-SDK-June2010`, branch `master`), сборка `dotnet build TweakerUI` с ним прошла; Quest3D SDK залит в приватный `Audiosurf-Tweaker/Quest3D-SDK` (41 файл, 0.7 МБ), подключён сабмодулем с `update = none`, доступ — GitHub App (`QUEST3D_APP_ID` + `QUEST3D_APP_PRIVATE_KEY`), без него сборка UI-only. GitHub App проверен (`SDK access check`), полный nightly собран на hosted runner (11m49s, `TweakerPlugin.dll` в бандле, 291.2 МБ); ImGui переведён в сабмодуль v1.92.9; тестовые релизы и ветка `verify/nightly` удалены. | канал создан; автоматика ждёт секрета `ORG_PUBLISH_TOKEN` и слияния |
+| Ф4 | 21.11.2026 | Созданы зеркало `Audiosurf-Tweaker/Audiosurf-Tweaker` (засеяно `Revive` `1097144`, 17 тегов) и `Audiosurf-Tweaker-Nightly` (workflow `nightly.yml`, копия `Tools/ReleaseChannel/nightly.yml`). В дереве: `mirror-org.yml`, `public-release.yml`, `Tools/RepoPublish/mirror.sh`, `Tools/ReleaseChannel/`. `BundledSkins` добавлен сабмодулем (`34c2be4`, 17 паков, 253 МБ); deploy копирует скины в `Skins/` рядом с `TweakerUI.exe`, preflight требует хотя бы один `.askin2`/`.tasp`; `DeployDebug` проверен — 367 файлов, 548.8 МБ, скины на месте. Не включено: App-значения в личном репозитории, права App на зеркало/Nightly, `verify.yml`. | канал создан; автоматика ждёт App-настройки личного репозитория |
 | Ф5 | | | |
 | Ф6 | | | |

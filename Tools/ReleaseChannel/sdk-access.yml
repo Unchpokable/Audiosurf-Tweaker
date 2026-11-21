@@ -31,6 +31,7 @@ jobs:
           private-key: ${{ secrets.QUEST3D_APP_PRIVATE_KEY }}
           owner: Audiosurf-Tweaker
           repositories: Quest3D-SDK
+          permission-contents: read
 
       - name: Check access to the private SDK
         if: steps.quest3d.outputs.token != ''

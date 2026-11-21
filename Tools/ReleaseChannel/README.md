@@ -6,17 +6,51 @@ Two repositories in the organization consume this one (plan:
 | Repository | What it does |
 |---|---|
 | `Audiosurf-Tweaker/Audiosurf-Tweaker` | Mirror of `Revive` (`main`). Updated by `.github/workflows/mirror-org.yml` and `Tools/RepoPublish/mirror.sh` on every push to `Revive`; fast-forward only, so a commit of its own fails the push instead of being overwritten. Holds the manual **Public Release** workflow. |
-| `Audiosurf-Tweaker/Audiosurf-Tweaker-Nightly` | No code. [`nightly.yml`](nightly.yml) is dispatched by the mirror after each push to `main`, checks the mirror out with the component submodules, runs `Scripts/Deploy.ps1` and publishes `Audiosurf-Tweaker-Nightly-<yyyyMMdd>.zip` as a pre-release. |
+| `Audiosurf-Tweaker/Audiosurf-Tweaker-Nightly` | No code. [`nightly.yml`](nightly.yml) is dispatched by the mirror after each push to `main`, checks the mirror out with the component submodules, runs `Scripts/Deploy.ps1` and publishes `Audiosurf-Tweaker-Nightly-<yyyyMMdd>.zip`. |
 
-## Secret
+## Credentials
 
-`ORG_PUBLISH_TOKEN` in the personal repository: a classic PAT with `repo` and `workflow` scopes,
-authorized in the organization. It pushes the mirror (including `.github/workflows` changes) and
-dispatches the nightly. Without it the mirror workflow fails with an authentication error.
+One **GitHub App** owned by the organization covers all three repositories:
 
-The release and nightly workflows initialize every public submodule with
-`git submodule update --init --recursive` (components, Detours, LuaJIT, DirectX SDK). Harness and
-the Quest3D SDK are `update = none`, so they are left out of that pass and handled separately.
+| Repository | Access | Used for |
+|---|---|---|
+| `Audiosurf-Tweaker` (mirror) | Contents: Read and write, **Workflows: Read and write** | fast-forward push of `Revive` → `main`, tags |
+| `Audiosurf-Tweaker-Nightly` | Contents: Read and write | `repository_dispatch` and the release |
+| `Quest3D-SDK` | Contents: Read-only | checking the private SDK out |
+
+### App setup
+
+1. Organization **Settings → Developer settings → GitHub Apps → New GitHub App**. A GitHub App
+   cannot be created from `gh` or the REST API — the web/manifest flow is the only way.
+2. Name it anything neutral (`audiosurf-tweaker-builder`), homepage the main repository, **Webhook →
+   Active** off.
+3. Repository permissions:
+   - **Contents: Read and write** — mirror push, nightly dispatch, SDK checkout;
+   - **Workflows: Read and write** — the mirror push carries `.github/workflows/*`, and GitHub
+     refuses that without this permission;
+   - Metadata: Read is automatic.
+4. **Where can this GitHub App be installed?** Only on this account. Create it, note the **App ID**,
+   then **Generate a private key** — the `.pem` downloads once.
+5. **Install App** → organization → **Only select repositories** → the three repositories above.
+6. Variables and secrets are repository-scoped, so add the same pair everywhere a workflow that uses
+   the App runs:
+
+   | Repository | Variable | Secret |
+   |---|---|---|
+   | `Unchpokable/Audiosurf-Tweaker` (mirror workflow) | `QUEST3D_APP_ID` | `QUEST3D_APP_PRIVATE_KEY` |
+   | `Audiosurf-Tweaker/Audiosurf-Tweaker` (Public Release) | `QUEST3D_APP_ID` | `QUEST3D_APP_PRIVATE_KEY` |
+   | `Audiosurf-Tweaker/Audiosurf-Tweaker-Nightly` (Nightly, SDK check) | `QUEST3D_APP_ID` | `QUEST3D_APP_PRIVATE_KEY` |
+
+7. The old `ORG_PUBLISH_TOKEN` secret is then unused and can be removed.
+
+The workflows mint one-hour installation tokens scoped to the repositories they need
+(`actions/create-github-app-token`): the mirror job gets the mirror and the nightly, the release and
+nightly jobs get `Quest3D-SDK` with `Contents: read` only. Nothing long-lived is stored beyond the
+private key, and the token is masked in logs.
+
+Run the **SDK access check** workflow in the Nightly repository (source: [`sdk-access.yml`](sdk-access.yml))
+to verify the configuration: it prints whether the App ID and private key are visible to that
+repository and does `git ls-remote` against the private SDK with a freshly minted token.
 
 ## Runner
 
@@ -26,63 +60,28 @@ The in-game plugin needs the proprietary Quest3D SDK and the DirectX June 2010 S
   [testing-laboratory/DirectX-SDK-June2010](https://github.com/testing-laboratory/DirectX-SDK-June2010)
   (public, small), so `--recurse-submodules` and the workflows bring it automatically.
 - **Dear ImGui is a submodule** too (`TweakerPlugin/ImGui`, tag `v1.92.9`); Detours and LuaJIT were
-  already submodules. Together with the DirectX mirror they are what
-  `git submodule update --init --recursive` brings in.
+  already submodules.
 - The **Quest3D SDK is private** and lives in
-  [`Audiosurf-Tweaker/Quest3D-SDK`](https://github.com/Audiosurf-Tweaker/Quest3D-SDK) (private).
-  It is mounted at `TweakerPlugin/Quest3D-SDK` as a submodule with `update = none`, so public
-  clones skip it; only a workflow with a GitHub App token can check it out. `init-sdk.ps1`
-  performs that checkout; without a token the build continues without the in-game plugin
-  (UI-only bundle).
+  [`Audiosurf-Tweaker/Quest3D-SDK`](https://github.com/Audiosurf-Tweaker/Quest3D-SDK). It is mounted
+  at `TweakerPlugin/Quest3D-SDK` as a submodule with `update = none`, so public clones skip it; only
+  a workflow with the App token can check it out. `init-sdk.ps1` performs that checkout; without a
+  token the build continues without the in-game plugin (UI-only bundle).
 
-### GitHub App access
+The release and nightly workflows initialize every public submodule with
+`git submodule update --init --recursive`; harness and Quest3D are `update = none`, so they are left
+for the steps that own them.
 
-`GITHUB_TOKEN` is scoped to the workflow's repository and cannot clone another private repository.
-The channel uses a **GitHub App owned by the organization**, installed on the SDK repository only,
-read-only:
+### Hosted runner
 
-1. Organization **Settings → Developer settings → GitHub Apps → New GitHub App**. A GitHub App
-   cannot be created from `gh` or the REST API — the web/manifest flow is the only way.
-2. Name it anything neutral (`audiosurf-tweaker-sdk-reader`), set the homepage to the main
-   repository, and **uncheck Webhook → Active**.
-3. Repository permissions: **Contents: Read-only**, nothing else (Metadata is always read).
-4. **Where can this GitHub App be installed?** Only on this account.
-5. Create it, note the **App ID**, then **Generate a private key** — the `.pem` downloads once.
-6. **Install App** → organization → **Only select repositories** → `Quest3D-SDK`.
-7. In the mirror and Nightly repositories (or as organization values granted to them):
-   - variable `QUEST3D_APP_ID` — the App ID;
-   - secret `QUEST3D_APP_PRIVATE_KEY` — the `.pem` contents.
-
-The workflow mints a one-hour installation token scoped to `Quest3D-SDK`
-(`actions/create-github-app-token`) and passes it to `init-sdk.ps1`. Nothing long-lived is stored
-beyond the private key, and the action masks the token in logs.
-
-Run the **SDK access check** workflow in the Nightly repository (source: [`sdk-access.yml`](sdk-access.yml))
-to verify the configuration: it prints whether the App ID and private key are visible to that
-repository and does `git ls-remote` against the private SDK with a freshly minted token.
-
-Alternatives if the App is not workable: a fine-grained PAT with `Contents: read` on the SDK
-repository (stored as `QUEST3D_TOKEN`), or a read-only deploy key. Both are less scoped and
-longer-lived.
+A hosted `windows-latest` runner builds the complete bundle: DirectX, ImGui, Detours and LuaJIT are
+submodules, and Quest3D is checked out through the App token. UI-only is what happens when the App
+values are missing — not a runner limitation. Verified: a full nightly built there in 11m49s. A
+self-hosted runner (`NIGHTLY_RUNNER` / the `runner` input) remains an option for faster builds or
+when the SDK must not live on GitHub.
 
 ### When the private repository is not available
 
-The workflows skip the SDK and build a UI-only bundle. A self-hosted runner with the SDK installed
-outside GitHub (`NIGHTLY_RUNNER` / the `runner` input) remains the fallback when the SDK must not
-be stored on GitHub at all.
-
-### Hosted runner
-
-A hosted `windows-latest` runner now builds the complete bundle: DirectX, ImGui, Detours and LuaJIT
-are submodules, and Quest3D is checked out through the App token. UI-only is what happens when the
-App variables are missing — not a runner limitation. Verified: a full nightly built there in 11m49s.
-A self-hosted runner remains an option for faster builds or when the SDK must not live on GitHub.
-
-### Hosted runner
-
-A hosted `windows-latest` runner has the DirectX SDK through the submodule but not Quest3D, so
-its bundle is UI-only unless the repository variable `NIGHTLY_RUNNER` (Nightly) or the `runner`
-input (Public Release) points at a self-hosted runner with the SDK.
+The workflows skip the SDK and build a UI-only bundle.
 
 ## Nightly workflow
 

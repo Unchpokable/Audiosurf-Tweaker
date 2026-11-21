@@ -51,6 +51,7 @@ jobs:
           private-key: ${{ secrets.QUEST3D_APP_PRIVATE_KEY }}
           owner: Audiosurf-Tweaker
           repositories: Quest3D-SDK
+          permission-contents: read
 
       - name: Initialize the private Quest3D SDK (when configured)
         shell: pwsh

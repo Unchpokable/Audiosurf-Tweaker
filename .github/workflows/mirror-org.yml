@@ -27,9 +27,18 @@ jobs:
           # Authorization header and GitHub rejects the request.
           persist-credentials: false
 
+      - name: Mint a token for the mirror and the nightly
+        id: publisher
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.QUEST3D_APP_ID }}
+          private-key: ${{ secrets.QUEST3D_APP_PRIVATE_KEY }}
+          owner: Audiosurf-Tweaker
+          repositories: Audiosurf-Tweaker,Audiosurf-Tweaker-Nightly
+
       - name: Check the mirror token
         env:
-          GH_TOKEN: ${{ secrets.ORG_PUBLISH_TOKEN }}
+          GH_TOKEN: ${{ steps.publisher.outputs.token }}
         run: |
           echo "token user: $(gh api user --jq .login)"
           echo "mirror push: $(gh api repos/Audiosurf-Tweaker/Audiosurf-Tweaker --jq '.permissions.push')"
@@ -37,7 +46,7 @@ jobs:
 
       - name: Push main, tags and dispatch the nightly
         env:
-          GH_TOKEN: ${{ secrets.ORG_PUBLISH_TOKEN }}
+          GH_TOKEN: ${{ steps.publisher.outputs.token }}
           MIRROR_REPO: Audiosurf-Tweaker/Audiosurf-Tweaker
           NIGHTLY_REPO: Audiosurf-Tweaker/Audiosurf-Tweaker-Nightly
         run: bash Tools/RepoPublish/mirror.sh
