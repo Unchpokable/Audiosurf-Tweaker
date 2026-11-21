@@ -41,10 +41,20 @@ jobs:
         # the Quest3D SDK are update = none, so this leaves them for the steps that own them.
         run: git submodule update --init --recursive
 
+      - name: Mint a token for the private Quest3D SDK
+        id: quest3d
+        if: vars.QUEST3D_APP_ID != ''
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.QUEST3D_APP_ID }}
+          private-key: ${{ secrets.QUEST3D_APP_PRIVATE_KEY }}
+          owner: Audiosurf-Tweaker
+          repositories: Quest3D-SDK
+
       - name: Initialize the private Quest3D SDK (when configured)
         shell: pwsh
         env:
-          QUEST3D_TOKEN: ${{ secrets.QUEST3D_TOKEN }}
+          QUEST3D_TOKEN: ${{ steps.quest3d.outputs.token }}
         run: ./Tools/ReleaseChannel/init-sdk.ps1 -RepositoryRoot .
 
       - uses: actions/setup-dotnet@v4

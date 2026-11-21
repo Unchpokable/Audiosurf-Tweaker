@@ -25,34 +25,49 @@ The in-game plugin needs the proprietary Quest3D SDK and the DirectX June 2010 S
 - The **DirectX SDK is a submodule**: `TweakerPlugin/DirectX-SDK-June2010` points at
   [testing-laboratory/DirectX-SDK-June2010](https://github.com/testing-laboratory/DirectX-SDK-June2010)
   (public, small), so `--recurse-submodules` and the workflows bring it automatically.
-- The **Quest3D SDK stays private**. The supported layout is a private organization repository
-  mounted at `TweakerPlugin/Quest3D-SDK` with `update = none`, so public clones skip it and only a
-  workflow with a token can check it out. `init-sdk.ps1` performs that checkout with
-  `QUEST3D_TOKEN`; without the token, or without the submodule, the build continues without the
-  in-game plugin (UI-only bundle).
+- The **Quest3D SDK is private** and lives in
+  [`Audiosurf-Tweaker/Quest3D-SDK`](https://github.com/Audiosurf-Tweaker/Quest3D-SDK) (private).
+  It is mounted at `TweakerPlugin/Quest3D-SDK` as a submodule with `update = none`, so public
+  clones skip it; only a workflow with a GitHub App token can check it out. `init-sdk.ps1`
+  performs that checkout; without a token the build continues without the in-game plugin
+  (UI-only bundle).
 
-### Giving Actions access to the private SDK
+### GitHub App access
 
-`GITHUB_TOKEN` is scoped to the repository that runs the workflow and **cannot** clone another
-private repository. The options, best first:
+`GITHUB_TOKEN` is scoped to the workflow's repository and cannot clone another private repository.
+The channel uses a **GitHub App owned by the organization**, installed on the SDK repository only,
+read-only:
 
-| Option | How | Notes |
-|---|---|---|
-| **GitHub App** (recommended long-term) | App installed on the org with `Contents: read` on the SDK repo; the workflow mints an installation token | short-lived token, no long-lived secret |
-| **Fine-grained PAT** | `Contents: read` on the SDK repo only; stored as an **organization secret** `QUEST3D_TOKEN` granted to the mirror and Nightly | simplest; rotate it |
-| **Deploy key** | read-only SSH key on the SDK repo; store the private key as a secret and use `ssh-agent`/`insteadOf` | no org permissions, one repo only |
+1. Organization **Settings → Developer settings → GitHub Apps → New GitHub App**. A GitHub App
+   cannot be created from `gh` or the REST API — the web/manifest flow is the only way.
+2. Name it anything neutral (`audiosurf-tweaker-sdk-reader`), set the homepage to the main
+   repository, and **uncheck Webhook → Active**.
+3. Repository permissions: **Contents: Read-only**, nothing else (Metadata is always read).
+4. **Where can this GitHub App be installed?** Only on this account.
+5. Create it, note the **App ID**, then **Generate a private key** — the `.pem` downloads once.
+6. **Install App** → organization → **Only select repositories** → `Quest3D-SDK`.
+7. In the mirror and Nightly repositories (or as organization values granted to them):
+   - variable `QUEST3D_APP_ID` — the App ID;
+   - secret `QUEST3D_APP_PRIVATE_KEY` — the `.pem` contents.
 
-A private repository is still stored on GitHub and readable by organization owners: if the Quest3D
-license forbids that, the remaining option is a **self-hosted runner** with the SDK installed
-outside GitHub, selected through `NIGHTLY_RUNNER` / the `runner` input. The workflows already
-support that.
+The workflow mints a one-hour installation token scoped to `Quest3D-SDK`
+(`actions/create-github-app-token`) and passes it to `init-sdk.ps1`. Nothing long-lived is stored
+beyond the private key, and the action masks the token in logs.
 
-### When the private repository exists
+Alternatives if the App is not workable: a fine-grained PAT with `Contents: read` on the SDK
+repository (stored as `QUEST3D_TOKEN`), or a read-only deploy key. Both are less scoped and
+longer-lived.
 
-1. Add it as `TweakerPlugin/Quest3D-SDK` with `update = none` (and `branch = main`), remove
-   `/Quest3D-SDK/` from `TweakerPlugin/.gitignore`.
-2. Set `QUEST3D_TOKEN` in the mirror and Nightly repositories (or an org secret granted to them).
-3. `init-sdk.ps1` starts checking it out; nothing else in the workflows changes.
+### When the private repository is not available
+
+The workflows skip the SDK and build a UI-only bundle. A self-hosted runner with the SDK installed
+outside GitHub (`NIGHTLY_RUNNER` / the `runner` input) remains the fallback when the SDK must not
+be stored on GitHub at all.
+
+### Hosted runner
+
+A hosted `windows-latest` runner has the DirectX SDK through the submodule but not Quest3D unless
+the App variables are configured; even with the SDK checked out, the plugin builds normally there.
 
 ### Hosted runner
 
