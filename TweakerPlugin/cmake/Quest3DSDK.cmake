@@ -1,8 +1,12 @@
-# The Quest3D SDK is proprietary and is never committed to this repository
-# (see Quest3D-SDK/ which is gitignored). Point Q3D_SDK_DIR at a local copy
-# of it, either via -DQ3D_SDK_DIR=... or the QUEST3D_SDK_DIR environment
-# variable. Defaults to the conventional in-tree location, next to
-# DirectX-SDK-June2010/ and Detours/.
+# The Quest3D SDK is proprietary and is never committed to the public tree.
+# Two supported layouts:
+#   - a local copy at Quest3D-SDK/ (gitignored), the development machine;
+#   - a private organization submodule at the same path with `update = none`,
+#     which only a workflow with a token can check out (Docs/Internal/repo-layout-plan.md
+#     and Tools/ReleaseChannel/README.md).
+# Point Q3D_SDK_DIR at another copy via -DQ3D_SDK_DIR=... or the
+# QUEST3D_SDK_DIR environment variable. Defaults to the in-tree location,
+# next to DirectX-SDK-June2010/ and Detours/.
 
 if(DEFINED ENV{QUEST3D_SDK_DIR})
     set(_q3d_sdk_default "$ENV{QUEST3D_SDK_DIR}")

@@ -39,6 +39,12 @@ jobs:
       - name: Initialize the component submodules
         run: git submodule update --init --recursive ScriptProjects Skyboxes BundledSkins
 
+      - name: Initialize the private Quest3D SDK (when configured)
+        shell: pwsh
+        env:
+          QUEST3D_TOKEN: ${{ secrets.QUEST3D_TOKEN }}
+        run: ./Tools/ReleaseChannel/init-sdk.ps1 -RepositoryRoot .
+
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
