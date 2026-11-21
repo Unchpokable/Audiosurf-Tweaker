@@ -25,6 +25,9 @@ The in-game plugin needs the proprietary Quest3D SDK and the DirectX June 2010 S
 - The **DirectX SDK is a submodule**: `TweakerPlugin/DirectX-SDK-June2010` points at
   [testing-laboratory/DirectX-SDK-June2010](https://github.com/testing-laboratory/DirectX-SDK-June2010)
   (public, small), so `--recurse-submodules` and the workflows bring it automatically.
+- **Dear ImGui is a submodule** too (`TweakerPlugin/ImGui`, tag `v1.92.9`); Detours and LuaJIT were
+  already submodules. Together with the DirectX mirror they are what
+  `git submodule update --init --recursive` brings in.
 - The **Quest3D SDK is private** and lives in
   [`Audiosurf-Tweaker/Quest3D-SDK`](https://github.com/Audiosurf-Tweaker/Quest3D-SDK) (private).
   It is mounted at `TweakerPlugin/Quest3D-SDK` as a submodule with `update = none`, so public

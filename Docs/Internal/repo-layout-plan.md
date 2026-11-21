@@ -97,6 +97,7 @@ Unchpokable/Audiosurf-Tweaker          (публичный, Revive, «монол
 ├─ TweakerPlugin/
 │  ├─ src/  assets/  cmake/  probe/  smoke/ ...
 │  ├─ DirectX-SDK-June2010/     → submodule  (публичное архивное зеркало, branch master)
+│  ├─ ImGui/                    → submodule  (ocornut/imgui, тег v1.92.9)
 │  ├─ Quest3D-SDK/              → приватный сабмодуль (update = none) или локальная копия
 │  └─ harness/                  → submodule  harness      (private, update = none)
 ├─ ScriptProjects/             → submodule  ScriptProjects
