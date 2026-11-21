@@ -39,8 +39,16 @@ try {
     # config, not the superproject's .git/config. On a hosted runner HOME points at a throwaway
     # directory; on a self-hosted one the finally block removes it again.
     git -C $root config --global "http.https://github.com/.extraheader" $header
-    git -C $root submodule update --init -- $path
+
+    # The submodule is deliberately `update = none` in .gitmodules, and git skips it even when the
+    # path is named explicitly. Override the update strategy for this one invocation.
+    git -C $root -c "submodule.$path.update=checkout" submodule update --init -- $path
     if ($LASTEXITCODE -ne 0) { throw "git submodule update failed for $path" }
+
+    $headerFile = Join-Path $root "$path/include/A3d_EngineInterface.h"
+    if (-not (Test-Path -LiteralPath $headerFile)) {
+        throw "Quest3D SDK checkout did not produce $path/include/A3d_EngineInterface.h"
+    }
     Write-Host "Quest3D SDK initialized at $path"
 }
 finally {

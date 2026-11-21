@@ -85,5 +85,5 @@ jobs:
           BUILD_REF: ${{ inputs.ref || 'main' }}
         run: |
           $tag = "nightly-$env:NIGHTLY_DATE-$env:GITHUB_RUN_NUMBER"
-          gh release create $tag $env:NIGHTLY_ZIP `
+          gh release create $tag $env:NIGHTLY_ZIP --repo $env:GITHUB_REPOSITORY `
             --title "Nightly $env:NIGHTLY_DATE ($env:BUILD_REF)" --prerelease --generate-notes
