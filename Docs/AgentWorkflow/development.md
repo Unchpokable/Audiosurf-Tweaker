@@ -28,8 +28,10 @@ dotnet build всей `.sln` рабочей заменой: LegacyDataConverter 
 дерево `TweakerNative/build/msbuild` не связано с x86 plugin/bridge targets.
 
 Managed: .NET 10, UI — Windows TFM; LegacyDataConverter — net481. Нативная
-сборка требует MSVC C++ tools, Windows SDK, CMake/Ninja, DirectX June 2010 SDK,
-Quest3D SDK, ImGui/Detours и LuaJIT submodule. LunaSVG/plutovg подтягиваются
+сборка требует MSVC C++ tools, Windows SDK, CMake/Ninja, DirectX June 2010 SDK
+(сабмодуль `TweakerPlugin/DirectX-SDK-June2010`), Quest3D SDK (приватный
+сабмодуль или локальная копия; см. `Tools/ReleaseChannel/README.md`),
+ImGui/Detours и LuaJIT submodule. LunaSVG/plutovg подтягиваются
 FetchContent; первый configure под каждый генератор требует сети. `fxc` ищется
 в SDK/dev-окружении; можно задать `TWEAKER_FXC`. SDK и бинарники игры не добавляй
 в публичный Git. Редакторские tasks и старый GitHub workflow не являются

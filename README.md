@@ -310,11 +310,12 @@ Visual Studio MSBuild. The deploy scripts build and merge it into a separate exe
 The first helper build downloads pinned TagLib 2.3.2 (including utfcpp) and zlib 1.4 release archives;
 subsequent builds reuse CMake's dependency cache. Their licenses ship beside the helper.
 
-The in-game plugin (`TweakerPlugin/`) is an x86 C++23 DLL. It also needs the DirectX SDK (June 2010) and
-Dear ImGui, plus the Quest3D SDK, which is proprietary and not part of this repository. Without them the
-plugin is skipped with a warning and everything else still builds. Release bundles are produced by
-`Scripts/Deploy.ps1` (or `Deploy.sh` in Git Bash). `DeployDebug` produces a managed, self-contained
-bundle with symbols. Native DLLs stay beside the UI in both variants.
+The in-game plugin (`TweakerPlugin/`) is an x86 C++23 DLL. The DirectX SDK (June 2010) comes with
+the clone as the `TweakerPlugin/DirectX-SDK-June2010` submodule; Dear ImGui is fetched by CMake.
+The Quest3D SDK is proprietary and is not in the public repository: without a local copy or a
+private submodule the plugin is skipped with a warning and everything else still builds. Release
+bundles are produced by `Scripts/Deploy.ps1` (or `Deploy.sh` in Git Bash). `DeployDebug` produces a
+managed, self-contained bundle with symbols. Native DLLs stay beside the UI in both variants.
 
 Tests are NUnit, one project per library: `dotnet test TweakerCore.Tests/TweakerCore.Tests.csproj` and so
 on. `Tools/UiStand/` renders the app's real views offscreen. That is how the screenshots on this page are

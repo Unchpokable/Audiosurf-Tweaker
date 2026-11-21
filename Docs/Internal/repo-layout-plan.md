@@ -49,6 +49,7 @@
 | 2.9 | Работа начинается после того, как работа по вкладке Skyboxes закоммичена; сейчас это выполнено. |
 | 2.10 | Сгенерированные файлы в корне (`out/meshes.csv`, `imgui.ini`, `smoke_overlay.cfg`) — мусор, удаляются из git. |
 | 2.11 | Скины — отдельный репозиторий `BundledSkins` и часть поставки: deploy копирует их в `Skins/` рядом с `TweakerUI.exe`. Новый скин — коммит в сабмодуле и бамп указателя. |
+| 2.12 | DirectX SDK (June 2010) — сабмодуль публичного архивного зеркала `testing-laboratory/DirectX-SDK-June2010`. Quest3D SDK — приватный сабмодуль с `update = none`, который workflow инициализирует `QUEST3D_TOKEN`; без токена — сборка без плагина (UI-only) или self-hosted раннер с SDK вне GitHub. |
 
 ---
 
@@ -95,7 +96,9 @@ Unchpokable/Audiosurf-Tweaker          (публичный, Revive, «монол
 ├─ TweakerUI/  TweakerCore/  ASBridge/  AudiosurfInterface/  ...
 ├─ TweakerPlugin/
 │  ├─ src/  assets/  cmake/  probe/  smoke/ ...
-│  └─ harness/                 → submodule  harness      (private, update = none)
+│  ├─ DirectX-SDK-June2010/     → submodule  (публичное архивное зеркало, branch master)
+│  ├─ Quest3D-SDK/              → приватный сабмодуль (update = none) или локальная копия
+│  └─ harness/                  → submodule  harness      (private, update = none)
 ├─ ScriptProjects/             → submodule  ScriptProjects
 │  ├─ dev/                     (gitignored — только локально)
 │  └─ puzzlepro_hud/           → submodule  puzzlepro_hud
@@ -308,10 +311,13 @@ jobs:
 **Public Release** — вручную в зеркале: `.github/workflows/public-release.yml`; входы `tag`,
 `runner`, `prerelease`; собирает `main`, прикладывает `Audiosurf-Tweaker-<tag>.zip` к релизу.
 
-**Раннер и плагин.** Hosted `windows-latest` не имеет Quest3D SDK и DirectX June 2010, поэтому
-`TweakerPlugin.dll` в такой сборке отсутствует (UI-only). Полная сборка — self-hosted раннер
-с обоими SDK: переменная `NIGHTLY_RUNNER` в Nightly и вход `runner` у Public Release. Пока
-раннера нет, nightly честно остаётся UI-only; это ограничение платформы, а не настройки.
+**Раннер и плагин.** DirectX SDK (June 2010) — сабмодуль `TweakerPlugin/DirectX-SDK-June2010`
+(публичное архивное зеркало), его приносит `--recurse-submodules`. Quest3D SDK — приватный:
+приватный репозиторий организации, подключённый сабмодулем с `update = none`; workflow
+инициализирует его `Tools/ReleaseChannel/init-sdk.ps1` с `QUEST3D_TOKEN`. Без токена или без
+сабмодуля сборка продолжается без плагина (UI-only). Альтернатива — self-hosted раннер с SDK,
+установленным вне GitHub (`NIGHTLY_RUNNER` и вход `runner`); это же остаётся запасным вариантом,
+если лицензия Quest3D не допускает хранение в приватном репозитории (§9).
 
 ### 4.5 Секреты и права (одно место)
 
@@ -320,6 +326,7 @@ jobs:
 | `ORG_PUBLISH_TOKEN` | личный репозиторий | push зеркала и тегов, dispatch nightly; публикация компонентов (Ф1) | постоянно после включения |
 | `GITHUB_TOKEN` | зеркало, Nightly, контентные репозитории | `verify.yml`; релизы Nightly и Public Release; `Canvas` и `puzzlepro_hud` | штатно |
 | `NIGHTLY_RUNNER` (переменная) | Nightly | label self-hosted раннера с DirectX/Quest3D SDK; без неё — `windows-latest` (UI-only) | по мере надобности |
+| `QUEST3D_TOKEN` (секрет, опционально) | зеркало и Nightly (или org-секрет) | checkout приватного `TweakerPlugin/Quest3D-SDK`; без него — UI-only | по необходимости |
 
 Организация: разрешить создание репозиториев владельцу, отключить Actions там, где workflow нет,
 включить branch protection на `main` публичных репозиториев. Приватный `harness` на free-плане
@@ -531,12 +538,13 @@ repository public`. Это ограничение плана, а не ошибк
 
 ## 9. Что решается по ходу
 
-- **Полная экспериментальная сборка с плагином** (§4.4): hosted-runner не имеет SDK. Варианты —
-  self-hosted runner владельца (с ограничениями), локальная сборка с ручной загрузкой ассета,
-  либо выпуск экспериментальных сборок только managed-части. Решение не блокирует миграцию.
-- **Судьба `Revive`**: ветка временная (§2.4). Переименование в `main` — отдельная работа;
-  до неё sync триггерится на `Revive`.
-- **Имя `Audiosurf-Tweaker/Audiosurf-Tweaker`** фиксируется до первого пуша (§3.1).
+- **Лицензия Quest3D SDK**: приватный репозиторий организации хранит SDK на GitHub и делает его
+  доступным членам организации. Если лицензия это запрещает — self-hosted раннер с SDK вне
+  GitHub; `init-sdk.ps1` уже обходит отсутствующий токен, а `NIGHTLY_RUNNER` выбирает раннер.
+- **Имя зеркала** зафиксировано 21.11.2026 (`Audiosurf-Tweaker/Audiosurf-Tweaker`); переименование —
+  отдельная работа с правкой `mirror.sh` и guard.
+- **Судьба `Revive`**: ветка временная (§2.4). Переименование в `main` — отдельная работа; до неё
+  mirror триггерится на `Revive`.
 - **`Docs/Internal` со старыми путями**: живые руководства правятся, журналы и архив — нет (§5).
 
 ---
@@ -549,6 +557,6 @@ repository public`. Это ограничение плана, а не ошибк
 | Ф1 | 15.11.2026 | Опубликованы: `puzzlepro_hud` `a2ee0de` (91 файл, 11 коммитов), `Canvas` `02d231c` (6, 1), `Skyboxes` `614632c` (13, 3), `ScriptProjects` `86a0768` (94, 11). Число файлов и коммитов удалённо совпадает с локальными сплитами, `main` — ветка по умолчанию, descriptions/topics выставлены, force-push и удаление `main` запрещены. Публикация выполнена локально тем же токеном (Actions и секрет — позже, по решению владельца). Сплит начинается от коммита, впервые затронувшего папку, через временный replace-гraft; дерево сверяется с `HEAD:<папка>` перед push. | ждёт осмотра организации |
 | Ф2 | 15.11.2026 | `Canvas`: пакет и шейдер переименованы, манифест почищен, добавлены README/LICENSE/`.gitignore`/release-workflow, тег `v1.0.0` → релиз с `Canvas.sky` (zip проверен: `Config.json` в корне, 6.9 МБ). `Skyboxes`: удалены `OurDraftsCollides.sky`, `dev/` и старый `ODC_VolTex.sky`; добавлен сабмодуль `Canvas.sky` на `9f083fa` (тег); README/LICENSE/`.gitignore`. `puzzlepro_hud`: README/LICENSE/release-workflow, тег `v1.8.0` → релиз с `.lua` + `.lua.map` (sha256 совпал с локальной сборкой). `ScriptProjects`: `puzzlepro_hud` заменён сабмодулем на `fd262a0` (release-коммит), `dev/` удалён, README/LICENSE. `harness`: 137 файлов / 0.9 МБ в приватном репозитории; пробы перенесены в `scripts/dev` и `projects/dev/map_probe`, пути в `ljtest.cxx` и `run.bat` обновлены. Клоны `Skyboxes` и `ScriptProjects` с `--recurse-submodules` проверены. Тег `v1.8.0` был переставлен на исправление workflow до появления релиза (релиз не существовал). Branch protection приватного harness недоступен на free-плане (§4.5). | ждёт осмотра организации |
 | Ф3 | 21.11.2026 | Ветка перебазирована на `Revive` (`4b44df0` Native AOT, `1097144`). `Skyboxes/`, `ScriptProjects/` и `TweakerPlugin/harness` подключены сабмодулями (у harness `update = none`), старые каталоги и `TweakerPlugin/assets/scripts/dev` удалены. `TweakerUI.csproj`: payload исключает `.git*`, `.github`, `.tweaker`, `shadertoolsconfig.json`, README сабмодулей и корневой LICENSE, предупреждает о неинициализированном `Canvas.sky`. `ShippedProjectsTests` переведён на `ScriptProjects` (с пропуском локального `dev/`); добавлены `RepositoryLayoutTests` и `ShippedSkiesTests`. Все четыре deploy-скрипта получили общий preflight (`Scripts/DeployPreflight.ps1`/`.sh`): проверка сабмодулей до очистки `distr` и проверка payload на служебные файлы. Документация обновлена (README, AGENTS, development, reverse-engineering-tools, local-environment, публичные ссылки). Проверки: `dotnet build TweakerUI` — успешно, payload содержит только `Canvas.sky` и скрипты, 0 служебных файлов; `DeployDebug` — успешно (349 файлов); `TweakerLuaLinker.Tests` 167/167, `ShippedProjectsTests` 2/2, `RepositoryLayoutTests` 2/2, `ShippedSkiesTests` проходят (NUnit console, `DOTNET_ROLL_FORWARD=LatestMajor`, `TEMP` в рабочей папке). `dotnet test` в этой сессии падает на testhost (`Access denied` при открытии parent process) — ограничение окружения, не кода. | ждёт проверки владельцем |
-| Ф4 | 21.11.2026 | Созданы зеркало `Audiosurf-Tweaker/Audiosurf-Tweaker` (засеяно `Revive` `1097144`, 17 тегов) и `Audiosurf-Tweaker-Nightly` (workflow `nightly.yml`, копия `Tools/ReleaseChannel/nightly.yml`). В дереве: `mirror-org.yml`, `public-release.yml`, `Tools/RepoPublish/mirror.sh`, `Tools/ReleaseChannel/`. `BundledSkins` добавлен сабмодулем (`34c2be4`, 17 паков, 253 МБ); deploy копирует скины в `Skins/` рядом с `TweakerUI.exe`, preflight требует хотя бы один `.askin2`/`.tasp`; `DeployDebug` проверен — 367 файлов, 548.8 МБ, скины на месте. Не включено: секрет `ORG_PUBLISH_TOKEN` в личном репозитории, `verify.yml`, слияние ветки в `Revive`. | канал создан; автоматика ждёт секрета и слияния |
+| Ф4 | 21.11.2026 | Созданы зеркало `Audiosurf-Tweaker/Audiosurf-Tweaker` (засеяно `Revive` `1097144`, 17 тегов) и `Audiosurf-Tweaker-Nightly` (workflow `nightly.yml`, копия `Tools/ReleaseChannel/nightly.yml`). В дереве: `mirror-org.yml`, `public-release.yml`, `Tools/RepoPublish/mirror.sh`, `Tools/ReleaseChannel/`. `BundledSkins` добавлен сабмодулем (`34c2be4`, 17 паков, 253 МБ); deploy копирует скины в `Skins/` рядом с `TweakerUI.exe`, preflight требует хотя бы один `.askin2`/`.tasp`; `DeployDebug` проверен — 367 файлов, 548.8 МБ, скины на месте. Не включено: секрет `ORG_PUBLISH_TOKEN` в личном репозитории, `verify.yml`, слияние ветки в `Revive`. DirectX SDK переведён в сабмодуль (`testing-laboratory/DirectX-SDK-June2010`, branch `master`), сборка `dotnet build TweakerUI` с ним прошла; для Quest3D добавлен `Tools/ReleaseChannel/init-sdk.ps1` и `QUEST3D_TOKEN` (без токена — UI-only). | канал создан; автоматика ждёт секрета и слияния |
 | Ф5 | | | |
 | Ф6 | | | |
