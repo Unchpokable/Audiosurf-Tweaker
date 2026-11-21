@@ -73,8 +73,10 @@ be stored on GitHub at all.
 
 ### Hosted runner
 
-A hosted `windows-latest` runner has the DirectX SDK through the submodule but not Quest3D unless
-the App variables are configured; even with the SDK checked out, the plugin builds normally there.
+A hosted `windows-latest` runner now builds the complete bundle: DirectX, ImGui, Detours and LuaJIT
+are submodules, and Quest3D is checked out through the App token. UI-only is what happens when the
+App variables are missing — not a runner limitation. Verified: a full nightly built there in 11m49s.
+A self-hosted runner remains an option for faster builds or when the SDK must not live on GitHub.
 
 ### Hosted runner
 
