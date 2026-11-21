@@ -35,11 +35,14 @@ $header = "AUTHORIZATION: basic " +
     [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("x-access-token:$Token"))
 
 try {
-    git -C $root config --local "http.https://github.com/.extraheader" $header
+    # Global, not local: the submodule clone runs as a separate git process and reads the global
+    # config, not the superproject's .git/config. On a hosted runner HOME points at a throwaway
+    # directory; on a self-hosted one the finally block removes it again.
+    git -C $root config --global "http.https://github.com/.extraheader" $header
     git -C $root submodule update --init -- $path
     if ($LASTEXITCODE -ne 0) { throw "git submodule update failed for $path" }
     Write-Host "Quest3D SDK initialized at $path"
 }
 finally {
-    git -C $root config --local --unset-all "http.https://github.com/.extraheader" 2>$null
+    git -C $root config --global --unset-all "http.https://github.com/.extraheader" 2>$null
 }
