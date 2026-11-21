@@ -302,8 +302,9 @@ jobs:
   копия в Nightly ведётся вручную (в репозитории без кода её нечем зеркалить);
 - триггер: `repository_dispatch` с `event_type: nightly` от зеркала после push в `main`,
   плюс ручной `workflow_dispatch`;
-- checkout зеркала `main` с сабмодулями `ScriptProjects`, `Skyboxes`, `BundledSkins`
-  (harness пропускается `update = none`), затем `Scripts/Deploy.ps1`;
+- checkout зеркала `main`; `git submodule update --init --recursive` инициализирует все публичные
+  сабмодули (компоненты, Detours, LuaJIT, DirectX SDK), а harness и Quest3D (`update = none`)
+  остаются для своих шагов; затем `Scripts/Deploy.ps1`;
 - ассет `Audiosurf-Tweaker-Nightly-<yyyyMMdd>.zip`, релиз — pre-release; тег включает
   `GITHUB_RUN_NUMBER`, чтобы несколько сборок за день не конфликтовали;
 - один прогон за раз (`concurrency: nightly`, `cancel-in-progress: true`).

@@ -33,8 +33,10 @@ jobs:
           fetch-depth: 0
           submodules: false
 
-      - name: Initialize the component submodules
-        run: git -C tweaker submodule update --init --recursive ScriptProjects Skyboxes BundledSkins
+      - name: Initialize the public submodules
+        # Recursive covers the native dependencies too (Detours, LuaJIT, DirectX SDK). Harness and
+        # the Quest3D SDK are update = none, so this leaves them for the steps that own them.
+        run: git -C tweaker submodule update --init --recursive
 
       - name: Initialize the private Quest3D SDK (when configured)
         shell: pwsh

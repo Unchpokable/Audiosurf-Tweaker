@@ -14,6 +14,10 @@ Two repositories in the organization consume this one (plan:
 authorized in the organization. It pushes the mirror (including `.github/workflows` changes) and
 dispatches the nightly. Without it the mirror workflow fails with an authentication error.
 
+The release and nightly workflows initialize every public submodule with
+`git submodule update --init --recursive` (components, Detours, LuaJIT, DirectX SDK). Harness and
+the Quest3D SDK are `update = none`, so they are left out of that pass and handled separately.
+
 ## Runner
 
 The in-game plugin needs the proprietary Quest3D SDK and the DirectX June 2010 SDK.
