@@ -449,7 +449,7 @@ const char* tw_storage_error(void)                        -- почему пос
 ## §7. Не сделано и возможное продолжение
 
 - **Вкладка настроек `puzzlepro_hud`** (Т6 плана) — владелец оставил себе: правится проект
-  `assets/script-projects/puzzlepro_hud/` (его `"api"` поднять до 3), бандл пересобирается `twllink`,
+  `ScriptProjects/puzzlepro_hud/` (сабмодуль; его `"api"` поднять до 3), бандл пересобирается `twllink`,
   `ShippedProjectsTests` должен остаться зелёным; образец — `dev/ui_probe.lua` и `menus.md`, «Saving settings».
 - **`Tools/AgentKit` под API 3** — ведёт своя сессия (§2.12): скиллы `tweaker-lua-api` («Absent by design»,
   «API version 2») и `audiosurf-grill` («Needs a change to the Tweaker») ещё говорят, что файлов и настроек нет.

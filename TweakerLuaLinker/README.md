@@ -56,7 +56,7 @@ dotnet test TweakerLuaLinker.Tests/TweakerLuaLinker.Tests.csproj
   его — такие тесты пропускаются с причиной. В `minilua` нет `print`, `tostring`, `math`,
   `string.reverse`, строковой метатаблицы — фикстуры пишут через `io.write`.
 - `ShippedProjectsTests` — поставляемые собранные скрипты (`TweakerPlugin/assets/scripts/`) совпадают с
-  тем, что собирается из их проектов (`TweakerPlugin/assets/script-projects/`).
+  тем, что собирается из их проектов (`ScriptProjects/`, сабмодуль).
 - `ApiDocsTests` — `api.json` против `api-reference.md` в обе стороны, актуальность `tw.def.lua`, схема
   манифеста против `ManifestReader`, таблица кодов в `authoring.md` против `DiagnosticCodes`.
 
