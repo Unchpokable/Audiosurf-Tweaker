@@ -9,6 +9,10 @@ on:
   repository_dispatch:
     types: [nightly]
   workflow_dispatch:
+    inputs:
+      ref:
+        description: Mirror ref to build (default main)
+        default: main
 
 permissions:
   contents: write
@@ -28,7 +32,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Audiosurf-Tweaker/Audiosurf-Tweaker
-          ref: main
+          ref: ${{ inputs.ref || 'main' }}
           path: tweaker
           fetch-depth: 0
           submodules: false
@@ -78,7 +82,8 @@ jobs:
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          BUILD_REF: ${{ inputs.ref || 'main' }}
         run: |
           $tag = "nightly-$env:NIGHTLY_DATE-$env:GITHUB_RUN_NUMBER"
           gh release create $tag $env:NIGHTLY_ZIP `
-            --title "Nightly $env:NIGHTLY_DATE" --prerelease --generate-notes
+            --title "Nightly $env:NIGHTLY_DATE ($env:BUILD_REF)" --prerelease --generate-notes

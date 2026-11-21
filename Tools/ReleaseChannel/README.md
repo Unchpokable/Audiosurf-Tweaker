@@ -54,6 +54,10 @@ The workflow mints a one-hour installation token scoped to `Quest3D-SDK`
 (`actions/create-github-app-token`) and passes it to `init-sdk.ps1`. Nothing long-lived is stored
 beyond the private key, and the action masks the token in logs.
 
+Run the **SDK access check** workflow in the Nightly repository (source: [`sdk-access.yml`](sdk-access.yml))
+to verify the configuration: it prints whether the App ID and private key are visible to that
+repository and does `git ls-remote` against the private SDK with a freshly minted token.
+
 Alternatives if the App is not workable: a fine-grained PAT with `Contents: read` on the SDK
 repository (stored as `QUEST3D_TOKEN`), or a read-only deploy key. Both are less scoped and
 longer-lived.

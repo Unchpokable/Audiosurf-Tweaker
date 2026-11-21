@@ -1,0 +1,44 @@
+# Manual check: are QUEST3D_APP_ID and QUEST3D_APP_PRIVATE_KEY configured, and does the App token
+# actually reach the private Quest3D SDK repository? Source copy; the running copy lives in the
+# Nightly repository (it has no code to mirror).
+name: SDK access check
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: windows-latest
+    steps:
+      - name: Report configuration
+        shell: pwsh
+        env:
+          PRIVATE_KEY: ${{ secrets.QUEST3D_APP_PRIVATE_KEY }}
+        run: |
+          "app_id_configured: ${{ vars.QUEST3D_APP_ID != '' }}"
+          "private_key_present: $($env:PRIVATE_KEY.Length -gt 0)"
+          "app_id: ${{ vars.QUEST3D_APP_ID }}"
+
+      - name: Mint the App token
+        id: quest3d
+        if: vars.QUEST3D_APP_ID != ''
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ vars.QUEST3D_APP_ID }}
+          private-key: ${{ secrets.QUEST3D_APP_PRIVATE_KEY }}
+          owner: Audiosurf-Tweaker
+          repositories: Quest3D-SDK
+
+      - name: Check access to the private SDK
+        if: steps.quest3d.outputs.token != ''
+        shell: pwsh
+        env:
+          QUEST3D_TOKEN: ${{ steps.quest3d.outputs.token }}
+        run: |
+          $header = "AUTHORIZATION: basic " +
+              [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("x-access-token:$env:QUEST3D_TOKEN"))
+          git -c "http.https://github.com/.extraheader=$header" ls-remote `
+              https://github.com/Audiosurf-Tweaker/Quest3D-SDK.git refs/heads/main
