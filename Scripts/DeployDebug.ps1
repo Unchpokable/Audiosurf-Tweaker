@@ -65,6 +65,15 @@ Write-Host "==> Publishing TweakerUI ($Configuration, $Runtime, self-contained, 
 dotnet publish $tweakerUiProj -c $Configuration -r $Runtime --self-contained true -p:PublishAot=false -o $tweakerOut
 if ($LASTEXITCODE -ne 0) { throw "TweakerUI publish failed" }
 
+# Skins ride beside the exe: the Skin Changer reads <app>\Skins (Core/AppPaths). BundledSkins is a
+# submodule, and its LICENSE travels with the packs.
+$skinsOut = Join-Path $tweakerOut "Skins"
+New-Item -ItemType Directory -Force -Path $skinsOut | Out-Null
+Get-ChildItem (Join-Path $repoRoot "BundledSkins") -File |
+    Where-Object { -not $_.Name.StartsWith(".") } |
+    ForEach-Object { Copy-Item $_.FullName -Destination $skinsOut -Force }
+Write-Host "    BundledSkins -> $skinsOut"
+
 Write-Host "==> Locating asbridge.exe from the CMake pre-build hook"
 $asbridgeExe = Get-ChildItem -Path (Join-Path $repoRoot "TweakerUI\bin") -Recurse -Filter "asbridge.exe" -ErrorAction SilentlyContinue |
     Sort-Object LastWriteTime -Descending | Select-Object -First 1

@@ -60,6 +60,13 @@ echo "==> Publishing TweakerUI ($CONFIGURATION, $RUNTIME, self-contained, multi-
 dotnet publish "$TWEAKER_UI_PROJ" -c "$CONFIGURATION" -r "$RUNTIME" --self-contained true \
     -o "$TWEAKER_OUT"
 
+# Skins ride beside the exe: the Skin Changer reads <app>/Skins. BundledSkins is a submodule, and
+# its LICENSE travels with the packs.
+SKINS_OUT="$TWEAKER_OUT/Skins"
+mkdir -p "$SKINS_OUT"
+find "$REPO_ROOT/BundledSkins" -maxdepth 1 -type f ! -name '.*' -exec cp -f {} "$SKINS_OUT/" \;
+echo "    BundledSkins -> $SKINS_OUT"
+
 echo "==> Locating asbridge.exe from the CMake pre-build hook"
 ASBRIDGE_EXE="$(find "$REPO_ROOT/TweakerUI/bin" -iname "asbridge.exe" -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)"
 if [ -z "$ASBRIDGE_EXE" ]; then

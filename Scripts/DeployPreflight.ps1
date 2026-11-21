@@ -18,6 +18,13 @@ function Assert-DeploySources {
         throw ("Deploy sources are missing:`n  " + ($missing -join "`n  ") +
                "`nRun: git submodule update --init --recursive")
     }
+
+    $skins = @(Get-ChildItem (Join-Path $RepositoryRoot "BundledSkins") -File -ErrorAction SilentlyContinue |
+               Where-Object { $_.Extension -in ".askin2", ".tasp" })
+    if ($skins.Count -eq 0) {
+        throw ("BundledSkins has no .askin2/.tasp packs:`n  " + (Join-Path $RepositoryRoot "BundledSkins") +
+               "`nRun: git submodule update --init --recursive")
+    }
 }
 
 function Assert-PluginPayload {

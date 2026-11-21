@@ -25,6 +25,14 @@ assert_deploy_sources() {
         printf 'Run: git submodule update --init --recursive\n' >&2
         exit 1
     fi
+
+    local skin_count
+    skin_count="$(find "$repo_root/BundledSkins" -maxdepth 1 -type f \( -name '*.askin2' -o -name '*.tasp' \) 2>/dev/null | wc -l | tr -d ' ')"
+    if [ "$skin_count" -eq 0 ]; then
+        printf 'BundledSkins has no .askin2/.tasp packs:\n  %s\nRun: git submodule update --init --recursive\n' \
+            "$repo_root/BundledSkins" >&2
+        exit 1
+    fi
 }
 
 assert_plugin_payload() {

@@ -17,3 +17,7 @@
 	path = TweakerPlugin/harness
 	url = https://github.com/Audiosurf-Tweaker/harness.git
 	update = none
+[submodule "BundledSkins"]
+	path = BundledSkins
+	url = https://github.com/Audiosurf-Tweaker/BundledSkins.git
+	branch = main
