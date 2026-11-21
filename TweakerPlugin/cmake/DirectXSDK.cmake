@@ -10,11 +10,11 @@
 # unused - only its Include/ directory is needed.
 #
 # Microsoft discontinued the June 2010 DirectX SDK and no longer distributes
-# it. It is not vendored in this repository. Point DXSDK_DIR at a local copy,
-# either via -DDXSDK_DIR=... or the DXSDK_DIR environment variable (the same
-# variable the original installer used to set). Defaults to the conventional
-# in-tree location. A copy of the SDK can be obtained from the archival
-# mirror at https://github.com/testing-laboratory/DirectX-SDK-June2010
+# it. It is a submodule (.gitmodules, testing-laboratory/DirectX-SDK-June2010),
+# so a normal --recurse-submodules clone brings the Include/ and Lib/ trees.
+# Point DXSDK_DIR at another copy if you keep one elsewhere, either via
+# -DDXSDK_DIR=... or the DXSDK_DIR environment variable (the same variable the
+# original installer used to set). Defaults to the in-tree submodule.
 
 if(DEFINED ENV{DXSDK_DIR})
     set(_dxsdk_default "$ENV{DXSDK_DIR}")
@@ -28,10 +28,8 @@ set(DXSDK_DIR "${_dxsdk_default}" CACHE PATH
 if(NOT EXISTS "${DXSDK_DIR}/Include/d3dx9.h")
     message(FATAL_ERROR
         "DirectX SDK (June 2010) not found at \"${DXSDK_DIR}\".\n"
-        "Microsoft discontinued this SDK; it is not distributed with this repository.\n"
-        "Grab a copy from the archival mirror and point CMake at its root, e.g.:\n"
-        "  git clone https://github.com/testing-laboratory/DirectX-SDK-June2010 \"${CMAKE_SOURCE_DIR}/DirectX-SDK-June2010\"\n"
-        "or\n"
+        "It is a submodule now: git submodule update --init TweakerPlugin/DirectX-SDK-June2010\n"
+        "or point CMake at another copy:\n"
         "  cmake --preset x86-release -DDXSDK_DIR=\"C:/path/to/DirectX SDK\"\n"
         "or set the DXSDK_DIR environment variable before configuring.")
 endif()

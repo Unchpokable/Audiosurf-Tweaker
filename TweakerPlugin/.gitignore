@@ -9,8 +9,9 @@ compile_commands.json
 
 # Vendored SDKs: proprietary/copyrighted, not redistributable - fetch
 # locally per cmake/Quest3DSDK.cmake and cmake/DirectXSDK.cmake.
+# The DirectX SDK is a submodule now (.gitmodules); the Quest3D SDK stays local
+# until its private repository exists.
 /Quest3D-SDK/
-/DirectX-SDK-June2010/
 /ImGui/
 /Detours/
 /LuaJIT/
