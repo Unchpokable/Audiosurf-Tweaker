@@ -27,6 +27,14 @@ jobs:
           # Authorization header and GitHub rejects the request.
           persist-credentials: false
 
+      - name: Check the mirror token
+        env:
+          GH_TOKEN: ${{ secrets.ORG_PUBLISH_TOKEN }}
+        run: |
+          echo "token user: $(gh api user --jq .login)"
+          echo "mirror push: $(gh api repos/Audiosurf-Tweaker/Audiosurf-Tweaker --jq '.permissions.push')"
+          echo "nightly push: $(gh api repos/Audiosurf-Tweaker/Audiosurf-Tweaker-Nightly --jq '.permissions.push')"
+
       - name: Push main, tags and dispatch the nightly
         env:
           GH_TOKEN: ${{ secrets.ORG_PUBLISH_TOKEN }}
